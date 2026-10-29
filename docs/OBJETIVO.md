@@ -19,7 +19,7 @@ Construir um **assistente de IA pessoal que conversa por voz em tempo real**, co
 
 ## Como vamos chegar lá
 
-- **Por etapas**, cada uma entregando uma versão que funciona de verdade (v0.0 → v1.0).
+- **Por etapas**, cada uma entregando uma versão que funciona de verdade (v0.0.0 → v1.0.0).
 - **Documentado no repositório** e acompanhado no mapa mental, que é atualizado a cada etapa.
 - **Pensado para o meu hardware** (GPU AMD RX 9060 XT), mas com peças trocáveis (Vulkan, ROCm, CUDA e CPU) para rodar em outras máquinas.
 - **Open source:** no fim, qualquer pessoa pode instalar e criar o seu próprio assistente, com o nome e a voz que quiser.
@@ -30,7 +30,7 @@ Construir um **assistente de IA pessoal que conversa por voz em tempo real**, co
 - Copiar personagens ou marcas existentes: o assistente tem identidade própria.
 - Treinar um modelo do zero: usamos modelos prontos, e a evolução vem da memória e, mais tarde, de ajuste fino (LoRA).
 
-## Como saber que deu certo (v1.0)
+## Como saber que deu certo (v1.0.0)
 
 - Converso por voz com ele todos os dias, de forma fluida, como com uma pessoa.
 - Ele lembra de mim entre uma sessão e outra e toma iniciativa nos momentos certos.

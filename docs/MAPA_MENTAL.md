@@ -7,6 +7,8 @@
 
 **Legenda do roadmap:** ✅ concluída · 🔄 em andamento · ⬜ pendente
 
+**Versões:** `vMAIOR.MENOR.CORREÇÃO`. Cada etapa sobe o número do meio (`v0.1.0` → `v0.2.0`), e ajustes dentro de uma etapa sobem o último (`v0.1.0` → `v0.1.1`). Detalhes na seção 5 de [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md).
+
 ---
 
 ## 1. Visão geral
@@ -88,15 +90,15 @@ mindmap
 
 ```mermaid
 flowchart LR
-  v00["v0.0 Fundação"]:::pend --> v01["v0.1 Conversa por voz"]:::pend
-  v01 --> v02["v0.2 Memória"]:::pend
-  v02 --> v03["v0.3 Roteador de modelos"]:::pend
-  v03 --> v04["v0.4 HUD"]:::pend
-  v04 --> v05["v0.5 Ferramentas MCP"]:::pend
-  v05 --> v06["v0.6 Rotinas e iniciativa"]:::pend
-  v06 --> v07["v0.7 Agentes"]:::pend
-  v07 --> v08["v0.8 Modo distribuído"]:::pend
-  v08 --> v10["v1.0 Lançamento"]:::pend
+  v00["v0.0.0 Fundação"]:::pend --> v01["v0.1.0 Conversa por voz"]:::pend
+  v01 --> v02["v0.2.0 Memória"]:::pend
+  v02 --> v03["v0.3.0 Roteador de modelos"]:::pend
+  v03 --> v04["v0.4.0 HUD"]:::pend
+  v04 --> v05["v0.5.0 Ferramentas MCP"]:::pend
+  v05 --> v06["v0.6.0 Rotinas e iniciativa"]:::pend
+  v06 --> v07["v0.7.0 Agentes"]:::pend
+  v07 --> v08["v0.8.0 Modo distribuído"]:::pend
+  v08 --> v10["v1.0.0 Lançamento"]:::pend
 
   classDef done fill:#2e7d32,stroke:#1b5e20,color:#fff
   classDef doing fill:#f9a825,stroke:#f57f17,color:#000
@@ -105,16 +107,16 @@ flowchart LR
 
 | Versão | Etapa | Status | Critério de pronto |
 |---|---|---|---|
-| v0.0 | Fundação | ⬜ | Projeto roda o "hello world" e a config carrega |
-| v0.1 | Conversa por voz | ⬜ | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
-| v0.2 | Memória | ⬜ | Lembra de fatos entre sessões |
-| v0.3 | Roteador de modelos | ⬜ | Pergunta difícil vai para a API e volta com a mesma voz |
-| v0.4 | HUD | ⬜ | Interface reage à voz em tempo real |
-| v0.5 | Ferramentas MCP | ⬜ | Executa ações por voz |
-| v0.6 | Rotinas e iniciativa | ⬜ | IA fala primeiro no horário e por presença |
-| v0.7 | Agentes e subagentes | ⬜ | Tarefas complexas delegadas |
-| v0.8 | Modo distribuído | ⬜ | Funciona com o PC desligado, via API |
-| v1.0 | Lançamento | ⬜ | Terceiros instalam e usam |
+| v0.0.0 | Fundação | ⬜ | Projeto roda o "hello world" e a config carrega |
+| v0.1.0 | Conversa por voz | ⬜ | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
+| v0.2.0 | Memória | ⬜ | Lembra de fatos entre sessões |
+| v0.3.0 | Roteador de modelos | ⬜ | Pergunta difícil vai para a API e volta com a mesma voz |
+| v0.4.0 | HUD | ⬜ | Interface reage à voz em tempo real |
+| v0.5.0 | Ferramentas MCP | ⬜ | Executa ações por voz |
+| v0.6.0 | Rotinas e iniciativa | ⬜ | IA fala primeiro no horário e por presença |
+| v0.7.0 | Agentes e subagentes | ⬜ | Tarefas complexas delegadas |
+| v0.8.0 | Modo distribuído | ⬜ | Funciona com o PC desligado, via API |
+| v1.0.0 | Lançamento | ⬜ | Terceiros instalam e usam |
 
 ---
 
@@ -141,7 +143,7 @@ flowchart LR
 
 ```mermaid
 mindmap
-  root((Decidir antes da v0.0))
+  root((Decidir antes da v0.0.0))
     Sistema operacional
       Windows
       Linux com ROCm mais maduro
@@ -151,7 +153,7 @@ mindmap
       Núcleo Python
       HUD TypeScript
     Uso 24h
-      Define quando entra a v0.8
+      Define quando entra a v0.8.0
     Licença
       MIT
       Apache-2.0

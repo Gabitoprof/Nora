@@ -202,7 +202,7 @@
   {
    "id": "s0",
    "type": "text",
-   "text": "⬜ **v0.0 Fundação**",
+   "text": "⬜ **v0.0.0 Fundação**",
    "x": -1300,
    "y": 1200,
    "width": 220,
@@ -211,7 +211,7 @@
   {
    "id": "s1",
    "type": "text",
-   "text": "⬜ **v0.1 Conversa por voz**",
+   "text": "⬜ **v0.1.0 Conversa por voz**",
    "x": -1040,
    "y": 1200,
    "width": 220,
@@ -220,7 +220,7 @@
   {
    "id": "s2",
    "type": "text",
-   "text": "⬜ **v0.2 Memória**",
+   "text": "⬜ **v0.2.0 Memória**",
    "x": -780,
    "y": 1200,
    "width": 220,
@@ -229,7 +229,7 @@
   {
    "id": "s3",
    "type": "text",
-   "text": "⬜ **v0.3 Roteador**",
+   "text": "⬜ **v0.3.0 Roteador**",
    "x": -520,
    "y": 1200,
    "width": 220,
@@ -238,7 +238,7 @@
   {
    "id": "s4",
    "type": "text",
-   "text": "⬜ **v0.4 HUD**",
+   "text": "⬜ **v0.4.0 HUD**",
    "x": -260,
    "y": 1200,
    "width": 220,
@@ -247,7 +247,7 @@
   {
    "id": "s5",
    "type": "text",
-   "text": "⬜ **v0.5 MCP**",
+   "text": "⬜ **v0.5.0 MCP**",
    "x": 0,
    "y": 1200,
    "width": 220,
@@ -256,7 +256,7 @@
   {
    "id": "s6",
    "type": "text",
-   "text": "⬜ **v0.6 Rotinas**",
+   "text": "⬜ **v0.6.0 Rotinas**",
    "x": 260,
    "y": 1200,
    "width": 220,
@@ -265,7 +265,7 @@
   {
    "id": "s7",
    "type": "text",
-   "text": "⬜ **v0.7 Agentes**",
+   "text": "⬜ **v0.7.0 Agentes**",
    "x": 520,
    "y": 1200,
    "width": 220,
@@ -274,7 +274,7 @@
   {
    "id": "s8",
    "type": "text",
-   "text": "⬜ **v0.8 Distribuído**",
+   "text": "⬜ **v0.8.0 Distribuído**",
    "x": 780,
    "y": 1200,
    "width": 220,
@@ -283,7 +283,7 @@
   {
    "id": "s9",
    "type": "text",
-   "text": "⬜ **v1.0 Lançamento**",
+   "text": "⬜ **v1.0.0 Lançamento**",
    "x": 1040,
    "y": 1200,
    "width": 220,

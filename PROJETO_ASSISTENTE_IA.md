@@ -113,16 +113,27 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
 
 | Versão | Etapa | Entregas | Critério de pronto |
 |---|---|---|---|
-| **v0.0** | Fundação | Repositório, licença, README, estrutura, `.gitignore`, `.env.example`, config de **nome, persona, voz e modelos** | Projeto roda o "hello world" e a config carrega |
-| **v0.1** | Conversa por voz | Wake word, VAD, whisper.cpp (Vulkan), Ollama, Piper | Falar o nome, perguntar e ouvir a resposta em < 2 s |
-| **v0.2** | Memória | SQLite + sqlite-vec: histórico, memória curada, conhecimento | Lembra de fatos entre sessões |
-| **v0.3** | Roteador de modelos | Escalonamento para Claude e outros, frase de espera, modo jogo, fallback | Pergunta difícil vai para a API e volta com a mesma voz |
-| **v0.4** | HUD | Orbe reativo, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
-| **v0.5** | Ferramentas MCP | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
-| **v0.6** | Rotinas e iniciativa | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
-| **v0.7** | Agentes e subagentes | Especialistas chamados pelo orquestrador | Tarefas complexas delegadas |
-| **v0.8** | Modo distribuído | Separação "corpo 24h" × "cérebro" | Funciona com o PC desligado (via API) |
-| **v1.0** | Lançamento | Instalador, docs completas, backends AMD/NVIDIA/CPU | Terceiros instalam e usam |
+| **v0.0.0** | Fundação | Repositório, licença, README, estrutura, `.gitignore`, `.env.example`, config de **nome, persona, voz e modelos** | Projeto roda o "hello world" e a config carrega |
+| **v0.1.0** | Conversa por voz | Wake word, VAD, whisper.cpp (Vulkan), Ollama, Piper | Falar o nome, perguntar e ouvir a resposta em < 2 s |
+| **v0.2.0** | Memória | SQLite + sqlite-vec: histórico, memória curada, conhecimento | Lembra de fatos entre sessões |
+| **v0.3.0** | Roteador de modelos | Escalonamento para Claude e outros, frase de espera, modo jogo, fallback | Pergunta difícil vai para a API e volta com a mesma voz |
+| **v0.4.0** | HUD | Orbe reativo, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
+| **v0.5.0** | Ferramentas MCP | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
+| **v0.6.0** | Rotinas e iniciativa | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
+| **v0.7.0** | Agentes e subagentes | Especialistas chamados pelo orquestrador | Tarefas complexas delegadas |
+| **v0.8.0** | Modo distribuído | Separação "corpo 24h" × "cérebro" | Funciona com o PC desligado (via API) |
+| **v1.0.0** | Lançamento | Instalador, docs completas, backends AMD/NVIDIA/CPU | Terceiros instalam e usam |
+
+### Versionamento semântico (`vMAIOR.MENOR.CORREÇÃO`)
+
+| Parte | Quando muda | Exemplo |
+|---|---|---|
+| **MAIOR** | Lançamento estável ou mudança que quebra a compatibilidade | `v0.8.0` → `v1.0.0` |
+| **MENOR** | Cada nova etapa do roadmap | `v0.1.0` → `v0.2.0` |
+| **CORREÇÃO** | Ajustes, correções e melhorias pequenas dentro de uma etapa | `v0.1.0` → `v0.1.1` → `v0.1.2` |
+
+- Cada versão publicada ganha uma **tag no Git** com o mesmo nome (ex.: `v0.1.0`) e uma entrada no `CHANGELOG.md`.
+- Antes da `v1.0.0`, o projeto ainda está em desenvolvimento e qualquer parte pode mudar.
 
 **Etapas futuras:** fine-tuning LoRA, casa inteligente (Home Assistant), mesa com projetor e touch.
 
@@ -186,7 +197,7 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 
 ---
 
-## 10. Decisões pendentes (responder antes da v0.0)
+## 10. Decisões pendentes (responder antes da v0.0.0)
 
 1. **Sistema operacional:** Windows ou Linux? No Linux o ROCm costuma ser mais maduro.
 2. **Nome:** o nome do projeto e o do assistente são o mesmo ou diferentes?
@@ -199,12 +210,12 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 ## 11. Primeiro prompt sugerido para o Claude Code
 
 ```
-Leia PROJETO_ASSISTENTE_IA.md por completo. Vamos iniciar a Etapa 0 (v0.0).
+Leia PROJETO_ASSISTENTE_IA.md por completo. Vamos iniciar a Etapa 0 (v0.0.0).
 Antes de escrever código, use o modo de planejamento para:
 1. Confirmar comigo as decisões pendentes da seção 10.
 2. Propor a estrutura de pastas (núcleo Python modular, HUD web separado,
    servidores MCP como plugins, pasta data/ fora do Git).
 3. Criar um CLAUDE.md resumindo as regras do projeto (seções 2, 3 e 6).
-Depois, implemente a v0.0 e, em seguida, um teste rápido de compatibilidade
+Depois, implemente a v0.0.0 e, em seguida, um teste rápido de compatibilidade
 da GPU AMD (Ollama com ROCm/Vulkan e whisper.cpp com Vulkan) para validar a Etapa 1.
 ```
