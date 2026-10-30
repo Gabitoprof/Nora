@@ -12,7 +12,7 @@ from ella.conversa_voz import conversar_por_voz
 from ella.frases import SeparadorDeFrases
 from ella.ouvido import OuvidoWhisper
 from ella.servico import ServicoIndisponivel, responde
-from ella.voz import VozPiper
+from ella.voz import VozElevenLabs, VozHTTP, criar_voz
 
 UM_SEGUNDO = para_wav(b"\x00\x00" * 16_000)
 
@@ -22,9 +22,15 @@ def config_com(
     ollama="http://127.0.0.1:9",
     whisper="http://127.0.0.1:9",
     piper="http://127.0.0.1:9",
+    motor="piper",
+    extra="",
+    ambiente=None,
 ):
-    local = f'[ouvido]\nurl = "{whisper}"\n[voz]\nurl = "{piper}"\n'
-    return carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama})
+    local = (
+        f'[ouvido]\nurl = "{whisper}"\n[voz]\nmotor = "{motor}"\n'
+        f'[voz.piper]\nurl = "{piper}"\n[voz.kokoro]\nurl = "{piper}"\n{extra}'
+    )
+    return carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama, **(ambiente or {})})
 
 
 def picotar(texto, tamanho=3):
@@ -114,7 +120,8 @@ def test_ouvido_fora_do_ar(criar_raiz):
 
 def test_voz_pede_o_audio_da_frase(criar_raiz):
     with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as piper:
-        voz = VozPiper(config_com(criar_raiz, piper=piper.url))
+        voz = criar_voz(config_com(criar_raiz, piper=piper.url))
+        assert isinstance(voz, VozHTTP) and voz.nome == "o Piper"
         assert voz.sintetizar("Olá, tudo bem?") == UM_SEGUNDO
     caminho, _, corpo = piper.pedidos[0]
     assert caminho == "/synthesize"
@@ -124,7 +131,62 @@ def test_voz_pede_o_audio_da_frase(criar_raiz):
 def test_voz_repassa_erro_do_piper(criar_raiz):
     with ServicoFalso(lambda *_: (500, "text/plain", b"voz nao carregada")) as piper:
         with pytest.raises(ServicoIndisponivel, match="Piper recusou o pedido \\(500\\)"):
-            VozPiper(config_com(criar_raiz, piper=piper.url)).sintetizar("oi")
+            criar_voz(config_com(criar_raiz, piper=piper.url)).sintetizar("oi")
+
+
+def test_kokoro_envia_voz_e_velocidade(criar_raiz):
+    with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as kokoro:
+        config = config_com(
+            criar_raiz, piper=kokoro.url, motor="kokoro", extra="velocidade = 1.1\n"
+        )
+        voz = criar_voz(config)
+        assert voz.sintetizar("Oi!") == UM_SEGUNDO
+    caminho, _, corpo = kokoro.pedidos[0]
+    assert caminho == "/synthesize"
+    assert json.loads(corpo) == {"text": "Oi!", "voice": "pf_dora", "speed": 1.1}
+
+
+def test_elevenlabs_monta_o_pedido_e_devolve_wav(criar_raiz, monkeypatch):
+    pcm = b"\x01\x00" * 22_050
+    with ServicoFalso(lambda *_: (200, "audio/pcm", pcm)) as nuvem:
+        monkeypatch.setattr("ella.voz.ELEVENLABS_API", f"{nuvem.url}/v1/text-to-speech")
+        config = config_com(
+            criar_raiz,
+            motor="elevenlabs",
+            extra='[voz.elevenlabs]\nvoz_id = "abc123"\n',
+            ambiente={"ELEVENLABS_API_KEY": "segredo"},
+        )
+        voz = criar_voz(config)
+        assert isinstance(voz, VozElevenLabs)
+        wav = voz.sintetizar("Olá!")
+    caminho, cabecalhos, corpo = nuvem.pedidos[0]
+    assert caminho == "/v1/text-to-speech/abc123?output_format=pcm_22050"
+    assert {nome.lower(): valor for nome, valor in cabecalhos.items()}["xi-api-key"] == "segredo"
+    assert json.loads(corpo) == {
+        "text": "Olá!",
+        "model_id": "eleven_flash_v2_5",
+        "language_code": "pt",
+    }
+    assert ler_wav(wav) == (pcm, 22_050, 1)
+    assert "segredo" not in repr(config)
+
+
+def test_elevenlabs_sem_chave_ou_voz(criar_raiz):
+    sem_nada = criar_voz(config_com(criar_raiz, motor="elevenlabs"))
+    with pytest.raises(ServicoIndisponivel, match="ELEVENLABS_API_KEY"):
+        sem_nada.sintetizar("oi")
+    sem_voz = criar_voz(
+        config_com(criar_raiz, motor="elevenlabs", ambiente={"ELEVENLABS_API_KEY": "x"})
+    )
+    with pytest.raises(ServicoIndisponivel, match="voz_id"):
+        sem_voz.sintetizar("oi")
+
+
+def test_motor_de_voz_invalido(criar_raiz):
+    from ella.config import ConfigError
+
+    with pytest.raises(ConfigError, match="motor deve ser um de kokoro, piper, elevenlabs"):
+        config_com(criar_raiz, motor="robo")
 
 
 def test_verificar_mostra_os_servicos_de_voz(criar_raiz):
@@ -133,6 +195,8 @@ def test_verificar_mostra_os_servicos_de_voz(criar_raiz):
         linhas = verificar(config_com(criar_raiz, piper=piper.url))
     assert any("Piper" in linha and linha.endswith("ok") for linha in linhas)
     assert any("whisper-server" in linha and "não respondeu" in linha for linha in linhas)
+    nuvem = verificar(config_com(criar_raiz, motor="elevenlabs"))
+    assert any("ElevenLabs" in linha and "falta ELEVENLABS_API_KEY" in linha for linha in nuvem)
 
 
 # --- conversa por voz -------------------------------------------------------------------------

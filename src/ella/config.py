@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -42,10 +42,33 @@ class Ouvido:
 
 
 @dataclass(frozen=True)
-class Voz:
-    motor: str
+class VozKokoro:
     url: str
     voz: str
+    velocidade: float
+
+
+@dataclass(frozen=True)
+class VozPiper:
+    url: str
+    voz: str
+
+
+@dataclass(frozen=True)
+class VozElevenLabs:
+    voz_id: str
+    modelo: str
+
+
+MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs")
+
+
+@dataclass(frozen=True)
+class Voz:
+    motor: str
+    kokoro: VozKokoro
+    piper: VozPiper
+    elevenlabs: VozElevenLabs
 
 
 @dataclass(frozen=True)
@@ -83,6 +106,7 @@ class Config:
     ollama_host: str
     tem_chave_anthropic: bool
     arquivos: tuple[Path, ...]
+    chave_elevenlabs: str = field(default="", repr=False)
 
 
 def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
@@ -138,6 +162,33 @@ def _entre_0_e_1(secao: str, chave: str, valor: float) -> float:
     return valor
 
 
+def _ler_voz(dados: dict[str, Any]) -> Voz:
+    motor = _campo(dados, "voz", "motor", str)
+    if motor not in MOTORES_DE_VOZ:
+        raise ConfigError(
+            f"[voz] motor deve ser um de {', '.join(MOTORES_DE_VOZ)}; veio {motor!r}."
+        )
+    velocidade = _campo(dados, "voz.kokoro", "velocidade", float)
+    if not 0.5 <= velocidade <= 2.0:
+        raise ConfigError(f"[voz.kokoro] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
+    return Voz(
+        motor=motor,
+        kokoro=VozKokoro(
+            url=_campo(dados, "voz.kokoro", "url", str),
+            voz=_campo(dados, "voz.kokoro", "voz", str),
+            velocidade=velocidade,
+        ),
+        piper=VozPiper(
+            url=_campo(dados, "voz.piper", "url", str),
+            voz=_campo(dados, "voz.piper", "voz", str),
+        ),
+        elevenlabs=VozElevenLabs(
+            voz_id=_campo(dados, "voz.elevenlabs", "voz_id", str).strip(),
+            modelo=_campo(dados, "voz.elevenlabs", "modelo", str),
+        ),
+    )
+
+
 def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Config:
     """Lê os arquivos de config a partir de `raiz` e devolve uma Config validada."""
     ambiente = {**ler_env(raiz / ".env"), **(os.environ if ambiente is None else ambiente)}
@@ -181,11 +232,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             url=_campo(dados, "ouvido", "url", str),
             idioma=_campo(dados, "ouvido", "idioma", str),
         ),
-        voz=Voz(
-            motor=_campo(dados, "voz", "motor", str),
-            url=_campo(dados, "voz", "url", str),
-            voz=_campo(dados, "voz", "voz", str),
-        ),
+        voz=_ler_voz(dados),
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),
             alto_falante=_campo(dados, "audio", "alto_falante", str),
@@ -204,5 +251,6 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
         pasta_dados=pasta_dados,
         ollama_host=ambiente.get("OLLAMA_HOST") or "http://127.0.0.1:11434",
         tem_chave_anthropic=bool(ambiente.get("ANTHROPIC_API_KEY")),
+        chave_elevenlabs=ambiente.get("ELEVENLABS_API_KEY", ""),
         arquivos=tuple(arquivos),
     )

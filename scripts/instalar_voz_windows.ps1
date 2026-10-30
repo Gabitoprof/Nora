@@ -1,11 +1,12 @@
-﻿# Instala o ouvido (whisper.cpp) e a voz (Piper) da Ella no Windows.
+﻿# Instala o ouvido (whisper.cpp) e as vozes locais (Kokoro e Piper) da Ella no Windows.
 # Uso, no PowerShell, na pasta do repositório e COM O AMBIENTE ATIVADO (.venv\Scripts\activate):
 #   powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1
 # Tudo vai para ferramentas\ e models\, que ficam fora do Git.
 
 param(
     [string]$ModeloWhisper = "small",
-    [string]$Voz = "pt_BR-faber-medium"
+    [string]$Voz = "pt_BR-faber-medium",
+    [switch]$SemPiper
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,7 +20,7 @@ $ferramentas = Join-Path $raiz "ferramentas"
 $modelos = Join-Path $raiz "models"
 New-Item -ItemType Directory -Force -Path $ferramentas, $modelos | Out-Null
 
-Write-Host "`n[1/4] whisper.cpp (versão oficial para processador)"
+Write-Host "`n[1/5] whisper.cpp (versão oficial para processador)"
 $pastaWhisper = Join-Path $ferramentas "whisper"
 $servidor = Get-ChildItem -Path $pastaWhisper -Recurse -Filter "whisper-server.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($servidor) {
@@ -48,7 +49,7 @@ if ($servidor) {
     Write-Host "  instalado: $($servidor.FullName)"
 }
 
-Write-Host "`n[2/4] Modelo do Whisper ($ModeloWhisper, multilíngue; ~470 MB no small, pode demorar)"
+Write-Host "`n[2/5] Modelo do Whisper ($ModeloWhisper, multilíngue; ~470 MB no small, pode demorar)"
 $arquivoModelo = Join-Path $modelos "ggml-$ModeloWhisper.bin"
 if (Test-Path $arquivoModelo) {
     Write-Host "  já baixado: $arquivoModelo"
@@ -57,14 +58,31 @@ if (Test-Path $arquivoModelo) {
     Write-Host "  baixado: $arquivoModelo"
 }
 
-Write-Host "`n[3/4] Piper (licença GPL-3.0, roda como programa separado)"
-python -m pip install --upgrade "piper-tts[http]"
-if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar o piper-tts." }
+Write-Host "`n[3/5] Kokoro (voz local padrão, feminina pf_dora)"
+python -m pip install -e "$raiz[kokoro]"
+if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar o Kokoro." }
 
-Write-Host "`n[4/4] Voz $Voz"
-$pastaVozes = Join-Path $modelos "piper"
-New-Item -ItemType Directory -Force -Path $pastaVozes | Out-Null
-python -m piper.download_voices $Voz --data-dir $pastaVozes
-if ($LASTEXITCODE -ne 0) { throw "Falha ao baixar a voz $Voz." }
+Write-Host "`n[4/5] Modelo e vozes do Kokoro (~330 MB)"
+$pastaKokoro = Join-Path $modelos "kokoro"
+New-Item -ItemType Directory -Force -Path $pastaKokoro | Out-Null
+$base = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+foreach ($nome in @("kokoro-v1.0.onnx", "voices-v1.0.bin")) {
+    $destino = Join-Path $pastaKokoro $nome
+    if (Test-Path $destino) { Write-Host "  já baixado: $nome"; continue }
+    Invoke-WebRequest "$base/$nome" -OutFile $destino
+    Write-Host "  baixado: $nome"
+}
+
+if ($SemPiper) {
+    Write-Host "`n[5/5] Piper pulado"
+} else {
+    Write-Host "`n[5/5] Piper (opcional, licença GPL-3.0) e a voz $Voz"
+    python -m pip install --upgrade "piper-tts[http]"
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar o piper-tts." }
+    $pastaVozes = Join-Path $modelos "piper"
+    New-Item -ItemType Directory -Force -Path $pastaVozes | Out-Null
+    python -m piper.download_voices $Voz --data-dir $pastaVozes
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao baixar a voz $Voz." }
+}
 
 Write-Host "`nPronto. Agora rode: powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1"

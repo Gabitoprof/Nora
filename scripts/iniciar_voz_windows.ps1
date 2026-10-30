@@ -1,11 +1,14 @@
-﻿# Inicia o ouvido (whisper-server) e a voz (Piper) em janelas próprias.
+﻿# Inicia o ouvido (whisper-server) e a voz local (Kokoro por padrão, ou Piper) em janelas próprias.
+# Com a voz do ElevenLabs (nuvem), use -Voz nenhuma: só o ouvido é iniciado.
 # Uso, na pasta do repositório:
 #   powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1
 # Depois, em outro terminal com o ambiente ativado: ella falar --medir
 
 param(
     [string]$ModeloWhisper = "small",
-    [string]$Voz = "pt_BR-faber-medium",
+    [ValidateSet("kokoro", "piper", "nenhuma")]
+    [string]$Voz = "kokoro",
+    [string]$VozPiper = "pt_BR-faber-medium",
     [int]$PortaWhisper = 8178,
     [int]$PortaPiper = 5000
 )
@@ -27,12 +30,19 @@ Start-Process -FilePath $servidor.FullName -WorkingDirectory $servidor.Directory
     "-m", "`"$arquivoModelo`"", "-l", "pt", "-t", $threads, "--host", "127.0.0.1", "--port", $PortaWhisper
 )
 
-Write-Host "Iniciando o Piper na porta $PortaPiper com a voz $Voz..."
-Start-Process -FilePath $python -ArgumentList @(
-    "-m", "piper.http_server", "-m", $Voz, "--data-dir", "`"$(Join-Path $modelos 'piper')`"",
-    "--host", "127.0.0.1", "--port", $PortaPiper
-)
+if ($Voz -eq "kokoro") {
+    Write-Host "Iniciando o Kokoro (porta e voz vêm da config [voz.kokoro])..."
+    $ella = Join-Path $raiz ".venv\Scripts\ella.exe"
+    if (-not (Test-Path $ella)) { $ella = "ella" }
+    Start-Process -FilePath $ella -WorkingDirectory $raiz -ArgumentList @("servidor-kokoro")
+} elseif ($Voz -eq "piper") {
+    Write-Host "Iniciando o Piper na porta $PortaPiper com a voz $VozPiper..."
+    Start-Process -FilePath $python -ArgumentList @(
+        "-m", "piper.http_server", "-m", $VozPiper, "--data-dir", "`"$(Join-Path $modelos 'piper')`"",
+        "--host", "127.0.0.1", "--port", $PortaPiper
+    )
+}
 
-Write-Host "`nDuas janelas abriram (deixe-as abertas). Espere alguns segundos e rode:"
+Write-Host "`nJanelas abertas (deixe-as abertas). Espere alguns segundos e rode:"
 Write-Host "  ella --verificar"
 Write-Host "  ella falar --medir"

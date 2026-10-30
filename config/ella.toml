@@ -28,13 +28,27 @@ url = "http://127.0.0.1:8178"
 idioma = "pt"
 
 [voz]
-# Motor de fala (TTS). Opções previstas: "piper" (local), "elevenlabs", "cartesia".
-# O Piper roda como servidor separado (licença GPL-3.0, fora do nosso código).
-motor = "piper"
+# Motor de fala (TTS): "kokoro" (local, padrão), "piper" (local) ou "elevenlabs" (nuvem, pago).
+motor = "kokoro"
+
+[voz.kokoro]
+# Kokoro-82M (pesos Apache-2.0), servido por "ella servidor-kokoro".
+# Vozes pt-BR: pf_dora (feminina), pm_alex e pm_santa (masculinas).
+url = "http://127.0.0.1:5001"
+voz = "pf_dora"
+velocidade = 1.0
+
+[voz.piper]
+# Servidor HTTP do Piper (GPL-3.0, roda separado). A pt_BR-faber-medium é masculina e deriva
+# de uma base só para uso não comercial: uso pessoal, baixada à parte, nunca distribuída.
 url = "http://127.0.0.1:5000"
-# Voz do Piper. A pt_BR-faber-medium deriva de uma base só para uso não comercial:
-# serve para uso pessoal e é baixada à parte, nunca distribuída com o projeto.
 voz = "pt_BR-faber-medium"
+
+[voz.elevenlabs]
+# Nuvem, paga por uso. Chave em ELEVENLABS_API_KEY (.env). O voz_id aparece na página da voz
+# no ElevenLabs (Voices > ... > Copy voice ID). Coloque o seu em config/local.toml.
+voz_id = ""
+modelo = "eleven_flash_v2_5"
 
 [modelos.local]
 provedor = "ollama"

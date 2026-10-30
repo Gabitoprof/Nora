@@ -1,18 +1,30 @@
 # Conversa por voz (v0.1.0, parte 2)
 
-A Ella conversa por voz usando três programas locais, cada um no seu processo:
+A Ella conversa por voz usando programas locais, cada um no seu processo, e fala com eles pela rede local:
 
 | Papel | Programa | Porta | Licença |
 |---|---|---|---|
 | Cérebro | Ollama (`qwen3.5:9b`) | 11434 | MIT |
 | Ouvido | whisper.cpp (`whisper-server`) | 8178 | MIT |
-| Voz | Piper (`piper.http_server`) | 5000 | **GPL-3.0** |
+| Voz (padrão) | Kokoro (`ella servidor-kokoro`) | 5001 | pesos Apache-2.0; usa phonemizer/espeak-ng (GPL-3.0) |
+| Voz (opcional) | Piper (`piper.http_server`) | 5000 | GPL-3.0 |
+| Voz (opcional, nuvem) | ElevenLabs | — | serviço pago |
 
-O núcleo da Ella só fala com eles pela rede local. Por isso a licença GPL do Piper não contamina o nosso código (MIT), e cada peça pode ser trocada ou rodar em outra máquina depois (v0.8.0).
+Separar em processos mantém o núcleo da Ella em MIT, deixa cada peça trocável e prepara o modo distribuído (v0.8.0).
+
+## Motores de voz
+
+Escolha em `[voz] motor` (no `config/local.toml`, para valer só na sua máquina):
+
+| Motor | Voz | Onde roda | Custo | Para quem |
+|---|---|---|---|---|
+| **`kokoro`** (padrão) | `pf_dora` (feminina pt-BR); também `pm_alex`, `pm_santa` | seu PC (processador) | grátis | quem baixa o projeto e quer testar |
+| `piper` | `pt_BR-faber-medium` (masculina) | seu PC | grátis | alternativa; uso pessoal (a base da voz é não comercial) |
+| `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz definitiva, com mais qualidade |
 
 ## Instalar (uma vez)
 
-Na pasta do repositório, com o ambiente ativado (`.venv\Scripts\activate`):
+Na pasta do repositório, com o ambiente ativado (`.venv\Scripts\activate`) e **Python 3.12 ou 3.13**:
 
 ```powershell
 git pull
@@ -26,19 +38,21 @@ pip install -e ".[dev,voz]"
 powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1
 ```
 
-O script baixa:
+O script baixa (tudo fora do Git, em `ferramentas\` e `models\`):
 
-- o **whisper.cpp** oficial para processador (`whisper-bin-x64.zip`) em `ferramentas\whisper\`;
-- o modelo **`ggml-small.bin`** (~470 MB, multilíngue) em `models\`;
-- o **Piper** (`pip install piper-tts[http]`) e a voz **`pt_BR-faber-medium`** em `models\piper\`.
+- o **whisper.cpp** oficial para processador e o modelo **`ggml-small.bin`** (~470 MB);
+- o **Kokoro** (`pip install -e .[kokoro]`), o modelo e as vozes (~330 MB) em `models\kokoro\`;
+- o **Piper** e a voz `pt_BR-faber-medium`. Para pular: `-SemPiper`.
 
 ## Usar
 
-1. Inicie o ouvido e a voz (abrem duas janelas; deixe-as abertas):
+1. Inicie o ouvido e a voz (abrem janelas; deixe-as abertas):
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1
    ```
+
+   O padrão é o Kokoro. Com `-Voz piper` inicia o Piper; com `-Voz nenhuma` (para o ElevenLabs) só o ouvido. O motor escolhido no script tem que ser o mesmo de `[voz] motor`.
 
 2. Teste o microfone e o alto-falante (lista os dispositivos, grava 3 segundos e toca de volta):
 
@@ -46,12 +60,11 @@ O script baixa:
    ella audio
    ```
 
-   Para usar outro microfone ou alto-falante, ponha o número ou o nome que aparece na lista em `config\local.toml`:
+   Para usar outro microfone ou alto-falante, ponha o número ou o nome da lista em `config\local.toml`:
 
    ```toml
    [audio]
-   microfone = "3"
-   alto_falante = ""
+   microfone = "23"
    ```
 
 3. Confira se está tudo no ar:
@@ -76,20 +89,43 @@ Com `--medir`, cada resposta mostra três tempos, contados a partir do momento e
 | primeira frase | a primeira frase da resposta ficar pronta | |
 | **começou a falar** | o som da Ella começar a sair | **< 2 s** (MVP), < 1 s (final) |
 
+## Usar o ElevenLabs
+
+1. Crie uma conta em elevenlabs.io e uma chave de API (perfil → API Keys). Defina um limite de gasto.
+2. Escolha uma voz na biblioteca ou crie uma no **Voice Design**. Na página da voz, copie o **voice ID**.
+3. No `.env` (fora do Git):
+
+   ```
+   ELEVENLABS_API_KEY=sua_chave
+   ```
+
+4. No `config\local.toml` (fora do Git):
+
+   ```toml
+   [voz]
+   motor = "elevenlabs"
+
+   [voz.elevenlabs]
+   voz_id = "cole_o_voice_id_aqui"
+   ```
+
+5. Inicie só o ouvido (`iniciar_voz_windows.ps1 -Voz nenhuma`), rode `ella --verificar` (deve mostrar `ElevenLabs configurado`) e `ella falar --medir`.
+
+O modelo padrão é o `eleven_flash_v2_5`, o mais rápido do ElevenLabs, com o idioma fixado em português. Cada frase é um pedido à API: a conversa por voz consome créditos.
+
 ## Escolhas e pendências
 
-- **Whisper no processador, por enquanto.** O projeto oficial não publica versão pronta para Windows com Vulkan; ela precisa ser compilada (Vulkan SDK, CMake e Visual Studio Build Tools) ou viria de terceiros. Começamos com a versão oficial para processador, que o 9800X3D deve aguentar com o modelo `small`. Se a transcrição ficar lenta, os próximos passos são: modelo `base` (`-ModeloWhisper base` nos dois scripts), ou compilar com Vulkan.
-- **Voz `pt_BR-faber-medium` só para uso pessoal.** Ela foi ajustada a partir de uma voz em inglês treinada com uma base de dados **só para uso não comercial**. Serve para testar e para uso pessoal; é baixada à parte e nunca distribuída com o projeto. A voz definitiva e original da Ella fica para depois.
+- **Whisper no processador, por enquanto.** O projeto oficial não publica versão pronta para Windows com Vulkan; ela precisa ser compilada (Vulkan SDK, CMake e Visual Studio Build Tools) ou viria de terceiros. No primeiro teste, o `small` no 9800X3D transcreveu em 0,72 s. Se ficar lento, os próximos passos são o modelo `base` (`-ModeloWhisper base` nos dois scripts) ou compilar com Vulkan.
+- **Voz `pt_BR-faber-medium` (Piper) só para uso pessoal.** Foi ajustada a partir de uma voz em inglês treinada com uma base **só para uso não comercial**. É baixada à parte e nunca distribuída.
 - **Enter para falar.** A palavra de ativação ("Ella") e a detecção automática de quando você para de falar entram na parte 3.
 - **Sem interrupção ainda.** Falar por cima da Ella (barge-in) precisa de cancelamento de eco e vem depois; por enquanto, Ctrl+C interrompe.
 
 ## Se algo der errado
 
 - **O pip instala em `...\pythoncore-3.xx\Scripts` e avisa "not on PATH":** o ambiente não estava ativado. Rode `.venv\Scripts\activate` (o terminal passa a mostrar `(.venv)`) e repita o `pip install`.
-- **O `pip install piper-tts` falha com "conflicting dependencies" e "no matching distributions" para `onnxruntime`:** o Python é novo demais (aconteceu com o 3.15). Veja as versões instaladas com `py -0`, instale o 3.13 se precisar e recrie o ambiente: `deactivate`, `Remove-Item -Recurse -Force .venv`, `py -3.13 -m venv .venv`, `.venv\Scripts\activate`, `pip install -e ".[dev,voz]"`.
-
-- **`ella falar` diz que falta a parte de áudio:** rode `pip install -e ".[dev,voz]"`.
-- **`whisper-server` ou `Piper` "não respondeu"** no `ella --verificar`: veja a janela correspondente aberta pelo script de iniciar; a mensagem de erro aparece lá. Me mande um print.
-- **O Piper não aceita `--data-dir` ou `--port`:** rode `python -m piper.http_server --help` e me mande o resultado; as opções mudam entre versões.
-- **"Não consegui abrir o microfone" (ex.: `MME error 11`):** confira em Configurações → Privacidade e segurança → Microfone se "Permitir que aplicativos da área de trabalho acessem o microfone" está ligado. Depois rode `ella audio` para ver os dispositivos e, se precisar, escolha outro em `[audio]`.
-- **A gravação pega o microfone errado:** o padrão é o do Windows (Configurações → Sistema → Som → Entrada), ou escolha um em `[audio]`.
+- **O `pip install` falha com "conflicting dependencies" e "no matching distributions" para `onnxruntime`:** o Python é novo demais (aconteceu com o 3.15). Veja as versões com `py -0`, instale o 3.13 (`py install 3.13`) e recrie o ambiente: `deactivate`, `Remove-Item -Recurse -Force .venv`, `py -3.13 -m venv .venv`, `.venv\Scripts\activate`, `pip install -e ".[dev,voz]"`.
+- **"Acesso negado" ao instalar:** algum `ella` está aberto (feche os terminais ou rode `Stop-Process -Name ella -Force`).
+- **"Não consegui abrir o microfone" (ex.: `MME error 11`):** a Ella já tenta o mesmo microfone pelas outras APIs do Windows. Se nada abrir, confira em Configurações → Privacidade e segurança → Microfone se "Permitir que aplicativos da área de trabalho acessem o microfone" está ligado, e rode `ella audio`.
+- **A Ella responde a `[MÚSICA DE FUNDO]` ou não ouve nada:** a gravação ficou baixa; fale mais perto do microfone, depois de aparecer "(gravando...)".
+- **Kokoro, Piper ou whisper-server "não respondeu"** no `ella --verificar`: veja a janela correspondente aberta pelo script de iniciar; a mensagem de erro aparece lá. Me mande um print.
+- **O Piper recusa o pedido (405 ou 404):** a versão mudou o endereço. Rode `Select-String -Path .venv\Lib\site-packages\piper\http_server.py -Pattern "route"` e me mande o resultado.

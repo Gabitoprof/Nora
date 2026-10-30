@@ -23,7 +23,7 @@ from ella.frases import SeparadorDeFrases
 from ella.historico import Historico
 from ella.ouvido import OuvidoWhisper
 from ella.servico import ServicoIndisponivel
-from ella.voz import VozPiper
+from ella.voz import VozElevenLabs, VozHTTP, criar_voz
 
 _FIM = object()
 
@@ -41,7 +41,9 @@ class Tempos:
 class Locutor:
     """Recebe frases e as fala em ordem: uma linha sintetiza, outra toca."""
 
-    def __init__(self, voz: VozPiper, tocar: Callable[[bytes], None], inicio: float) -> None:
+    def __init__(
+        self, voz: VozHTTP | VozElevenLabs, tocar: Callable[[bytes], None], inicio: float
+    ) -> None:
         self.voz = voz
         self.tocar = tocar
         self.inicio = inicio
@@ -89,14 +91,14 @@ def conversar_por_voz(
     medir: bool = False,
     cerebro: CerebroLocal | None = None,
     ouvido: OuvidoWhisper | None = None,
-    voz: VozPiper | None = None,
+    voz: VozHTTP | VozElevenLabs | None = None,
     gravar: Callable[[Callable[[str], str]], bytes] | None = None,
     tocar: Callable[[bytes], None] | None = None,
 ) -> int:
     saida = saida or sys.stdout
     conversa = Conversa(config, cerebro or CerebroLocal(config), Historico(config.pasta_dados))
     ouvido = ouvido or OuvidoWhisper(config)
-    voz = voz or VozPiper(config)
+    voz = voz or criar_voz(config)
     microfone = audio.dispositivo(config.audio.microfone)
     alto_falante = audio.dispositivo(config.audio.alto_falante)
     gravar = gravar or (lambda entrada: audio.gravar_ate_enter(entrada, microfone))

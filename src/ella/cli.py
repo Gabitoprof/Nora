@@ -29,6 +29,15 @@ def modelos_ollama(host: str, timeout: float = 2.0) -> list[str] | None:
     return [modelo.get("name", "") for modelo in dados.get("models", [])]
 
 
+def descrever_voz(config: Config) -> str:
+    voz = config.voz
+    if voz.motor == "kokoro":
+        return f"kokoro {voz.kokoro.voz} (velocidade {voz.kokoro.velocidade}) em {voz.kokoro.url}"
+    if voz.motor == "piper":
+        return f"piper {voz.piper.voz} em {voz.piper.url}"
+    return f"elevenlabs {voz.elevenlabs.voz_id or '(sem voz_id)'} ({voz.elevenlabs.modelo})"
+
+
 def verificar(config: Config) -> list[str]:
     persona = config.persona
     chave = "definida" if config.tem_chave_anthropic else "não definida (só precisa na v0.3.0)"
@@ -40,7 +49,7 @@ def verificar(config: Config) -> list[str]:
         f"  usuário     {config.nome_usuario or '(não definido: config/local.toml)'}",
         f"  persona     humor {persona.humor:.1f}, formalidade {persona.formalidade:.1f}",
         f"  ouvido      {config.ouvido.motor} em {config.ouvido.url} ({config.ouvido.idioma})",
-        f"  voz         {config.voz.motor} {config.voz.voz or '(a definir)'} em {config.voz.url}",
+        f"  voz         {descrever_voz(config)}",
         f"  modelo      {config.modelo_local.provedor} {modelo}"
         f" (modo pensando {'ligado' if config.modelo_local.pensar else 'desligado'})",
         f"  nuvem       {config.modelo_nuvem.rapido} / {config.modelo_nuvem.pesado}",
@@ -56,12 +65,25 @@ def verificar(config: Config) -> list[str]:
         linhas.append(f"  Ollama                  ok, {modelo} instalado")
     else:
         linhas.append(f"  Ollama                  ok, mas falta o modelo: ollama pull {modelo}")
-    for nome, url, dica in [
-        ("whisper-server", config.ouvido.url, "veja docs/VOZ.md"),
-        ("Piper", config.voz.url, "veja docs/VOZ.md"),
-    ]:
-        estado = "ok" if responde(url) else f"não respondeu em {url} ({dica})"
+    servicos = [("whisper-server", config.ouvido.url)]
+    if config.voz.motor == "kokoro":
+        servicos.append(("Kokoro", config.voz.kokoro.url))
+    elif config.voz.motor == "piper":
+        servicos.append(("Piper", config.voz.piper.url))
+    for nome, url in servicos:
+        estado = "ok" if responde(url) else f"não respondeu em {url} (veja docs/VOZ.md)"
         linhas.append(f"  {nome:<24}{estado}")
+    if config.voz.motor == "elevenlabs":
+        faltando = [
+            nome
+            for nome, valor in [
+                ("ELEVENLABS_API_KEY no .env", config.chave_elevenlabs),
+                ("voz_id em [voz.elevenlabs]", config.voz.elevenlabs.voz_id),
+            ]
+            if not valor
+        ]
+        estado = "configurado" if not faltando else "falta " + " e ".join(faltando)
+        linhas.append(f"  {'ElevenLabs':<24}{estado}")
     return linhas
 
 
@@ -110,6 +132,12 @@ def main(argv: list[str] | None = None) -> int:
     audio_cmd.add_argument(
         "--segundos", type=float, default=3.0, help="duração da gravação de teste"
     )
+    kokoro_cmd = comandos.add_parser(
+        "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"
+    )
+    kokoro_cmd.add_argument(
+        "--pasta", default=None, help="pasta com o modelo e as vozes (padrão: models/kokoro)"
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -122,6 +150,20 @@ def main(argv: list[str] | None = None) -> int:
         from ella.conversa import conversar
 
         return conversar(config, medir=args.medir)
+
+    if args.comando == "servidor-kokoro":
+        from pathlib import Path
+
+        from ella.config import RAIZ
+        from ella.servidor_kokoro import PASTA_PADRAO, servir
+
+        kokoro = config.voz.kokoro
+        pasta = Path(args.pasta) if args.pasta else RAIZ / PASTA_PADRAO
+        try:
+            return servir(kokoro.url, pasta, kokoro.voz, kokoro.velocidade)
+        except (RuntimeError, FileNotFoundError) as erro:
+            print(f"[erro] {erro}", file=sys.stderr)
+            return 1
 
     if args.comando == "audio":
         return testar_audio(config, args.segundos)

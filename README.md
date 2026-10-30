@@ -46,7 +46,7 @@ Digite `sair` para encerrar e `/limpar` para começar do zero. Com `--medir`, mo
 
 ### Conversar por voz
 
-Precisa do ouvido (whisper.cpp) e da voz (Piper) instalados e rodando. Passo a passo em [docs/VOZ.md](docs/VOZ.md). Depois:
+Precisa do ouvido (whisper.cpp) e de uma voz (Kokoro local por padrão, Piper ou ElevenLabs) instalados e rodando. Passo a passo em [docs/VOZ.md](docs/VOZ.md). Depois:
 
 ```bash
 ella falar --medir

@@ -16,6 +16,8 @@ dependencies = []
 dev = ["pytest>=8", "ruff>=0.6"]
 # Microfone e alto-falante (conversa por voz).
 voz = ["sounddevice>=0.5"]
+# Voz local Kokoro (servidor separado; usa phonemizer/espeak-ng, GPL-3.0).
+kokoro = ["kokoro-onnx>=0.4"]
 
 [project.scripts]
 ella = "ella.cli:main"
