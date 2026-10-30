@@ -121,7 +121,8 @@ def conversar_maos_livres(
                 continue
 
             escrever(f"Você: {texto}")
-            pausar()  # não se ouvir e, no Bluetooth, liberar a saída de som
+            if config.escuta.pausar_microfone:
+                pausar()  # para não se ouvir pela caixa de som
             if e_despedida(pedido):
                 dizer("Até mais!")
                 janela_ate = 0.0

@@ -81,6 +81,10 @@ limiar = 0.5
 silencio_ms = 700
 # Segundos depois de uma resposta em que dá para continuar sem dizer o nome dela.
 janela_s = 8.0
+# Pausar o microfone enquanto ela fala. Necessário com caixa de som (senão ela se ouve).
+# Com fone Bluetooth, deixe false e mande a voz para a saída "Headset" do fone ([audio]
+# alto_falante): assim o fone não fica trocando entre modo chamada e modo música.
+pausar_microfone = true
 
 [audio]
 # Microfone e alto-falante: vazio = padrão do Windows; ou o número/nome que "nora audio" mostra.

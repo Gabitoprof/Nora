@@ -14,7 +14,7 @@ Versão em desenvolvimento: `0.1.0.dev0` (mostrada como "0.1.0 (em desenvolvimen
 ### Corrigido
 
 - Erros de conexão mostram o motivo real (ex.: tempo esgotado, sem internet); para serviços na internet, a dica é conferir a conexão em vez de "Ele está aberto?".
-- `nora ouvir` pausa o microfone enquanto a Nora fala. Com fone Bluetooth, o microfone aberto deixa o fone no modo chamada e a voz dela não saía no fone.
+- `nora ouvir` pausa o microfone enquanto a Nora fala (`[escuta] pausar_microfone`, padrão `true`; com fone Bluetooth, use `false` e a saída "Headset" do fone). Com fone Bluetooth, o microfone aberto deixa o fone no modo chamada e a voz dela não saía no fone.
 
 ### Adicionado
 

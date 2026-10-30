@@ -78,6 +78,7 @@ class Escuta:
     limiar: float
     silencio_ms: int
     janela_s: float
+    pausar_microfone: bool
 
 
 @dataclass(frozen=True)
@@ -261,6 +262,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             limiar=_entre_0_e_1("escuta", "limiar", _campo(dados, "escuta", "limiar", float)),
             silencio_ms=_campo(dados, "escuta", "silencio_ms", int),
             janela_s=_campo(dados, "escuta", "janela_s", float),
+            pausar_microfone=_campo(dados, "escuta", "pausar_microfone", bool),
         ),
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),

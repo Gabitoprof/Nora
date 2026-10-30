@@ -153,3 +153,25 @@ def test_conversa_maos_livres(criar_raiz):
     assert len(pausas) == 4  # e fica pausada enquanto ela fala
     gravadas = sorted((config.pasta_dados / "falas").glob("*.wav"))
     assert len(gravadas) == 6
+
+
+def test_sem_pausar_o_microfone(criar_raiz):
+    with OllamaFalso(["Oi!"]) as ollama:
+        transcricao = json.dumps({"text": "Nora, oi"}).encode()
+        with (
+            ServicoFalso(lambda *_: (200, "application/json", transcricao)) as whisper,
+            ServicoFalso(lambda c, cab, corpo: (200, "audio/wav", corpo)) as voz,
+        ):
+            local = (
+                f'[ouvido]\nurl = "{whisper.url}"\n[voz]\nmotor = "piper"\nreserva = ""\n'
+                f'[voz.piper]\nurl = "{voz.url}"\n[escuta]\npausar_microfone = false\n'
+            )
+            config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.host})
+            pausas = []
+            conversar_maos_livres(
+                config,
+                saida=io.StringIO(),
+                tocar=lambda wav: None,
+                fontes=([b"\x00\x00" * 8000], lambda: None, lambda: pausas.append(1)),
+            )
+    assert pausas == []

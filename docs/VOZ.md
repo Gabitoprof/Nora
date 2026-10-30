@@ -123,6 +123,25 @@ Limites desta versão:
 - **Toda fala passa pelo Whisper**, mesmo as que não são para ela. Com TV ou conversa no ambiente, o processador trabalha mais. `--mostrar-ignoradas` mostra o que ela ouviu e ignorou.
 - **Enquanto ela fala, ela não ouve** (o microfone fica pausado), porque ainda não há cancelamento de eco. Com **fone Bluetooth** isso também é necessário: com o microfone aberto, o fone fica no modo chamada e a saída de som normal fica muda. Ao reabrir o microfone, o fone pode levar um instante para trocar de modo. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
 
+## Fone Bluetooth (microfone e som no mesmo fone)
+
+Fones Bluetooth têm dois modos: **música** (som bom, sem microfone) e **chamada** (microfone ligado, som com qualidade de telefone). Quando o microfone abre, o fone vai para o modo chamada e a saída "Fones de ouvido" fica **muda**; cada troca de modo leva cerca de 1 segundo de silêncio.
+
+Para o som não sumir, deixe o fone sempre no modo chamada:
+
+1. Rode `nora audio` e procure, entre os **alto-falantes**, o "Headset" do fone (no Windows costuma aparecer como `Headset (@System32\drivers\bthhfenum.sys...(NOME DO FONE))`, na API WDM-KS). Anote o número.
+2. No `config\local.toml`:
+
+   ```toml
+   [audio]
+   alto_falante = "17"   # o número do "Headset" do fone
+
+   [escuta]
+   pausar_microfone = false
+   ```
+
+Os números mudam quando você conecta ou desconecta aparelhos; confira com `nora audio`. Com microfone separado (ou caixa de som), volte para `alto_falante = ""` e `pausar_microfone = true`.
+
 ## Usar o ElevenLabs
 
 1. Crie uma conta em elevenlabs.io e uma chave de API (perfil → API Keys). Defina um limite de gasto.
