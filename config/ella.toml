@@ -67,6 +67,16 @@ provedor = "anthropic"
 rapido = "claude-haiku-5-5"
 pesado = "claude-sonnet-5-5"
 
+[escuta]
+# Modo mãos livres ("ella ouvir"): detecção de fala (Silero VAD) e palavra de ativação.
+# Chance mínima (0 a 1) de um trecho ser voz para começar a ouvir.
+limiar = 0.5
+# Silêncio, em milissegundos, que encerra a sua fala. Menor = responde mais rápido, mas pode
+# cortar pausas no meio da frase.
+silencio_ms = 700
+# Segundos depois de uma resposta em que dá para continuar sem dizer o nome dela.
+janela_s = 8.0
+
 [audio]
 # Microfone e alto-falante: vazio = padrão do Windows; ou o número/nome que "ella audio" mostra.
 microfone = ""

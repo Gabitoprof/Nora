@@ -108,20 +108,10 @@ def _candidatos_de_microfone(sd, microfone: int | str | None) -> list[int | str 
     return candidatos
 
 
-def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes:
-    """Grava do microfone até a pessoa apertar Enter; devolve um WAV de 16 kHz mono.
-
-    Grava na taxa que o microfone aceita (muitos só aceitam 44,1 ou 48 kHz) e converte
-    para 16 kHz, que é o que o Whisper espera. Se o microfone não abrir, tenta o mesmo
-    microfone por outra API de áudio e em estéreo.
-    """
-    sd = _sounddevice()
-    blocos: list[bytes] = []
-
-    def guardar(dados, quadros, tempo, status) -> None:
-        blocos.append(bytes(dados))
-
-    fluxo, taxa, canais, erros = None, TAXA, 1, []
+def _abrir_microfone(sd, microfone: int | str | None, callback):
+    """Abre o microfone na taxa que ele aceita; se falhar, tenta o mesmo microfone por outra
+    API de áudio e em estéreo. Devolve (fluxo ainda parado, taxa, canais)."""
+    erros: list[str] = []
     for candidato in _candidatos_de_microfone(sd, microfone):
         try:
             info = sd.query_devices(candidato, "input")
@@ -136,26 +126,75 @@ def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes
                     samplerate=taxa,
                     channels=canais,
                     dtype="int16",
-                    callback=guardar,
+                    callback=callback,
                 )
-                break
+                return fluxo, taxa, canais
             except (sd.PortAudioError, ValueError) as erro:
                 erros.append(str(erro))
-        if fluxo is not None:
-            break
-    if fluxo is None:
-        raise RuntimeError(
-            f"Não consegui abrir o microfone ({erros[0] if erros else '?'}). {_DICA}"
-        )
+    raise RuntimeError(f"Não consegui abrir o microfone ({erros[0] if erros else '?'}). {_DICA}")
 
+
+def _para_mono(amostras: bytes, canais: int) -> bytes:
+    if canais == 1:
+        return amostras
+    todas = array("h")
+    todas.frombytes(amostras[: len(amostras) // (2 * canais) * 2 * canais])
+    return todas[::canais].tobytes()
+
+
+def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes:
+    """Grava do microfone até a pessoa apertar Enter; devolve um WAV de 16 kHz mono.
+
+    Grava na taxa que o microfone aceita (muitos só aceitam 44,1 ou 48 kHz) e converte
+    para 16 kHz, que é o que o Whisper espera.
+    """
+    sd = _sounddevice()
+    blocos: list[bytes] = []
+
+    def guardar(dados, quadros, tempo, status) -> None:
+        blocos.append(bytes(dados))
+
+    fluxo, taxa, canais = _abrir_microfone(sd, microfone, guardar)
     with fluxo:
         entrada("  (gravando... aperte Enter para parar) ")
-    amostras = b"".join(blocos)
-    if canais > 1:
-        todas = array("h")
-        todas.frombytes(amostras[: len(amostras) // (2 * canais) * 2 * canais])
-        amostras = todas[::canais].tobytes()
-    return para_wav(reamostrar(amostras, taxa))
+    return para_wav(reamostrar(_para_mono(b"".join(blocos), canais), taxa))
+
+
+class Microfone:
+    """Microfone sempre aberto: entrega blocos de PCM 16 kHz mono, conforme chegam."""
+
+    def __init__(self, microfone: int | str | None = None) -> None:
+        import queue
+
+        self._sd = _sounddevice()
+        self._fila: queue.Queue[bytes] = queue.Queue()
+        self._fluxo, self._taxa, self._canais = _abrir_microfone(
+            self._sd, microfone, lambda dados, *_: self._fila.put(bytes(dados))
+        )
+
+    def __enter__(self) -> Microfone:
+        self._fluxo.start()
+        return self
+
+    def __exit__(self, *args) -> None:
+        self._fluxo.stop()
+        self._fluxo.close()
+
+    def limpar(self) -> None:
+        """Descarta o que foi captado até agora (ex.: a própria voz da Ella)."""
+        while not self._fila.empty():
+            self._fila.get_nowait()
+
+    def blocos(self):
+        import queue
+
+        while True:
+            try:
+                # Espera em pedaços curtos: no Windows, uma espera sem prazo ignora o Ctrl+C.
+                bloco = self._fila.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            yield reamostrar(_para_mono(bloco, self._canais), self._taxa)
 
 
 def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:

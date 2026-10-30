@@ -84,6 +84,53 @@ class Locutor:
                 self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
 
 
+def responder_falando(
+    conversa: Conversa,
+    voz,
+    tocar: Callable[[bytes], None],
+    texto: str,
+    inicio: float,
+    transcricao: float,
+    escrever: Callable[..., None],
+    medir: bool,
+) -> Tempos:
+    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve."""
+    locutor = Locutor(voz, tocar, inicio)
+    locutor.tempos.transcricao = transcricao
+    separador = SeparadorDeFrases()
+    escrever(f"{conversa.config.assistente.nome}: ", fim="")
+
+    def falar(frases: list[str]) -> None:
+        for frase in frases:
+            if not locutor.tempos.primeira_frase:
+                locutor.tempos.primeira_frase = time.perf_counter() - inicio
+            locutor.falar(frase)
+
+    try:
+        for pedaco in conversa.perguntar(texto):
+            escrever(pedaco, fim="")
+            falar(separador.alimentar(pedaco))
+        falar(separador.finalizar())
+    except CerebroIndisponivel as erro:
+        escrever(f"\n[erro] {erro}")
+    except KeyboardInterrupt:
+        escrever("\n(interrompido)")
+        audio.parar_audio()
+    escrever()
+    locutor.terminar()
+
+    tempos = locutor.tempos
+    for erro in dict.fromkeys(tempos.erros):
+        escrever(f"[erro na voz] {erro}")
+    if medir:
+        escrever(
+            f"  [transcrição {tempos.transcricao:.2f} s, "
+            f"primeira frase {tempos.primeira_frase:.2f} s, "
+            f"começou a falar em {tempos.comeco_da_voz:.2f} s]"
+        )
+    return tempos
+
+
 def conversar_por_voz(
     config: Config,
     entrada: Callable[[str], str] = input,
@@ -156,37 +203,6 @@ def conversar_por_voz(
             escrever("\n(cancelado)")
             continue
 
-        locutor = Locutor(voz, tocar, inicio)
-        locutor.tempos.transcricao = transcricao
-        separador = SeparadorDeFrases()
-        escrever(f"{nome}: ", fim="")
-        try:
-            for pedaco in conversa.perguntar(texto):
-                escrever(pedaco, fim="")
-                for frase in separador.alimentar(pedaco):
-                    if not locutor.tempos.primeira_frase:
-                        locutor.tempos.primeira_frase = time.perf_counter() - inicio
-                    locutor.falar(frase)
-            for frase in separador.finalizar():
-                if not locutor.tempos.primeira_frase:
-                    locutor.tempos.primeira_frase = time.perf_counter() - inicio
-                locutor.falar(frase)
-        except CerebroIndisponivel as erro:
-            escrever(f"\n[erro] {erro}")
-        except KeyboardInterrupt:
-            escrever("\n(interrompido)")
-            audio.parar_audio()
-        escrever()
-        locutor.terminar()
-
-        tempos = locutor.tempos
-        for erro in dict.fromkeys(tempos.erros):
-            escrever(f"[erro na voz] {erro}")
-        if medir:
-            escrever(
-                f"  [transcrição {tempos.transcricao:.2f} s, "
-                f"primeira frase {tempos.primeira_frase:.2f} s, "
-                f"começou a falar em {tempos.comeco_da_voz:.2f} s]"
-            )
+        responder_falando(conversa, voz, tocar, texto, inicio, transcricao, escrever, medir)
     escrever(f"Até mais! (conversa salva em {conversa.historico.arquivo})")
     return 0

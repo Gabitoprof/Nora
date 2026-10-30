@@ -52,6 +52,12 @@ Precisa do ouvido (whisper.cpp) e de uma voz (Kokoro local por padrão, Piper ou
 ella falar --medir
 ```
 
+Ou mãos livres, começando a frase com "Ella":
+
+```bash
+ella ouvir --medir
+```
+
 ## Personalizando
 
 - **`config/ella.toml`**: config padrão (nome, persona, voz, modelos). Não coloque nada pessoal aqui.

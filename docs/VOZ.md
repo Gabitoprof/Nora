@@ -1,4 +1,4 @@
-# Conversa por voz (v0.1.0, parte 2)
+# Conversa por voz (v0.1.0)
 
 A Ella conversa por voz usando programas locais, cada um no seu processo, e fala com eles pela rede local:
 
@@ -89,6 +89,40 @@ Com `--medir`, cada resposta mostra três tempos, contados a partir do momento e
 | primeira frase | a primeira frase da resposta ficar pronta | |
 | **começou a falar** | o som da Ella começar a sair | **< 2 s** (MVP), < 1 s (final) |
 
+## Mãos livres (`ella ouvir`)
+
+Em vez de apertar Enter, a Ella fica ouvindo o tempo todo e responde quando a frase **começa com o nome dela**:
+
+```powershell
+ella ouvir --medir
+```
+
+- **"Ella, que horas são?"** → ela responde.
+- Depois da resposta, por **8 segundos** dá para continuar **sem dizer o nome** ("E amanhã?").
+- **"Ella"** sozinho → ela diz "Oi, pode falar." e espera.
+- **"Tchau"**, **"é só isso"** → ela se despede e volta a esperar o nome.
+- **Ctrl+C** encerra.
+
+Como funciona: o **Silero VAD** (licença MIT, baixado sozinho do PyPI na primeira vez para `models\silero_vad.onnx`) percebe quando você começa e para de falar; cada fala vai para o Whisper; se o texto começa com a palavra de ativação, vira pergunta.
+
+Ajustes em `config\local.toml`:
+
+```toml
+[assistente]
+palavra_de_ativacao = "Ella"   # ou "Oi Ella", se ela acordar sem querer
+
+[escuta]
+limiar = 0.5        # suba (ex.: 0.6) se ruído vira fala; desça se ela não percebe você
+silencio_ms = 700   # pausa que encerra a sua fala; menor responde mais rápido, mas corta pausas
+janela_s = 8.0      # segundos para continuar sem dizer o nome
+```
+
+Limites desta versão:
+
+- **"Ella" soa como o pronome "ela".** Uma frase que começa com "Ela..." perto do microfone acorda a Ella. Se incomodar, use `palavra_de_ativacao = "Oi Ella"`. Uma palavra de ativação de verdade (openWakeWord treinado com o nome dela, rodando antes do Whisper) fica para depois.
+- **Toda fala passa pelo Whisper**, mesmo as que não são para ela. Com TV ou conversa no ambiente, o processador trabalha mais. `--mostrar-ignoradas` mostra o que ela ouviu e ignorou.
+- **Enquanto ela fala, ela não ouve** (o que o microfone capta é descartado), porque ainda não há cancelamento de eco. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
+
 ## Usar o ElevenLabs
 
 1. Crie uma conta em elevenlabs.io e uma chave de API (perfil → API Keys). Defina um limite de gasto.
@@ -117,7 +151,7 @@ O modelo padrão é o `eleven_flash_v2_5`, o mais rápido do ElevenLabs, com o i
 
 - **Whisper no processador, por enquanto.** O projeto oficial não publica versão pronta para Windows com Vulkan; ela precisa ser compilada (Vulkan SDK, CMake e Visual Studio Build Tools) ou viria de terceiros. No primeiro teste, o `small` no 9800X3D transcreveu em 0,72 s. Se ficar lento, os próximos passos são o modelo `base` (`-ModeloWhisper base` nos dois scripts) ou compilar com Vulkan.
 - **Voz `pt_BR-faber-medium` (Piper) só para uso pessoal.** Foi ajustada a partir de uma voz em inglês treinada com uma base **só para uso não comercial**. É baixada à parte e nunca distribuída.
-- **Enter para falar.** A palavra de ativação ("Ella") e a detecção automática de quando você para de falar entram na parte 3.
+- **Dois modos:** `ella falar` (Enter para falar, bom para ambiente barulhento) e `ella ouvir` (mãos livres).
 - **Sem interrupção ainda.** Falar por cima da Ella (barge-in) precisa de cancelamento de eco e vem depois; por enquanto, Ctrl+C interrompe.
 
 ## Se algo der errado

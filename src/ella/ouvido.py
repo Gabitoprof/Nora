@@ -32,14 +32,19 @@ class OuvidoWhisper:
     timeout: float = 60.0
     ultima_duracao: float = 0.0
 
-    def transcrever(self, wav: bytes) -> str:
-        """Envia um WAV ao whisper-server e devolve o texto reconhecido."""
+    def transcrever(self, wav: bytes, dica: str = "") -> str:
+        """Envia um WAV ao whisper-server e devolve o texto reconhecido.
+
+        `dica` é um texto de contexto para o Whisper (ex.: o nome da assistente), que o ajuda a
+        escrever nomes do jeito certo."""
         fronteira = uuid.uuid4().hex
         campos = {
             "response_format": "json",
             "temperature": "0.0",
             "language": self.config.ouvido.idioma,
         }
+        if dica:
+            campos["prompt"] = dica
         cabecalho = '--{}\r\nContent-Disposition: form-data; name="{}"\r\n\r\n{}\r\n'
         partes = [
             cabecalho.format(fronteira, nome, valor).encode() for nome, valor in campos.items()

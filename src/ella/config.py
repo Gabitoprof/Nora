@@ -72,6 +72,13 @@ class Voz:
 
 
 @dataclass(frozen=True)
+class Escuta:
+    limiar: float
+    silencio_ms: int
+    janela_s: float
+
+
+@dataclass(frozen=True)
 class Audio:
     microfone: str
     alto_falante: str
@@ -101,6 +108,7 @@ class Config:
     ouvido: Ouvido
     voz: Voz
     audio: Audio
+    escuta: Escuta
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
     pasta_dados: Path
@@ -240,6 +248,11 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             idioma=_campo(dados, "ouvido", "idioma", str),
         ),
         voz=_ler_voz(dados),
+        escuta=Escuta(
+            limiar=_entre_0_e_1("escuta", "limiar", _campo(dados, "escuta", "limiar", float)),
+            silencio_ms=_campo(dados, "escuta", "silencio_ms", int),
+            janela_s=_campo(dados, "escuta", "janela_s", float),
+        ),
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),
             alto_falante=_campo(dados, "audio", "alto_falante", str),
