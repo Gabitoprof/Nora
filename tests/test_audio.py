@@ -210,3 +210,60 @@ def test_erro_do_microfone_vira_mensagem_clara(monkeypatch):
     )
     assert "padrão Microfone (fifine Microphone) [MME]" in str(erro.value)
     assert {indice for indice, _ in falso.tentativas} == {0, 1}  # não tentou a câmera
+
+
+class SaidaFalsa:
+    """Imita um RawOutputStream que só aceita callback (como o WDM-KS) e uma taxa."""
+
+    class PortAudioError(Exception):
+        pass
+
+    class CallbackStop(Exception):
+        pass
+
+    def __init__(self, taxa_aceita=16_000):
+        self.taxa_aceita = taxa_aceita
+        self.tocado = bytearray()
+        self.taxas = []
+
+    def query_devices(self, dispositivo=None, tipo=None):
+        return {"default_samplerate": float(self.taxa_aceita)}
+
+    def RawOutputStream(self, **opcoes):
+        self.taxas.append(opcoes["samplerate"])
+        if opcoes["samplerate"] != self.taxa_aceita:
+            raise self.PortAudioError("Invalid sample rate")
+        if "callback" not in opcoes:
+            raise self.PortAudioError("Blocking API not supported yet")
+        falso = self
+
+        class Fluxo:
+            def __enter__(self):
+                tamanho = 2 * opcoes["channels"] * 160
+                while True:
+                    bloco = bytearray(tamanho)
+                    try:
+                        opcoes["callback"](bloco, 160, None, None)
+                    except falso.CallbackStop:
+                        falso.tocado += bloco
+                        break
+                    falso.tocado += bloco
+                opcoes["finished_callback"]()
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        return Fluxo()
+
+
+def test_toca_por_callback_e_converte_para_a_taxa_da_saida(monkeypatch):
+    falso = SaidaFalsa(taxa_aceita=16_000)
+    monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
+    um_segundo_24k = audio.para_wav(pcm([5] * 24_000), taxa=24_000)
+    audio.tocar_wav(um_segundo_24k, alto_falante=17)
+    assert falso.taxas == [24_000, 16_000]
+    tocado = array("h")
+    tocado.frombytes(bytes(falso.tocado))
+    assert tocado.count(5) == 16_000  # o áudio inteiro, convertido
+    assert set(tocado[16_000:]) <= {0}  # o resto do último bloco é silêncio

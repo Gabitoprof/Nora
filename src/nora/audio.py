@@ -250,24 +250,52 @@ class Microfone:
             yield reamostrar(_para_mono(bloco, self._canais), self._taxa)
 
 
+def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
+    """Toca PCM 16 bits entregando o áudio aos pedaços (callback) e espera terminar.
+
+    O modo "callback" funciona em todas as APIs de áudio do Windows; o modo bloqueante
+    (escrever tudo de uma vez) não existe no WDM-KS, a única API que mostra a saída do
+    modo chamada de fones Bluetooth."""
+    import threading
+
+    terminou = threading.Event()
+    posicao = 0
+    bytes_por_quadro = 2 * canais
+
+    def entregar(saida, quadros, tempo, status) -> None:
+        nonlocal posicao
+        pedaco = amostras[posicao : posicao + quadros * bytes_por_quadro]
+        posicao += len(pedaco)
+        saida[: len(pedaco)] = pedaco
+        if len(pedaco) < len(saida):
+            saida[len(pedaco) :] = bytes(len(saida) - len(pedaco))
+            raise sd.CallbackStop
+
+    fluxo = sd.RawOutputStream(
+        device=alto_falante,
+        samplerate=taxa,
+        channels=canais,
+        dtype="int16",
+        callback=entregar,
+        finished_callback=terminou.set,
+    )
+    with fluxo:
+        segundos = len(amostras) / (bytes_por_quadro * taxa)
+        terminou.wait(timeout=segundos + 5)
+
+
 def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
     """Toca um WAV e espera terminar; se a saída recusar a taxa do áudio, converte."""
     sd = _sounddevice()
     amostras, taxa, canais = ler_wav(dados)
     try:
-        with sd.RawOutputStream(
-            device=alto_falante, samplerate=taxa, channels=canais, dtype="int16"
-        ) as saida:
-            saida.write(amostras)
+        _tocar(sd, amostras, taxa, canais, alto_falante)
         return
     except sd.PortAudioError:
         if canais != 1:
             raise
     padrao = int(sd.query_devices(alto_falante, "output")["default_samplerate"])
-    with sd.RawOutputStream(
-        device=alto_falante, samplerate=padrao, channels=1, dtype="int16"
-    ) as saida:
-        saida.write(reamostrar(amostras, taxa, padrao))
+    _tocar(sd, reamostrar(amostras, taxa, padrao), padrao, 1, alto_falante)
 
 
 def listar_dispositivos() -> list[str]:
