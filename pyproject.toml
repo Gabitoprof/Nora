@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ella"
+name = "nora"
 dynamic = ["version"]
 description = "Assistente de IA pessoal por voz, em tempo real e local primeiro."
 readme = "README.md"
@@ -20,10 +20,10 @@ voz = ["sounddevice>=0.5", "numpy>=1.24", "onnxruntime>=1.16"]
 kokoro = ["kokoro-onnx>=0.4"]
 
 [project.scripts]
-ella = "ella.cli:main"
+nora = "nora.cli:main"
 
 [tool.setuptools.dynamic]
-version = { attr = "ella.__version__" }
+version = { attr = "nora.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

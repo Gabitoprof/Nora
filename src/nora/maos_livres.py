@@ -1,4 +1,4 @@
-"""Conversa mãos livres (parte 3 da v0.1.0): a Ella fica ouvindo e responde quando a fala
+"""Conversa mãos livres (parte 3 da v0.1.0): a Nora fica ouvindo e responde quando a fala
 começa com o nome dela. Depois de responder, dá para continuar por alguns segundos sem dizer
 o nome. Enquanto ela fala, o que o microfone capta é descartado (ainda não há cancelamento de
 eco, então ela ouviria a própria voz)."""
@@ -10,17 +10,17 @@ import time
 from collections.abc import Callable, Iterable
 from typing import TextIO
 
-from ella import audio
-from ella.ativacao import e_despedida, extrair_pedido
-from ella.cerebro import CerebroIndisponivel, CerebroLocal
-from ella.config import RAIZ, Config
-from ella.conversa import Conversa
-from ella.conversa_voz import responder_falando
-from ella.historico import Historico
-from ella.ouvido import OuvidoWhisper
-from ella.servico import ServicoIndisponivel
-from ella.vad import DetectorDeFala, SileroVAD, baixar_modelo, em_quadros, falas
-from ella.voz import criar_voz
+from nora import audio
+from nora.ativacao import e_despedida, extrair_pedido
+from nora.cerebro import CerebroIndisponivel, CerebroLocal
+from nora.config import RAIZ, Config
+from nora.conversa import Conversa
+from nora.conversa_voz import responder_falando
+from nora.historico import Historico
+from nora.ouvido import OuvidoWhisper
+from nora.servico import ServicoIndisponivel
+from nora.vad import DetectorDeFala, SileroVAD, baixar_modelo, em_quadros, falas
+from nora.voz import criar_voz
 
 MODELO_VAD = "models/silero_vad.onnx"
 
@@ -59,7 +59,7 @@ def conversar_maos_livres(
     tocar = tocar or (lambda wav: audio.tocar_wav(wav, alto_falante))
     nome = config.assistente.nome
     palavra = config.assistente.palavra_de_ativacao
-    # Uma frase completa: com só "Ella, ", o Whisper às vezes entende que o nome já foi dito
+    # Uma frase completa: com só "Nora, ", o Whisper às vezes entende que o nome já foi dito
     # e não o escreve de novo.
     dica = f"Conversa com a assistente {nome}."
 

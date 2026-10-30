@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from ella.audio import duracao_wav, para_wav
-from ella.servidor_kokoro import Sintetizador, achar_modelo, criar_servidor
+from nora.audio import duracao_wav, para_wav
+from nora.servidor_kokoro import Sintetizador, achar_modelo, criar_servidor
 
 
 class SintetizadorFalso:
@@ -77,5 +77,5 @@ def test_achar_modelo(tmp_path):
 )
 def test_kokoro_de_verdade_fala_portugues():
     sintetizador = Sintetizador(Path(os.environ["ELLA_KOKORO_PASTA"]), "pf_dora", 1.0)
-    wav = sintetizador.sintetizar("Olá, eu sou a Ella.")
+    wav = sintetizador.sintetizar("Olá, eu sou a Nora.")
     assert duracao_wav(wav) > 0.5

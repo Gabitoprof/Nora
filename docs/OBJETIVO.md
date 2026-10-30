@@ -1,6 +1,6 @@
 # Objetivo base do projeto
 
-> Nome provisório: **Ella**. O nome final do projeto e do assistente ainda está em aberto.
+> Nome provisório: **Nora**. O nome final do projeto e do assistente ainda está em aberto.
 > Detalhes técnicos: [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md) · Visão em mapa: [`MAPA_MENTAL.md`](MAPA_MENTAL.md)
 
 ## Em uma frase

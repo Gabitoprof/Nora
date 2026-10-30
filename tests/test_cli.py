@@ -2,8 +2,8 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from ella.cli import modelos_ollama, verificar
-from ella.config import carregar
+from nora.cli import modelos_ollama, verificar
+from nora.config import carregar
 
 
 class OllamaFalso(BaseHTTPRequestHandler):

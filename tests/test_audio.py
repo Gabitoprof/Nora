@@ -2,7 +2,7 @@ from array import array
 
 import pytest
 
-from ella import audio
+from nora import audio
 
 
 def pcm(valores):

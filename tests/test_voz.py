@@ -5,14 +5,14 @@ import pytest
 from fake_ollama import OllamaFalso
 from fake_servico import ServicoFalso
 
-from ella.audio import duracao_wav, ler_wav, para_wav
-from ella.cli import verificar
-from ella.config import carregar
-from ella.conversa_voz import conversar_por_voz
-from ella.frases import SeparadorDeFrases
-from ella.ouvido import OuvidoWhisper
-from ella.servico import ServicoIndisponivel, responde
-from ella.voz import VozElevenLabs, VozHTTP, criar_voz
+from nora.audio import duracao_wav, ler_wav, para_wav
+from nora.cli import verificar
+from nora.config import carregar
+from nora.conversa_voz import conversar_por_voz
+from nora.frases import SeparadorDeFrases
+from nora.ouvido import OuvidoWhisper
+from nora.servico import ServicoIndisponivel, responde
+from nora.voz import VozElevenLabs, VozHTTP, criar_voz
 
 UM_SEGUNDO = para_wav(b"\x00\x00" * 16_000)
 
@@ -99,13 +99,13 @@ def test_ouvido_envia_o_wav_e_le_o_texto(criar_raiz):
         ("[MÚSICA DE FUNDO]", ""),
         (" [BLANK_AUDIO] ", ""),
         ("(risos) [música]", ""),
-        ("[música] Oi Ella, tudo bem?", "Oi Ella, tudo bem?"),
+        ("[música] Oi Nora, tudo bem?", "Oi Nora, tudo bem?"),
         ("Que horas são? (tosse)", "Que horas são?"),
         ("", ""),
     ],
 )
 def test_limpa_descricoes_de_som(bruto, limpo):
-    from ella.ouvido import limpar_transcricao
+    from nora.ouvido import limpar_transcricao
 
     assert limpar_transcricao(bruto) == limpo
 
@@ -135,13 +135,16 @@ def test_voz_repassa_erro_do_piper(criar_raiz):
 
 
 def test_voz_fala_o_nome_com_a_pronuncia(criar_raiz):
-    from ella.voz import aplicar_pronuncias
+    from nora.voz import aplicar_pronuncias
 
-    assert aplicar_pronuncias("Eu sou a Ella. ELLA!", {"Ella": "Élha"}) == "Eu sou a Élha. Élha!"
-    assert aplicar_pronuncias("Ellas e Ellabela", {"Ella": "Élha"}) == "Ellas e Ellabela"
+    assert aplicar_pronuncias("Eu sou a Nora. NORA!", {"Nora": "Nóra"}) == "Eu sou a Nóra. Nóra!"
+    assert aplicar_pronuncias("Noras e Norabela", {"Nora": "Nóra"}) == "Noras e Norabela"
     with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as piper:
-        criar_voz(config_com(criar_raiz, piper=piper.url)).sintetizar("Oi, eu sou a Ella.")
-    assert json.loads(piper.pedidos[0][2])["text"] == "Oi, eu sou a Élha."
+        config = config_com(criar_raiz, piper=piper.url, extra='[assistente]\npronuncia = "Nóra"\n')
+        criar_voz(config).sintetizar("Oi, eu sou a Nora.")
+        criar_voz(config_com(criar_raiz, piper=piper.url)).sintetizar("Oi, eu sou a Nora.")
+    assert json.loads(piper.pedidos[0][2])["text"] == "Oi, eu sou a Nóra."
+    assert json.loads(piper.pedidos[1][2])["text"] == "Oi, eu sou a Nora."  # sem pronúncia
 
 
 def test_kokoro_envia_voz_e_velocidade(criar_raiz):
@@ -159,7 +162,7 @@ def test_kokoro_envia_voz_e_velocidade(criar_raiz):
 def test_elevenlabs_monta_o_pedido_e_devolve_wav(criar_raiz, monkeypatch):
     pcm = b"\x01\x00" * 22_050
     with ServicoFalso(lambda *_: (200, "audio/pcm", pcm)) as nuvem:
-        monkeypatch.setattr("ella.voz.ELEVENLABS_API", f"{nuvem.url}/v1/text-to-speech")
+        monkeypatch.setattr("nora.voz.ELEVENLABS_API", f"{nuvem.url}/v1/text-to-speech")
         config = config_com(
             criar_raiz,
             motor="elevenlabs",
@@ -193,7 +196,7 @@ def test_elevenlabs_sem_chave_ou_voz(criar_raiz):
 
 
 def test_motor_de_voz_invalido(criar_raiz):
-    from ella.config import ConfigError
+    from nora.config import ConfigError
 
     with pytest.raises(ConfigError, match="motor deve ser um de kokoro, piper, elevenlabs"):
         config_com(criar_raiz, motor="robo")
@@ -234,7 +237,7 @@ def test_conversa_por_voz_de_ponta_a_ponta(criar_raiz):
         )
     texto = saida.getvalue()
     assert "Você: Qual é a capital do Brasil?" in texto
-    assert f"Ella: {resposta}" in texto
+    assert f"Nora: {resposta}" in texto
     assert "começou a falar em" in texto
     falado = [json.loads(audio)["text"] for audio in tocados]
     assert falado == [
@@ -260,7 +263,7 @@ def test_conversa_por_voz_segue_sem_os_servicos(criar_raiz):
         )
     texto = saida.getvalue()
     assert "[erro] Não consegui falar com o whisper-server" in texto
-    assert "Ella: Oi! Tudo bem por aí?" in texto
+    assert "Nora: Oi! Tudo bem por aí?" in texto
     assert "[erro na voz] Não consegui falar com o Piper" in texto
 
 

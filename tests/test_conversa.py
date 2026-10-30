@@ -5,11 +5,11 @@ from datetime import datetime
 import pytest
 from fake_ollama import OllamaFalso
 
-from ella.cerebro import CerebroIndisponivel, CerebroLocal
-from ella.config import carregar
-from ella.conversa import Conversa, conversar
-from ella.historico import Historico
-from ella.persona import prompt_de_sistema
+from nora.cerebro import CerebroIndisponivel, CerebroLocal
+from nora.config import carregar
+from nora.conversa import Conversa, conversar
+from nora.historico import Historico
+from nora.persona import prompt_de_sistema
 
 
 def config_com(criar_raiz, host="http://127.0.0.1:9", local=None):
@@ -19,7 +19,7 @@ def config_com(criar_raiz, host="http://127.0.0.1:9", local=None):
 def test_prompt_reflete_a_persona(criar_raiz):
     config = config_com(criar_raiz, local='[usuario]\nnome = "Gabriel"\n[persona]\nhumor = 0.9\n')
     prompt = prompt_de_sistema(config, agora=datetime(2026, 10, 30, 9, 5))
-    assert "Você é Ella" in prompt
+    assert "Você é Nora" in prompt
     assert "espirituosa" in prompt
     assert "não use markdown" in prompt
     assert "sexta-feira, 30/10/2026, 09:05" in prompt
@@ -111,7 +111,7 @@ def test_conversar_no_terminal(criar_raiz):
     texto = saida.getvalue()
     assert "pronto em" in texto
     assert ollama.pedidos[0]["messages"] == []
-    assert "Ella: Brasília." in texto
+    assert "Nora: Brasília." in texto
     assert "tokens/s" in texto
     assert "(conversa reiniciada)" in texto
     assert "conversa salva em" in texto

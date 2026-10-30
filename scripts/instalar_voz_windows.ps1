@@ -1,4 +1,4 @@
-﻿# Instala o ouvido (whisper.cpp) e as vozes locais (Kokoro e Piper) da Ella no Windows.
+﻿# Instala o ouvido (whisper.cpp) e as vozes locais (Kokoro e Piper) da Nora no Windows.
 # Uso, no PowerShell, na pasta do repositório e COM O AMBIENTE ATIVADO (.venv\Scripts\activate):
 #   powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1
 # Tudo vai para ferramentas\ e models\, que ficam fora do Git.
@@ -28,7 +28,7 @@ if ($servidor) {
 } else {
     # Procura, entre as versões recentes, a mais nova que publicou o zip para Windows.
     $versoes = Invoke-RestMethod "https://api.github.com/repos/ggml-org/whisper.cpp/releases?per_page=15" `
-        -Headers @{ "User-Agent" = "ella-instalador" }
+        -Headers @{ "User-Agent" = "nora-instalador" }
     $escolha = $null
     foreach ($versao in $versoes) {
         if ($versao.prerelease -or $versao.draft) { continue }

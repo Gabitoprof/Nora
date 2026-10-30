@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from ella.config import Config
+from nora.config import Config
 
 DIAS = [
     "segunda-feira",

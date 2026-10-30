@@ -1,3 +1,3 @@
-from ella.cli import main
+from nora.cli import main
 
 raise SystemExit(main())

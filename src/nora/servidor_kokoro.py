@@ -1,8 +1,8 @@
 """Servidor de voz local com o Kokoro-82M (pesos Apache-2.0), no mesmo formato do Piper:
 POST /synthesize com JSON {"text", "voice"?, "speed"?} devolve um WAV.
 
-Roda como processo separado (`ella servidor-kokoro`) e só é importado aqui: o kokoro-onnx usa o
-phonemizer e o espeak-ng, que são GPL-3.0, e por isso ficam fora do núcleo da Ella.
+Roda como processo separado (`nora servidor-kokoro`) e só é importado aqui: o kokoro-onnx usa o
+phonemizer e o espeak-ng, que são GPL-3.0, e por isso ficam fora do núcleo da Nora.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from ella.audio import para_wav
+from nora.audio import para_wav
 
 PASTA_PADRAO = "models/kokoro"
 MODELOS = ("kokoro-v1.0.onnx", "kokoro-v1.0.int8.onnx")

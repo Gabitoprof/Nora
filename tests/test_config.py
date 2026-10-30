@@ -1,14 +1,14 @@
 import pytest
 
-from ella import versao_legivel
-from ella.cli import main, saudacao
-from ella.config import RAIZ, ConfigError, carregar, ler_env, mesclar
+from nora import versao_legivel
+from nora.cli import main, saudacao
+from nora.config import RAIZ, ConfigError, carregar, ler_env, mesclar
 
 
 def test_config_padrao_do_repositorio_carrega(criar_raiz):
     raiz = criar_raiz()
     config = carregar(raiz, ambiente={})
-    assert config.assistente.nome == "Ella"
+    assert config.assistente.nome == "Nora"
     assert config.nome_usuario == ""
     assert config.modelo_local.provedor == "ollama"
     assert config.modelo_local.pensar is False
@@ -80,9 +80,9 @@ def test_mesclar_e_ler_env(tmp_path):
 def test_hello_world(criar_raiz, capsys):
     raiz = criar_raiz()
     assert (
-        saudacao(carregar(raiz, ambiente={})) == f"Olá! Eu sou a Ella, versão {versao_legivel()}."
+        saudacao(carregar(raiz, ambiente={})) == f"Olá! Eu sou a Nora, versão {versao_legivel()}."
     )
     com_nome = carregar(criar_raiz(local='[usuario]\nnome = "Gabriel"\n'), ambiente={})
-    assert saudacao(com_nome).startswith("Olá, Gabriel! Eu sou a Ella")
+    assert saudacao(com_nome).startswith("Olá, Gabriel! Eu sou a Nora")
     assert main([]) == 0
     assert "Eu sou a" in capsys.readouterr().out

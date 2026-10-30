@@ -1,4 +1,4 @@
-"""Ella: assistente de IA pessoal por voz."""
+"""Nora: assistente de IA pessoal por voz."""
 
 __version__ = "0.1.0.dev0"
 

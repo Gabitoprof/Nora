@@ -1,8 +1,8 @@
-"""Conversa por voz (parte 2 da v0.1.0): aperta Enter, fala, e a Ella responde falando.
+"""Conversa por voz (parte 2 da v0.1.0): aperta Enter, fala, e a Nora responde falando.
 
 Ouvido (whisper-server), cérebro (Ollama) e voz (Piper) são serviços separados. A resposta é
 cortada em frases enquanto o modelo escreve: uma linha sintetiza a próxima frase enquanto outra
-toca a atual, então a Ella começa a falar antes de terminar de pensar.
+toca a atual, então a Nora começa a falar antes de terminar de pensar.
 """
 
 from __future__ import annotations
@@ -15,15 +15,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TextIO
 
-from ella import audio
-from ella.cerebro import CerebroIndisponivel, CerebroLocal
-from ella.config import Config
-from ella.conversa import COMANDOS_SAIR, Conversa
-from ella.frases import SeparadorDeFrases
-from ella.historico import Historico
-from ella.ouvido import OuvidoWhisper
-from ella.servico import ServicoIndisponivel
-from ella.voz import VozElevenLabs, VozHTTP, criar_voz
+from nora import audio
+from nora.cerebro import CerebroIndisponivel, CerebroLocal
+from nora.config import Config
+from nora.conversa import COMANDOS_SAIR, Conversa
+from nora.frases import SeparadorDeFrases
+from nora.historico import Historico
+from nora.ouvido import OuvidoWhisper
+from nora.servico import ServicoIndisponivel
+from nora.voz import VozElevenLabs, VozHTTP, criar_voz
 
 _FIM = object()
 

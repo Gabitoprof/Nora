@@ -1,6 +1,6 @@
-"""Carrega e valida a config da Ella.
+"""Carrega e valida a config da Nora.
 
-Ordem: config/ella.toml (padrão) -> config/local.toml (pessoal, fora do Git)
+Ordem: config/nora.toml (padrão) -> config/local.toml (pessoal, fora do Git)
 -> variáveis de ambiente e .env (segredos).
 """
 
@@ -209,7 +209,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
     """Lê os arquivos de config a partir de `raiz` e devolve uma Config validada."""
     ambiente = {**ler_env(raiz / ".env"), **(os.environ if ambiente is None else ambiente)}
 
-    padrao = Path(ambiente.get("ELLA_CONFIG") or raiz / "config/ella.toml")
+    padrao = Path(ambiente.get("ELLA_CONFIG") or raiz / "config/nora.toml")
     if not padrao.is_file():
         raise ConfigError(f"Arquivo de config não encontrado: {padrao}")
     dados = _ler_toml(padrao)

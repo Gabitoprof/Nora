@@ -1,14 +1,14 @@
-"""Conversa digitada com a Ella (parte 1 da v0.1.0; a voz entra por cima disto)."""
+"""Conversa digitada com a Nora (parte 1 da v0.1.0; a voz entra por cima disto)."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import TextIO
 
-from ella.cerebro import CerebroIndisponivel, CerebroLocal
-from ella.config import Config
-from ella.historico import Historico
-from ella.persona import prompt_de_sistema
+from nora.cerebro import CerebroIndisponivel, CerebroLocal
+from nora.config import Config
+from nora.historico import Historico
+from nora.persona import prompt_de_sistema
 
 COMANDOS_SAIR = {"sair", "tchau", "/sair", "exit", "quit"}
 

@@ -5,7 +5,7 @@ Antes de construir a conversa por voz, precisamos saber se a **RX 9060 XT** acel
 ## 1. Ollama (o cérebro local)
 
 1. Instale o Ollama: https://ollama.com/download (versão mais recente).
-2. Abra o PowerShell na pasta do repositório (`B:\ELLA`) e rode:
+2. Abra o PowerShell na pasta do repositório e rode:
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts\teste_gpu_windows.ps1

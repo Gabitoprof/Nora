@@ -1,13 +1,13 @@
-# Config padrão da Ella. Vai para o GitHub, então NADA pessoal aqui.
+# Config padrão da Nora. Vai para o GitHub, então NADA pessoal aqui.
 # Para personalizar (seu nome, outra voz, outro modelo), crie config/local.toml
 # só com as chaves que quer mudar. Ele é ignorado pelo Git e sobrepõe este arquivo.
 
 [assistente]
-nome = "Ella"
+nome = "Nora"
 # Palavra que acorda o assistente (v0.1.0).
-palavra_de_ativacao = "Ella"
+palavra_de_ativacao = "Nora"
 # Como a voz deve falar o nome dela (só na fala; na tela continua o nome). Vazio = como se escreve.
-pronuncia = "Élha"
+pronuncia = ""
 idioma = "pt-BR"
 
 [usuario]
@@ -34,7 +34,7 @@ idioma = "pt"
 motor = "kokoro"
 
 [voz.kokoro]
-# Kokoro-82M (pesos Apache-2.0), servido por "ella servidor-kokoro".
+# Kokoro-82M (pesos Apache-2.0), servido por "nora servidor-kokoro".
 # Vozes pt-BR: pf_dora (feminina), pm_alex e pm_santa (masculinas).
 url = "http://127.0.0.1:5001"
 voz = "pf_dora"
@@ -70,7 +70,7 @@ rapido = "claude-haiku-5-5"
 pesado = "claude-sonnet-5-5"
 
 [escuta]
-# Modo mãos livres ("ella ouvir"): detecção de fala (Silero VAD) e palavra de ativação.
+# Modo mãos livres ("nora ouvir"): detecção de fala (Silero VAD) e palavra de ativação.
 # Chance mínima (0 a 1) de um trecho ser voz para começar a ouvir.
 limiar = 0.5
 # Silêncio, em milissegundos, que encerra a sua fala. Menor = responde mais rápido, mas pode
@@ -80,7 +80,7 @@ silencio_ms = 700
 janela_s = 8.0
 
 [audio]
-# Microfone e alto-falante: vazio = padrão do Windows; ou o número/nome que "ella audio" mostra.
+# Microfone e alto-falante: vazio = padrão do Windows; ou o número/nome que "nora audio" mostra.
 microfone = ""
 alto_falante = ""
 

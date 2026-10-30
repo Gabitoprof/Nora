@@ -16,7 +16,7 @@
 
 ```mermaid
 mindmap
-  root((Ella))
+  root((Nora))
     Voz em tempo real
       Wake word
         openWakeWord ou Porcupine
@@ -153,7 +153,7 @@ mindmap
       Windows com Vulkan
       Linux como plano B
     Nome
-      Ella para projeto e assistente
+      Nora para projeto e assistente
     Linguagem
       Núcleo Python
       HUD TypeScript

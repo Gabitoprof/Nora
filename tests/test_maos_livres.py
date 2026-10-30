@@ -5,10 +5,10 @@ import pytest
 from fake_ollama import OllamaFalso
 from fake_servico import ServicoFalso
 
-from ella.ativacao import e_despedida, extrair_pedido, normalizar
-from ella.config import carregar
-from ella.maos_livres import conversar_maos_livres
-from ella.vad import BYTES_POR_QUADRO, DetectorDeFala, em_quadros, falas
+from nora.ativacao import e_despedida, extrair_pedido, normalizar
+from nora.config import carregar
+from nora.maos_livres import conversar_maos_livres
+from nora.vad import BYTES_POR_QUADRO, DetectorDeFala, em_quadros, falas
 
 # --- palavra de ativação ----------------------------------------------------------------------
 
@@ -16,28 +16,27 @@ from ella.vad import BYTES_POR_QUADRO, DetectorDeFala, em_quadros, falas
 @pytest.mark.parametrize(
     ("texto", "pedido"),
     [
-        ("Ella, que horas são?", "que horas são?"),
-        ("ela que horas são", "que horas são"),
-        ("ELA! Liga a luz.", "Liga a luz."),
-        ("Oi, Ella, tudo bem?", "tudo bem?"),
-        ("Ei Ela... me lembra de beber água", "me lembra de beber água"),
-        ("Ella.", ""),
-        ("Élla, bom dia", "bom dia"),
-        ("Elha, bom dia", "bom dia"),
-        ("Ilha de Itaparica é linda", None),
-        ("Que horas são, Ella?", None),
-        ("A Ella é legal", None),
-        ("Elas foram embora", None),
+        ("Nora, que horas são?", "que horas são?"),
+        ("nora que horas são", "que horas são"),
+        ("NORA! Liga a luz.", "Liga a luz."),
+        ("Oi, Nora, tudo bem?", "tudo bem?"),
+        ("Ei Norah... me lembra de beber água", "me lembra de beber água"),
+        ("Nora.", ""),
+        ("Nóra, bom dia", "bom dia"),
+        ("Que horas são, Nora?", None),
+        ("A Nora é legal", None),
+        ("Noras e genros", None),
+        ("Ela foi embora", None),
         ("", None),
     ],
 )
 def test_extrai_o_pedido_depois_do_nome(texto, pedido):
-    assert extrair_pedido(texto, "Ella") == pedido
+    assert extrair_pedido(texto, "Nora") == pedido
 
 
 def test_palavra_de_ativacao_com_mais_de_uma_palavra():
-    assert extrair_pedido("Oi Ella, abre a agenda", "Oi Ella") == "abre a agenda"
-    assert extrair_pedido("Ella, abre a agenda", "Oi Ella") is None
+    assert extrair_pedido("Oi Nora, abre a agenda", "Oi Nora") == "abre a agenda"
+    assert extrair_pedido("Nora, abre a agenda", "Oi Nora") is None
 
 
 def test_despedidas_e_normalizacao():
@@ -95,20 +94,20 @@ def test_quadros_e_falas_de_blocos_irregulares():
 def test_conversa_maos_livres(criar_raiz):
     transcricoes = iter(
         [
-            "Música alta tocando",  # ignorada: não chamou a Ella
-            "Ella, qual é a capital do Brasil?",
+            "Música alta tocando",  # ignorada: não chamou a Nora
+            "Nora, qual é a capital do Brasil?",
             "E da Argentina?",  # dentro da janela: não precisa do nome
             "E do Chile?",  # fora da janela: ignorada
-            "Ella",  # só o nome
+            "Nora",  # só o nome
             "Tchau",  # despedida dentro da janela
         ]
     )
     # cada consulta ao relógio: ignorada, fim da 1ª resposta, continuação, fim da 2ª,
-    # "Chile" (janela já fechada), depois do "Ella", "Tchau"
+    # "Chile" (janela já fechada), depois do "Nora", "Tchau"
     instantes = iter([0.0, 1.0, 2.0, 3.0, 100.0, 101.0, 102.0])
 
     def whisper(caminho, cabecalhos, corpo):
-        assert b'name="prompt"\r\n\r\nConversa com a assistente Ella.\r\n' in corpo
+        assert b'name="prompt"\r\n\r\nConversa com a assistente Nora.\r\n' in corpo
         return 200, "application/json", json.dumps({"text": next(transcricoes)}).encode()
 
     recomecos = []
@@ -136,11 +135,11 @@ def test_conversa_maos_livres(criar_raiz):
         )
     texto = saida.getvalue()
     assert "(ignorado: Música alta tocando)" in texto
-    assert "Você: Ella, qual é a capital do Brasil?" in texto
+    assert "Você: Nora, qual é a capital do Brasil?" in texto
     assert "Você: E da Argentina?" in texto
     assert "(ignorado: E do Chile?)" in texto
-    assert "Ella: Oi, pode falar." in texto
-    assert "Ella: Até mais!" in texto
+    assert "Nora: Oi, pode falar." in texto
+    assert "Nora: Até mais!" in texto
     perguntas = [p["messages"][-1]["content"] for p in ollama.pedidos if p["messages"]]
     assert perguntas == ["qual é a capital do Brasil?", "E da Argentina?"]
     assert [json.loads(a)["text"] for a in falado] == [

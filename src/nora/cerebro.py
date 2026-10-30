@@ -9,7 +9,7 @@ import urllib.request
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-from ella.config import Config
+from nora.config import Config
 
 
 class CerebroIndisponivel(Exception):

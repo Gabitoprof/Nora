@@ -1,4 +1,4 @@
-# Ella
+# Nora
 
 Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principalmente no seu computador**, lembra do que vocês conversaram e evolui com o uso. Inspirado nos assistentes da ficção, com nome, voz e personalidade próprios e configuráveis.
 
@@ -14,7 +14,7 @@ Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principa
 
 ```bash
 git clone https://github.com/gabitoprof/ella.git
-cd ella
+cd nora
 python -m venv .venv
 ```
 
@@ -25,13 +25,13 @@ pip install -e ".[dev]"
 ```
 
 ```bash
-ella
+nora
 ```
 
 Deve aparecer a saudação com a versão. Para ver a config carregada e checar o ambiente (Ollama, chave da API):
 
 ```bash
-ella --verificar
+nora --verificar
 ```
 
 ### Conversar (por texto, por enquanto)
@@ -39,7 +39,7 @@ ella --verificar
 Com o [Ollama](https://ollama.com) aberto e o modelo baixado (`ollama pull qwen3.5:9b`):
 
 ```bash
-ella conversar
+nora conversar
 ```
 
 Digite `sair` para encerrar e `/limpar` para começar do zero. Com `--medir`, mostra o tempo de cada resposta. As conversas ficam em `data/historico/`, só na sua máquina.
@@ -49,18 +49,18 @@ Digite `sair` para encerrar e `/limpar` para começar do zero. Com `--medir`, mo
 Precisa do ouvido (whisper.cpp) e de uma voz (Kokoro local por padrão, Piper ou ElevenLabs) instalados e rodando. Passo a passo em [docs/VOZ.md](docs/VOZ.md). Depois:
 
 ```bash
-ella falar --medir
+nora falar --medir
 ```
 
-Ou mãos livres, começando a frase com "Ella":
+Ou mãos livres, começando a frase com "Nora":
 
 ```bash
-ella ouvir --medir
+nora ouvir --medir
 ```
 
 ## Personalizando
 
-- **`config/ella.toml`**: config padrão (nome, persona, voz, modelos). Não coloque nada pessoal aqui.
+- **`config/nora.toml`**: config padrão (nome, persona, voz, modelos). Não coloque nada pessoal aqui.
 - **`config/local.toml`**: crie este arquivo só com o que quiser mudar. Ele é ignorado pelo Git. Exemplo:
 
   ```toml
@@ -77,7 +77,7 @@ ella ouvir --medir
 
 | Pasta | Conteúdo |
 |---|---|
-| `src/ella/` | Núcleo em Python |
+| `src/nora/` | Núcleo em Python |
 | `config/` | Config padrão |
 | `hud/` | Interface visual (web, a partir da v0.4.0) |
 | `mcp_servers/` | Ferramentas no padrão MCP (a partir da v0.5.0) |

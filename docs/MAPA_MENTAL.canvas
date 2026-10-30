@@ -1,6 +1,6 @@
 {
 	"nodes":[
-		{"id":"root","type":"text","text":"# Ella\nAssistente de IA por voz","x":-150,"y":-60,"width":300,"height":120,"color":"6"},
+		{"id":"root","type":"text","text":"# Nora\nAssistente de IA por voz","x":-150,"y":-60,"width":300,"height":120,"color":"6"},
 		{"id":"b0","type":"text","text":"## Voz em tempo real","x":-129,"y":-455,"width":260,"height":70,"color":"5"},
 		{"id":"d0","type":"text","text":"- Wake word: openWakeWord ou Porcupine\n- VAD: Silero\n- STT: whisper.cpp com Vulkan\n- TTS: Piper (ou ElevenLabs/Cartesia)\n- Barge-in com cancelamento de eco\n- Meta: < 1 s (MVP < 2 s)","x":-169,"y":-920,"width":340,"height":200,"color":"5"},
 		{"id":"b1","type":"text","text":"## Cérebro híbrido","x":139,"y":-356,"width":260,"height":70,"color":"6"},

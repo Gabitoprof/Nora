@@ -9,15 +9,15 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 
-from ella.audio import para_wav
-from ella.config import Config
-from ella.servico import ServicoIndisponivel, enviar
+from nora.audio import para_wav
+from nora.config import Config
+from nora.servico import ServicoIndisponivel, enviar
 
 ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
 
 
 def aplicar_pronuncias(texto: str, pronuncias: dict[str, str]) -> str:
-    """Troca palavras inteiras pelo jeito de falar (ex.: 'Ella' -> 'Élha'), sem olhar maiúsculas."""
+    """Troca palavras inteiras pelo jeito de falar (ex.: 'Nora' -> 'Nóra'), sem olhar maiúsculas."""
     for palavra, fala in pronuncias.items():
         texto = re.sub(rf"\b{re.escape(palavra)}\b", fala, texto, flags=re.IGNORECASE)
     return texto

@@ -1,5 +1,5 @@
-"""Linha de comando da Ella: `ella` (olá), `ella --verificar` (diagnóstico) e
-`ella conversar` (conversa digitada)."""
+"""Linha de comando da Nora: `nora` (olá), `nora --verificar` (diagnóstico) e
+`nora conversar` (conversa digitada)."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ import sys
 import urllib.error
 import urllib.request
 
-from ella import __version__, versao_legivel
-from ella.config import Config, ConfigError, carregar
-from ella.servico import responde
+from nora import __version__, versao_legivel
+from nora.config import Config, ConfigError, carregar
+from nora.servico import responde
 
 
 def saudacao(config: Config) -> str:
@@ -91,7 +91,7 @@ def testar_audio(config: Config, segundos: float, entrada=input) -> int:
     """Lista os dispositivos de áudio e grava alguns segundos para tocar de volta."""
     import threading
 
-    from ella import audio
+    from nora import audio
 
     try:
         print("Dispositivos de áudio:")
@@ -116,8 +116,8 @@ def testar_audio(config: Config, segundos: float, entrada=input) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="ella", description="Assistente de IA pessoal por voz.")
-    parser.add_argument("--versao", action="version", version=f"ella {__version__}")
+    parser = argparse.ArgumentParser(prog="nora", description="Assistente de IA pessoal por voz.")
+    parser.add_argument("--versao", action="version", version=f"nora {__version__}")
     parser.add_argument(
         "--verificar", action="store_true", help="mostra a config carregada e checa o ambiente"
     )
@@ -161,15 +161,15 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.comando == "conversar":
-        from ella.conversa import conversar
+        from nora.conversa import conversar
 
         return conversar(config, medir=args.medir)
 
     if args.comando == "servidor-kokoro":
         from pathlib import Path
 
-        from ella.config import RAIZ
-        from ella.servidor_kokoro import PASTA_PADRAO, servir
+        from nora.config import RAIZ
+        from nora.servidor_kokoro import PASTA_PADRAO, servir
 
         kokoro = config.voz.kokoro
         pasta = Path(args.pasta) if args.pasta else RAIZ / PASTA_PADRAO
@@ -183,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
         return testar_audio(config, args.segundos)
 
     if args.comando == "ouvir":
-        from ella.maos_livres import conversar_maos_livres
+        from nora.maos_livres import conversar_maos_livres
 
         return conversar_maos_livres(
             config,
@@ -193,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if args.comando == "falar":
-        from ella.conversa_voz import conversar_por_voz
+        from nora.conversa_voz import conversar_por_voz
 
         return conversar_por_voz(config, medir=args.medir)
 

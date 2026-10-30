@@ -2,7 +2,7 @@
 # Com a voz do ElevenLabs (nuvem), use -Voz nenhuma: só o ouvido é iniciado.
 # Uso, na pasta do repositório:
 #   powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1
-# Depois, em outro terminal com o ambiente ativado: ella falar --medir
+# Depois, em outro terminal com o ambiente ativado: nora falar --medir
 
 param(
     [string]$ModeloWhisper = "small",
@@ -32,9 +32,9 @@ Start-Process -FilePath $servidor.FullName -WorkingDirectory $servidor.Directory
 
 if ($Voz -eq "kokoro") {
     Write-Host "Iniciando o Kokoro (porta e voz vêm da config [voz.kokoro])..."
-    $ella = Join-Path $raiz ".venv\Scripts\ella.exe"
-    if (-not (Test-Path $ella)) { $ella = "ella" }
-    Start-Process -FilePath $ella -WorkingDirectory $raiz -ArgumentList @("servidor-kokoro")
+    $nora = Join-Path $raiz ".venv\Scripts\nora.exe"
+    if (-not (Test-Path $nora)) { $nora = "nora" }
+    Start-Process -FilePath $nora -WorkingDirectory $raiz -ArgumentList @("servidor-kokoro")
 } elseif ($Voz -eq "piper") {
     Write-Host "Iniciando o Piper na porta $PortaPiper com a voz $VozPiper..."
     Start-Process -FilePath $python -ArgumentList @(
@@ -44,5 +44,5 @@ if ($Voz -eq "kokoro") {
 }
 
 Write-Host "`nJanelas abertas (deixe-as abertas). Espere alguns segundos e rode:"
-Write-Host "  ella --verificar"
-Write-Host "  ella falar --medir"
+Write-Host "  nora --verificar"
+Write-Host "  nora falar --medir"

@@ -1,16 +1,16 @@
 # Conversa por voz (v0.1.0)
 
-A Ella conversa por voz usando programas locais, cada um no seu processo, e fala com eles pela rede local:
+A Nora conversa por voz usando programas locais, cada um no seu processo, e fala com eles pela rede local:
 
 | Papel | Programa | Porta | Licença |
 |---|---|---|---|
 | Cérebro | Ollama (`qwen3.5:9b`) | 11434 | MIT |
 | Ouvido | whisper.cpp (`whisper-server`) | 8178 | MIT |
-| Voz (padrão) | Kokoro (`ella servidor-kokoro`) | 5001 | pesos Apache-2.0; usa phonemizer/espeak-ng (GPL-3.0) |
+| Voz (padrão) | Kokoro (`nora servidor-kokoro`) | 5001 | pesos Apache-2.0; usa phonemizer/espeak-ng (GPL-3.0) |
 | Voz (opcional) | Piper (`piper.http_server`) | 5000 | GPL-3.0 |
 | Voz (opcional, nuvem) | ElevenLabs | — | serviço pago |
 
-Separar em processos mantém o núcleo da Ella em MIT, deixa cada peça trocável e prepara o modo distribuído (v0.8.0).
+Separar em processos mantém o núcleo da Nora em MIT, deixa cada peça trocável e prepara o modo distribuído (v0.8.0).
 
 ## Motores de voz
 
@@ -57,7 +57,7 @@ O script baixa (tudo fora do Git, em `ferramentas\` e `models\`):
 2. Teste o microfone e o alto-falante (lista os dispositivos, grava 3 segundos e toca de volta):
 
    ```powershell
-   ella audio
+   nora audio
    ```
 
    Para usar outro microfone ou alto-falante, ponha o número ou o nome da lista em `config\local.toml`:
@@ -70,13 +70,13 @@ O script baixa (tudo fora do Git, em `ferramentas\` e `models\`):
 3. Confira se está tudo no ar:
 
    ```powershell
-   ella --verificar
+   nora --verificar
    ```
 
 4. Converse:
 
    ```powershell
-   ella falar --medir
+   nora falar --medir
    ```
 
    Aperte **Enter**, fale, aperte **Enter** de novo. Também dá para digitar a pergunta. `sair` encerra.
@@ -87,19 +87,19 @@ Com `--medir`, cada resposta mostra três tempos, contados a partir do momento e
 |---|---|---|
 | transcrição | o Whisper transformar sua fala em texto | o menor possível |
 | primeira frase | a primeira frase da resposta ficar pronta | |
-| **começou a falar** | o som da Ella começar a sair | **< 2 s** (MVP), < 1 s (final) |
+| **começou a falar** | o som da Nora começar a sair | **< 2 s** (MVP), < 1 s (final) |
 
-## Mãos livres (`ella ouvir`)
+## Mãos livres (`nora ouvir`)
 
-Em vez de apertar Enter, a Ella fica ouvindo o tempo todo e responde quando a frase **começa com o nome dela**:
+Em vez de apertar Enter, a Nora fica ouvindo o tempo todo e responde quando a frase **começa com o nome dela**:
 
 ```powershell
-ella ouvir --medir
+nora ouvir --medir
 ```
 
-- **"Ella, que horas são?"** → ela responde.
+- **"Nora, que horas são?"** → ela responde.
 - Depois da resposta, por **8 segundos** dá para continuar **sem dizer o nome** ("E amanhã?").
-- **"Ella"** sozinho → ela diz "Oi, pode falar." e espera.
+- **"Nora"** sozinho → ela diz "Oi, pode falar." e espera.
 - **"Tchau"**, **"é só isso"** → ela se despede e volta a esperar o nome.
 - **Ctrl+C** encerra.
 
@@ -109,7 +109,7 @@ Ajustes em `config\local.toml`:
 
 ```toml
 [assistente]
-palavra_de_ativacao = "Ella"   # ou "Oi Ella", se ela acordar sem querer
+palavra_de_ativacao = "Nora"   # ou "Oi Nora", se ela acordar sem querer
 
 [escuta]
 limiar = 0.5        # suba (ex.: 0.6) se ruído vira fala; desça se ela não percebe você
@@ -119,7 +119,7 @@ janela_s = 8.0      # segundos para continuar sem dizer o nome
 
 Limites desta versão:
 
-- **O nome se pronuncia "Élha"** (`[assistente] pronuncia`): a voz fala assim, e a ativação aceita o que o Whisper escrever ("Ella", "Elha" ou "Ela"). Como ele às vezes escreve "Ela", uma frase que começa com o pronome "Ela..." perto do microfone pode acordá-la. Se incomodar, use `palavra_de_ativacao = "Oi Ella"`. Uma palavra de ativação de verdade (openWakeWord treinado com o nome dela, rodando antes do Whisper) fica para depois.
+- **Por que "Nora":** o nome antigo, "Ella" (pronunciado "Élha"), virava "Elia", "Ilha" ou "ele" na transcrição, e ela quase nunca acordava. "Nora" o Whisper reconhece bem e quase nunca começa uma frase por acaso. A ativação aceita "Nora", "Norah" e "Nóra". Se ela acordar sem querer, use `palavra_de_ativacao = "Oi Nora"`. Para mudar como a voz fala o nome, use `[assistente] pronuncia`. Uma palavra de ativação de verdade (openWakeWord treinado com o nome dela, rodando antes do Whisper) fica para depois.
 - **Toda fala passa pelo Whisper**, mesmo as que não são para ela. Com TV ou conversa no ambiente, o processador trabalha mais. `--mostrar-ignoradas` mostra o que ela ouviu e ignorou.
 - **Enquanto ela fala, ela não ouve** (o que o microfone capta é descartado), porque ainda não há cancelamento de eco. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
 
@@ -143,7 +143,7 @@ Limites desta versão:
    voz_id = "cole_o_voice_id_aqui"
    ```
 
-5. Inicie só o ouvido (`iniciar_voz_windows.ps1 -Voz nenhuma`), rode `ella --verificar` (deve mostrar `ElevenLabs configurado`) e `ella falar --medir`.
+5. Inicie só o ouvido (`iniciar_voz_windows.ps1 -Voz nenhuma`), rode `nora --verificar` (deve mostrar `ElevenLabs configurado`) e `nora falar --medir`.
 
 O modelo padrão é o `eleven_flash_v2_5`, o mais rápido do ElevenLabs, com o idioma fixado em português. Cada frase é um pedido à API: a conversa por voz consome créditos.
 
@@ -151,15 +151,15 @@ O modelo padrão é o `eleven_flash_v2_5`, o mais rápido do ElevenLabs, com o i
 
 - **Whisper no processador, por enquanto.** O projeto oficial não publica versão pronta para Windows com Vulkan; ela precisa ser compilada (Vulkan SDK, CMake e Visual Studio Build Tools) ou viria de terceiros. No primeiro teste, o `small` no 9800X3D transcreveu em 0,72 s. Se ficar lento, os próximos passos são o modelo `base` (`-ModeloWhisper base` nos dois scripts) ou compilar com Vulkan.
 - **Voz `pt_BR-faber-medium` (Piper) só para uso pessoal.** Foi ajustada a partir de uma voz em inglês treinada com uma base **só para uso não comercial**. É baixada à parte e nunca distribuída.
-- **Dois modos:** `ella falar` (Enter para falar, bom para ambiente barulhento) e `ella ouvir` (mãos livres).
-- **Sem interrupção ainda.** Falar por cima da Ella (barge-in) precisa de cancelamento de eco e vem depois; por enquanto, Ctrl+C interrompe.
+- **Dois modos:** `nora falar` (Enter para falar, bom para ambiente barulhento) e `nora ouvir` (mãos livres).
+- **Sem interrupção ainda.** Falar por cima da Nora (barge-in) precisa de cancelamento de eco e vem depois; por enquanto, Ctrl+C interrompe.
 
 ## Se algo der errado
 
 - **O pip instala em `...\pythoncore-3.xx\Scripts` e avisa "not on PATH":** o ambiente não estava ativado. Rode `.venv\Scripts\activate` (o terminal passa a mostrar `(.venv)`) e repita o `pip install`.
 - **O `pip install` falha com "conflicting dependencies" e "no matching distributions" para `onnxruntime`:** o Python é novo demais (aconteceu com o 3.15). Veja as versões com `py -0`, instale o 3.13 (`py install 3.13`) e recrie o ambiente: `deactivate`, `Remove-Item -Recurse -Force .venv`, `py -3.13 -m venv .venv`, `.venv\Scripts\activate`, `pip install -e ".[dev,voz]"`.
-- **"Acesso negado" ao instalar:** algum `ella` está aberto (feche os terminais ou rode `Stop-Process -Name ella -Force`).
-- **"Não consegui abrir o microfone" (ex.: `MME error 11`):** a Ella já tenta o mesmo microfone pelas outras APIs do Windows. Se nada abrir, confira em Configurações → Privacidade e segurança → Microfone se "Permitir que aplicativos da área de trabalho acessem o microfone" está ligado, e rode `ella audio`.
-- **A Ella responde a `[MÚSICA DE FUNDO]` ou não ouve nada:** a gravação ficou baixa; fale mais perto do microfone, depois de aparecer "(gravando...)".
-- **Kokoro, Piper ou whisper-server "não respondeu"** no `ella --verificar`: veja a janela correspondente aberta pelo script de iniciar; a mensagem de erro aparece lá. Me mande um print.
+- **"Acesso negado" ao instalar:** algum `nora` está aberto (feche os terminais ou rode `Stop-Process -Name nora -Force`).
+- **"Não consegui abrir o microfone" (ex.: `MME error 11`):** a Nora já tenta o mesmo microfone pelas outras APIs do Windows. Se nada abrir, confira em Configurações → Privacidade e segurança → Microfone se "Permitir que aplicativos da área de trabalho acessem o microfone" está ligado, e rode `nora audio`.
+- **A Nora responde a `[MÚSICA DE FUNDO]` ou não ouve nada:** a gravação ficou baixa; fale mais perto do microfone, depois de aparecer "(gravando...)".
+- **Kokoro, Piper ou whisper-server "não respondeu"** no `nora --verificar`: veja a janela correspondente aberta pelo script de iniciar; a mensagem de erro aparece lá. Me mande um print.
 - **O Piper recusa o pedido (405 ou 404):** a versão mudou o endereço. Rode `Select-String -Path .venv\Lib\site-packages\piper\http_server.py -Pattern "route"` e me mande o resultado.

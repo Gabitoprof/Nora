@@ -213,7 +213,7 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 ## 10. Decisões (tomadas em 30/10/2026, antes da v0.0.0)
 
 1. **Sistema operacional:** ✅ **Windows**, com aceleração da GPU via Vulkan. Linux (ROCm) fica como plano B se o desempenho não bastar; o código roda nos dois.
-2. **Nome:** ✅ **Ella** para o projeto e para o assistente. O nome do assistente continua configurável.
+2. **Nome:** ✅ **Nora** para o projeto e para o assistente. O nome do assistente continua configurável.
 3. **Linguagem:** ✅ **núcleo em Python + HUD em web (TypeScript)**.
 4. **Uso 24h:** ✅ **não por enquanto**. O modo distribuído fica na v0.8.0, como previsto.
 5. **Licença:** ✅ **MIT**.

@@ -1,7 +1,7 @@
 """Palavra de ativação por transcrição: a fala só vira pedido se começar com o nome dela.
 
-O nome "Ella" se pronuncia "Élha", e o Whisper escreve de vários jeitos; por isso a comparação
-ignora acentos, maiúsculas, letras dobradas e o "h" do "lh" ("Ella" = "Elha" = "Ela").
+O Whisper pode escrever o nome de jeitos parecidos; por isso a comparação ignora acentos,
+maiúsculas, letras dobradas e um "h" no fim ("Nora" = "NORA" = "Norah" = "Nóra").
 """
 
 from __future__ import annotations
@@ -31,9 +31,8 @@ def normalizar(texto: str) -> str:
 
 
 def _encolher(palavra: str) -> str:
-    """Forma comparável: tira letras dobradas e trata 'lh' como 'l', porque o Whisper escreve o
-    nome "Élha" como 'Ella', 'Elha' ou 'Ela'."""
-    return re.sub(r"(.)\1+", r"\1", palavra.replace("lh", "l"))
+    """Forma comparável: sem letras dobradas e sem "h" no fim ('norah' -> 'nora')."""
+    return re.sub(r"(.)\1+", r"\1", palavra).removesuffix("h") or palavra
 
 
 def extrair_pedido(texto: str, palavra_de_ativacao: str) -> str | None:

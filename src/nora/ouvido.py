@@ -9,8 +9,8 @@ import urllib.request
 import uuid
 from dataclasses import dataclass
 
-from ella.config import Config
-from ella.servico import enviar
+from nora.config import Config
+from nora.servico import enviar
 
 # O Whisper descreve sons em vez de fala entre colchetes ou parênteses, ex.: [MÚSICA DE FUNDO],
 # (risos), [BLANK_AUDIO]. Isso não é fala da pessoa e não deve virar pergunta.

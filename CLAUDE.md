@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Regras do projeto Ella para o Claude Code. Detalhes em `PROJETO_ASSISTENTE_IA.md`.
+Regras do projeto Nora para o Claude Code. Detalhes em `PROJETO_ASSISTENTE_IA.md`.
 
 ## O que é
 

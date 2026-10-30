@@ -68,7 +68,7 @@ def dispositivo(valor: str) -> int | str | None:
 _DICA = (
     "Confira: Configurações do Windows > Privacidade e segurança > Microfone > "
     "'Permitir que aplicativos da área de trabalho acessem o microfone'; "
-    "e rode 'ella audio' para ver e testar os dispositivos."
+    "e rode 'nora audio' para ver e testar os dispositivos."
 )
 
 
@@ -224,7 +224,7 @@ class Microfone:
         self._fluxo.close()
 
     def limpar(self) -> None:
-        """Descarta o que foi captado até agora (ex.: a própria voz da Ella)."""
+        """Descarta o que foi captado até agora (ex.: a própria voz da Nora)."""
         while not self._fila.empty():
             self._fila.get_nowait()
 
