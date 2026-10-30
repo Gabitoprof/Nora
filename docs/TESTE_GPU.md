@@ -49,7 +49,16 @@ A RX 9060 XT é uma placa nova (RDNA 4), e o suporte depende da versão do Ollam
 - A velocidade passa com folga da meta de ~30 tokens/s.
 - O **modo pensando** do Qwen 3.5 escreve um raciocínio longo antes de responder, mesmo em perguntas simples. Na voz, fica **desligado** (`pensar = false` no config); para tarefas difíceis, o caminho é o roteador da v0.3.0.
 - A carga de ~18 s só acontece quando o modelo não está na memória: o `keep_alive` mantém ele carregado entre as falas.
-- Pendente: medir o tempo de resposta **sem** o modo pensando, com o script atualizado.
+
+### 30/10/2026: mesmo PC, script medindo pela API
+
+| Teste | Tempo total | Velocidade | Tokens gerados |
+|---|---|---|---|
+| Aquecimento (carrega o modelo) | 18,07 s (17,83 s de carga) | 52,9 tokens/s | 8 |
+| **Sem modo pensando** (modelo já carregado) | **0,21 s** | 52,3 tokens/s | 8 |
+| Com modo pensando | 5,24 s | 47,0 tokens/s | 244 (877 caracteres de raciocínio) |
+
+**Conclusão:** com o modelo carregado e o modo pensando desligado, o cérebro local responde uma frase curta em **0,21 s**. Isso deixa quase todo o orçamento de < 1 s para ouvir (STT) e falar (TTS). O modo pensando custa **25 vezes mais tempo** na mesma pergunta. **Cérebro local aprovado para a v0.1.0.** ✅
 
 ## 2. whisper.cpp (a transcrição)
 
