@@ -87,6 +87,23 @@ def test_ouvido_envia_o_wav_e_le_o_texto(criar_raiz):
     assert ouvido.ultima_duracao > 0
 
 
+@pytest.mark.parametrize(
+    ("bruto", "limpo"),
+    [
+        ("[MÚSICA DE FUNDO]", ""),
+        (" [BLANK_AUDIO] ", ""),
+        ("(risos) [música]", ""),
+        ("[música] Oi Ella, tudo bem?", "Oi Ella, tudo bem?"),
+        ("Que horas são? (tosse)", "Que horas são?"),
+        ("", ""),
+    ],
+)
+def test_limpa_descricoes_de_som(bruto, limpo):
+    from ella.ouvido import limpar_transcricao
+
+    assert limpar_transcricao(bruto) == limpo
+
+
 def test_ouvido_fora_do_ar(criar_raiz):
     with pytest.raises(ServicoIndisponivel, match="whisper-server em http://127.0.0.1:9"):
         OuvidoWhisper(config_com(criar_raiz), timeout=2).transcrever(UM_SEGUNDO)

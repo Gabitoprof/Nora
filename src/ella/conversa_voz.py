@@ -142,7 +142,9 @@ def conversar_por_voz(
                 texto = ouvido.transcrever(wav)
                 transcricao = time.perf_counter() - inicio
                 if not texto:
-                    escrever("(não entendi, tente de novo)")
+                    escrever(
+                        "(não ouvi fala, só som ou silêncio; tente falar mais perto do microfone)"
+                    )
                     continue
                 escrever(f"Você: {texto}")
         except (ServicoIndisponivel, RuntimeError) as erro:

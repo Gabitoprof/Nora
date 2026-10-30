@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.request
 import uuid
@@ -10,6 +11,19 @@ from dataclasses import dataclass
 
 from ella.config import Config
 from ella.servico import enviar
+
+# O Whisper descreve sons em vez de fala entre colchetes ou parênteses, ex.: [MÚSICA DE FUNDO],
+# (risos), [BLANK_AUDIO]. Isso não é fala da pessoa e não deve virar pergunta.
+_SO_DESCRICAO = re.compile(r"^(\s*[\[(][^\])]*[\])]\s*)+$")
+_DESCRICAO = re.compile(r"\s*[\[(][^\])]*[\])]\s*")
+
+
+def limpar_transcricao(texto: str) -> str:
+    """Tira as descrições de som do Whisper; devolve "" se não sobrou fala."""
+    texto = " ".join(texto.split())
+    if not texto or _SO_DESCRICAO.match(texto):
+        return ""
+    return " ".join(_DESCRICAO.sub(" ", texto).split())
 
 
 @dataclass
@@ -44,4 +58,4 @@ class OuvidoWhisper:
         inicio = time.perf_counter()
         resposta = enviar("o whisper-server", pedido, self.timeout)
         self.ultima_duracao = time.perf_counter() - inicio
-        return " ".join(json.loads(resposta).get("text", "").split())
+        return limpar_transcricao(json.loads(resposta).get("text", ""))
