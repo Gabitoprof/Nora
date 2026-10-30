@@ -223,6 +223,16 @@ class Microfone:
         self._fluxo.stop()
         self._fluxo.close()
 
+    def pausar(self) -> None:
+        """Para de captar enquanto a Nora fala. Em fone Bluetooth isso é obrigatório: com o
+        microfone aberto o fone fica no modo chamada e a saída de som normal fica muda."""
+        if self._fluxo.active:
+            self._fluxo.stop()
+
+    def retomar(self) -> None:
+        if self._fluxo.stopped:
+            self._fluxo.start()
+
     def limpar(self) -> None:
         """Descarta o que foi captado até agora (ex.: a própria voz da Nora)."""
         while not self._fila.empty():

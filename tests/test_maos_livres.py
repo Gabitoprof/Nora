@@ -111,6 +111,7 @@ def test_conversa_maos_livres(criar_raiz):
         return 200, "application/json", json.dumps({"text": next(transcricoes)}).encode()
 
     recomecos = []
+    pausas = []
     falado = []
     with (
         OllamaFalso(["Brasília."]) as ollama,
@@ -130,7 +131,7 @@ def test_conversa_maos_livres(criar_raiz):
             mostrar_ignoradas=True,
             gravar_falas=True,
             tocar=falado.append,
-            fontes=(falas_falsas, lambda: recomecos.append(1)),
+            fontes=(falas_falsas, lambda: recomecos.append(1), lambda: pausas.append(1)),
             relogio=lambda: next(instantes),
         )
     texto = saida.getvalue()
@@ -149,5 +150,6 @@ def test_conversa_maos_livres(criar_raiz):
         "Até mais!",
     ]
     assert len(recomecos) == 4  # depois de cada resposta, a escuta recomeça do zero
+    assert len(pausas) == 4  # e fica pausada enquanto ela fala
     gravadas = sorted((config.pasta_dados / "falas").glob("*.wav"))
     assert len(gravadas) == 6

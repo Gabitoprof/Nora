@@ -26,16 +26,18 @@ MODELO_VAD = "models/silero_vad.onnx"
 
 
 def preparar_falas(config: Config, microfone: audio.Microfone):
-    """Liga o microfone ao VAD e devolve (gerador de falas, função para recomeçar a escuta)."""
+    """Liga o microfone ao VAD e devolve (gerador de falas, função para recomeçar a escuta,
+    função para pausar a escuta enquanto a Nora fala)."""
     vad = SileroVAD(baixar_modelo(RAIZ / MODELO_VAD))
     detector = DetectorDeFala(limiar=config.escuta.limiar, silencio_ms=config.escuta.silencio_ms)
 
     def recomecar() -> None:
         microfone.limpar()
+        microfone.retomar()
         vad.reiniciar()
         detector.reiniciar()
 
-    return falas(em_quadros(microfone.blocos()), vad, detector), recomecar
+    return falas(em_quadros(microfone.blocos()), vad, detector), recomecar, microfone.pausar
 
 
 def conversar_maos_livres(
@@ -48,7 +50,7 @@ def conversar_maos_livres(
     ouvido: OuvidoWhisper | None = None,
     voz=None,
     tocar: Callable[[bytes], None] | None = None,
-    fontes: tuple[Iterable[bytes], Callable[[], None]] | None = None,
+    fontes: tuple[Iterable[bytes], Callable[[], None], Callable[[], None]] | None = None,
     relogio: Callable[[], float] = time.monotonic,
 ) -> int:
     saida = saida or sys.stdout
@@ -85,7 +87,7 @@ def conversar_maos_livres(
         if fontes is None:
             microfone = audio.Microfone(audio.dispositivo(config.audio.microfone)).__enter__()
             fontes = preparar_falas(config, microfone)
-        falas_detectadas, recomecar = fontes
+        falas_detectadas, recomecar, pausar = fontes
         escrever(
             f'Ouvindo. Comece a frase com "{palavra}" (ex.: "{palavra}, que horas são?"). '
             "Ctrl+C encerra."
@@ -119,6 +121,7 @@ def conversar_maos_livres(
                 continue
 
             escrever(f"Você: {texto}")
+            pausar()  # não se ouvir e, no Bluetooth, liberar a saída de som
             if e_despedida(pedido):
                 dizer("Até mais!")
                 janela_ate = 0.0

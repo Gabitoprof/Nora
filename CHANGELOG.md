@@ -11,6 +11,10 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 Versão em desenvolvimento: `0.1.0.dev0` (mostrada como "0.1.0 (em desenvolvimento)"). Vira `0.1.0` quando o critério da etapa for confirmado: falar o nome, perguntar e ouvir a resposta em menos de 2 s.
 
+### Corrigido
+
+- `nora ouvir` pausa o microfone enquanto a Nora fala. Com fone Bluetooth, o microfone aberto deixa o fone no modo chamada e a voz dela não saía no fone.
+
 ### Adicionado
 
 - `nora conversar`: conversa digitada com o modelo local, com a resposta aparecendo enquanto é gerada (parte 1 da v0.1.0). `--medir` mostra o tempo até a primeira palavra e a velocidade.

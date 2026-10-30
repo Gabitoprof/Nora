@@ -121,7 +121,7 @@ Limites desta versão:
 
 - **Por que "Nora":** o nome antigo, "Ella" (pronunciado "Élha"), virava "Elia", "Ilha" ou "ele" na transcrição, e ela quase nunca acordava. "Nora" o Whisper reconhece bem e quase nunca começa uma frase por acaso. A ativação aceita "Nora", "Norah" e "Nóra". Se ela acordar sem querer, use `palavra_de_ativacao = "Oi Nora"`. Para mudar como a voz fala o nome, use `[assistente] pronuncia`. Uma palavra de ativação de verdade (openWakeWord treinado com o nome dela, rodando antes do Whisper) fica para depois.
 - **Toda fala passa pelo Whisper**, mesmo as que não são para ela. Com TV ou conversa no ambiente, o processador trabalha mais. `--mostrar-ignoradas` mostra o que ela ouviu e ignorou.
-- **Enquanto ela fala, ela não ouve** (o que o microfone capta é descartado), porque ainda não há cancelamento de eco. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
+- **Enquanto ela fala, ela não ouve** (o microfone fica pausado), porque ainda não há cancelamento de eco. Com **fone Bluetooth** isso também é necessário: com o microfone aberto, o fone fica no modo chamada e a saída de som normal fica muda. Ao reabrir o microfone, o fone pode levar um instante para trocar de modo. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
 
 ## Usar o ElevenLabs
 
