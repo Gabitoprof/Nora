@@ -79,11 +79,41 @@ def _sounddevice():
     return sounddevice
 
 
+_PREFERENCIA_DE_API = ("Windows WASAPI", "Windows DirectSound", "Windows WDM-KS", "MME")
+
+
+def _candidatos_de_microfone(sd, microfone: int | str | None) -> list[int | str | None]:
+    """O microfone pedido e, depois, o mesmo microfone pelas outras APIs de áudio do Windows.
+
+    No Windows cada microfone aparece uma vez por API (MME, DirectSound, WASAPI, WDM-KS) e às
+    vezes só algumas funcionam; o MME ainda corta o nome em 31 caracteres.
+    """
+    candidatos: list[int | str | None] = [microfone]
+    try:
+        nome = sd.query_devices(microfone, "input")["name"]
+        dispositivos = list(enumerate(sd.query_devices()))
+        apis = [sd.query_hostapis(i)["name"] for i in range(len(sd.query_hostapis()))]
+    except Exception:
+        return candidatos
+    base = nome[:31]
+    mesmos = [
+        (indice, apis[info["hostapi"]])
+        for indice, info in dispositivos
+        if info["max_input_channels"] > 0 and info["name"][:31] == base
+    ]
+    ordem = {api: posicao for posicao, api in enumerate(_PREFERENCIA_DE_API)}
+    for indice, _api in sorted(mesmos, key=lambda item: ordem.get(item[1], len(ordem))):
+        if indice not in candidatos:
+            candidatos.append(indice)
+    return candidatos
+
+
 def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes:
     """Grava do microfone até a pessoa apertar Enter; devolve um WAV de 16 kHz mono.
 
     Grava na taxa que o microfone aceita (muitos só aceitam 44,1 ou 48 kHz) e converte
-    para 16 kHz, que é o que o Whisper espera.
+    para 16 kHz, que é o que o Whisper espera. Se o microfone não abrir, tenta o mesmo
+    microfone por outra API de áudio e em estéreo.
     """
     sd = _sounddevice()
     blocos: list[bytes] = []
@@ -91,16 +121,41 @@ def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes
     def guardar(dados, quadros, tempo, status) -> None:
         blocos.append(bytes(dados))
 
-    try:
-        info = sd.query_devices(microfone, "input")
+    fluxo, taxa, canais, erros = None, TAXA, 1, []
+    for candidato in _candidatos_de_microfone(sd, microfone):
+        try:
+            info = sd.query_devices(candidato, "input")
+        except (sd.PortAudioError, ValueError) as erro:
+            erros.append(str(erro))
+            continue
         taxa = int(info["default_samplerate"])
-        with sd.RawInputStream(
-            device=microfone, samplerate=taxa, channels=1, dtype="int16", callback=guardar
-        ):
-            entrada("  (gravando... aperte Enter para parar) ")
-    except (sd.PortAudioError, ValueError) as erro:
-        raise RuntimeError(f"Não consegui abrir o microfone ({erro}). {_DICA}") from erro
-    return para_wav(reamostrar(b"".join(blocos), taxa))
+        for canais in dict.fromkeys((1, min(2, int(info["max_input_channels"]) or 1))):
+            try:
+                fluxo = sd.RawInputStream(
+                    device=candidato,
+                    samplerate=taxa,
+                    channels=canais,
+                    dtype="int16",
+                    callback=guardar,
+                )
+                break
+            except (sd.PortAudioError, ValueError) as erro:
+                erros.append(str(erro))
+        if fluxo is not None:
+            break
+    if fluxo is None:
+        raise RuntimeError(
+            f"Não consegui abrir o microfone ({erros[0] if erros else '?'}). {_DICA}"
+        )
+
+    with fluxo:
+        entrada("  (gravando... aperte Enter para parar) ")
+    amostras = b"".join(blocos)
+    if canais > 1:
+        todas = array("h")
+        todas.frombytes(amostras[: len(amostras) // (2 * canais) * 2 * canais])
+        amostras = todas[::canais].tobytes()
+    return para_wav(reamostrar(amostras, taxa))
 
 
 def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
