@@ -4,6 +4,7 @@
 > **Regra:** toda etapa concluída atualiza este arquivo, mudando o status no roadmap e incluindo nós novos no mapa.
 > Versão visual editável no Obsidian: [`MAPA_MENTAL.canvas`](MAPA_MENTAL.canvas) (veja [`OBSIDIAN.md`](OBSIDIAN.md)).
 > Fonte detalhada: [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md).
+> Referências estudadas: [`referencias/`](referencias/video-01-assistente-local.md).
 
 **Legenda do roadmap:** ✅ concluída · 🔄 em andamento · ⬜ pendente
 
@@ -82,6 +83,10 @@ mindmap
         Presença
         Reconhecimento facial local
         Privacidade
+      Obsidian como segundo cérebro
+        Índice das notas
+        Grafo no HUD
+      Trocar cérebro e voz por comando
 ```
 
 ---

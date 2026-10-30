@@ -183,11 +183,11 @@
   {
    "id": "d8",
    "type": "text",
-   "text": "- Câmera: presença\n- Reconhecimento facial local\n- Privacidade primeiro",
+   "text": "- Câmera: presença\n- Reconhecimento facial local\n- Privacidade primeiro\n- Obsidian como segundo cérebro (índice + grafo no HUD)\n- Trocar cérebro e voz por comando",
    "x": -697,
    "y": -728,
    "width": 340,
-   "height": 200,
+   "height": 260,
    "color": "6"
   },
   {
@@ -306,6 +306,15 @@
    "y": -500,
    "width": 420,
    "height": 500
+  },
+  {
+   "id": "ref01",
+   "type": "file",
+   "file": "docs/referencias/video-01-assistente-local.md",
+   "x": -1500,
+   "y": 200,
+   "width": 420,
+   "height": 400
   }
  ],
  "edges": [
@@ -473,6 +482,12 @@
    "fromNode": "root",
    "toNode": "map",
    "label": "diagramas"
+  },
+  {
+   "id": "lref01",
+   "fromNode": "root",
+   "toNode": "ref01",
+   "label": "referência"
   }
  ]
 }

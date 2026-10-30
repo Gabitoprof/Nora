@@ -179,6 +179,19 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
   - comando de voz ou botão para desligar a câmera;
   - cadastro de visitas só com consentimento.
 
+### 8.2 Obsidian como segundo cérebro
+*Origem: [Referência 01](docs/referencias/video-01-assistente-local.md).*
+
+- O assistente lê o **vault do Obsidian** (notas `.md`) como base de conhecimento, indexada no SQLite + sqlite-vec. Encaixe: **Etapa 2** (índice).
+- O HUD desenha o **grafo das notas** e destaca as que foram usadas na resposta. Encaixe: **Etapa 4**.
+- Só pastas liberadas no config são lidas. Notas pessoais continuam fora do GitHub.
+
+### 8.3 Troca de cérebro e de voz por comando
+*Origem: [Referência 01](docs/referencias/video-01-assistente-local.md).*
+
+- "Use o cérebro local", "troque para o Gemma", "mude sua voz para…": força o roteador para um modelo ou uma voz específica. Encaixe: **Etapa 3**.
+- O HUD mostra sempre o **modelo e a voz ativos** e a **origem** de cada resposta (qual ferramenta ou nota foi usada).
+
 *(Adicionar novas ideias aqui.)*
 
 ---
