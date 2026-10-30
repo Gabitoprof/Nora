@@ -32,10 +32,43 @@ class CerebroLocal:
     timeout: float = 120.0
     medidas: Medidas = field(default_factory=Medidas)
 
+    def _pedido(self, corpo: dict) -> urllib.request.Request:
+        return urllib.request.Request(
+            f"{self.config.ollama_host.rstrip('/')}/api/chat",
+            data=json.dumps(corpo).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+
+    def aquecer(self) -> float:
+        """Carrega o modelo na memória sem gerar nada; devolve quanto tempo levou."""
+        modelo = self.config.modelo_local
+        inicio = time.perf_counter()
+        pedido = self._pedido(
+            {
+                "model": modelo.modelo,
+                "messages": [],
+                "stream": False,
+                "keep_alive": modelo.keep_alive,
+            }
+        )
+        try:
+            with urllib.request.urlopen(pedido, timeout=self.timeout) as resposta:
+                resposta.read()
+        except urllib.error.HTTPError as erro:
+            detalhe = erro.read().decode("utf-8", "replace").strip()
+            raise CerebroIndisponivel(
+                f"O Ollama recusou o pedido ({erro.code}): {detalhe}"
+            ) from erro
+        except (urllib.error.URLError, OSError) as erro:
+            raise CerebroIndisponivel(
+                f"Não consegui falar com o Ollama em {self.config.ollama_host}. Ele está aberto?"
+            ) from erro
+        return time.perf_counter() - inicio
+
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
         """Envia a conversa ao Ollama e devolve a resposta aos pedaços, conforme é gerada."""
         modelo = self.config.modelo_local
-        corpo = json.dumps(
+        pedido = self._pedido(
             {
                 "model": modelo.modelo,
                 "messages": mensagens,
@@ -43,11 +76,6 @@ class CerebroLocal:
                 "think": modelo.pensar,
                 "keep_alive": modelo.keep_alive,
             }
-        ).encode("utf-8")
-        pedido = urllib.request.Request(
-            f"{self.config.ollama_host.rstrip('/')}/api/chat",
-            data=corpo,
-            headers={"Content-Type": "application/json"},
         )
         inicio = time.perf_counter()
         self.medidas = Medidas()
