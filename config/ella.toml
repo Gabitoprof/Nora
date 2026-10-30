@@ -19,7 +19,7 @@ humor = 0.4
 # 0.0 = bem informal, 1.0 = bem formal.
 formalidade = 0.3
 # Respostas curtas por padrão; detalha quando pedirem.
-respostas_curtas = true
+respostas_curtas = false
 
 [voz]
 # Motor de fala (TTS). Opções previstas: "piper" (local), "elevenlabs", "cartesia".
