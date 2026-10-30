@@ -109,7 +109,9 @@ def test_se_o_mme_falha_usa_o_mesmo_microfone_no_wasapi_em_estereo(monkeypatch):
     falso = SounddeviceFalso(funciona=lambda indice, canais: indice == 1 and canais == 2)
     monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
     wav = audio.gravar_ate_enter(lambda _: "")
-    assert falso.tentativas == [(0, 1), (0, 2), (1, 1), (1, 2)]
+    assert falso.tentativas[:2] == [(0, 1), (0, 2)]  # o padrão (MME) primeiro, mono e estéreo
+    assert falso.tentativas[-2:] == [(1, 1), (1, 2)]  # depois o WASAPI, que abre em estéreo
+    assert {indice for indice, _ in falso.tentativas} == {0, 1}
     assert falso.aberto_com["samplerate"] == 48_000
     amostras = array("h")
     amostras.frombytes(audio.ler_wav(wav)[0])
@@ -117,9 +119,30 @@ def test_se_o_mme_falha_usa_o_mesmo_microfone_no_wasapi_em_estereo(monkeypatch):
     assert set(amostras) == {7}  # ficou só o canal esquerdo
 
 
+def test_microfone_bluetooth_so_abre_em_16k(monkeypatch):
+    falso = SounddeviceFalso(funciona=lambda indice, canais: True)
+    original = falso.RawInputStream
+
+    def so_16k(**opcoes):
+        if opcoes["samplerate"] != 16_000:
+            raise falso.PortAudioError("MME error 11")
+        return original(**opcoes)
+
+    falso.RawInputStream = so_16k
+    monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
+    wav = audio.gravar_ate_enter(lambda _: "")
+    assert falso.aberto_com["samplerate"] == 16_000
+    assert audio.ler_wav(wav)[1] == 16_000
+
+
 def test_erro_do_microfone_vira_mensagem_clara(monkeypatch):
     falso = SounddeviceFalso(funciona=lambda indice, canais: False)
     monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
-    with pytest.raises(RuntimeError, match="Privacidade e segurança > Microfone"):
+    with pytest.raises(RuntimeError, match="Privacidade e segurança > Microfone") as erro:
         audio.gravar_ate_enter(lambda _: "")
+    assert "Tentativas:" in str(erro.value)
+    assert "1 Microfone (fifine Microphone) [Windows WASAPI], taxas 48000, 44100, 16000" in str(
+        erro.value
+    )
+    assert "padrão Microfone (fifine Microphone) [MME]" in str(erro.value)
     assert {indice for indice, _ in falso.tentativas} == {0, 1}  # não tentou a câmera

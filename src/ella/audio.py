@@ -108,30 +108,47 @@ def _candidatos_de_microfone(sd, microfone: int | str | None) -> list[int | str 
     return candidatos
 
 
+TAXAS_ALTERNATIVAS = (48_000, 44_100, 16_000, 32_000, 22_050, 8_000)
+
+
 def _abrir_microfone(sd, microfone: int | str | None, callback):
-    """Abre o microfone na taxa que ele aceita; se falhar, tenta o mesmo microfone por outra
-    API de áudio e em estéreo. Devolve (fluxo ainda parado, taxa, canais)."""
+    """Abre o microfone; se falhar, tenta outras taxas, estéreo e o mesmo microfone pelas outras
+    APIs de áudio do Windows. Devolve (fluxo ainda parado, taxa, canais).
+
+    Fones Bluetooth são o caso típico: o Windows anuncia 44,1 kHz, mas o microfone deles só
+    aceita 16 ou 8 kHz quando está em uso.
+    """
     erros: list[str] = []
     for candidato in _candidatos_de_microfone(sd, microfone):
         try:
             info = sd.query_devices(candidato, "input")
+            api = sd.query_hostapis(info["hostapi"])["name"] if "hostapi" in info else "?"
         except (sd.PortAudioError, ValueError) as erro:
-            erros.append(str(erro))
+            erros.append(f"{candidato}: {erro}")
             continue
-        taxa = int(info["default_samplerate"])
-        for canais in dict.fromkeys((1, min(2, int(info["max_input_channels"]) or 1))):
-            try:
-                fluxo = sd.RawInputStream(
-                    device=candidato,
-                    samplerate=taxa,
-                    channels=canais,
-                    dtype="int16",
-                    callback=callback,
-                )
-                return fluxo, taxa, canais
-            except (sd.PortAudioError, ValueError) as erro:
-                erros.append(str(erro))
-    raise RuntimeError(f"Não consegui abrir o microfone ({erros[0] if erros else '?'}). {_DICA}")
+        taxas = dict.fromkeys((int(info["default_samplerate"]), *TAXAS_ALTERNATIVAS))
+        canais_possiveis = dict.fromkeys((1, min(2, int(info["max_input_channels"]) or 1)))
+        ultimo = ""
+        for taxa in taxas:
+            for canais in canais_possiveis:
+                try:
+                    fluxo = sd.RawInputStream(
+                        device=candidato,
+                        samplerate=taxa,
+                        channels=canais,
+                        dtype="int16",
+                        callback=callback,
+                    )
+                    return fluxo, taxa, canais
+                except (sd.PortAudioError, ValueError) as erro:
+                    ultimo = str(erro)
+        rotulo = "padrão" if candidato is None else candidato
+        erros.append(
+            f"{rotulo} {info.get('name', '')} [{api}], taxas {', '.join(map(str, taxas))} Hz: "
+            f"{ultimo}"
+        )
+    tentativas = "\n    ".join(erros) or "?"
+    raise RuntimeError(f"Não consegui abrir o microfone. {_DICA}\n  Tentativas:\n    {tentativas}")
 
 
 def _para_mono(amostras: bytes, canais: int) -> bytes:
