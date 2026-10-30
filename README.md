@@ -2,7 +2,7 @@
 
 Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principalmente no seu computador**, lembra do que vocês conversaram e evolui com o uso. Inspirado nos assistentes da ficção, com nome, voz e personalidade próprios e configuráveis.
 
-> **Status:** `v0.0.0`, fundação. Ainda não há voz nem IA: a base do projeto e a config estão prontas. Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
+> **Status:** construindo a `v0.1.0`. Já dá para conversar **por texto** com o modelo local; a voz vem a seguir. Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
 
 ## Requisitos
 
@@ -28,11 +28,21 @@ pip install -e ".[dev]"
 ella
 ```
 
-Deve aparecer `Olá! Eu sou a Ella, versão 0.0.0.` Para ver a config carregada e checar o ambiente (Ollama, chave da API):
+Deve aparecer a saudação com a versão. Para ver a config carregada e checar o ambiente (Ollama, chave da API):
 
 ```bash
 ella --verificar
 ```
+
+### Conversar (por texto, por enquanto)
+
+Com o [Ollama](https://ollama.com) aberto e o modelo baixado (`ollama pull qwen3.5:9b`):
+
+```bash
+ella conversar
+```
+
+Digite `sair` para encerrar e `/limpar` para começar do zero. Com `--medir`, mostra o tempo de cada resposta. As conversas ficam em `data/historico/`, só na sua máquina.
 
 ## Personalizando
 

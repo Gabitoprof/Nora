@@ -1,4 +1,5 @@
-"""Linha de comando da Ella: `ella` (olá) e `ella --verificar` (diagnóstico)."""
+"""Linha de comando da Ella: `ella` (olá), `ella --verificar` (diagnóstico) e
+`ella conversar` (conversa digitada)."""
 
 from __future__ import annotations
 
@@ -62,6 +63,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--verificar", action="store_true", help="mostra a config carregada e checa o ambiente"
     )
+    comandos = parser.add_subparsers(dest="comando")
+    conversar_cmd = comandos.add_parser("conversar", help="conversa digitada com o modelo local")
+    conversar_cmd.add_argument(
+        "--medir", action="store_true", help="mostra o tempo de cada resposta"
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -69,6 +75,11 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as erro:
         print(f"Erro na config: {erro}", file=sys.stderr)
         return 1
+
+    if args.comando == "conversar":
+        from ella.conversa import conversar
+
+        return conversar(config, medir=args.medir)
 
     print(saudacao(config))
     if args.verificar:
