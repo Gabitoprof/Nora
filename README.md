@@ -6,7 +6,7 @@ Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principa
 
 ## Requisitos
 
-- Python 3.11 ou mais novo
+- Python 3.11 a 3.13 (**recomendado: 3.13**). O núcleo roda em versões mais novas, mas a voz (Piper/onnxruntime) ainda não tem pacotes para o Python 3.15.
 - [Ollama](https://ollama.com) para o modelo local (a partir da v0.1.0)
 - Windows ou Linux. Desenvolvido numa GPU AMD (Vulkan); CUDA e CPU também estão nos planos.
 
