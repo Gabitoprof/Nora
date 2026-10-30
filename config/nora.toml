@@ -91,6 +91,18 @@ pausar_microfone = true
 microfone = ""
 alto_falante = ""
 
+[memoria]
+# Memória entre conversas (v0.2.0), guardada em <dados>/memoria.db, só na sua máquina.
+ativa = true
+# Modelo do Ollama que transforma texto em vetor de significado (multilíngue, MIT).
+# Baixe uma vez com: ollama pull bge-m3
+modelo_embeddings = "bge-m3"
+# Depois de cada resposta, extrair fatos novos sobre você (em segundo plano).
+curadoria = true
+# Quantos fatos parecidos com a pergunta ela lê antes de responder, e quão parecidos (0 a 1).
+fatos_por_pergunta = 5
+similaridade_minima = 0.45
+
 [caminhos]
 # Banco de memória, histórico e outros dados pessoais. Fora do Git.
 dados = "data"

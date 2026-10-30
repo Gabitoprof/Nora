@@ -18,6 +18,8 @@ dev = ["pytest>=8", "ruff>=0.6"]
 voz = ["sounddevice>=0.5", "numpy>=1.24", "onnxruntime>=1.16"]
 # Voz local Kokoro (servidor separado; usa phonemizer/espeak-ng, GPL-3.0).
 kokoro = ["kokoro-onnx>=0.4"]
+# Busca vetorial rápida da memória (sem ela, a busca é feita em Python puro, mais lenta).
+memoria = ["sqlite-vec>=0.1.6"]
 
 [project.scripts]
 nora = "nora.cli:main"

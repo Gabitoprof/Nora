@@ -82,6 +82,15 @@ class Escuta:
 
 
 @dataclass(frozen=True)
+class Memoria:
+    ativa: bool
+    modelo_embeddings: str
+    curadoria: bool
+    fatos_por_pergunta: int
+    similaridade_minima: float
+
+
+@dataclass(frozen=True)
 class Audio:
     microfone: str
     alto_falante: str
@@ -112,6 +121,7 @@ class Config:
     voz: Voz
     audio: Audio
     escuta: Escuta
+    memoria: Memoria
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
     pasta_dados: Path
@@ -263,6 +273,17 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             silencio_ms=_campo(dados, "escuta", "silencio_ms", int),
             janela_s=_campo(dados, "escuta", "janela_s", float),
             pausar_microfone=_campo(dados, "escuta", "pausar_microfone", bool),
+        ),
+        memoria=Memoria(
+            ativa=_campo(dados, "memoria", "ativa", bool),
+            modelo_embeddings=_campo(dados, "memoria", "modelo_embeddings", str),
+            curadoria=_campo(dados, "memoria", "curadoria", bool),
+            fatos_por_pergunta=_campo(dados, "memoria", "fatos_por_pergunta", int),
+            similaridade_minima=_entre_0_e_1(
+                "memoria",
+                "similaridade_minima",
+                _campo(dados, "memoria", "similaridade_minima", float),
+            ),
         ),
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),

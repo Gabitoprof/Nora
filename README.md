@@ -58,6 +58,10 @@ Ou mãos livres, começando a frase com "Nora":
 nora ouvir --medir
 ```
 
+### Memória
+
+A Nora lembra de você entre conversas (fatos, preferências, datas), tudo em `data/memoria.db`, só na sua máquina. Para ligar: `ollama pull bge-m3` e `pip install -e ".[memoria]"`. Ver e editar: `nora memoria listar`. Detalhes em [docs/MEMORIA.md](docs/MEMORIA.md).
+
 ## Personalizando
 
 - **`config/nora.toml`**: config padrão (nome, persona, voz, modelos). Não coloque nada pessoal aqui.
@@ -92,6 +96,7 @@ nora ouvir --medir
 - [Documento completo do projeto](PROJETO_ASSISTENTE_IA.md)
 - [Teste de GPU](docs/TESTE_GPU.md)
 - [Conversa por voz](docs/VOZ.md)
+- [Memória](docs/MEMORIA.md)
 - [Usando no Obsidian](docs/OBSIDIAN.md)
 
 ## Licença

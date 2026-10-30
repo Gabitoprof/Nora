@@ -5,6 +5,19 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
+Versão em desenvolvimento: `0.2.0.dev0`.
+
+### Adicionado
+
+- **Memória entre conversas** (v0.2.0): depois de cada resposta, em segundo plano, o modelo local anota fatos duradouros sobre a pessoa; antes de responder, a Nora busca os fatos parecidos com a pergunta e os lê junto. Fica em `data/memoria.db` (SQLite), com busca por significado (embeddings `bge-m3` pelo Ollama, índice `sqlite-vec` opcional). Fatos quase iguais são juntados. Guia em `docs/MEMORIA.md`.
+- `nora memoria listar | buscar | lembrar | esquecer | importar`. O `importar` tira fatos das conversas antigas de `data/historico/` e continua de onde parou.
+- Config `[memoria]` (`ativa`, `modelo_embeddings`, `curadoria`, `fatos_por_pergunta`, `similaridade_minima`) e extra de instalação `.[memoria]`.
+- `nora --verificar` confere o modelo de embeddings; `--medir` mostra quantos fatos foram usados em cada resposta.
+
+### Corrigido
+
+- CHANGELOG da 0.1.0: a ativação aceita "Nora", "Norah" e "Nóra" (não "Ela").
+
 ## [0.1.0] - 2026-10-30
 
 **Conversa por voz.** A Nora acorda com o nome, ouve, pensa no modelo local (Qwen 3.5 9B na RX 9060 XT) e responde falando, frase por frase. Critério da etapa atingido: no teste com fone Bluetooth e voz do ElevenLabs, a voz começou entre 1,4 e 2,4 s depois do fim da fala (transcrição ~0,7 s no processador; primeira frase ~0,9 a 1,5 s), sem contar a pausa de 0,7 s que encerra a fala.
@@ -32,7 +45,7 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 - Voz configurável em `[voz] motor`: **`kokoro`** (novo padrão, voz feminina pt-BR `pf_dora`, local), `piper` ou **`elevenlabs`** (nuvem, chave em `ELEVENLABS_API_KEY`, voz em `[voz.elevenlabs] voz_id`).
 - `nora servidor-kokoro`: servidor de voz local com o Kokoro-82M, no mesmo formato do Piper (`POST /synthesize`). Extra de instalação `.[kokoro]`.
 - Scripts de voz instalam o Kokoro e iniciam a voz escolhida (`-Voz kokoro|piper|nenhuma`).
-- `nora ouvir`: conversa mãos livres (parte 3 da v0.1.0). O Silero VAD (MIT, baixado do PyPI na primeira vez) detecta começo e fim da fala; a fala vira pergunta quando começa com a palavra de ativação ("Nora", aceitando "Ela"); depois de responder, dá para continuar por `janela_s` segundos sem dizer o nome; "tchau" encerra. Config `[escuta]` (`limiar`, `silencio_ms`, `janela_s`).
+- `nora ouvir`: conversa mãos livres (parte 3 da v0.1.0). O Silero VAD (MIT, baixado do PyPI na primeira vez) detecta começo e fim da fala; a fala vira pergunta quando começa com a palavra de ativação ("Nora", aceitando "Norah" e "Nóra"); depois de responder, dá para continuar por `janela_s` segundos sem dizer o nome; "tchau" encerra. Config `[escuta]` (`limiar`, `silencio_ms`, `janela_s`).
 - Pronúncia do nome: `[assistente] pronuncia` muda só como a voz fala o nome (a tela continua mostrando o nome).
 - O ouvido envia ao Whisper uma dica com o nome da assistente ("Conversa com a assistente Nora."), para ele escrever "Nora" do jeito certo.
 - `nora ouvir --gravar-falas` salva cada fala ouvida em `data/falas/`, para diagnóstico. O detector guarda 0,5 s antes do começo da fala, para não cortar a primeira sílaba.

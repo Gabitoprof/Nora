@@ -39,6 +39,11 @@ def descrever_voz(config: Config) -> str:
     return texto + (f", reserva {voz.reserva}" if voz.reserva else "")
 
 
+def _instalado(modelo: str, instalados: list[str]) -> bool:
+    """O Ollama lista "bge-m3:latest" para quem pediu "bge-m3"."""
+    return modelo in instalados or f"{modelo}:latest" in instalados
+
+
 def verificar(config: Config) -> list[str]:
     persona = config.persona
     chave = "definida" if config.tem_chave_anthropic else "não definida (só precisa na v0.3.0)"
@@ -62,10 +67,19 @@ def verificar(config: Config) -> list[str]:
     instalados = modelos_ollama(config.ollama_host)
     if instalados is None:
         linhas.append(f"  Ollama                  não respondeu em {config.ollama_host}")
-    elif modelo in instalados:
+    elif _instalado(modelo, instalados):
         linhas.append(f"  Ollama                  ok, {modelo} instalado")
     else:
         linhas.append(f"  Ollama                  ok, mas falta o modelo: ollama pull {modelo}")
+    if config.memoria.ativa:
+        embeddings = config.memoria.modelo_embeddings
+        if instalados is None:
+            estado = "depende do Ollama"
+        elif _instalado(embeddings, instalados):
+            estado = f"ok, {embeddings} instalado, em {config.pasta_dados / 'memoria.db'}"
+        else:
+            estado = f"falta o modelo: ollama pull {embeddings}"
+        linhas.append(f"  {'Memória':<24}{estado}")
     servicos = [("whisper-server", config.ouvido.url)]
     for motor, papel in [(config.voz.motor, ""), (config.voz.reserva, " (reserva)")]:
         if motor == "kokoro":
@@ -117,6 +131,46 @@ def testar_audio(config: Config, segundos: float, entrada=input) -> int:
     return 0
 
 
+def comando_memoria(config: Config, args) -> int:
+    from nora.memoria import Memoria, abrir_memoria
+    from nora.servico import ServicoIndisponivel
+
+    memoria: Memoria | None = abrir_memoria(config)
+    if memoria is None:
+        print("A memória está desligada ([memoria] ativa = false).", file=sys.stderr)
+        return 1
+    try:
+        if args.acao == "listar":
+            fatos = memoria.listar()
+            print(f"{len(fatos)} fatos em {memoria.caminho}:")
+            for fato in fatos:
+                print(f"  {fato.id:>4}  {fato.texto}  ({fato.atualizado[:10]})")
+        elif args.acao == "buscar":
+            for fato in memoria.buscar(" ".join(args.texto), k=10):
+                print(f"  {fato.id:>4}  {fato.similaridade:.2f}  {fato.texto}")
+        elif args.acao == "lembrar":
+            fato_id, novo = memoria.lembrar(" ".join(args.texto), origem="manual")
+            print(f"{'Guardado' if novo else 'Atualizado'} (nº {fato_id}).")
+        elif args.acao == "esquecer":
+            if not memoria.esquecer(args.id):
+                print(f"Não existe fato nº {args.id}.", file=sys.stderr)
+                return 1
+            print(f"Esquecido (nº {args.id}).")
+        elif args.acao == "importar":
+            from nora.importar import importar_historico
+
+            return importar_historico(config, memoria)
+    except ServicoIndisponivel as erro:
+        modelo = config.memoria.modelo_embeddings
+        print(
+            f"[erro] {erro}\nA memória usa o Ollama: rode 'ollama pull {modelo}'.", file=sys.stderr
+        )
+        return 1
+    finally:
+        memoria.fechar()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nora", description="Assistente de IA pessoal por voz.")
     parser.add_argument("--versao", action="version", version=f"nora {__version__}")
@@ -148,6 +202,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="salva cada fala ouvida em data/falas (para diagnóstico)",
     )
+    memoria_cmd = comandos.add_parser("memoria", help="ver e editar o que a Nora lembra de você")
+    acoes = memoria_cmd.add_subparsers(dest="acao", required=True)
+    acoes.add_parser("listar", help="todos os fatos guardados")
+    buscar_cmd = acoes.add_parser("buscar", help="fatos parecidos com um texto")
+    buscar_cmd.add_argument("texto", nargs="+")
+    lembrar_cmd = acoes.add_parser("lembrar", help="guardar um fato à mão")
+    lembrar_cmd.add_argument("texto", nargs="+")
+    esquecer_cmd = acoes.add_parser("esquecer", help="apagar um fato pelo número")
+    esquecer_cmd.add_argument("id", type=int)
+    acoes.add_parser("importar", help="tirar fatos das conversas antigas (data/historico)")
     kokoro_cmd = comandos.add_parser(
         "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"
     )
@@ -166,6 +230,9 @@ def main(argv: list[str] | None = None) -> int:
         from nora.conversa import conversar
 
         return conversar(config, medir=args.medir)
+
+    if args.comando == "memoria":
+        return comando_memoria(config, args)
 
     if args.comando == "servidor-kokoro":
         from pathlib import Path

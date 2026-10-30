@@ -18,9 +18,8 @@ from typing import TextIO
 from nora import audio
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
-from nora.conversa import COMANDOS_SAIR, Conversa
+from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
 from nora.frases import SeparadorDeFrases
-from nora.historico import Historico
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel
 from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, criar_voz
@@ -128,11 +127,14 @@ def responder_falando(
     if getattr(voz, "aviso", ""):
         escrever(f"[voz reserva] {voz.aviso}")
         voz.aviso = ""
+    for aviso in conversa.avisos_pendentes():
+        escrever(f"[memória] {aviso}")
     if medir:
         escrever(
             f"  [transcrição {tempos.transcricao:.2f} s, "
             f"primeira frase {tempos.primeira_frase:.2f} s, "
-            f"começou a falar em {tempos.comeco_da_voz:.2f} s]"
+            f"começou a falar em {tempos.comeco_da_voz:.2f} s, "
+            f"lembrou {len(conversa.lembrancas)} fatos]"
         )
     return tempos
 
@@ -149,7 +151,7 @@ def conversar_por_voz(
     tocar: Callable[[bytes], None] | None = None,
 ) -> int:
     saida = saida or sys.stdout
-    conversa = Conversa(config, cerebro or CerebroLocal(config), Historico(config.pasta_dados))
+    conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
     voz = voz or criar_voz(config)
     microfone = audio.dispositivo(config.audio.microfone)
@@ -210,5 +212,9 @@ def conversar_por_voz(
             continue
 
         responder_falando(conversa, voz, tocar, texto, inicio, transcricao, escrever, medir)
+    if conversa.memoria is not None:
+        escrever("(guardando o que aprendi nesta conversa...)")
+    for aviso in conversa.encerrar():
+        escrever(f"[memória] {aviso}")
     escrever(f"Até mais! (conversa salva em {conversa.historico.arquivo})")
     return 0

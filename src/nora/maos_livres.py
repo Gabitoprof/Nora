@@ -14,9 +14,8 @@ from nora import audio
 from nora.ativacao import e_despedida, extrair_pedido
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import RAIZ, Config
-from nora.conversa import Conversa
+from nora.conversa import nova_conversa
 from nora.conversa_voz import responder_falando
-from nora.historico import Historico
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel
 from nora.vad import DetectorDeFala, SileroVAD, baixar_modelo, em_quadros, falas
@@ -54,7 +53,7 @@ def conversar_maos_livres(
     relogio: Callable[[], float] = time.monotonic,
 ) -> int:
     saida = saida or sys.stdout
-    conversa = Conversa(config, cerebro or CerebroLocal(config), Historico(config.pasta_dados))
+    conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
     voz = voz or criar_voz(config)
     alto_falante = audio.dispositivo(config.audio.alto_falante)
@@ -143,5 +142,9 @@ def conversar_maos_livres(
     finally:
         if microfone is not None:
             microfone.__exit__(None, None, None)
+    if conversa.memoria is not None:
+        escrever("(guardando o que aprendi nesta conversa...)")
+    for aviso in conversa.encerrar():
+        escrever(f"[memória] {aviso}")
     escrever(f"Até mais! (conversa salva em {conversa.historico.arquivo})")
     return 0
