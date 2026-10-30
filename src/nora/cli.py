@@ -182,6 +182,9 @@ def main(argv: list[str] | None = None) -> int:
     conversar_cmd.add_argument(
         "--medir", action="store_true", help="mostra o tempo de cada resposta"
     )
+    conversar_cmd.add_argument(
+        "--voz", action="store_true", help="a resposta também sai falada (sem usar microfone)"
+    )
     falar_cmd = comandos.add_parser("falar", help="conversa por voz (aperte Enter para falar)")
     falar_cmd.add_argument("--medir", action="store_true", help="mostra o tempo de cada etapa")
     audio_cmd = comandos.add_parser("audio", help="lista microfones e alto-falantes e faz um teste")
@@ -227,6 +230,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.comando == "conversar":
+        if args.voz:
+            from nora.conversa_voz import conversar_por_voz
+
+            return conversar_por_voz(config, medir=args.medir, so_teclado=True)
         from nora.conversa import conversar
 
         return conversar(config, medir=args.medir)

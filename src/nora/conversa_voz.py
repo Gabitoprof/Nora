@@ -149,7 +149,10 @@ def conversar_por_voz(
     voz: VozHTTP | VozElevenLabs | VozComReserva | None = None,
     gravar: Callable[[Callable[[str], str]], bytes] | None = None,
     tocar: Callable[[bytes], None] | None = None,
+    so_teclado: bool = False,
 ) -> int:
+    """Conversa com resposta falada. Por padrão, Enter grava a fala e texto digitado vale como
+    pergunta; com `so_teclado`, não usa microfone: a pessoa digita e a Nora responde falando."""
     saida = saida or sys.stdout
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
@@ -169,14 +172,17 @@ def conversar_por_voz(
         escrever(f" pronto em {conversa.cerebro.aquecer():.1f} s.")
     except CerebroIndisponivel as erro:
         escrever(f"\n[erro] {erro}")
-    escrever(
-        f"Conversa por voz com {nome}. Aperte Enter, fale e aperte Enter de novo. "
-        "Também dá para digitar. 'sair' encerra."
-    )
+    if so_teclado:
+        escrever(f"Conversa com {nome}: digite e ela responde falando. 'sair' encerra.")
+    else:
+        escrever(
+            f"Conversa por voz com {nome}. Aperte Enter, fale e aperte Enter de novo. "
+            "Também dá para digitar. 'sair' encerra."
+        )
 
     while True:
         try:
-            comando = entrada("\n[Enter para falar] ").strip()
+            comando = entrada("\nVocê: " if so_teclado else "\n[Enter para falar] ").strip()
         except (EOFError, KeyboardInterrupt):
             escrever()
             break
@@ -185,6 +191,8 @@ def conversar_por_voz(
         if comando == "/limpar":
             conversa.limpar()
             escrever("(conversa reiniciada)")
+            continue
+        if so_teclado and not comando:
             continue
 
         try:

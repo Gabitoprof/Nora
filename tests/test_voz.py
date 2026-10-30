@@ -318,3 +318,28 @@ def test_gravacao_vazia_e_ignorada(criar_raiz):
         tocar=lambda wav: None,
     )
     assert "(não ouvi nada)" in saida.getvalue()
+
+
+def test_so_teclado_responde_falando_sem_microfone(criar_raiz):
+    def nao_grave(_):
+        raise AssertionError("não deveria usar o microfone")
+
+    tocados = []
+    with (
+        OllamaFalso(["Oi! Tudo bem?"]) as ollama,
+        ServicoFalso(lambda c, cab, corpo: (200, "audio/wav", corpo)) as piper,
+    ):
+        config = config_com(criar_raiz, ollama.host, piper=piper.url)
+        comandos = iter(["", "oi", "sair"])
+        saida = io.StringIO()
+        conversar_por_voz(
+            config,
+            entrada=lambda _: next(comandos),
+            saida=saida,
+            gravar=nao_grave,
+            tocar=tocados.append,
+            so_teclado=True,
+        )
+    assert "digite e ela responde falando" in saida.getvalue()
+    # "Oi!" é curto demais para ir sozinho e segue junto com a frase seguinte
+    assert [json.loads(a)["text"] for a in tocados] == ["Oi! Tudo bem?"]

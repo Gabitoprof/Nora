@@ -133,6 +133,7 @@ def test_conversa_maos_livres(criar_raiz):
             tocar=falado.append,
             fontes=(falas_falsas, lambda: recomecos.append(1), lambda: pausas.append(1)),
             relogio=lambda: next(instantes),
+            teclado=False,
         )
     texto = saida.getvalue()
     assert "(ignorado: Música alta tocando)" in texto
@@ -173,5 +174,50 @@ def test_sem_pausar_o_microfone(criar_raiz):
                 saida=io.StringIO(),
                 tocar=lambda wav: None,
                 fontes=([b"\x00\x00" * 8000], lambda: None, lambda: pausas.append(1)),
+                teclado=False,
             )
     assert pausas == []
+
+
+def test_digitar_enquanto_ouve(criar_raiz):
+    """Quem tem dificuldade na fala pode digitar; a resposta sai falada e não precisa do nome."""
+    import threading
+    import time
+
+    digitado = threading.Event()
+    linhas = iter(["que horas são?", "Nora, e amanhã?", "sair"])
+
+    def entrada(_):
+        try:
+            return next(linhas)
+        finally:
+            digitado.set()
+
+    def microfone_parado():
+        # sem ninguém falando: só "sinais de vida", até o teclado pedir para sair
+        for _ in range(200):
+            yield None
+            time.sleep(0.01)
+
+    falado = []
+    with (
+        OllamaFalso(["Agora são três horas."]) as ollama,
+        ServicoFalso(lambda c, cab, corpo: (200, "audio/wav", corpo)) as voz,
+    ):
+        local = f'[voz]\nmotor = "piper"\nreserva = ""\n[voz.piper]\nurl = "{voz.url}"\n'
+        config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.host})
+        saida = io.StringIO()
+        conversar_maos_livres(
+            config,
+            saida=saida,
+            tocar=falado.append,
+            fontes=(microfone_parado(), lambda: None, lambda: None),
+            entrada=entrada,
+        )
+    texto = saida.getvalue()
+    assert "Também dá para digitar" in texto
+    assert "Você (digitado): que horas são?" in texto
+    assert "Você (digitado): Nora, e amanhã?" in texto
+    perguntas = [p["messages"][-1]["content"] for p in ollama.pedidos if p["messages"]]
+    assert perguntas == ["que horas são?", "e amanhã?"]  # o nome digitado sai do pedido
+    assert len(falado) == 2  # as duas respostas foram faladas

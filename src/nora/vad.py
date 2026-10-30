@@ -133,19 +133,27 @@ class DetectorDeFala:
         return fala if voz >= self._minimo else None
 
 
-def em_quadros(blocos: Iterable[bytes]) -> Iterator[bytes]:
-    """Reagrupa blocos de PCM de qualquer tamanho em quadros de 512 amostras."""
+def em_quadros(blocos: Iterable[bytes]) -> Iterator[bytes | None]:
+    """Reagrupa blocos de PCM de qualquer tamanho em quadros de 512 amostras. Um bloco vazio
+    (o microfone sem áudio novo) vira None, para quem consome poder fazer outras coisas."""
     sobra = b""
     for bloco in blocos:
+        if not bloco:
+            yield None
+            continue
         sobra += bloco
         while len(sobra) >= BYTES_POR_QUADRO:
             yield sobra[:BYTES_POR_QUADRO]
             sobra = sobra[BYTES_POR_QUADRO:]
 
 
-def falas(quadros: Iterable[bytes], vad, detector: DetectorDeFala) -> Iterator[bytes]:
-    """Passa cada quadro pelo VAD e pelo detector; devolve as falas completas."""
+def falas(quadros: Iterable[bytes | None], vad, detector: DetectorDeFala) -> Iterator[bytes | None]:
+    """Passa cada quadro pelo VAD e pelo detector; devolve as falas completas (e None quando o
+    microfone está sem áudio novo)."""
     for quadro in quadros:
+        if quadro is None:
+            yield None
+            continue
         fala = detector.alimentar(quadro, vad.probabilidade(quadro))
         if fala:
             yield fala

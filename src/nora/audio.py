@@ -246,6 +246,7 @@ class Microfone:
                 # Espera em pedaços curtos: no Windows, uma espera sem prazo ignora o Ctrl+C.
                 bloco = self._fila.get(timeout=0.2)
             except queue.Empty:
+                yield b""  # sinal de vida: quem consome pode olhar outras coisas (o teclado)
                 continue
             yield reamostrar(_para_mono(bloco, self._canais), self._taxa)
 

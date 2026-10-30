@@ -89,6 +89,19 @@ Com `--medir`, cada resposta mostra três tempos, contados a partir do momento e
 | primeira frase | a primeira frase da resposta ficar pronta | |
 | **começou a falar** | o som da Nora começar a sair | **< 2 s** (MVP), < 1 s (final) |
 
+## Digitar em vez de falar
+
+Para quem tem dificuldade na fala, ou em lugares onde não dá para falar, a Nora aceita **texto digitado** e responde **falando**:
+
+| Comando | Você | Ela |
+|---|---|---|
+| `nora conversar --voz` | só digita (não usa microfone) | responde falando e escrevendo |
+| `nora ouvir` | fala "Nora, ..." **ou** digita a qualquer momento | responde falando |
+| `nora falar` | aperta Enter e fala, **ou** digita a pergunta | responde falando |
+| `nora conversar` | digita | responde só escrevendo |
+
+No `nora ouvir`, o que você digita não precisa do nome dela. Digitar `sair` encerra.
+
 ## Mãos livres (`nora ouvir`)
 
 Em vez de apertar Enter, a Nora fica ouvindo o tempo todo e responde quando a frase **começa com o nome dela**:

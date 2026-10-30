@@ -52,7 +52,9 @@ Precisa do ouvido (whisper.cpp) e de uma voz (Kokoro local por padrão, Piper ou
 nora falar --medir
 ```
 
-Ou mãos livres, começando a frase com "Nora":
+Para digitar e ouvir a resposta falada (sem microfone): `nora conversar --voz`.
+
+Ou mãos livres, começando a frase com "Nora" (também dá para digitar enquanto ela ouve):
 
 ```bash
 nora ouvir --medir
