@@ -49,6 +49,12 @@ class Voz:
 
 
 @dataclass(frozen=True)
+class Audio:
+    microfone: str
+    alto_falante: str
+
+
+@dataclass(frozen=True)
 class ModeloLocal:
     provedor: str
     modelo: str
@@ -70,6 +76,7 @@ class Config:
     persona: Persona
     ouvido: Ouvido
     voz: Voz
+    audio: Audio
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
     pasta_dados: Path
@@ -178,6 +185,10 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             motor=_campo(dados, "voz", "motor", str),
             url=_campo(dados, "voz", "url", str),
             voz=_campo(dados, "voz", "voz", str),
+        ),
+        audio=Audio(
+            microfone=_campo(dados, "audio", "microfone", str),
+            alto_falante=_campo(dados, "audio", "alto_falante", str),
         ),
         modelo_local=ModeloLocal(
             provedor=_campo(dados, "modelos.local", "provedor", str),

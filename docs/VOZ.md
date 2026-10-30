@@ -40,13 +40,27 @@ O script baixa:
    powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1
    ```
 
-2. Confira se está tudo no ar:
+2. Teste o microfone e o alto-falante (lista os dispositivos, grava 3 segundos e toca de volta):
+
+   ```powershell
+   ella audio
+   ```
+
+   Para usar outro microfone ou alto-falante, ponha o número ou o nome que aparece na lista em `config\local.toml`:
+
+   ```toml
+   [audio]
+   microfone = "3"
+   alto_falante = ""
+   ```
+
+3. Confira se está tudo no ar:
 
    ```powershell
    ella --verificar
    ```
 
-3. Converse:
+4. Converse:
 
    ```powershell
    ella falar --medir
@@ -77,4 +91,5 @@ Com `--medir`, cada resposta mostra três tempos, contados a partir do momento e
 - **`ella falar` diz que falta a parte de áudio:** rode `pip install -e ".[dev,voz]"`.
 - **`whisper-server` ou `Piper` "não respondeu"** no `ella --verificar`: veja a janela correspondente aberta pelo script de iniciar; a mensagem de erro aparece lá. Me mande um print.
 - **O Piper não aceita `--data-dir` ou `--port`:** rode `python -m piper.http_server --help` e me mande o resultado; as opções mudam entre versões.
-- **A gravação não pega o microfone:** o Windows usa o microfone padrão (Configurações → Sistema → Som → Entrada).
+- **"Não consegui abrir o microfone" (ex.: `MME error 11`):** confira em Configurações → Privacidade e segurança → Microfone se "Permitir que aplicativos da área de trabalho acessem o microfone" está ligado. Depois rode `ella audio` para ver os dispositivos e, se precisar, escolha outro em `[audio]`.
+- **A gravação pega o microfone errado:** o padrão é o do Windows (Configurações → Sistema → Som → Entrada), ou escolha um em `[audio]`.

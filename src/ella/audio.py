@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import wave
+from array import array
 
 TAXA = 16_000  # Hz, o que o Whisper espera
 
@@ -36,6 +37,40 @@ def duracao_wav(dados: bytes) -> float:
     return len(amostras) / (2 * canais * taxa)
 
 
+def reamostrar(amostras: bytes, de: int, para: int = TAXA) -> bytes:
+    """Converte áudio PCM 16 bits mono de uma taxa para outra (interpolação linear)."""
+    if de == para or not amostras:
+        return amostras
+    origem = array("h")
+    origem.frombytes(amostras)
+    total = max(1, round(len(origem) * para / de))
+    passo = (len(origem) - 1) / max(1, total - 1)
+    destino = array("h", bytes(2 * total))
+    ultimo = len(origem) - 1
+    for i in range(total):
+        posicao = i * passo
+        base = int(posicao)
+        proximo = min(base + 1, ultimo)
+        fracao = posicao - base
+        destino[i] = int(origem[base] + (origem[proximo] - origem[base]) * fracao)
+    return destino.tobytes()
+
+
+def dispositivo(valor: str) -> int | str | None:
+    """Converte a escolha da config: vazio = padrão do sistema, número = índice, texto = nome."""
+    valor = valor.strip()
+    if not valor:
+        return None
+    return int(valor) if valor.isdigit() else valor
+
+
+_DICA = (
+    "Confira: Configurações do Windows > Privacidade e segurança > Microfone > "
+    "'Permitir que aplicativos da área de trabalho acessem o microfone'; "
+    "e rode 'ella audio' para ver e testar os dispositivos."
+)
+
+
 def _sounddevice():
     try:
         import sounddevice
@@ -44,25 +79,66 @@ def _sounddevice():
     return sounddevice
 
 
-def gravar_ate_enter(entrada=input) -> bytes:
-    """Grava do microfone até a pessoa apertar Enter; devolve um WAV de 16 kHz mono."""
+def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes:
+    """Grava do microfone até a pessoa apertar Enter; devolve um WAV de 16 kHz mono.
+
+    Grava na taxa que o microfone aceita (muitos só aceitam 44,1 ou 48 kHz) e converte
+    para 16 kHz, que é o que o Whisper espera.
+    """
     sd = _sounddevice()
     blocos: list[bytes] = []
 
     def guardar(dados, quadros, tempo, status) -> None:
         blocos.append(bytes(dados))
 
-    with sd.RawInputStream(samplerate=TAXA, channels=1, dtype="int16", callback=guardar):
-        entrada("  (gravando... aperte Enter para parar) ")
-    return para_wav(b"".join(blocos))
+    try:
+        info = sd.query_devices(microfone, "input")
+        taxa = int(info["default_samplerate"])
+        with sd.RawInputStream(
+            device=microfone, samplerate=taxa, channels=1, dtype="int16", callback=guardar
+        ):
+            entrada("  (gravando... aperte Enter para parar) ")
+    except (sd.PortAudioError, ValueError) as erro:
+        raise RuntimeError(f"Não consegui abrir o microfone ({erro}). {_DICA}") from erro
+    return para_wav(reamostrar(b"".join(blocos), taxa))
 
 
-def tocar_wav(dados: bytes) -> None:
-    """Toca um WAV e espera terminar."""
+def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
+    """Toca um WAV e espera terminar; se a saída recusar a taxa do áudio, converte."""
     sd = _sounddevice()
     amostras, taxa, canais = ler_wav(dados)
-    with sd.RawOutputStream(samplerate=taxa, channels=canais, dtype="int16") as saida:
-        saida.write(amostras)
+    try:
+        with sd.RawOutputStream(
+            device=alto_falante, samplerate=taxa, channels=canais, dtype="int16"
+        ) as saida:
+            saida.write(amostras)
+        return
+    except sd.PortAudioError:
+        if canais != 1:
+            raise
+    padrao = int(sd.query_devices(alto_falante, "output")["default_samplerate"])
+    with sd.RawOutputStream(
+        device=alto_falante, samplerate=padrao, channels=1, dtype="int16"
+    ) as saida:
+        saida.write(reamostrar(amostras, taxa, padrao))
+
+
+def listar_dispositivos() -> list[str]:
+    sd = _sounddevice()
+    entrada_padrao, saida_padrao = sd.default.device
+    linhas = []
+    for indice, info in enumerate(sd.query_devices()):
+        papeis = []
+        if info["max_input_channels"] > 0:
+            papeis.append("microfone" + (" (padrão)" if indice == entrada_padrao else ""))
+        if info["max_output_channels"] > 0:
+            papeis.append("alto-falante" + (" (padrão)" if indice == saida_padrao else ""))
+        api = sd.query_hostapis(info["hostapi"])["name"]
+        linhas.append(
+            f"  {indice:>3}  {info['name']}  [{api}, {int(info['default_samplerate'])} Hz]  "
+            + ", ".join(papeis)
+        )
+    return linhas
 
 
 def parar_audio() -> None:

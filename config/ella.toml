@@ -51,6 +51,11 @@ provedor = "anthropic"
 rapido = "claude-haiku-5-5"
 pesado = "claude-sonnet-5-5"
 
+[audio]
+# Microfone e alto-falante: vazio = padrão do Windows; ou o número/nome que "ella audio" mostra.
+microfone = ""
+alto_falante = ""
+
 [caminhos]
 # Banco de memória, histórico e outros dados pessoais. Fora do Git.
 dados = "data"

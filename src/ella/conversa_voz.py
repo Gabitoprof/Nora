@@ -90,13 +90,17 @@ def conversar_por_voz(
     cerebro: CerebroLocal | None = None,
     ouvido: OuvidoWhisper | None = None,
     voz: VozPiper | None = None,
-    gravar: Callable[[Callable[[str], str]], bytes] = audio.gravar_ate_enter,
-    tocar: Callable[[bytes], None] = audio.tocar_wav,
+    gravar: Callable[[Callable[[str], str]], bytes] | None = None,
+    tocar: Callable[[bytes], None] | None = None,
 ) -> int:
     saida = saida or sys.stdout
     conversa = Conversa(config, cerebro or CerebroLocal(config), Historico(config.pasta_dados))
     ouvido = ouvido or OuvidoWhisper(config)
     voz = voz or VozPiper(config)
+    microfone = audio.dispositivo(config.audio.microfone)
+    alto_falante = audio.dispositivo(config.audio.alto_falante)
+    gravar = gravar or (lambda entrada: audio.gravar_ate_enter(entrada, microfone))
+    tocar = tocar or (lambda wav: audio.tocar_wav(wav, alto_falante))
     nome = config.assistente.nome
 
     def escrever(texto: str = "", fim: str = "\n") -> None:

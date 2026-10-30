@@ -65,6 +65,34 @@ def verificar(config: Config) -> list[str]:
     return linhas
 
 
+def testar_audio(config: Config, segundos: float, entrada=input) -> int:
+    """Lista os dispositivos de áudio e grava alguns segundos para tocar de volta."""
+    import threading
+
+    from ella import audio
+
+    try:
+        print("Dispositivos de áudio:")
+        print("\n".join(audio.listar_dispositivos()))
+        print(
+            f"\nEm uso: microfone '{config.audio.microfone or 'padrão'}', "
+            f"alto-falante '{config.audio.alto_falante or 'padrão'}' (config [audio])."
+        )
+        entrada(f"\nAperte Enter e fale por {segundos:.0f} segundos...")
+        parar = threading.Timer(segundos, lambda: None)
+        parar.start()
+        wav = audio.gravar_ate_enter(
+            lambda _: parar.join(), audio.dispositivo(config.audio.microfone)
+        )
+        print(f"Gravei {audio.duracao_wav(wav):.1f} s. Tocando de volta...")
+        audio.tocar_wav(wav, audio.dispositivo(config.audio.alto_falante))
+    except RuntimeError as erro:
+        print(f"[erro] {erro}", file=sys.stderr)
+        return 1
+    print("Se você ouviu a sua voz, o áudio está funcionando.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ella", description="Assistente de IA pessoal por voz.")
     parser.add_argument("--versao", action="version", version=f"ella {__version__}")
@@ -78,6 +106,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     falar_cmd = comandos.add_parser("falar", help="conversa por voz (aperte Enter para falar)")
     falar_cmd.add_argument("--medir", action="store_true", help="mostra o tempo de cada etapa")
+    audio_cmd = comandos.add_parser("audio", help="lista microfones e alto-falantes e faz um teste")
+    audio_cmd.add_argument(
+        "--segundos", type=float, default=3.0, help="duração da gravação de teste"
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -90,6 +122,9 @@ def main(argv: list[str] | None = None) -> int:
         from ella.conversa import conversar
 
         return conversar(config, medir=args.medir)
+
+    if args.comando == "audio":
+        return testar_audio(config, args.segundos)
 
     if args.comando == "falar":
         from ella.conversa_voz import conversar_por_voz
