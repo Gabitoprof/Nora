@@ -43,6 +43,7 @@ def conversar_maos_livres(
     saida: TextIO | None = None,
     medir: bool = False,
     mostrar_ignoradas: bool = False,
+    gravar_falas: bool = False,
     cerebro: CerebroLocal | None = None,
     ouvido: OuvidoWhisper | None = None,
     voz=None,
@@ -58,7 +59,9 @@ def conversar_maos_livres(
     tocar = tocar or (lambda wav: audio.tocar_wav(wav, alto_falante))
     nome = config.assistente.nome
     palavra = config.assistente.palavra_de_ativacao
-    dica = f"{nome}, "
+    # Uma frase completa: com só "Ella, ", o Whisper às vezes entende que o nome já foi dito
+    # e não o escreve de novo.
+    dica = f"Conversa com a assistente {nome}."
 
     def escrever(texto: str = "", fim: str = "\n") -> None:
         saida.write(texto + fim)
@@ -89,8 +92,13 @@ def conversar_maos_livres(
         )
 
         janela_ate = 0.0
-        for fala in falas_detectadas:
+        pasta_falas = config.pasta_dados / "falas"
+        for numero, fala in enumerate(falas_detectadas, start=1):
             inicio = time.perf_counter()
+            if gravar_falas:
+                pasta_falas.mkdir(parents=True, exist_ok=True)
+                arquivo = pasta_falas / f"{time.strftime('%Y-%m-%d_%H-%M-%S')}_{numero:03}.wav"
+                arquivo.write_bytes(audio.para_wav(fala))
             try:
                 texto = ouvido.transcrever(audio.para_wav(fala), dica=dica)
             except ServicoIndisponivel as erro:
