@@ -202,20 +202,22 @@
   {
    "id": "s0",
    "type": "text",
-   "text": "⬜ **v0.0.0 Fundação**",
+   "text": "✅ **v0.0.0 Fundação**",
    "x": -1300,
    "y": 1200,
    "width": 220,
-   "height": 90
+   "height": 90,
+   "color": "4"
   },
   {
    "id": "s1",
    "type": "text",
-   "text": "⬜ **v0.1.0 Conversa por voz**",
+   "text": "🔄 **v0.1.0 Conversa por voz**",
    "x": -1040,
    "y": 1200,
    "width": 220,
-   "height": 90
+   "height": 90,
+   "color": "3"
   },
   {
    "id": "s2",

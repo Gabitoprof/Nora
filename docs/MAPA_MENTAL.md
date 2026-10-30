@@ -95,7 +95,7 @@ mindmap
 
 ```mermaid
 flowchart LR
-  v00["v0.0.0 Fundação"]:::pend --> v01["v0.1.0 Conversa por voz"]:::pend
+  v00["v0.0.0 Fundação"]:::done --> v01["v0.1.0 Conversa por voz"]:::doing
   v01 --> v02["v0.2.0 Memória"]:::pend
   v02 --> v03["v0.3.0 Roteador de modelos"]:::pend
   v03 --> v04["v0.4.0 HUD"]:::pend
@@ -112,8 +112,8 @@ flowchart LR
 
 | Versão | Etapa | Status | Critério de pronto |
 |---|---|---|---|
-| v0.0.0 | Fundação | ⬜ | Projeto roda o "hello world" e a config carrega |
-| v0.1.0 | Conversa por voz | ⬜ | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
+| v0.0.0 | Fundação | ✅ | Projeto roda o "hello world" e a config carrega |
+| v0.1.0 | Conversa por voz | 🔄 | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
 | v0.2.0 | Memória | ⬜ | Lembra de fatos entre sessões |
 | v0.3.0 | Roteador de modelos | ⬜ | Pergunta difícil vai para a API e volta com a mesma voz |
 | v0.4.0 | HUD | ⬜ | Interface reage à voz em tempo real |
@@ -144,22 +144,21 @@ flowchart LR
 
 ---
 
-## 4. Decisões pendentes
+## 4. Decisões tomadas (30/10/2026)
 
 ```mermaid
 mindmap
-  root((Decidir antes da v0.0.0))
+  root((Decisões da v0.0.0))
     Sistema operacional
-      Windows
-      Linux com ROCm mais maduro
+      Windows com Vulkan
+      Linux como plano B
     Nome
-      Projeto e assistente iguais ou diferentes
+      Ella para projeto e assistente
     Linguagem
       Núcleo Python
       HUD TypeScript
     Uso 24h
-      Define quando entra a v0.8.0
+      Só na v0.8.0
     Licença
       MIT
-      Apache-2.0
 ```

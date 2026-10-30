@@ -1,0 +1,44 @@
+# Config padrão da Ella. Vai para o GitHub, então NADA pessoal aqui.
+# Para personalizar (seu nome, outra voz, outro modelo), crie config/local.toml
+# só com as chaves que quer mudar. Ele é ignorado pelo Git e sobrepõe este arquivo.
+
+[assistente]
+nome = "Ella"
+# Palavra que acorda o assistente (v0.1.0).
+palavra_de_ativacao = "Ella"
+idioma = "pt-BR"
+
+[usuario]
+# Como o assistente chama você. Defina em config/local.toml.
+nome = ""
+
+[persona]
+descricao = "Assistente pessoal prestativa, direta e bem-humorada."
+# 0.0 = totalmente séria, 1.0 = piadista.
+humor = 0.4
+# 0.0 = bem informal, 1.0 = bem formal.
+formalidade = 0.3
+# Respostas curtas por padrão; detalha quando pedirem.
+respostas_curtas = true
+
+[voz]
+# Motor de fala (TTS). Opções previstas: "piper" (local), "elevenlabs", "cartesia".
+motor = "piper"
+# Voz a definir na v0.1.0, depois de conferir a licença.
+voz = ""
+
+[modelos.local]
+provedor = "ollama"
+modelo = "qwen3.5:9b"
+# Tempo sem uso até o modelo sair da VRAM.
+keep_alive = "10m"
+
+[modelos.nuvem]
+provedor = "anthropic"
+# Conversa rápida e tarefas pesadas (usados a partir da v0.3.0).
+rapido = "claude-haiku-5-5"
+pesado = "claude-sonnet-5-5"
+
+[caminhos]
+# Banco de memória, histórico e outros dados pessoais. Fora do Git.
+dados = "data"

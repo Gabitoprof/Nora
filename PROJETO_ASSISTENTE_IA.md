@@ -210,13 +210,13 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 
 ---
 
-## 10. Decisões pendentes (responder antes da v0.0.0)
+## 10. Decisões (tomadas em 30/10/2026, antes da v0.0.0)
 
-1. **Sistema operacional:** Windows ou Linux? No Linux o ROCm costuma ser mais maduro.
-2. **Nome:** o nome do projeto e o do assistente são o mesmo ou diferentes?
-3. **Linguagem:** sugestão de **núcleo em Python + HUD em web (TypeScript)**.
-4. **Uso 24h:** precisa funcionar com o PC desligado? Isso define quando entra a Etapa 8.
-5. **Licença:** MIT ou Apache-2.0.
+1. **Sistema operacional:** ✅ **Windows**, com aceleração da GPU via Vulkan. Linux (ROCm) fica como plano B se o desempenho não bastar; o código roda nos dois.
+2. **Nome:** ✅ **Ella** para o projeto e para o assistente. O nome do assistente continua configurável.
+3. **Linguagem:** ✅ **núcleo em Python + HUD em web (TypeScript)**.
+4. **Uso 24h:** ✅ **não por enquanto**. O modo distribuído fica na v0.8.0, como previsto.
+5. **Licença:** ✅ **MIT**.
 
 ---
 
