@@ -13,7 +13,7 @@ Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principa
 ## Começando
 
 ```bash
-git clone https://github.com/gabitoprof/ella.git
+git clone https://github.com/gabitoprof/nora.git
 cd nora
 python -m venv .venv
 ```
