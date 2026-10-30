@@ -20,7 +20,7 @@ class VozPiper:
     def sintetizar(self, texto: str) -> bytes:
         """Devolve o WAV falado do texto."""
         pedido = urllib.request.Request(
-            self.config.voz.url.rstrip("/"),
+            f"{self.config.voz.url.rstrip('/')}/synthesize",
             data=json.dumps({"text": texto}).encode("utf-8"),
             headers={"Content-Type": "application/json"},
         )

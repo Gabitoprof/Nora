@@ -116,7 +116,9 @@ def test_voz_pede_o_audio_da_frase(criar_raiz):
     with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as piper:
         voz = VozPiper(config_com(criar_raiz, piper=piper.url))
         assert voz.sintetizar("Olá, tudo bem?") == UM_SEGUNDO
-    assert json.loads(piper.pedidos[0][2]) == {"text": "Olá, tudo bem?"}
+    caminho, _, corpo = piper.pedidos[0]
+    assert caminho == "/synthesize"
+    assert json.loads(corpo) == {"text": "Olá, tudo bem?"}
 
 
 def test_voz_repassa_erro_do_piper(criar_raiz):
