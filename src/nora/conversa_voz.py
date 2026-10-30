@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from typing import TextIO
 
@@ -21,6 +22,7 @@ from nora.config import Config
 from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
 from nora.frases import SeparadorDeFrases
 from nora.ouvido import OuvidoWhisper
+from nora.prioridade import abafar_outros
 from nora.servico import ServicoIndisponivel
 from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, criar_voz
 
@@ -45,10 +47,12 @@ class Locutor:
         voz: VozHTTP | VozElevenLabs | VozComReserva,
         tocar: Callable[[bytes], None],
         inicio: float,
+        abafar=nullcontext,
     ) -> None:
         self.voz = voz
         self.tocar = tocar
         self.inicio = inicio
+        self.abafar = abafar
         self.tempos = Tempos()
         self._frases: queue.Queue = queue.Queue()
         self._audios: queue.Queue = queue.Queue(maxsize=2)
@@ -77,13 +81,25 @@ class Locutor:
         self._audios.put(_FIM)
 
     def _tocar(self) -> None:
-        while (wav := self._audios.get()) is not _FIM:
-            if not self.tempos.comeco_da_voz:
-                self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
-            try:
-                self.tocar(wav)
-            except Exception as erro:  # um problema no alto-falante não derruba a conversa
-                self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
+        wav = self._audios.get()
+        if wav is _FIM:
+            return
+        with self.abafar():  # os outros programas ficam mais baixos enquanto ela fala
+            while wav is not _FIM:
+                if not self.tempos.comeco_da_voz:
+                    self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
+                try:
+                    self.tocar(wav)
+                except Exception as erro:  # um problema no alto-falante não derruba a conversa
+                    self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
+                wav = self._audios.get()
+
+
+def abafador(config: Config):
+    """O que fazer com os outros programas enquanto a Nora fala, conforme [audio] prioridade."""
+    if not config.audio.prioridade:
+        return nullcontext
+    return lambda: abafar_outros(config.audio.volume_outros)
 
 
 def responder_falando(
@@ -97,7 +113,7 @@ def responder_falando(
     medir: bool,
 ) -> Tempos:
     """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve."""
-    locutor = Locutor(voz, tocar, inicio)
+    locutor = Locutor(voz, tocar, inicio, abafador(conversa.config))
     locutor.tempos.transcricao = transcricao
     separador = SeparadorDeFrases()
     escrever(f"{conversa.config.assistente.nome}: ", fim="")
@@ -124,6 +140,8 @@ def responder_falando(
     tempos = locutor.tempos
     for erro in dict.fromkeys(tempos.erros):
         escrever(f"[erro na voz] {erro}")
+    for aviso in audio.avisos_de_saida():
+        escrever(f"[som] {aviso}")
     if getattr(voz, "aviso", ""):
         escrever(f"[voz reserva] {voz.aviso}")
         voz.aviso = ""

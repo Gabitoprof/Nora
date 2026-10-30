@@ -267,3 +267,30 @@ def test_toca_por_callback_e_converte_para_a_taxa_da_saida(monkeypatch):
     tocado.frombytes(bytes(falso.tocado))
     assert tocado.count(5) == 16_000  # o áudio inteiro, convertido
     assert set(tocado[16_000:]) <= {0}  # o resto do último bloco é silêncio
+
+
+def test_saida_que_nao_abre_cai_na_padrao_e_avisa(monkeypatch):
+    falso = SaidaFalsa(taxa_aceita=16_000)
+    original = falso.RawOutputStream
+
+    def so_a_padrao(**opcoes):
+        if opcoes["device"] == 17:
+            raise falso.PortAudioError("Invalid device")
+        return original(**opcoes)
+
+    falso.RawOutputStream = so_a_padrao
+    monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
+    audio.avisos_de_saida()  # começa limpo
+    audio.tocar_wav(audio.para_wav(pcm([5] * 16_000)), alto_falante=17)
+    assert array("h", bytes(falso.tocado)).count(5) == 16_000
+    avisos = audio.avisos_de_saida()
+    assert len(avisos) == 1 and "A saída '17' não abriu" in avisos[0]
+    assert audio.avisos_de_saida() == []
+
+
+def test_saida_padrao_que_falha_continua_dando_erro(monkeypatch):
+    falso = SaidaFalsa(taxa_aceita=16_000)
+    falso.RawOutputStream = lambda **_: (_ for _ in ()).throw(falso.PortAudioError("sem som"))
+    monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
+    with pytest.raises(falso.PortAudioError):
+        audio.tocar_wav(audio.para_wav(pcm([5] * 160)))

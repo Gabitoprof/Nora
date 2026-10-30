@@ -136,6 +136,20 @@ Limites desta versão:
 - **Toda fala passa pelo Whisper**, mesmo as que não são para ela. Com TV ou conversa no ambiente, o processador trabalha mais. `--mostrar-ignoradas` mostra o que ela ouviu e ignorou.
 - **Enquanto ela fala, ela não ouve** (o microfone fica pausado), porque ainda não há cancelamento de eco. Com **fone Bluetooth** isso também é necessário: com o microfone aberto, o fone fica no modo chamada e a saída de som normal fica muda. Ao reabrir o microfone, o fone pode levar um instante para trocar de modo. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
 
+## Música tocando junto (prioridade da voz)
+
+Quando outro programa está tocando som (música, vídeo), a Nora fala por cima assim:
+
+```toml
+[audio]
+prioridade = true     # enquanto ela fala, os outros programas ficam mais baixos e depois voltam
+volume_outros = 0.2   # quanto sobra do volume deles (0 = mudo, 1 = sem mudança)
+```
+
+Com `prioridade = false`, ela fala misturada com o resto, no volume normal. Para respostas só escritas, use `nora conversar`.
+
+Funciona no Windows (biblioteca `pycaw`, instalada com `.[voz]`). Se a saída escolhida em `alto_falante` não abrir (o aparelho sumiu, mudou de número ou está ocupado por outro programa), a Nora usa a saída padrão do Windows e avisa com `[som] ...`.
+
 ## Fone Bluetooth (microfone e som no mesmo fone)
 
 Fones Bluetooth têm dois modos: **música** (som bom, sem microfone) e **chamada** (microfone ligado, som com qualidade de telefone). Quando o microfone abre, o fone vai para o modo chamada e a saída "Fones de ouvido" fica **muda**; cada troca de modo leva cerca de 1 segundo de silêncio.

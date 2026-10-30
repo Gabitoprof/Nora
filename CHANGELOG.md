@@ -13,10 +13,12 @@ Versão em desenvolvimento: `0.2.0.dev0`.
 - `nora memoria listar | buscar | lembrar | esquecer | importar`. O `importar` tira fatos das conversas antigas de `data/historico/` e continua de onde parou.
 - Config `[memoria]` (`ativa`, `modelo_embeddings`, `curadoria`, `fatos_por_pergunta`, `similaridade_minima`) e extra de instalação `.[memoria]`.
 - **Digitar em vez de falar** (acessibilidade): `nora conversar --voz` (só teclado, resposta falada) e `nora ouvir` aceitando texto digitado a qualquer momento, sem precisar do nome dela.
+- **Prioridade da voz** (`[audio] prioridade`, padrão `true`; `volume_outros`, padrão 0.2): no Windows, enquanto a Nora fala, os outros programas ficam mais baixos e depois voltam (pycaw).
 - `nora --verificar` confere o modelo de embeddings; `--medir` mostra quantos fatos foram usados em cada resposta.
 
 ### Corrigido
 
+- Se a saída de som escolhida em `[audio] alto_falante` não abrir (sumiu, mudou de número, ou está ocupada por outro programa), a Nora toca na saída padrão e avisa, em vez de ficar muda.
 - CHANGELOG da 0.1.0: a ativação aceita "Nora", "Norah" e "Nóra" (não "Ela").
 
 ## [0.1.0] - 2026-10-30

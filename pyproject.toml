@@ -15,7 +15,13 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 # Microfone e alto-falante (conversa por voz).
-voz = ["sounddevice>=0.5", "numpy>=1.24", "onnxruntime>=1.16"]
+voz = [
+    "sounddevice>=0.5",
+    "numpy>=1.24",
+    "onnxruntime>=1.16",
+    # Abaixar o som dos outros programas enquanto a Nora fala (Windows).
+    "pycaw>=20240210; sys_platform == 'win32'",
+]
 # Voz local Kokoro (servidor separado; usa phonemizer/espeak-ng, GPL-3.0).
 kokoro = ["kokoro-onnx>=0.4"]
 # Busca vetorial rápida da memória (sem ela, a busca é feita em Python puro, mais lenta).

@@ -285,10 +285,18 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
         terminou.wait(timeout=segundos + 5)
 
 
-def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
-    """Toca um WAV e espera terminar; se a saída recusar a taxa do áudio, converte."""
-    sd = _sounddevice()
-    amostras, taxa, canais = ler_wav(dados)
+_avisos_de_saida: list[str] = []
+
+
+def avisos_de_saida() -> list[str]:
+    """Avisos da saída de som ainda não mostrados (e os esquece)."""
+    avisos = list(dict.fromkeys(_avisos_de_saida))
+    _avisos_de_saida.clear()
+    return avisos
+
+
+def _tocar_em(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
+    """Toca numa saída; se ela recusar a taxa do áudio, converte para a taxa dela."""
     try:
         _tocar(sd, amostras, taxa, canais, alto_falante)
         return
@@ -297,6 +305,26 @@ def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
             raise
     padrao = int(sd.query_devices(alto_falante, "output")["default_samplerate"])
     _tocar(sd, reamostrar(amostras, taxa, padrao), padrao, 1, alto_falante)
+
+
+def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
+    """Toca um WAV e espera terminar.
+
+    Se a saída escolhida em [audio] alto_falante não abrir (sumiu, mudou de número, ou está
+    ocupada por outro programa, como acontece no WDM-KS), toca na saída padrão do Windows."""
+    sd = _sounddevice()
+    amostras, taxa, canais = ler_wav(dados)
+    try:
+        _tocar_em(sd, amostras, taxa, canais, alto_falante)
+        return
+    except (sd.PortAudioError, ValueError) as erro:
+        if alto_falante is None:
+            raise
+        _avisos_de_saida.append(
+            f"A saída '{alto_falante}' não abriu ({erro}); usei a saída padrão. "
+            "Confira [audio] alto_falante com 'nora audio'."
+        )
+    _tocar_em(sd, amostras, taxa, canais, None)
 
 
 def listar_dispositivos() -> list[str]:

@@ -94,6 +94,8 @@ class Memoria:
 class Audio:
     microfone: str
     alto_falante: str
+    prioridade: bool
+    volume_outros: float
 
 
 @dataclass(frozen=True)
@@ -288,6 +290,10 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),
             alto_falante=_campo(dados, "audio", "alto_falante", str),
+            prioridade=_campo(dados, "audio", "prioridade", bool),
+            volume_outros=_entre_0_e_1(
+                "audio", "volume_outros", _campo(dados, "audio", "volume_outros", float)
+            ),
         ),
         modelo_local=ModeloLocal(
             provedor=_campo(dados, "modelos.local", "provedor", str),

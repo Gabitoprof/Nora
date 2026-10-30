@@ -192,6 +192,14 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 - "Use o cérebro local", "troque para o Gemma", "mude sua voz para…": força o roteador para um modelo ou uma voz específica. Encaixe: **Etapa 3**.
 - O HUD mostra sempre o **modelo e a voz ativos** e a **origem** de cada resposta (qual ferramenta ou nota foi usada).
 
+### 8.4 Palavras de partículas no HUD
+*Origem: vídeo de referência (31/10/2026).*
+
+- Enquanto a Nora fala, **cada palavra aparece formada por partículas** no centro do HUD, em sincronia com a voz; palavras importantes ganham outra cor (ex.: vermelho).
+- Técnica: desenhar a palavra num canvas invisível, sortear pontos dentro das letras e animar milhares de partículas (Three.js) até esses pontos; na palavra seguinte, as partículas voam para as novas posições.
+- Sincronia: a voz já sai frase por frase; para palavra por palavra, usar os tempos de palavra do motor de voz (ElevenLabs e Kokoro dão o alinhamento) ou estimar pela duração do áudio.
+- Encaixe: **Etapa 4 (HUD)**, junto com o orbe e os cartões.
+
 *(Adicionar novas ideias aqui.)*
 
 ---

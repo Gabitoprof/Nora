@@ -90,6 +90,11 @@ pausar_microfone = true
 # Microfone e alto-falante: vazio = padrão do Windows; ou o número/nome que "nora audio" mostra.
 microfone = ""
 alto_falante = ""
+# Prioridade da voz (Windows): true = enquanto a Nora fala, os outros programas (música,
+# vídeo) ficam mais baixos e depois voltam; false = ela fala misturada com o resto.
+prioridade = true
+# Volume dos outros programas enquanto ela fala, de 0 (mudo) a 1 (sem mudança).
+volume_outros = 0.2
 
 [memoria]
 # Memória entre conversas (v0.2.0), guardada em <dados>/memoria.db, só na sua máquina.
