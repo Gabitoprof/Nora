@@ -35,7 +35,8 @@ def descrever_voz(config: Config) -> str:
         return f"kokoro {voz.kokoro.voz} (velocidade {voz.kokoro.velocidade}) em {voz.kokoro.url}"
     if voz.motor == "piper":
         return f"piper {voz.piper.voz} em {voz.piper.url}"
-    return f"elevenlabs {voz.elevenlabs.voz_id or '(sem voz_id)'} ({voz.elevenlabs.modelo})"
+    texto = f"elevenlabs {voz.elevenlabs.voz_id or '(sem voz_id)'} ({voz.elevenlabs.modelo})"
+    return texto + (f", reserva {voz.reserva}" if voz.reserva else "")
 
 
 def verificar(config: Config) -> list[str]:
@@ -66,10 +67,11 @@ def verificar(config: Config) -> list[str]:
     else:
         linhas.append(f"  Ollama                  ok, mas falta o modelo: ollama pull {modelo}")
     servicos = [("whisper-server", config.ouvido.url)]
-    if config.voz.motor == "kokoro":
-        servicos.append(("Kokoro", config.voz.kokoro.url))
-    elif config.voz.motor == "piper":
-        servicos.append(("Piper", config.voz.piper.url))
+    for motor, papel in [(config.voz.motor, ""), (config.voz.reserva, " (reserva)")]:
+        if motor == "kokoro":
+            servicos.append((f"Kokoro{papel}", config.voz.kokoro.url))
+        elif motor == "piper":
+            servicos.append((f"Piper{papel}", config.voz.piper.url))
     for nome, url in servicos:
         estado = "ok" if responde(url) else f"não respondeu em {url} (veja docs/VOZ.md)"
         linhas.append(f"  {nome:<24}{estado}")

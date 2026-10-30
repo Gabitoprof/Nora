@@ -23,7 +23,7 @@ from nora.frases import SeparadorDeFrases
 from nora.historico import Historico
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel
-from nora.voz import VozElevenLabs, VozHTTP, criar_voz
+from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, criar_voz
 
 _FIM = object()
 
@@ -42,7 +42,10 @@ class Locutor:
     """Recebe frases e as fala em ordem: uma linha sintetiza, outra toca."""
 
     def __init__(
-        self, voz: VozHTTP | VozElevenLabs, tocar: Callable[[bytes], None], inicio: float
+        self,
+        voz: VozHTTP | VozElevenLabs | VozComReserva,
+        tocar: Callable[[bytes], None],
+        inicio: float,
     ) -> None:
         self.voz = voz
         self.tocar = tocar
@@ -122,6 +125,9 @@ def responder_falando(
     tempos = locutor.tempos
     for erro in dict.fromkeys(tempos.erros):
         escrever(f"[erro na voz] {erro}")
+    if getattr(voz, "aviso", ""):
+        escrever(f"[voz reserva] {voz.aviso}")
+        voz.aviso = ""
     if medir:
         escrever(
             f"  [transcrição {tempos.transcricao:.2f} s, "
@@ -138,7 +144,7 @@ def conversar_por_voz(
     medir: bool = False,
     cerebro: CerebroLocal | None = None,
     ouvido: OuvidoWhisper | None = None,
-    voz: VozHTTP | VozElevenLabs | None = None,
+    voz: VozHTTP | VozElevenLabs | VozComReserva | None = None,
     gravar: Callable[[Callable[[str], str]], bytes] | None = None,
     tocar: Callable[[bytes], None] | None = None,
 ) -> int:

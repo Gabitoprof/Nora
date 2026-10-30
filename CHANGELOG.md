@@ -13,10 +13,12 @@ Versão em desenvolvimento: `0.1.0.dev0` (mostrada como "0.1.0 (em desenvolvimen
 
 ### Corrigido
 
+- Erros de conexão mostram o motivo real (ex.: tempo esgotado, sem internet); para serviços na internet, a dica é conferir a conexão em vez de "Ele está aberto?".
 - `nora ouvir` pausa o microfone enquanto a Nora fala. Com fone Bluetooth, o microfone aberto deixa o fone no modo chamada e a voz dela não saía no fone.
 
 ### Adicionado
 
+- Voz reserva (`[voz] reserva`, padrão `kokoro`): se a voz principal falhar (ex.: ElevenLabs sem internet), a Nora fala com a reserva e avisa.
 - `nora conversar`: conversa digitada com o modelo local, com a resposta aparecendo enquanto é gerada (parte 1 da v0.1.0). `--medir` mostra o tempo até a primeira palavra e a velocidade.
 - Persona: prompt de sistema montado da config (humor, formalidade, respostas curtas, data e hora, nome do usuário), com regras para fala em voz alta (sem markdown nem emojis).
 - `nora conversar` carrega o modelo na memória ao abrir, para a primeira pergunta não pagar os ~18 s de carga.

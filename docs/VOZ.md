@@ -143,7 +143,8 @@ Limites desta versão:
    voz_id = "cole_o_voice_id_aqui"
    ```
 
-5. Inicie só o ouvido (`iniciar_voz_windows.ps1 -Voz nenhuma`), rode `nora --verificar` (deve mostrar `ElevenLabs configurado`) e `nora falar --medir`.
+5. Inicie o ouvido e o Kokoro, que serve de **voz reserva** quando o ElevenLabs falha (ex.: sem internet): `iniciar_voz_windows.ps1 -Voz kokoro`. Sem reserva, use `-Voz nenhuma` e `reserva = ""` em `[voz]`.
+6. Rode `nora --verificar` (deve mostrar `ElevenLabs configurado` e `Kokoro (reserva) ok`) e `nora falar --medir`.
 
 O modelo padrão é o `eleven_flash_v2_5`, o mais rápido do ElevenLabs, com o idioma fixado em português. Cada frase é um pedido à API: a conversa por voz consome créditos.
 

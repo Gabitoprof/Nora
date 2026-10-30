@@ -54,7 +54,7 @@ class VozHTTP:
 class VozElevenLabs:
     """Voz na nuvem do ElevenLabs; pede PCM 16 bits e devolve WAV."""
 
-    chave: str
+    chave: str = field(repr=False)
     voz_id: str
     modelo: str
     pronuncias: dict = field(default_factory=dict)
@@ -83,15 +83,44 @@ class VozElevenLabs:
         return para_wav(pcm, taxa=ELEVENLABS_TAXA)
 
 
-def criar_voz(config: Config) -> VozHTTP | VozElevenLabs:
+@dataclass
+class VozComReserva:
+    """Usa a voz principal; se ela falhar, fala com a reserva e deixa um aviso."""
+
+    principal: VozHTTP | VozElevenLabs
+    reserva: VozHTTP | VozElevenLabs
+    aviso: str = ""
+
+    def sintetizar(self, texto: str) -> bytes:
+        try:
+            return self.principal.sintetizar(texto)
+        except ServicoIndisponivel as erro:
+            try:
+                wav = self.reserva.sintetizar(texto)
+            except ServicoIndisponivel as erro_reserva:
+                raise ServicoIndisponivel(
+                    f"{erro} A reserva também falhou: {erro_reserva}"
+                ) from erro
+            self.aviso = f"{erro} Usei a voz reserva."
+            return wav
+
+
+def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs:
     voz = config.voz
     assistente = config.assistente
     pronuncias = {assistente.nome: assistente.pronuncia} if assistente.pronuncia else {}
-    if voz.motor == "kokoro":
+    if motor == "kokoro":
         extras = {"voice": voz.kokoro.voz, "speed": voz.kokoro.velocidade}
         return VozHTTP("o Kokoro", voz.kokoro.url, extras, pronuncias)
-    if voz.motor == "piper":
+    if motor == "piper":
         return VozHTTP("o Piper", voz.piper.url, pronuncias=pronuncias)
     return VozElevenLabs(
         config.chave_elevenlabs, voz.elevenlabs.voz_id, voz.elevenlabs.modelo, pronuncias
     )
+
+
+def criar_voz(config: Config) -> VozHTTP | VozElevenLabs | VozComReserva:
+    principal = _criar_motor(config, config.voz.motor)
+    if not config.voz.reserva:
+        return principal
+    return VozComReserva(principal, _criar_motor(config, config.voz.reserva))

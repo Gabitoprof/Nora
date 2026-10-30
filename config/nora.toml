@@ -32,6 +32,9 @@ idioma = "pt"
 [voz]
 # Motor de fala (TTS): "kokoro" (local, padrão), "piper" (local) ou "elevenlabs" (nuvem, pago).
 motor = "kokoro"
+# Voz de reserva, usada quando a principal falha (ex.: ElevenLabs sem internet). Vazio = nenhuma.
+# Precisa do servidor dela rodando (o Kokoro: iniciar_voz_windows.ps1 -Voz kokoro).
+reserva = "kokoro"
 
 [voz.kokoro]
 # Kokoro-82M (pesos Apache-2.0), servido por "nora servidor-kokoro".

@@ -21,8 +21,11 @@ def enviar(nome: str, pedido: urllib.request.Request, timeout: float) -> bytes:
     except (urllib.error.URLError, OSError) as erro:
         partes = urllib.parse.urlsplit(pedido.full_url)
         endereco = f"{partes.scheme}://{partes.netloc}"
+        motivo = getattr(erro, "reason", erro)
+        local = partes.hostname in {"127.0.0.1", "localhost", "::1"}
+        dica = "Ele está aberto?" if local else "Confira a internet."
         raise ServicoIndisponivel(
-            f"Não consegui falar com {nome} em {endereco}. Ele está aberto?"
+            f"Não consegui falar com {nome} em {endereco} ({motivo}). {dica}"
         ) from erro
 
 

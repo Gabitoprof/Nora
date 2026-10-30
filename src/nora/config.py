@@ -67,6 +67,7 @@ MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs")
 @dataclass(frozen=True)
 class Voz:
     motor: str
+    reserva: str
     kokoro: VozKokoro
     piper: VozPiper
     elevenlabs: VozElevenLabs
@@ -184,11 +185,17 @@ def _ler_voz(dados: dict[str, Any]) -> Voz:
         raise ConfigError(
             f"[voz] motor deve ser um de {', '.join(MOTORES_DE_VOZ)}; veio {motor!r}."
         )
+    reserva = _campo(dados, "voz", "reserva", str).strip()
+    if reserva and reserva not in MOTORES_DE_VOZ:
+        raise ConfigError(
+            f"[voz] reserva deve ser vazia ou um de {', '.join(MOTORES_DE_VOZ)}; veio {reserva!r}."
+        )
     velocidade = _campo(dados, "voz.kokoro", "velocidade", float)
     if not 0.5 <= velocidade <= 2.0:
         raise ConfigError(f"[voz.kokoro] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
     return Voz(
         motor=motor,
+        reserva=reserva if reserva != motor else "",
         kokoro=VozKokoro(
             url=_campo(dados, "voz.kokoro", "url", str),
             voz=_campo(dados, "voz.kokoro", "voz", str),

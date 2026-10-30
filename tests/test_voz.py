@@ -25,9 +25,10 @@ def config_com(
     motor="piper",
     extra="",
     ambiente=None,
+    reserva="",
 ):
     local = (
-        f'[ouvido]\nurl = "{whisper}"\n[voz]\nmotor = "{motor}"\n'
+        f'[ouvido]\nurl = "{whisper}"\n[voz]\nmotor = "{motor}"\nreserva = "{reserva}"\n'
         f'[voz.piper]\nurl = "{piper}"\n[voz.kokoro]\nurl = "{piper}"\n{extra}'
     )
     return carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama, **(ambiente or {})})
@@ -182,6 +183,7 @@ def test_elevenlabs_monta_o_pedido_e_devolve_wav(criar_raiz, monkeypatch):
     }
     assert ler_wav(wav) == (pcm, 22_050, 1)
     assert "segredo" not in repr(config)
+    assert "segredo" not in repr(voz)
 
 
 def test_elevenlabs_sem_chave_ou_voz(criar_raiz):
@@ -193,6 +195,44 @@ def test_elevenlabs_sem_chave_ou_voz(criar_raiz):
     )
     with pytest.raises(ServicoIndisponivel, match="voz_id"):
         sem_voz.sintetizar("oi")
+
+
+def test_voz_reserva_quando_a_principal_falha(criar_raiz):
+    from nora.voz import VozComReserva
+
+    with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as kokoro:
+        config = config_com(
+            criar_raiz,
+            piper=kokoro.url,
+            motor="elevenlabs",
+            extra='[voz.elevenlabs]\nvoz_id = "abc"\n',
+            ambiente={"ELEVENLABS_API_KEY": "x"},
+            reserva="kokoro",
+        )
+        voz = criar_voz(config)
+        assert isinstance(voz, VozComReserva)
+        voz.principal.timeout = 2
+        import nora.voz
+
+        original = nora.voz.ELEVENLABS_API
+        nora.voz.ELEVENLABS_API = "http://127.0.0.1:9/v1/text-to-speech"  # fora do ar
+        try:
+            assert voz.sintetizar("Oi!") == UM_SEGUNDO
+        finally:
+            nora.voz.ELEVENLABS_API = original
+    assert "Usei a voz reserva" in voz.aviso
+    assert "Ele está aberto?" in voz.aviso  # o motivo vem no aviso
+
+
+def test_sem_reserva_ou_reserva_igual_a_principal(criar_raiz):
+    config = config_com(criar_raiz, motor="kokoro", reserva="kokoro")
+    assert config.voz.reserva == ""
+    assert isinstance(criar_voz(config), VozHTTP)
+
+
+def test_erro_de_conexao_mostra_o_motivo(criar_raiz):
+    with pytest.raises(ServicoIndisponivel, match=r"127\.0\.0\.1:9 \(.+\)\. Ele está aberto\?"):
+        criar_voz(config_com(criar_raiz)).sintetizar("oi")
 
 
 def test_motor_de_voz_invalido(criar_raiz):
