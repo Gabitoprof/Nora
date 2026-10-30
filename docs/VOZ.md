@@ -71,6 +71,9 @@ Com `--medir`, cada resposta mostra três tempos, contados a partir do momento e
 
 ## Se algo der errado
 
+- **O pip instala em `...\pythoncore-3.xx\Scripts` e avisa "not on PATH":** o ambiente não estava ativado. Rode `.venv\Scripts\activate` (o terminal passa a mostrar `(.venv)`) e repita o `pip install`.
+- **O `pip install piper-tts` falha numa versão muito nova do Python:** algumas dependências demoram a sair para versões novas. Veja as versões instaladas com `py -0` e recrie o ambiente com uma anterior (ex.: `py -3.13 -m venv .venv`).
+
 - **`ella falar` diz que falta a parte de áudio:** rode `pip install -e ".[dev,voz]"`.
 - **`whisper-server` ou `Piper` "não respondeu"** no `ella --verificar`: veja a janela correspondente aberta pelo script de iniciar; a mensagem de erro aparece lá. Me mande um print.
 - **O Piper não aceita `--data-dir` ou `--port`:** rode `python -m piper.http_server --help` e me mande o resultado; as opções mudam entre versões.
