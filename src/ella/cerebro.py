@@ -75,6 +75,7 @@ class CerebroLocal:
                 "stream": True,
                 "think": modelo.pensar,
                 "keep_alive": modelo.keep_alive,
+                "options": {"temperature": modelo.temperatura},
             }
         )
         inicio = time.perf_counter()

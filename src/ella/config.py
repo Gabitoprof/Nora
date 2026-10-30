@@ -82,6 +82,7 @@ class ModeloLocal:
     provedor: str
     modelo: str
     keep_alive: str
+    temperatura: float
     pensar: bool
 
 
@@ -159,6 +160,12 @@ def _campo(dados: dict[str, Any], secao: str, chave: str, tipo: type) -> Any:
 def _entre_0_e_1(secao: str, chave: str, valor: float) -> float:
     if not 0.0 <= valor <= 1.0:
         raise ConfigError(f"[{secao}] {chave} deve ficar entre 0.0 e 1.0, veio {valor}.")
+    return valor
+
+
+def _temperatura(valor: float) -> float:
+    if not 0.0 <= valor <= 2.0:
+        raise ConfigError(f"[modelos.local] temperatura deve ficar entre 0.0 e 2.0, veio {valor}.")
     return valor
 
 
@@ -241,6 +248,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             provedor=_campo(dados, "modelos.local", "provedor", str),
             modelo=_campo(dados, "modelos.local", "modelo", str),
             keep_alive=_campo(dados, "modelos.local", "keep_alive", str),
+            temperatura=_temperatura(_campo(dados, "modelos.local", "temperatura", float)),
             pensar=_campo(dados, "modelos.local", "pensar", bool),
         ),
         modelo_nuvem=ModeloNuvem(

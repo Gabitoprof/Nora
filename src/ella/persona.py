@@ -46,7 +46,13 @@ def prompt_de_sistema(config: Config, agora: datetime | None = None) -> str:
         ),
         "Responda de forma curta (uma a três frases), a não ser que peçam detalhes."
         if persona.respostas_curtas
-        else "Responda com a profundidade que a pergunta pedir.",
+        else "Responda com a profundidade que a pergunta pedir, sem enrolar.",
+        "Vá direto ao ponto: não repita a pergunta e não abra com elogios ou exclamações "
+        "como 'Que ótimo!' ou 'Que coisa incrível!'.",
+        "Não invente fatos, lembranças ou detalhes sobre a vida da pessoa que ela não contou.",
+        "Não termine toda resposta com uma pergunta: pergunte só quando precisar de uma "
+        "informação ou quando a conversa realmente pedir.",
+        "Evite frases de enchimento, clichês e conselhos que não foram pedidos.",
         "Sua resposta será falada em voz alta: não use markdown, listas, tabelas, emojis nem "
         "símbolos; escreva números e siglas como devem ser lidos.",
         "Se não souber algo ou não tiver acesso a uma informação, diga isso com franqueza.",

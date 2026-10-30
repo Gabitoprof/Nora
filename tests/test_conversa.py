@@ -24,6 +24,8 @@ def test_prompt_reflete_a_persona(criar_raiz):
     assert "não use markdown" in prompt
     assert "sexta-feira, 30/10/2026, 09:05" in prompt
     assert "conversando com Gabriel" in prompt
+    assert "Não invente fatos" in prompt
+    assert "Vá direto ao ponto" in prompt
 
 
 def test_prompt_serio_e_sem_usuario(criar_raiz):
@@ -45,6 +47,7 @@ def test_cerebro_responde_aos_pedacos_e_envia_a_config(criar_raiz):
     assert pedido["think"] is False
     assert pedido["stream"] is True
     assert pedido["keep_alive"] == "10m"
+    assert pedido["options"] == {"temperature": 0.6}
     assert cerebro.medidas.tokens == 10
     assert cerebro.medidas.tokens_por_segundo == pytest.approx(50.0)
     assert cerebro.medidas.primeiro_pedaco > 0
