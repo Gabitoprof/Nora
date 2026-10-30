@@ -5,6 +5,17 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
+## [0.0.1] - 2026-10-30
+
+### Adicionado
+
+- Opção `pensar` em `[modelos.local]` para ligar ou desligar o modo "pensando" do modelo local (desligado por padrão).
+- Resultados do primeiro teste de GPU em `docs/TESTE_GPU.md`.
+
+### Alterado
+
+- `scripts/teste_gpu_windows.ps1` mede pela API do Ollama: tempo total, carga e velocidade, com e sem modo pensando, sem os caracteres de animação do terminal no relatório.
+
 ## [0.0.0] - 2026-10-30
 
 ### Adicionado

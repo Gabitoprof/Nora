@@ -32,6 +32,9 @@ provedor = "ollama"
 modelo = "qwen3.5:9b"
 # Tempo sem uso até o modelo sair da VRAM.
 keep_alive = "10m"
+# Modo "pensando" (raciocínio antes de responder). Desligado na conversa por voz:
+# no teste da RX 9060 XT ele somou vários segundos de silêncio a uma resposta simples.
+pensar = false
 
 [modelos.nuvem]
 provedor = "anthropic"

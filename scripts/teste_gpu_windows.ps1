@@ -41,12 +41,40 @@ if (-not $PularDownload) {
     Escrever "`n[3/4] Download pulado"
 }
 
-Escrever "`n[4/4] Gerando uma resposta e medindo a velocidade"
-$saida = & ollama run $Modelo "Responda em uma frase curta, em português: qual é a capital do Brasil?" --verbose 2>&1 |
-    ForEach-Object { "$_" }
-$resposta = ($saida | Where-Object { $_ -notmatch "^(total duration|load duration|prompt eval|eval )" }) -join " "
-Escrever ("  Resposta: " + $resposta.Trim())
-$saida | Where-Object { $_ -match "^(load duration|prompt eval rate|eval rate)" } | ForEach-Object { Escrever "  $_" }
+Escrever "`n[4/4] Medindo o tempo de resposta (pela API do Ollama)"
+$hostOllama = if ($env:OLLAMA_HOST) { $env:OLLAMA_HOST } else { "http://127.0.0.1:11434" }
+if ($hostOllama -notmatch "^https?://") { $hostOllama = "http://$hostOllama" }
+
+function Medir([string]$rotulo, [bool]$pensar) {
+    $corpo = @{
+        model      = $Modelo
+        prompt     = "Responda em uma frase curta, em português: qual é a capital do Brasil?"
+        stream     = $false
+        think      = $pensar
+        keep_alive = "10m"
+    } | ConvertTo-Json
+    try {
+        $r = Invoke-RestMethod -Uri "$hostOllama/api/generate" -Method Post `
+            -ContentType "application/json; charset=utf-8" `
+            -Body ([System.Text.Encoding]::UTF8.GetBytes($corpo))
+    } catch {
+        Escrever "  ${rotulo}: falhou ($($_.Exception.Message))"
+        return
+    }
+    $total = [math]::Round($r.total_duration / 1e9, 2)
+    $carga = [math]::Round($r.load_duration / 1e9, 2)
+    $tps = if ($r.eval_duration -gt 0) { [math]::Round($r.eval_count / ($r.eval_duration / 1e9), 1) } else { 0 }
+    $pensou = if ($r.thinking) { $r.thinking.Length } else { 0 }
+    Escrever ("  {0}" -f $rotulo)
+    Escrever ("    resposta:        {0}" -f $r.response.Trim())
+    Escrever ("    tempo total:     {0} s (carga do modelo: {1} s)" -f $total, $carga)
+    Escrever ("    velocidade:      {0} tokens/s ({1} tokens gerados)" -f $tps, $r.eval_count)
+    if ($pensar) { Escrever ("    raciocínio:      {0} caracteres antes de responder" -f $pensou) }
+}
+
+Medir "Aquecimento (carrega o modelo na GPU)" $false
+Medir "Sem modo pensando (como será na conversa por voz)" $false
+Medir "Com modo pensando (para comparar)" $true
 
 Escrever "`n  Onde o modelo está rodando (coluna PROCESSOR):"
 & ollama ps 2>&1 | ForEach-Object { Escrever "  $_" }
@@ -54,5 +82,6 @@ Escrever "`n  Onde o modelo está rodando (coluna PROCESSOR):"
 Escrever "`n=== Como ler ==="
 Escrever "  PROCESSOR '100% GPU'  -> a placa AMD está sendo usada. Ótimo."
 Escrever "  PROCESSOR com 'CPU'   -> a placa não foi usada. Veja docs/TESTE_GPU.md (seção 'Se rodar na CPU')."
-Escrever "  eval rate             -> tokens por segundo na resposta. Acima de ~30 tokens/s a conversa fica fluida."
+Escrever "  velocidade            -> acima de ~30 tokens/s a conversa fica fluida."
+Escrever "  tempo total           -> sem modo pensando, o ideal é ficar abaixo de ~1 s com o modelo já carregado."
 Escrever "`nRelatório salvo em: $relatorio"

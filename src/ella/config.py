@@ -45,6 +45,7 @@ class ModeloLocal:
     provedor: str
     modelo: str
     keep_alive: str
+    pensar: bool
 
 
 @dataclass(frozen=True)
@@ -164,6 +165,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             provedor=_campo(dados, "modelos.local", "provedor", str),
             modelo=_campo(dados, "modelos.local", "modelo", str),
             keep_alive=_campo(dados, "modelos.local", "keep_alive", str),
+            pensar=_campo(dados, "modelos.local", "pensar", bool),
         ),
         modelo_nuvem=ModeloNuvem(
             provedor=_campo(dados, "modelos.nuvem", "provedor", str),

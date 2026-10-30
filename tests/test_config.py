@@ -11,6 +11,7 @@ def test_config_padrao_do_repositorio_carrega(criar_raiz):
     assert config.assistente.nome == "Ella"
     assert config.nome_usuario == ""
     assert config.modelo_local.provedor == "ollama"
+    assert config.modelo_local.pensar is False
     assert 0.0 <= config.persona.humor <= 1.0
     assert config.pasta_dados == raiz / "data"
     assert not config.tem_chave_anthropic

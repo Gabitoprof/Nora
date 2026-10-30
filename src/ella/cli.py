@@ -38,7 +38,8 @@ def verificar(config: Config) -> list[str]:
         f"  usuário     {config.nome_usuario or '(não definido: config/local.toml)'}",
         f"  persona     humor {persona.humor:.1f}, formalidade {persona.formalidade:.1f}",
         f"  voz         {config.voz.motor} {config.voz.voz or '(a definir)'}",
-        f"  modelo      {config.modelo_local.provedor} {config.modelo_local.modelo}",
+        f"  modelo      {config.modelo_local.provedor} {modelo}"
+        f" (modo pensando {'ligado' if config.modelo_local.pensar else 'desligado'})",
         f"  nuvem       {config.modelo_nuvem.rapido} / {config.modelo_nuvem.pesado}",
         f"  dados       {config.pasta_dados}",
         "",
