@@ -2,7 +2,7 @@
 
 Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principalmente no seu computador**, lembra do que vocês conversaram e evolui com o uso. Inspirado nos assistentes da ficção, com nome, voz e personalidade próprios e configuráveis.
 
-> **Status:** construindo a `v0.1.0`. Já dá para conversar **por texto** com o modelo local; a voz vem a seguir. Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
+> **Status:** `v0.1.0`, conversa por voz. A Nora acorda com o nome, ouve, pensa no modelo local e responde falando. Próxima etapa: memória (`v0.2.0`). Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
 
 ## Requisitos
 
