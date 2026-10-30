@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nora"
+dynamic = ["version"]
+description = "Assistente de IA pessoal por voz, em tempo real e local primeiro."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Carlos Gabriel Moura Santiago" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+# Microfone e alto-falante (conversa por voz).
+voz = ["sounddevice>=0.5", "numpy>=1.24", "onnxruntime>=1.16"]
+# Voz local Kokoro (servidor separado; usa phonemizer/espeak-ng, GPL-3.0).
+kokoro = ["kokoro-onnx>=0.4"]
+
+[project.scripts]
+nora = "nora.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "nora.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

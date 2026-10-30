@@ -1,0 +1,36 @@
+# Dados pessoais: memória, histórico, rostos. NUNCA vão para o GitHub.
+data/
+
+# Segredos e config pessoal
+.env
+config/local.toml
+
+# Modelos e programas baixados (grandes demais e com licenças próprias)
+models/
+ferramentas/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Node (HUD)
+node_modules/
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Obsidian: estado local da interface (o resto da pasta .obsidian pode ser versionado)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.trash/

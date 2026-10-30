@@ -1,0 +1,126 @@
+"""Voz: transforma texto em fala (WAV) pelo motor escolhido em [voz] motor."""
+
+from __future__ import annotations
+
+import json
+import re
+import time
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass, field
+
+from nora.audio import para_wav
+from nora.config import Config
+from nora.servico import ServicoIndisponivel, enviar
+
+ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
+
+
+def aplicar_pronuncias(texto: str, pronuncias: dict[str, str]) -> str:
+    """Troca palavras inteiras pelo jeito de falar (ex.: 'Nora' -> 'Nóra'), sem olhar maiúsculas."""
+    for palavra, fala in pronuncias.items():
+        texto = re.sub(rf"\b{re.escape(palavra)}\b", fala, texto, flags=re.IGNORECASE)
+    return texto
+
+
+ELEVENLABS_TAXA = 22_050
+
+
+@dataclass
+class VozHTTP:
+    """Servidor local que recebe POST /synthesize com JSON e devolve WAV (Kokoro, Piper)."""
+
+    nome: str
+    url: str
+    extras: dict = field(default_factory=dict)
+    pronuncias: dict = field(default_factory=dict)
+    timeout: float = 60.0
+    ultima_duracao: float = 0.0
+
+    def sintetizar(self, texto: str) -> bytes:
+        texto = aplicar_pronuncias(texto, self.pronuncias)
+        pedido = urllib.request.Request(
+            f"{self.url.rstrip('/')}/synthesize",
+            data=json.dumps({"text": texto, **self.extras}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        inicio = time.perf_counter()
+        wav = enviar(self.nome, pedido, self.timeout)
+        self.ultima_duracao = time.perf_counter() - inicio
+        return wav
+
+
+@dataclass
+class VozElevenLabs:
+    """Voz na nuvem do ElevenLabs; pede PCM 16 bits e devolve WAV."""
+
+    chave: str = field(repr=False)
+    voz_id: str
+    modelo: str
+    pronuncias: dict = field(default_factory=dict)
+    timeout: float = 60.0
+    ultima_duracao: float = 0.0
+
+    def sintetizar(self, texto: str) -> bytes:
+        texto = aplicar_pronuncias(texto, self.pronuncias)
+        if not self.chave:
+            raise ServicoIndisponivel("Falta ELEVENLABS_API_KEY no .env para usar o ElevenLabs.")
+        if not self.voz_id:
+            raise ServicoIndisponivel(
+                "Falta o voz_id em [voz.elevenlabs] (config/local.toml) para usar o ElevenLabs."
+            )
+        consulta = urllib.parse.urlencode({"output_format": f"pcm_{ELEVENLABS_TAXA}"})
+        pedido = urllib.request.Request(
+            f"{ELEVENLABS_API}/{urllib.parse.quote(self.voz_id)}?{consulta}",
+            data=json.dumps({"text": texto, "model_id": self.modelo, "language_code": "pt"}).encode(
+                "utf-8"
+            ),
+            headers={"Content-Type": "application/json", "xi-api-key": self.chave},
+        )
+        inicio = time.perf_counter()
+        pcm = enviar("o ElevenLabs", pedido, self.timeout)
+        self.ultima_duracao = time.perf_counter() - inicio
+        return para_wav(pcm, taxa=ELEVENLABS_TAXA)
+
+
+@dataclass
+class VozComReserva:
+    """Usa a voz principal; se ela falhar, fala com a reserva e deixa um aviso."""
+
+    principal: VozHTTP | VozElevenLabs
+    reserva: VozHTTP | VozElevenLabs
+    aviso: str = ""
+
+    def sintetizar(self, texto: str) -> bytes:
+        try:
+            return self.principal.sintetizar(texto)
+        except ServicoIndisponivel as erro:
+            try:
+                wav = self.reserva.sintetizar(texto)
+            except ServicoIndisponivel as erro_reserva:
+                raise ServicoIndisponivel(
+                    f"{erro} A reserva também falhou: {erro_reserva}"
+                ) from erro
+            self.aviso = f"{erro} Usei a voz reserva."
+            return wav
+
+
+def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs:
+    voz = config.voz
+    assistente = config.assistente
+    pronuncias = {assistente.nome: assistente.pronuncia} if assistente.pronuncia else {}
+    if motor == "kokoro":
+        extras = {"voice": voz.kokoro.voz, "speed": voz.kokoro.velocidade}
+        return VozHTTP("o Kokoro", voz.kokoro.url, extras, pronuncias)
+    if motor == "piper":
+        return VozHTTP("o Piper", voz.piper.url, pronuncias=pronuncias)
+    return VozElevenLabs(
+        config.chave_elevenlabs, voz.elevenlabs.voz_id, voz.elevenlabs.modelo, pronuncias
+    )
+
+
+def criar_voz(config: Config) -> VozHTTP | VozElevenLabs | VozComReserva:
+    principal = _criar_motor(config, config.voz.motor)
+    if not config.voz.reserva:
+        return principal
+    return VozComReserva(principal, _criar_motor(config, config.voz.reserva))

@@ -1,0 +1,96 @@
+# Config padrão da Nora. Vai para o GitHub, então NADA pessoal aqui.
+# Para personalizar (seu nome, outra voz, outro modelo), crie config/local.toml
+# só com as chaves que quer mudar. Ele é ignorado pelo Git e sobrepõe este arquivo.
+
+[assistente]
+nome = "Nora"
+# Palavra que acorda o assistente (v0.1.0).
+palavra_de_ativacao = "Nora"
+# Como a voz deve falar o nome dela (só na fala; na tela continua o nome). Vazio = como se escreve.
+pronuncia = ""
+idioma = "pt-BR"
+
+[usuario]
+# Como o assistente chama você. Defina em config/local.toml.
+nome = ""
+
+[persona]
+descricao = "Assistente pessoal prestativa, direta e bem-humorada."
+# 0.0 = totalmente séria, 1.0 = piadista.
+humor = 0.4
+# 0.0 = bem informal, 1.0 = bem formal.
+formalidade = 0.3
+# Respostas curtas por padrão; detalha quando pedirem.
+respostas_curtas = false
+
+[ouvido]
+# Transcrição de fala (STT). "whisper.cpp" roda como servidor separado (whisper-server).
+motor = "whisper.cpp"
+url = "http://127.0.0.1:8178"
+idioma = "pt"
+
+[voz]
+# Motor de fala (TTS): "kokoro" (local, padrão), "piper" (local) ou "elevenlabs" (nuvem, pago).
+motor = "kokoro"
+# Voz de reserva, usada quando a principal falha (ex.: ElevenLabs sem internet). Vazio = nenhuma.
+# Precisa do servidor dela rodando (o Kokoro: iniciar_voz_windows.ps1 -Voz kokoro).
+reserva = "kokoro"
+
+[voz.kokoro]
+# Kokoro-82M (pesos Apache-2.0), servido por "nora servidor-kokoro".
+# Vozes pt-BR: pf_dora (feminina), pm_alex e pm_santa (masculinas).
+url = "http://127.0.0.1:5001"
+voz = "pf_dora"
+velocidade = 1.0
+
+[voz.piper]
+# Servidor HTTP do Piper (GPL-3.0, roda separado). A pt_BR-faber-medium é masculina e deriva
+# de uma base só para uso não comercial: uso pessoal, baixada à parte, nunca distribuída.
+url = "http://127.0.0.1:5000"
+voz = "pt_BR-faber-medium"
+
+[voz.elevenlabs]
+# Nuvem, paga por uso. Chave em ELEVENLABS_API_KEY (.env). O voz_id aparece na página da voz
+# no ElevenLabs (Voices > ... > Copy voice ID). Coloque o seu em config/local.toml.
+voz_id = ""
+modelo = "eleven_flash_v2_5"
+
+[modelos.local]
+provedor = "ollama"
+modelo = "qwen3.5:9b"
+# Tempo sem uso até o modelo sair da VRAM.
+keep_alive = "10m"
+# Quanto o modelo improvisa: mais baixo = mais objetivo e previsível; mais alto = mais criativo.
+temperatura = 0.6
+# Modo "pensando" (raciocínio antes de responder). Desligado na conversa por voz:
+# no teste da RX 9060 XT ele somou vários segundos de silêncio a uma resposta simples.
+pensar = false
+
+[modelos.nuvem]
+provedor = "anthropic"
+# Conversa rápida e tarefas pesadas (usados a partir da v0.3.0).
+rapido = "claude-haiku-5-5"
+pesado = "claude-sonnet-5-5"
+
+[escuta]
+# Modo mãos livres ("nora ouvir"): detecção de fala (Silero VAD) e palavra de ativação.
+# Chance mínima (0 a 1) de um trecho ser voz para começar a ouvir.
+limiar = 0.5
+# Silêncio, em milissegundos, que encerra a sua fala. Menor = responde mais rápido, mas pode
+# cortar pausas no meio da frase.
+silencio_ms = 700
+# Segundos depois de uma resposta em que dá para continuar sem dizer o nome dela.
+janela_s = 8.0
+# Pausar o microfone enquanto ela fala. Necessário com caixa de som (senão ela se ouve).
+# Com fone Bluetooth, deixe false e mande a voz para a saída "Headset" do fone ([audio]
+# alto_falante): assim o fone não fica trocando entre modo chamada e modo música.
+pausar_microfone = true
+
+[audio]
+# Microfone e alto-falante: vazio = padrão do Windows; ou o número/nome que "nora audio" mostra.
+microfone = ""
+alto_falante = ""
+
+[caminhos]
+# Banco de memória, histórico e outros dados pessoais. Fora do Git.
+dados = "data"
