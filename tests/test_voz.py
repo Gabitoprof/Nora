@@ -134,6 +134,16 @@ def test_voz_repassa_erro_do_piper(criar_raiz):
             criar_voz(config_com(criar_raiz, piper=piper.url)).sintetizar("oi")
 
 
+def test_voz_fala_o_nome_com_a_pronuncia(criar_raiz):
+    from ella.voz import aplicar_pronuncias
+
+    assert aplicar_pronuncias("Eu sou a Ella. ELLA!", {"Ella": "Élha"}) == "Eu sou a Élha. Élha!"
+    assert aplicar_pronuncias("Ellas e Ellabela", {"Ella": "Élha"}) == "Ellas e Ellabela"
+    with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as piper:
+        criar_voz(config_com(criar_raiz, piper=piper.url)).sintetizar("Oi, eu sou a Ella.")
+    assert json.loads(piper.pedidos[0][2])["text"] == "Oi, eu sou a Élha."
+
+
 def test_kokoro_envia_voz_e_velocidade(criar_raiz):
     with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as kokoro:
         config = config_com(

@@ -23,6 +23,8 @@ from ella.vad import BYTES_POR_QUADRO, DetectorDeFala, em_quadros, falas
         ("Ei Ela... me lembra de beber água", "me lembra de beber água"),
         ("Ella.", ""),
         ("Élla, bom dia", "bom dia"),
+        ("Elha, bom dia", "bom dia"),
+        ("Ilha de Itaparica é linda", None),
         ("Que horas são, Ella?", None),
         ("A Ella é legal", None),
         ("Elas foram embora", None),

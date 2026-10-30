@@ -20,6 +20,7 @@ Versão em desenvolvimento: `0.1.0.dev0` (mostrada como "0.1.0 (em desenvolvimen
 - `ella servidor-kokoro`: servidor de voz local com o Kokoro-82M, no mesmo formato do Piper (`POST /synthesize`). Extra de instalação `.[kokoro]`.
 - Scripts de voz instalam o Kokoro e iniciam a voz escolhida (`-Voz kokoro|piper|nenhuma`).
 - `ella ouvir`: conversa mãos livres (parte 3 da v0.1.0). O Silero VAD (MIT, baixado do PyPI na primeira vez) detecta começo e fim da fala; a fala vira pergunta quando começa com a palavra de ativação ("Ella", aceitando "Ela"); depois de responder, dá para continuar por `janela_s` segundos sem dizer o nome; "tchau" encerra. Config `[escuta]` (`limiar`, `silencio_ms`, `janela_s`).
+- Pronúncia do nome: `[assistente] pronuncia = "Élha"`; a voz fala "Élha" onde o texto diz "Ella" (a tela continua mostrando "Ella"). A ativação aceita "Ella", "Elha" e "Ela".
 - O ouvido envia ao Whisper uma dica com o nome da assistente, para ele escrever "Ella" do jeito certo.
 - Persona mais objetiva: sem repetir a pergunta, sem elogios de abertura, sem inventar fatos sobre a pessoa e sem terminar toda resposta com pergunta.
 - Config `[modelos.local] temperatura` (padrão 0.6), enviada ao Ollama.

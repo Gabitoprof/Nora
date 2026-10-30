@@ -6,6 +6,8 @@
 nome = "Ella"
 # Palavra que acorda o assistente (v0.1.0).
 palavra_de_ativacao = "Ella"
+# Como a voz deve falar o nome dela (só na fala; na tela continua o nome). Vazio = como se escreve.
+pronuncia = "Élha"
 idioma = "pt-BR"
 
 [usuario]

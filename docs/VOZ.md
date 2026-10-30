@@ -119,7 +119,7 @@ janela_s = 8.0      # segundos para continuar sem dizer o nome
 
 Limites desta versão:
 
-- **"Ella" soa como o pronome "ela".** Uma frase que começa com "Ela..." perto do microfone acorda a Ella. Se incomodar, use `palavra_de_ativacao = "Oi Ella"`. Uma palavra de ativação de verdade (openWakeWord treinado com o nome dela, rodando antes do Whisper) fica para depois.
+- **O nome se pronuncia "Élha"** (`[assistente] pronuncia`): a voz fala assim, e a ativação aceita o que o Whisper escrever ("Ella", "Elha" ou "Ela"). Como ele às vezes escreve "Ela", uma frase que começa com o pronome "Ela..." perto do microfone pode acordá-la. Se incomodar, use `palavra_de_ativacao = "Oi Ella"`. Uma palavra de ativação de verdade (openWakeWord treinado com o nome dela, rodando antes do Whisper) fica para depois.
 - **Toda fala passa pelo Whisper**, mesmo as que não são para ela. Com TV ou conversa no ambiente, o processador trabalha mais. `--mostrar-ignoradas` mostra o que ela ouviu e ignorou.
 - **Enquanto ela fala, ela não ouve** (o que o microfone capta é descartado), porque ainda não há cancelamento de eco. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
 

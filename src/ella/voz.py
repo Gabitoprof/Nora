@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.parse
 import urllib.request
@@ -13,6 +14,15 @@ from ella.config import Config
 from ella.servico import ServicoIndisponivel, enviar
 
 ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
+
+
+def aplicar_pronuncias(texto: str, pronuncias: dict[str, str]) -> str:
+    """Troca palavras inteiras pelo jeito de falar (ex.: 'Ella' -> 'Élha'), sem olhar maiúsculas."""
+    for palavra, fala in pronuncias.items():
+        texto = re.sub(rf"\b{re.escape(palavra)}\b", fala, texto, flags=re.IGNORECASE)
+    return texto
+
+
 ELEVENLABS_TAXA = 22_050
 
 
@@ -23,10 +33,12 @@ class VozHTTP:
     nome: str
     url: str
     extras: dict = field(default_factory=dict)
+    pronuncias: dict = field(default_factory=dict)
     timeout: float = 60.0
     ultima_duracao: float = 0.0
 
     def sintetizar(self, texto: str) -> bytes:
+        texto = aplicar_pronuncias(texto, self.pronuncias)
         pedido = urllib.request.Request(
             f"{self.url.rstrip('/')}/synthesize",
             data=json.dumps({"text": texto, **self.extras}).encode("utf-8"),
@@ -45,10 +57,12 @@ class VozElevenLabs:
     chave: str
     voz_id: str
     modelo: str
+    pronuncias: dict = field(default_factory=dict)
     timeout: float = 60.0
     ultima_duracao: float = 0.0
 
     def sintetizar(self, texto: str) -> bytes:
+        texto = aplicar_pronuncias(texto, self.pronuncias)
         if not self.chave:
             raise ServicoIndisponivel("Falta ELEVENLABS_API_KEY no .env para usar o ElevenLabs.")
         if not self.voz_id:
@@ -71,9 +85,13 @@ class VozElevenLabs:
 
 def criar_voz(config: Config) -> VozHTTP | VozElevenLabs:
     voz = config.voz
+    assistente = config.assistente
+    pronuncias = {assistente.nome: assistente.pronuncia} if assistente.pronuncia else {}
     if voz.motor == "kokoro":
         extras = {"voice": voz.kokoro.voz, "speed": voz.kokoro.velocidade}
-        return VozHTTP("o Kokoro", voz.kokoro.url, extras)
+        return VozHTTP("o Kokoro", voz.kokoro.url, extras, pronuncias)
     if voz.motor == "piper":
-        return VozHTTP("o Piper", voz.piper.url)
-    return VozElevenLabs(config.chave_elevenlabs, voz.elevenlabs.voz_id, voz.elevenlabs.modelo)
+        return VozHTTP("o Piper", voz.piper.url, pronuncias=pronuncias)
+    return VozElevenLabs(
+        config.chave_elevenlabs, voz.elevenlabs.voz_id, voz.elevenlabs.modelo, pronuncias
+    )

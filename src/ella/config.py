@@ -24,6 +24,7 @@ class Assistente:
     nome: str
     palavra_de_ativacao: str
     idioma: str
+    pronuncia: str
 
 
 @dataclass(frozen=True)
@@ -232,6 +233,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             nome=nome,
             palavra_de_ativacao=_campo(dados, "assistente", "palavra_de_ativacao", str),
             idioma=_campo(dados, "assistente", "idioma", str),
+            pronuncia=_campo(dados, "assistente", "pronuncia", str).strip(),
         ),
         nome_usuario=_campo(dados, "usuario", "nome", str).strip(),
         persona=Persona(
