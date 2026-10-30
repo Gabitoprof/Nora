@@ -70,6 +70,10 @@ class SounddeviceFalso:
             return self.DISPOSITIVOS
         return self.DISPOSITIVOS[0 if dispositivo is None else dispositivo]
 
+    class WasapiSettings:
+        def __init__(self, auto_convert=False):
+            self.auto_convert = auto_convert
+
     def query_hostapis(self, indice=None):
         return self.APIS if indice is None else self.APIS[indice]
 
@@ -133,6 +137,48 @@ def test_microfone_bluetooth_so_abre_em_16k(monkeypatch):
     wav = audio.gravar_ate_enter(lambda _: "")
     assert falso.aberto_com["samplerate"] == 16_000
     assert audio.ler_wav(wav)[1] == 16_000
+
+
+def test_wasapi_abre_com_conversao_automatica(monkeypatch):
+    falso = SounddeviceFalso(funciona=lambda indice, canais: indice == 1)
+    monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
+    audio.gravar_ate_enter(lambda _: "")
+    assert falso.aberto_com["extra_settings"].auto_convert is True
+
+
+def test_acha_a_versao_wdm_ks_do_fone_bluetooth(monkeypatch):
+    falso = SounddeviceFalso(funciona=lambda indice, canais: indice == 3)
+    falso.APIS = [*falso.APIS, {"name": "Windows WDM-KS"}]
+    falso.DISPOSITIVOS = [
+        {
+            "name": "Headset (HAYLOU S40)",
+            "hostapi": 0,
+            "max_input_channels": 1,
+            "default_samplerate": 44_100.0,
+        },
+        {
+            "name": "Headset (HAYLOU S40)",
+            "hostapi": 1,
+            "max_input_channels": 1,
+            "default_samplerate": 16_000.0,
+        },
+        {
+            "name": "Microfone (fifine Microphone)",
+            "hostapi": 0,
+            "max_input_channels": 1,
+            "default_samplerate": 44_100.0,
+        },
+        {
+            "name": "Headset (@System32\\drivers\\bthhfenum.sys,#2;%1 Hands-Free%0\n;(HAYLOU S40))",
+            "hostapi": 2,
+            "max_input_channels": 1,
+            "default_samplerate": 16_000.0,
+        },
+    ]
+    monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
+    audio.gravar_ate_enter(lambda _: "")
+    assert falso.aberto_com["device"] == 3
+    assert 2 not in {indice for indice, _ in falso.tentativas}  # não tentou o fifine
 
 
 def test_erro_do_microfone_vira_mensagem_clara(monkeypatch):

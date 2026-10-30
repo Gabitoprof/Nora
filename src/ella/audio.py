@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import re
 import wave
 from array import array
 
@@ -96,10 +97,18 @@ def _candidatos_de_microfone(sd, microfone: int | str | None) -> list[int | str 
     except Exception:
         return candidatos
     base = nome[:31]
+    # O WDM-KS escreve o nome de outro jeito, mas mantém o modelo entre parênteses no fim:
+    # "Headset (@System32\\drivers\\bthhfenum.sys,...;(HAYLOU S40))".
+    modelo = re.search(r"\(([^()]+)\)\s*$", nome)
+    marca = f"({modelo.group(1)})" if modelo else None
+
+    def mesmo_aparelho(outro: str) -> bool:
+        return outro[:31] == base or bool(marca and outro.rstrip().endswith(marca + ")"))
+
     mesmos = [
         (indice, apis[info["hostapi"]])
         for indice, info in dispositivos
-        if info["max_input_channels"] > 0 and info["name"][:31] == base
+        if info["max_input_channels"] > 0 and mesmo_aparelho(info["name"])
     ]
     ordem = {api: posicao for posicao, api in enumerate(_PREFERENCIA_DE_API)}
     for indice, _api in sorted(mesmos, key=lambda item: ordem.get(item[1], len(ordem))):
@@ -127,6 +136,10 @@ def _abrir_microfone(sd, microfone: int | str | None, callback):
             erros.append(f"{candidato}: {erro}")
             continue
         taxas = dict.fromkeys((int(info["default_samplerate"]), *TAXAS_ALTERNATIVAS))
+        extras = {}
+        if "WASAPI" in api and hasattr(sd, "WasapiSettings"):
+            # Deixa o Windows converter taxa e canais, em vez de exigir o formato exato do aparelho.
+            extras["extra_settings"] = sd.WasapiSettings(auto_convert=True)
         canais_possiveis = dict.fromkeys((1, min(2, int(info["max_input_channels"]) or 1)))
         ultimo = ""
         for taxa in taxas:
@@ -138,6 +151,7 @@ def _abrir_microfone(sd, microfone: int | str | None, callback):
                         channels=canais,
                         dtype="int16",
                         callback=callback,
+                        **extras,
                     )
                     return fluxo, taxa, canais
                 except (sd.PortAudioError, ValueError) as erro:
