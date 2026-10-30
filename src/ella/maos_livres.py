@@ -90,6 +90,8 @@ def conversar_maos_livres(
             f'Ouvindo. Comece a frase com "{palavra}" (ex.: "{palavra}, que horas são?"). '
             "Ctrl+C encerra."
         )
+        if gravar_falas:
+            escrever(f"(gravando cada fala ouvida em {config.pasta_dados / 'falas'})")
 
         janela_ate = 0.0
         pasta_falas = config.pasta_dados / "falas"

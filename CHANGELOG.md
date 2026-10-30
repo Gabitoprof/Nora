@@ -21,7 +21,8 @@ Versão em desenvolvimento: `0.1.0.dev0` (mostrada como "0.1.0 (em desenvolvimen
 - Scripts de voz instalam o Kokoro e iniciam a voz escolhida (`-Voz kokoro|piper|nenhuma`).
 - `ella ouvir`: conversa mãos livres (parte 3 da v0.1.0). O Silero VAD (MIT, baixado do PyPI na primeira vez) detecta começo e fim da fala; a fala vira pergunta quando começa com a palavra de ativação ("Ella", aceitando "Ela"); depois de responder, dá para continuar por `janela_s` segundos sem dizer o nome; "tchau" encerra. Config `[escuta]` (`limiar`, `silencio_ms`, `janela_s`).
 - Pronúncia do nome: `[assistente] pronuncia = "Élha"`; a voz fala "Élha" onde o texto diz "Ella" (a tela continua mostrando "Ella"). A ativação aceita "Ella", "Elha" e "Ela".
-- O ouvido envia ao Whisper uma dica com o nome da assistente, para ele escrever "Ella" do jeito certo.
+- O ouvido envia ao Whisper uma dica com o nome da assistente ("Conversa com a assistente Ella."), para ele escrever "Ella" do jeito certo.
+- `ella ouvir --gravar-falas` salva cada fala ouvida em `data/falas/`, para diagnóstico. O detector guarda 0,5 s antes do começo da fala, para não cortar a primeira sílaba.
 - Persona mais objetiva: sem repetir a pergunta, sem elogios de abertura, sem inventar fatos sobre a pessoa e sem terminar toda resposta com pergunta.
 - Config `[modelos.local] temperatura` (padrão 0.6), enviada ao Ollama.
 - `ella audio`: lista microfones e alto-falantes, grava alguns segundos e toca de volta. Config `[audio]` para escolher os dispositivos.

@@ -108,7 +108,7 @@ def test_conversa_maos_livres(criar_raiz):
     instantes = iter([0.0, 1.0, 2.0, 3.0, 100.0, 101.0, 102.0])
 
     def whisper(caminho, cabecalhos, corpo):
-        assert b'name="prompt"\r\n\r\nElla, \r\n' in corpo
+        assert b'name="prompt"\r\n\r\nConversa com a assistente Ella.\r\n' in corpo
         return 200, "application/json", json.dumps({"text": next(transcricoes)}).encode()
 
     recomecos = []
@@ -129,6 +129,7 @@ def test_conversa_maos_livres(criar_raiz):
             config,
             saida=saida,
             mostrar_ignoradas=True,
+            gravar_falas=True,
             tocar=falado.append,
             fontes=(falas_falsas, lambda: recomecos.append(1)),
             relogio=lambda: next(instantes),
@@ -149,3 +150,5 @@ def test_conversa_maos_livres(criar_raiz):
         "Até mais!",
     ]
     assert len(recomecos) == 4  # depois de cada resposta, a escuta recomeça do zero
+    gravadas = sorted((config.pasta_dados / "falas").glob("*.wav"))
+    assert len(gravadas) == 6

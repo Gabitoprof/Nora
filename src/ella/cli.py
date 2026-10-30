@@ -141,6 +141,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="mostra as falas ouvidas que não começaram com o nome dela",
     )
+    ouvir_cmd.add_argument(
+        "--gravar-falas",
+        action="store_true",
+        help="salva cada fala ouvida em data/falas (para diagnóstico)",
+    )
     kokoro_cmd = comandos.add_parser(
         "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"
     )
@@ -181,7 +186,10 @@ def main(argv: list[str] | None = None) -> int:
         from ella.maos_livres import conversar_maos_livres
 
         return conversar_maos_livres(
-            config, medir=args.medir, mostrar_ignoradas=args.mostrar_ignoradas
+            config,
+            medir=args.medir,
+            mostrar_ignoradas=args.mostrar_ignoradas,
+            gravar_falas=args.gravar_falas,
         )
 
     if args.comando == "falar":

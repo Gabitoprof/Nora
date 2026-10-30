@@ -84,7 +84,7 @@ class DetectorDeFala:
         self,
         limiar: float = 0.5,
         silencio_ms: int = 700,
-        antes_ms: int = 300,
+        antes_ms: int = 500,
         minimo_ms: int = 250,
         maximo_s: float = 20.0,
     ) -> None:
