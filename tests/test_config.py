@@ -1,6 +1,6 @@
 import pytest
 
-from ella import __version__
+from ella import versao_legivel
 from ella.cli import main, saudacao
 from ella.config import RAIZ, ConfigError, carregar, ler_env, mesclar
 
@@ -15,6 +15,12 @@ def test_config_padrao_do_repositorio_carrega(criar_raiz):
     assert 0.0 <= config.persona.humor <= 1.0
     assert config.pasta_dados == raiz / "data"
     assert not config.tem_chave_anthropic
+
+
+def test_versao_legivel():
+    assert versao_legivel("0.1.0.dev0") == "0.1.0 (em desenvolvimento)"
+    assert versao_legivel("0.1.0") == "0.1.0"
+    assert versao_legivel("1.2.3") == "1.2.3"
 
 
 def test_config_real_carrega():
@@ -73,7 +79,9 @@ def test_mesclar_e_ler_env(tmp_path):
 
 def test_hello_world(criar_raiz, capsys):
     raiz = criar_raiz()
-    assert saudacao(carregar(raiz, ambiente={})) == f"Olá! Eu sou a Ella, versão {__version__}."
+    assert (
+        saudacao(carregar(raiz, ambiente={})) == f"Olá! Eu sou a Ella, versão {versao_legivel()}."
+    )
     com_nome = carregar(criar_raiz(local='[usuario]\nnome = "Gabriel"\n'), ambiente={})
     assert saudacao(com_nome).startswith("Olá, Gabriel! Eu sou a Ella")
     assert main([]) == 0

@@ -9,14 +9,14 @@ import sys
 import urllib.error
 import urllib.request
 
-from ella import __version__
+from ella import __version__, versao_legivel
 from ella.config import Config, ConfigError, carregar
 from ella.servico import responde
 
 
 def saudacao(config: Config) -> str:
     quem = f", {config.nome_usuario}" if config.nome_usuario else ""
-    return f"Olá{quem}! Eu sou a {config.assistente.nome}, versão {__version__}."
+    return f"Olá{quem}! Eu sou a {config.assistente.nome}, versão {versao_legivel()}."
 
 
 def modelos_ollama(host: str, timeout: float = 2.0) -> list[str] | None:
