@@ -50,6 +50,16 @@ def test_cerebro_responde_aos_pedacos_e_envia_a_config(criar_raiz):
     assert cerebro.medidas.primeiro_pedaco > 0
 
 
+def test_aquecer_carrega_o_modelo_sem_gerar(criar_raiz):
+    with OllamaFalso([]) as ollama:
+        cerebro = CerebroLocal(config_com(criar_raiz, ollama.host))
+        assert cerebro.aquecer() >= 0
+    assert ollama.pedidos[0]["messages"] == []
+    assert ollama.pedidos[0]["model"] == "qwen3.5:9b"
+    with pytest.raises(CerebroIndisponivel, match="Ele está aberto"):
+        CerebroLocal(config_com(criar_raiz), timeout=2).aquecer()
+
+
 def test_cerebro_sem_ollama_da_erro_claro(criar_raiz):
     cerebro = CerebroLocal(config_com(criar_raiz), timeout=2)
     with pytest.raises(CerebroIndisponivel, match="Ele está aberto"):
@@ -96,6 +106,8 @@ def test_conversar_no_terminal(criar_raiz):
         saida = io.StringIO()
         assert conversar(config, entrada=lambda _: next(falas), saida=saida, medir=True) == 0
     texto = saida.getvalue()
+    assert "pronto em" in texto
+    assert ollama.pedidos[0]["messages"] == []
     assert "Ella: Brasília." in texto
     assert "tokens/s" in texto
     assert "(conversa reiniciada)" in texto

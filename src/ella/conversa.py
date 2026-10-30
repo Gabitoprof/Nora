@@ -66,10 +66,12 @@ def conversar(
         saida.write(texto + fim)
         saida.flush()
 
-    escrever(
-        f"Conversa com {nome} ({config.modelo_local.modelo}). Digite 'sair' para encerrar e "
-        "'/limpar' para começar do zero."
-    )
+    escrever(f"Carregando {config.modelo_local.modelo} na memória...", fim="")
+    try:
+        escrever(f" pronto em {conversa.cerebro.aquecer():.1f} s.")
+    except CerebroIndisponivel as erro:
+        escrever(f"\n[erro] {erro}")
+    escrever(f"Conversa com {nome}. Digite 'sair' para encerrar e '/limpar' para começar do zero.")
     while True:
         try:
             texto = entrada("\nVocê: ").strip()
