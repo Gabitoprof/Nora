@@ -11,6 +11,7 @@ import urllib.request
 
 from ella import __version__
 from ella.config import Config, ConfigError, carregar
+from ella.servico import responde
 
 
 def saudacao(config: Config) -> str:
@@ -38,7 +39,8 @@ def verificar(config: Config) -> list[str]:
         f"  assistente  {config.assistente.nome} ({config.assistente.idioma})",
         f"  usuário     {config.nome_usuario or '(não definido: config/local.toml)'}",
         f"  persona     humor {persona.humor:.1f}, formalidade {persona.formalidade:.1f}",
-        f"  voz         {config.voz.motor} {config.voz.voz or '(a definir)'}",
+        f"  ouvido      {config.ouvido.motor} em {config.ouvido.url} ({config.ouvido.idioma})",
+        f"  voz         {config.voz.motor} {config.voz.voz or '(a definir)'} em {config.voz.url}",
         f"  modelo      {config.modelo_local.provedor} {modelo}"
         f" (modo pensando {'ligado' if config.modelo_local.pensar else 'desligado'})",
         f"  nuvem       {config.modelo_nuvem.rapido} / {config.modelo_nuvem.pesado}",
@@ -54,6 +56,12 @@ def verificar(config: Config) -> list[str]:
         linhas.append(f"  Ollama                  ok, {modelo} instalado")
     else:
         linhas.append(f"  Ollama                  ok, mas falta o modelo: ollama pull {modelo}")
+    for nome, url, dica in [
+        ("whisper-server", config.ouvido.url, "veja docs/VOZ.md"),
+        ("Piper", config.voz.url, "veja docs/VOZ.md"),
+    ]:
+        estado = "ok" if responde(url) else f"não respondeu em {url} ({dica})"
+        linhas.append(f"  {nome:<24}{estado}")
     return linhas
 
 
@@ -68,6 +76,8 @@ def main(argv: list[str] | None = None) -> int:
     conversar_cmd.add_argument(
         "--medir", action="store_true", help="mostra o tempo de cada resposta"
     )
+    falar_cmd = comandos.add_parser("falar", help="conversa por voz (aperte Enter para falar)")
+    falar_cmd.add_argument("--medir", action="store_true", help="mostra o tempo de cada etapa")
     args = parser.parse_args(argv)
 
     try:
@@ -80,6 +90,11 @@ def main(argv: list[str] | None = None) -> int:
         from ella.conversa import conversar
 
         return conversar(config, medir=args.medir)
+
+    if args.comando == "falar":
+        from ella.conversa_voz import conversar_por_voz
+
+        return conversar_por_voz(config, medir=args.medir)
 
     print(saudacao(config))
     if args.verificar:

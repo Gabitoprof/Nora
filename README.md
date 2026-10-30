@@ -44,6 +44,14 @@ ella conversar
 
 Digite `sair` para encerrar e `/limpar` para começar do zero. Com `--medir`, mostra o tempo de cada resposta. As conversas ficam em `data/historico/`, só na sua máquina.
 
+### Conversar por voz
+
+Precisa do ouvido (whisper.cpp) e da voz (Piper) instalados e rodando. Passo a passo em [docs/VOZ.md](docs/VOZ.md). Depois:
+
+```bash
+ella falar --medir
+```
+
 ## Personalizando
 
 - **`config/ella.toml`**: config padrão (nome, persona, voz, modelos). Não coloque nada pessoal aqui.
@@ -67,7 +75,7 @@ Digite `sair` para encerrar e `/limpar` para começar do zero. Com `--medir`, mo
 | `config/` | Config padrão |
 | `hud/` | Interface visual (web, a partir da v0.4.0) |
 | `mcp_servers/` | Ferramentas no padrão MCP (a partir da v0.5.0) |
-| `scripts/` | Utilitários, como o teste de GPU |
+| `scripts/` | Utilitários: teste de GPU, instalar e iniciar a voz |
 | `docs/` | Documentação, mapa mental e referências |
 | `data/` | Memória e dados pessoais. **Criada na sua máquina, nunca vai para o Git.** |
 
@@ -77,6 +85,7 @@ Digite `sair` para encerrar e `/limpar` para começar do zero. Com `--medir`, mo
 - [Mapa mental e roadmap](docs/MAPA_MENTAL.md)
 - [Documento completo do projeto](PROJETO_ASSISTENTE_IA.md)
 - [Teste de GPU](docs/TESTE_GPU.md)
+- [Conversa por voz](docs/VOZ.md)
 - [Usando no Obsidian](docs/OBSIDIAN.md)
 
 ## Licença

@@ -35,8 +35,16 @@ class Persona:
 
 
 @dataclass(frozen=True)
+class Ouvido:
+    motor: str
+    url: str
+    idioma: str
+
+
+@dataclass(frozen=True)
 class Voz:
     motor: str
+    url: str
     voz: str
 
 
@@ -60,6 +68,7 @@ class Config:
     assistente: Assistente
     nome_usuario: str
     persona: Persona
+    ouvido: Ouvido
     voz: Voz
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
@@ -160,7 +169,16 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             ),
             respostas_curtas=_campo(dados, "persona", "respostas_curtas", bool),
         ),
-        voz=Voz(motor=_campo(dados, "voz", "motor", str), voz=_campo(dados, "voz", "voz", str)),
+        ouvido=Ouvido(
+            motor=_campo(dados, "ouvido", "motor", str),
+            url=_campo(dados, "ouvido", "url", str),
+            idioma=_campo(dados, "ouvido", "idioma", str),
+        ),
+        voz=Voz(
+            motor=_campo(dados, "voz", "motor", str),
+            url=_campo(dados, "voz", "url", str),
+            voz=_campo(dados, "voz", "voz", str),
+        ),
         modelo_local=ModeloLocal(
             provedor=_campo(dados, "modelos.local", "provedor", str),
             modelo=_campo(dados, "modelos.local", "modelo", str),

@@ -21,11 +21,20 @@ formalidade = 0.3
 # Respostas curtas por padrão; detalha quando pedirem.
 respostas_curtas = false
 
+[ouvido]
+# Transcrição de fala (STT). "whisper.cpp" roda como servidor separado (whisper-server).
+motor = "whisper.cpp"
+url = "http://127.0.0.1:8178"
+idioma = "pt"
+
 [voz]
 # Motor de fala (TTS). Opções previstas: "piper" (local), "elevenlabs", "cartesia".
+# O Piper roda como servidor separado (licença GPL-3.0, fora do nosso código).
 motor = "piper"
-# Voz a definir na v0.1.0, depois de conferir a licença.
-voz = ""
+url = "http://127.0.0.1:5000"
+# Voz do Piper. A pt_BR-faber-medium deriva de uma base só para uso não comercial:
+# serve para uso pessoal e é baixada à parte, nunca distribuída com o projeto.
+voz = "pt_BR-faber-medium"
 
 [modelos.local]
 provedor = "ollama"

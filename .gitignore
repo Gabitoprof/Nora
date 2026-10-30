@@ -5,8 +5,9 @@ data/
 .env
 config/local.toml
 
-# Modelos baixados (grandes demais e com licenças próprias)
+# Modelos e programas baixados (grandes demais e com licenças próprias)
 models/
+ferramentas/
 
 # Python
 __pycache__/
