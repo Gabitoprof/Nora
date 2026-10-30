@@ -60,8 +60,11 @@ class SounddeviceFalso:
         },
     ]
 
-    def __init__(self, funciona=lambda indice, canais: True):
+    def __init__(self, funciona=lambda indice, canais: True, falha_ao_comecar=lambda i: False):
         self.funciona = funciona
+        self.falha_ao_comecar = falha_ao_comecar
+        self.parados = 0
+        self.fechados = 0
         self.tentativas = []
         self.aberto_com = None
 
@@ -84,16 +87,21 @@ class SounddeviceFalso:
             raise self.PortAudioError("MME error 11")
         self.aberto_com = opcoes
         taxa, canais = opcoes["samplerate"], opcoes["channels"]
+        falso = self
 
         class Fluxo:
-            def __enter__(self):
+            def start(self):
+                if falso.falha_ao_comecar(indice):
+                    raise falso.PortAudioError("WdmSyncIoctl: GLE = 0x0000048F")
                 opcoes["callback"](
                     pcm([7, -7] * taxa if canais == 2 else [7] * taxa), taxa, None, None
                 )
-                return self
 
-            def __exit__(self, *args):
-                pass
+            def stop(self):
+                falso.parados += 1
+
+            def close(self):
+                falso.fechados += 1
 
         return Fluxo()
 
@@ -179,6 +187,16 @@ def test_acha_a_versao_wdm_ks_do_fone_bluetooth(monkeypatch):
     audio.gravar_ate_enter(lambda _: "")
     assert falso.aberto_com["device"] == 3
     assert 2 not in {indice for indice, _ in falso.tentativas}  # não tentou o fifine
+
+
+def test_microfone_que_abre_mas_nao_comeca_passa_para_o_proximo(monkeypatch):
+    falso = SounddeviceFalso(falha_ao_comecar=lambda indice: indice == 0)
+    monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
+    wav = audio.gravar_ate_enter(lambda _: "")
+    assert falso.aberto_com["device"] == 1
+    assert audio.duracao_wav(wav) == pytest.approx(1.0)
+    assert falso.parados == 1
+    assert falso.fechados >= 2  # o que falhou ao começar e o que gravou
 
 
 def test_erro_do_microfone_vira_mensagem_clara(monkeypatch):

@@ -122,7 +122,10 @@ TAXAS_ALTERNATIVAS = (48_000, 44_100, 16_000, 32_000, 22_050, 8_000)
 
 def _abrir_microfone(sd, microfone: int | str | None, callback):
     """Abre o microfone; se falhar, tenta outras taxas, estéreo e o mesmo microfone pelas outras
-    APIs de áudio do Windows. Devolve (fluxo ainda parado, taxa, canais).
+    APIs de áudio do Windows. Devolve (fluxo já gravando, taxa, canais).
+
+    O fluxo é iniciado aqui porque alguns aparelhos abrem sem erro e só falham ao começar a
+    gravar (ex.: fone Bluetooth com o modo de chamada desligado: "dispositivo não conectado").
 
     Fones Bluetooth são o caso típico: o Windows anuncia 44,1 kHz, mas o microfone deles só
     aceita 16 ou 8 kHz quando está em uso.
@@ -153,9 +156,16 @@ def _abrir_microfone(sd, microfone: int | str | None, callback):
                         callback=callback,
                         **extras,
                     )
-                    return fluxo, taxa, canais
                 except (sd.PortAudioError, ValueError) as erro:
                     ultimo = str(erro)
+                    continue
+                try:
+                    fluxo.start()
+                except sd.PortAudioError as erro:
+                    ultimo = str(erro)
+                    fluxo.close()
+                    continue
+                return fluxo, taxa, canais
         rotulo = "padrão" if candidato is None else candidato
         erros.append(
             f"{rotulo} {info.get('name', '')} [{api}], taxas {', '.join(map(str, taxas))} Hz: "
@@ -186,8 +196,11 @@ def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes
         blocos.append(bytes(dados))
 
     fluxo, taxa, canais = _abrir_microfone(sd, microfone, guardar)
-    with fluxo:
+    try:
         entrada("  (gravando... aperte Enter para parar) ")
+    finally:
+        fluxo.stop()
+        fluxo.close()
     return para_wav(reamostrar(_para_mono(b"".join(blocos), canais), taxa))
 
 
@@ -204,8 +217,7 @@ class Microfone:
         )
 
     def __enter__(self) -> Microfone:
-        self._fluxo.start()
-        return self
+        return self  # o fluxo já começa a gravar ao abrir
 
     def __exit__(self, *args) -> None:
         self._fluxo.stop()
