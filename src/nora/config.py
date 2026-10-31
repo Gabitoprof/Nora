@@ -69,6 +69,7 @@ class VozComfyUI:
     campo: str
 
 
+REALCES_DE_PERGUNTA = ("", "duplo", "invertido", "exclamado")
 MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs", "comfyui")
 
 
@@ -76,6 +77,7 @@ MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs", "comfyui")
 class Voz:
     motor: str
     reserva: str
+    realce_pergunta: str
     pronuncias: dict[str, str]
     kokoro: VozKokoro
     piper: VozPiper
@@ -217,6 +219,10 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
     velocidade = _campo(dados, "voz.kokoro", "velocidade", float)
     if not 0.5 <= velocidade <= 2.0:
         raise ConfigError(f"[voz.kokoro] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
+    realce = _campo(dados, "voz", "realce_pergunta", str).strip()
+    if realce not in REALCES_DE_PERGUNTA:
+        opcoes = ", ".join(repr(r) for r in REALCES_DE_PERGUNTA)
+        raise ConfigError(f"[voz] realce_pergunta deve ser um de {opcoes}; veio {realce!r}.")
     pronuncias = dados.get("voz", {}).get("pronuncias", {})
     if not isinstance(pronuncias, dict) or not all(
         isinstance(chave, str) and isinstance(valor, str) for chave, valor in pronuncias.items()
@@ -224,6 +230,7 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
         raise ConfigError('[voz.pronuncias] deve ter linhas como "palavra" = "como falar".')
     return Voz(
         motor=motor,
+        realce_pergunta=realce,
         pronuncias={chave.strip(): valor for chave, valor in pronuncias.items() if chave.strip()},
         reserva=reserva if reserva != motor else "",
         kokoro=VozKokoro(

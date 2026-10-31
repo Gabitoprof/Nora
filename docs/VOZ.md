@@ -229,6 +229,23 @@ O áudio pode sair em WAV, FLAC ou MP3: a Nora converte (precisa do `soundfile`,
 
 > Para ter a voz do ComfyUI **rápida e leve** no dia a dia, gere um conjunto de frases com ela e treine um Piper: veja [TREINAR_VOZ.md](TREINAR_VOZ.md).
 
+## Perguntas que soam como afirmação
+
+Alguns modelos de voz não sobem a entonação no "?". Dá para testar jeitos de escrever a pergunta que ajudam o modelo a perceber:
+
+```powershell
+nora voz comparar "Amanhã você vai à academia?" --ouvir
+```
+
+Ela gera a mesma frase normal, `duplo` ("??"), `invertido` ("¿...?") e `exclamado` ("?!"), salva em `data\vozes\pergunta_*.wav` e toca cada uma. Escolha a melhor e ponha no `config\local.toml`:
+
+```toml
+[voz]
+realce_pergunta = "invertido"
+```
+
+Vale também para o `nora voz gerar-dataset`, então o conjunto de treino sai com as perguntas no jeito escolhido.
+
 ## Corrigir a pronúncia de uma palavra
 
 Se a voz fala mal alguma palavra, reescreva como ela deve soar, só na fala (a tela continua mostrando o texto original). Vale para qualquer motor de voz:

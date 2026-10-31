@@ -354,3 +354,44 @@ def test_pronuncias_invalidas(criar_raiz):
 
     with pytest.raises(ConfigError, match="pronuncias"):
         config_com(criar_raiz, extra='[voz.pronuncias]\n"amanhã" = 3\n')
+
+
+@pytest.mark.parametrize(
+    ("modo", "esperado"),
+    [
+        ("", "Oi. Tudo bem? Ok."),
+        ("duplo", "Oi. Tudo bem?? Ok."),
+        ("invertido", "Oi. ¿Tudo bem? Ok."),
+        ("exclamado", "Oi. Tudo bem?! Ok."),
+    ],
+)
+def test_realce_de_pergunta(modo, esperado):
+    from nora.voz import realcar_perguntas
+
+    assert realcar_perguntas("Oi. Tudo bem? Ok.", modo) == esperado
+
+
+def test_realce_vale_para_a_voz_e_o_comando_compara(criar_raiz):
+    from nora.cli import comparar_realces
+
+    with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as piper:
+        local = (
+            '[voz]\nmotor = "piper"\nreserva = ""\nrealce_pergunta = "invertido"\n'
+            f'[voz.piper]\nurl = "{piper.url}"\n'
+        )
+        config = carregar(criar_raiz(local=local), ambiente={})
+        criar_voz(config).sintetizar("Tudo bem?")
+        assert json.loads(piper.pedidos[-1][2])["text"] == "¿Tudo bem?"
+        tocados = []
+        assert comparar_realces(config, "Tudo bem?", ouvir=True, tocar=tocados.append) == 0
+    falados = [json.loads(p[2])["text"] for p in piper.pedidos[1:]]
+    assert falados == ["Tudo bem?", "Tudo bem??", "¿Tudo bem?", "Tudo bem?!"]
+    assert len(tocados) == 4
+    assert (config.pasta_dados / "vozes" / "pergunta_invertido.wav").is_file()
+
+
+def test_realce_invalido(criar_raiz):
+    from nora.config import ConfigError
+
+    with pytest.raises(ConfigError, match="realce_pergunta"):
+        carregar(criar_raiz(local='[voz]\nrealce_pergunta = "gritado"\n'), ambiente={})

@@ -107,6 +107,38 @@ class VozComReserva:
             return wav
 
 
+_PERGUNTA = re.compile(r"([^.!?…]*?)\?+(?=[\s\"'”)»]|$)")
+
+
+def realcar_perguntas(texto: str, modo: str) -> str:
+    """Reescreve as perguntas para a voz marcar melhor a entonação: "duplo" (??), "invertido"
+    (¿...?) ou "exclamado" (?!). Modo vazio devolve o texto como está."""
+    if not modo:
+        return texto
+
+    def trocar(achado: re.Match) -> str:
+        corpo = achado.group(1)
+        if modo == "duplo":
+            return f"{corpo}??"
+        if modo == "exclamado":
+            return f"{corpo}?!"
+        inicio = len(corpo) - len(corpo.lstrip())
+        return f"{corpo[:inicio]}¿{corpo[inicio:]}?"
+
+    return _PERGUNTA.sub(trocar, texto)
+
+
+@dataclass
+class VozComRealce:
+    """Passa as perguntas pelo realce antes de mandar à voz."""
+
+    voz: object
+    modo: str
+
+    def sintetizar(self, texto: str) -> bytes:
+        return self.voz.sintetizar(realcar_perguntas(texto, self.modo))
+
+
 MARCADOR = "{{texto}}"
 
 
@@ -244,7 +276,14 @@ class VozComfyUI:
         return wav
 
 
-def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs | VozComfyUI:
+def _criar_motor(config: Config, motor: str, realce: str | None = None):
+    """O motor de voz pedido, com o realce de perguntas da config (ou o `realce` dado)."""
+    motor_puro = _criar_motor_puro(config, motor)
+    modo = config.voz.realce_pergunta if realce is None else realce
+    return VozComRealce(motor_puro, modo) if modo else motor_puro
+
+
+def _criar_motor_puro(config: Config, motor: str) -> VozHTTP | VozElevenLabs | VozComfyUI:
     voz = config.voz
     assistente = config.assistente
     pronuncias = dict(voz.pronuncias)

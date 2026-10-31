@@ -35,6 +35,10 @@ motor = "kokoro"
 # Voz de reserva, usada quando a principal falha (ex.: ElevenLabs sem internet). Vazio = nenhuma.
 # Precisa do servidor dela rodando (o Kokoro: iniciar_voz_windows.ps1 -Voz kokoro).
 reserva = "kokoro"
+# Jeito de escrever as perguntas para a voz, quando ela não sobe a entonação no "?":
+# "" (normal), "duplo" ("Tudo bem??"), "invertido" ("¿Tudo bem?") ou "exclamado" ("Tudo bem?!").
+# Compare os jeitos com: nora voz comparar "Tudo bem com você?"
+realce_pergunta = ""
 
 [voz.pronuncias]
 # Palavras que a voz fala mal, reescritas só na fala (a tela mostra o texto original).

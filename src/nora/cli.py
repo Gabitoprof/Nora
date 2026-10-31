@@ -152,6 +152,39 @@ IDIOMAS_KOKORO = {
 }
 
 
+def comparar_realces(config: Config, frase: str, ouvir: bool = False, voz=None, tocar=None) -> int:
+    """Gera a frase em cada realce de pergunta e salva em data/vozes/pergunta_<realce>.wav."""
+    from nora import audio
+    from nora.config import REALCES_DE_PERGUNTA
+    from nora.servico import ServicoIndisponivel
+    from nora.voz import _criar_motor_puro, realcar_perguntas
+
+    voz = voz or _criar_motor_puro(config, config.voz.motor)
+    tocar = tocar or (lambda w: audio.tocar_wav(w, audio.dispositivo(config.audio.alto_falante)))
+    pasta = config.pasta_dados / "vozes"
+    pasta.mkdir(parents=True, exist_ok=True)
+    for modo in REALCES_DE_PERGUNTA:
+        texto = realcar_perguntas(frase, modo)
+        nome = modo or "normal"
+        try:
+            wav = voz.sintetizar(texto)
+        except ServicoIndisponivel as erro:
+            print(f"[erro] {erro}", file=sys.stderr)
+            return 1
+        arquivo = pasta / f"pergunta_{nome}.wav"
+        arquivo.write_bytes(wav)
+        print(f"  {nome:<10} {texto}  ->  {arquivo}")
+        if ouvir:
+            try:
+                tocar(wav)
+            except Exception as erro:
+                print(f"  [aviso] não consegui tocar ({erro})")
+    print(
+        'Gostou de um? No config/local.toml, em [voz]: realce_pergunta = "duplo" (ou o escolhido)'
+    )
+    return 0
+
+
 def comando_gerar_dataset(config: Config, args, voz=None) -> int:
     from pathlib import Path
 
@@ -409,6 +442,11 @@ def main(argv: list[str] | None = None) -> int:
     salvar_cmd.add_argument("--pasta", default="", help="onde salvar (padrão: data/audios)")
     salvar_cmd.add_argument("--nome", default="", help="nome do arquivo (sem .wav)")
     salvar_cmd.add_argument("--ouvir", action="store_true", help="também tocar depois de salvar")
+    comparar_cmd = voz_acoes.add_parser(
+        "comparar", help="a mesma pergunta em cada realce, para escolher o que soa melhor"
+    )
+    comparar_cmd.add_argument("frase", nargs="+", help='ex.: "Tudo bem com você?"')
+    comparar_cmd.add_argument("--ouvir", action="store_true", help="tocar cada versão")
     dataset_cmd = voz_acoes.add_parser(
         "gerar-dataset",
         help="fala muitas frases com a voz configurada e salva no formato de treino do Piper",
@@ -449,6 +487,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.comando == "memoria":
         return comando_memoria(config, args)
+
+    if args.comando == "voz" and args.acao == "comparar":
+        return comparar_realces(config, " ".join(args.frase), ouvir=args.ouvir)
 
     if args.comando == "voz" and args.acao == "gerar-dataset":
         return comando_gerar_dataset(config, args)
