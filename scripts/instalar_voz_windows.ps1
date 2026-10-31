@@ -59,8 +59,14 @@ if (Test-Path $arquivoModelo) {
 }
 
 Write-Host "`n[3/5] Kokoro (voz local padrão, feminina pf_dora)"
-python -m pip install -e "$raiz[kokoro]"
-if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar o Kokoro." }
+# Instala só o pacote do Kokoro (sem reinstalar a Nora, o que falharia com um "nora" aberto).
+python -c "import kokoro_onnx" 2>$null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  já instalado"
+} else {
+    python -m pip install "kokoro-onnx>=0.4"
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar o Kokoro." }
+}
 
 Write-Host "`n[4/5] Modelo e vozes do Kokoro (~330 MB)"
 $pastaKokoro = Join-Path $modelos "kokoro"
