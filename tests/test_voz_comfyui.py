@@ -141,3 +141,23 @@ def test_comfyui_na_config(criar_raiz, tmp_path):
 def test_wav_de_16_bits_passa_direto():
     wav = para_wav(b"\x01\x00" * 100, taxa=22_050)
     assert como_wav_16bits(wav) == wav
+
+
+def test_campo_configurado_em_vez_do_marcador(tmp_path):
+    fluxo = {
+        "12": {
+            "class_type": "F5TTS",
+            "_meta": {"title": "Voz"},
+            "inputs": {"gen_text": "frase de teste", "ref_audio": "minha_voz.wav"},
+        },
+        "7": {"class_type": "SaveAudio", "inputs": {"audio": ["12", 0]}},
+    }
+    with ComfyFalso(para_wav(b"\x00\x00" * 16_000)) as comfy:
+        voz = voz_de_teste(tmp_path, comfy.url, fluxo, campo="12.gen_text")
+        assert duracao_wav(voz.sintetizar("Oi!")) == pytest.approx(1.0)
+    inputs = comfy.recebidos[0]["prompt"]["12"]["inputs"]
+    assert inputs == {"gen_text": "Oi!", "ref_audio": "minha_voz.wav"}
+
+    errado = voz_de_teste(tmp_path, "http://127.0.0.1:9", fluxo, campo="12.text")
+    with pytest.raises(ServicoIndisponivel, match=r"12 \(Voz: gen_text, ref_audio\)"):
+        errado.sintetizar("oi")

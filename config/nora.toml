@@ -60,6 +60,9 @@ modelo = "eleven_flash_v2_5"
 # {{texto}} no lugar da frase, no nó de texto. O ComfyUI precisa estar aberto.
 url = "http://127.0.0.1:8188"
 fluxo = "config/voz_comfyui.json"
+# Em vez de escrever {{texto}} no fluxo, diga qual nó e campo recebem a frase: "ID.campo"
+# (ex.: "12.text"; o ID é o número do nó no JSON exportado). Vazio = usar {{texto}}.
+campo = ""
 # Tempo máximo esperando o ComfyUI gerar cada frase.
 espera_s = 120.0
 

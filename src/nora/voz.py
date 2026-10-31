@@ -136,6 +136,7 @@ class VozComfyUI:
     fluxo: Path
     espera_s: float = 120.0
     pronuncias: dict = field(default_factory=dict)
+    campo: str = ""  # "ID.campo": onde vai a frase, em vez de {{texto}}
     intervalo: float = 0.2
     ultima_duracao: float = 0.0
 
@@ -160,15 +161,37 @@ class VozComfyUI:
                 f"O fluxo {self.fluxo} não é um JSON válido ({erro})."
             ) from erro
 
+    def _por_no_campo(self, fluxo: dict, texto: str) -> dict:
+        no_id, _, nome = self.campo.partition(".")
+        no = fluxo.get(no_id)
+        if not isinstance(no, dict) or nome not in no.get("inputs", {}):
+            nos = ", ".join(
+                f"{chave} ({valor.get('_meta', {}).get('title') or valor.get('class_type', '?')}: "
+                f"{', '.join(k for k, v in valor.get('inputs', {}).items() if isinstance(v, str))})"
+                for chave, valor in fluxo.items()
+                if isinstance(valor, dict)
+            )
+            raise ServicoIndisponivel(
+                f"[voz.comfyui] campo = '{self.campo}' não existe no fluxo. Nós e campos de "
+                f"texto: {nos}"
+            )
+        no["inputs"][nome] = texto
+        return fluxo
+
     def sintetizar(self, texto: str) -> bytes:
         from nora.audio import como_wav_16bits
 
         texto = aplicar_pronuncias(texto, self.pronuncias)
-        fluxo, trocas = _trocar_texto(self._carregar_fluxo(), texto)
-        if not trocas:
-            raise ServicoIndisponivel(
-                f"O fluxo {self.fluxo} não tem {MARCADOR}: escreva {MARCADOR} no nó de texto."
-            )
+        fluxo = self._carregar_fluxo()
+        if self.campo:
+            fluxo = self._por_no_campo(fluxo, texto)
+        else:
+            fluxo, trocas = _trocar_texto(fluxo, texto)
+            if not trocas:
+                raise ServicoIndisponivel(
+                    f"O fluxo {self.fluxo} não tem {MARCADOR}: escreva {MARCADOR} no nó de "
+                    'texto, ou diga o nó e o campo em [voz.comfyui] campo (ex.: "12.text").'
+                )
         inicio = time.perf_counter()
         resposta = json.loads(
             self._pedir("/prompt", {"prompt": fluxo, "client_id": f"nora-{uuid.uuid4().hex}"})
@@ -224,7 +247,8 @@ def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs | VozCom
     if motor == "piper":
         return VozHTTP("o Piper", voz.piper.url, pronuncias=pronuncias)
     if motor == "comfyui":
-        return VozComfyUI(voz.comfyui.url, voz.comfyui.fluxo, voz.comfyui.espera_s, pronuncias)
+        comfy = voz.comfyui
+        return VozComfyUI(comfy.url, comfy.fluxo, comfy.espera_s, pronuncias, comfy.campo)
     return VozElevenLabs(
         config.chave_elevenlabs, voz.elevenlabs.voz_id, voz.elevenlabs.modelo, pronuncias
     )

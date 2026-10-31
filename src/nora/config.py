@@ -66,6 +66,7 @@ class VozComfyUI:
     url: str
     fluxo: Path
     espera_s: float
+    campo: str
 
 
 MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs", "comfyui")
@@ -235,6 +236,7 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
             url=_campo(dados, "voz.comfyui", "url", str),
             fluxo=_caminho(_campo(dados, "voz.comfyui", "fluxo", str), raiz),
             espera_s=_campo(dados, "voz.comfyui", "espera_s", float),
+            campo=_campo(dados, "voz.comfyui", "campo", str).strip(),
         ),
     )
 
