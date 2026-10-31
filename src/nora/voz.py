@@ -7,7 +7,9 @@ import re
 import time
 import urllib.parse
 import urllib.request
+import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from nora.audio import para_wav
 from nora.config import Config
@@ -105,7 +107,114 @@ class VozComReserva:
             return wav
 
 
-def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs:
+MARCADOR = "{{texto}}"
+
+
+def _trocar_texto(no, texto: str) -> tuple[object, int]:
+    """Troca {{texto}} pela frase em todos os textos do fluxo; devolve (fluxo, quantas trocas)."""
+    if isinstance(no, str):
+        return no.replace(MARCADOR, texto), no.count(MARCADOR)
+    if isinstance(no, dict):
+        trocas = 0
+        novo = {}
+        for chave, valor in no.items():
+            novo[chave], n = _trocar_texto(valor, texto)
+            trocas += n
+        return novo, trocas
+    if isinstance(no, list):
+        itens = [_trocar_texto(valor, texto) for valor in no]
+        return [item for item, _ in itens], sum(n for _, n in itens)
+    return no, 0
+
+
+@dataclass
+class VozComfyUI:
+    """Usa um fluxo do ComfyUI como voz: troca {{texto}} pela frase, pede a execução pela API
+    (/prompt), espera terminar (/history) e baixa o áudio gerado (/view)."""
+
+    url: str
+    fluxo: Path
+    espera_s: float = 120.0
+    pronuncias: dict = field(default_factory=dict)
+    intervalo: float = 0.2
+    ultima_duracao: float = 0.0
+
+    def _pedir(self, caminho: str, corpo: dict | None = None) -> bytes:
+        pedido = urllib.request.Request(
+            f"{self.url.rstrip('/')}{caminho}",
+            data=None if corpo is None else json.dumps(corpo).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        return enviar("o ComfyUI", pedido, 30.0)
+
+    def _carregar_fluxo(self) -> dict:
+        try:
+            return json.loads(self.fluxo.read_text(encoding="utf-8"))
+        except FileNotFoundError as erro:
+            raise ServicoIndisponivel(
+                f"Fluxo do ComfyUI não encontrado em {self.fluxo}. Exporte o seu em "
+                "'Workflow > Export (API)' e salve nesse caminho."
+            ) from erro
+        except json.JSONDecodeError as erro:
+            raise ServicoIndisponivel(
+                f"O fluxo {self.fluxo} não é um JSON válido ({erro})."
+            ) from erro
+
+    def sintetizar(self, texto: str) -> bytes:
+        from nora.audio import como_wav_16bits
+
+        texto = aplicar_pronuncias(texto, self.pronuncias)
+        fluxo, trocas = _trocar_texto(self._carregar_fluxo(), texto)
+        if not trocas:
+            raise ServicoIndisponivel(
+                f"O fluxo {self.fluxo} não tem {MARCADOR}: escreva {MARCADOR} no nó de texto."
+            )
+        inicio = time.perf_counter()
+        resposta = json.loads(
+            self._pedir("/prompt", {"prompt": fluxo, "client_id": f"nora-{uuid.uuid4().hex}"})
+        )
+        if "prompt_id" not in resposta:
+            raise ServicoIndisponivel(
+                f"O ComfyUI recusou o fluxo: {resposta.get('error', resposta)}"
+            )
+        prompt_id = resposta["prompt_id"]
+        while True:
+            historico = json.loads(self._pedir(f"/history/{prompt_id}")).get(prompt_id)
+            if historico:
+                status = historico.get("status", {})
+                if status.get("status_str") == "error":
+                    raise ServicoIndisponivel("O fluxo do ComfyUI deu erro (veja a janela dele).")
+                audios = [
+                    arquivo
+                    for saida in historico.get("outputs", {}).values()
+                    for arquivo in saida.get("audio", [])
+                ]
+                if audios:
+                    break
+                if status.get("completed"):
+                    raise ServicoIndisponivel(
+                        "O fluxo do ComfyUI terminou sem gerar áudio. Ele precisa de um nó que "
+                        "salve o áudio (ex.: Save Audio)."
+                    )
+            if time.perf_counter() - inicio > self.espera_s:
+                raise ServicoIndisponivel(
+                    f"O ComfyUI não terminou em {self.espera_s:.0f} s ([voz.comfyui] espera_s)."
+                )
+            time.sleep(self.intervalo)
+        arquivo = audios[0]
+        consulta = urllib.parse.urlencode(
+            {
+                "filename": arquivo["filename"],
+                "subfolder": arquivo.get("subfolder", ""),
+                "type": arquivo.get("type", "output"),
+            }
+        )
+        wav = como_wav_16bits(self._pedir(f"/view?{consulta}"))
+        self.ultima_duracao = time.perf_counter() - inicio
+        return wav
+
+
+def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs | VozComfyUI:
     voz = config.voz
     assistente = config.assistente
     pronuncias = {assistente.nome: assistente.pronuncia} if assistente.pronuncia else {}
@@ -114,6 +223,8 @@ def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs:
         return VozHTTP("o Kokoro", voz.kokoro.url, extras, pronuncias)
     if motor == "piper":
         return VozHTTP("o Piper", voz.piper.url, pronuncias=pronuncias)
+    if motor == "comfyui":
+        return VozComfyUI(voz.comfyui.url, voz.comfyui.fluxo, voz.comfyui.espera_s, pronuncias)
     return VozElevenLabs(
         config.chave_elevenlabs, voz.elevenlabs.voz_id, voz.elevenlabs.modelo, pronuncias
     )

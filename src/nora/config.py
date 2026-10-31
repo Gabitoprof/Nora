@@ -61,7 +61,14 @@ class VozElevenLabs:
     modelo: str
 
 
-MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs")
+@dataclass(frozen=True)
+class VozComfyUI:
+    url: str
+    fluxo: Path
+    espera_s: float
+
+
+MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs", "comfyui")
 
 
 @dataclass(frozen=True)
@@ -71,6 +78,7 @@ class Voz:
     kokoro: VozKokoro
     piper: VozPiper
     elevenlabs: VozElevenLabs
+    comfyui: VozComfyUI
 
 
 @dataclass(frozen=True)
@@ -193,7 +201,7 @@ def _temperatura(valor: float) -> float:
     return valor
 
 
-def _ler_voz(dados: dict[str, Any]) -> Voz:
+def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
     motor = _campo(dados, "voz", "motor", str)
     if motor not in MOTORES_DE_VOZ:
         raise ConfigError(
@@ -223,7 +231,17 @@ def _ler_voz(dados: dict[str, Any]) -> Voz:
             voz_id=_campo(dados, "voz.elevenlabs", "voz_id", str).strip(),
             modelo=_campo(dados, "voz.elevenlabs", "modelo", str),
         ),
+        comfyui=VozComfyUI(
+            url=_campo(dados, "voz.comfyui", "url", str),
+            fluxo=_caminho(_campo(dados, "voz.comfyui", "fluxo", str), raiz),
+            espera_s=_campo(dados, "voz.comfyui", "espera_s", float),
+        ),
     )
+
+
+def _caminho(texto: str, raiz: Path) -> Path:
+    caminho = Path(texto)
+    return caminho if caminho.is_absolute() else raiz / caminho
 
 
 def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Config:
@@ -270,7 +288,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             url=_campo(dados, "ouvido", "url", str),
             idioma=_campo(dados, "ouvido", "idioma", str),
         ),
-        voz=_ler_voz(dados),
+        voz=_ler_voz(dados, raiz),
         escuta=Escuta(
             limiar=_entre_0_e_1("escuta", "limiar", _campo(dados, "escuta", "limiar", float)),
             silencio_ms=_campo(dados, "escuta", "silencio_ms", int),

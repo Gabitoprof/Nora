@@ -15,6 +15,7 @@ Versão em desenvolvimento: `0.2.0.dev0`.
 - `nora memoria listar | buscar | lembrar | esquecer | importar`. O `listar` mostra 20 por página (`--pagina`, `--contendo`, `--todos`). O `importar` tira fatos das conversas antigas de `data/historico/` e continua de onde parou.
 - Config `[memoria]` (`ativa`, `modelo_embeddings`, `curadoria`, `fatos_por_pergunta`, `similaridade_minima`) e extra de instalação `.[memoria]`.
 - **Digitar em vez de falar** (acessibilidade): `nora conversar --voz` (só teclado, resposta falada) e `nora ouvir` aceitando texto digitado a qualquer momento, sem precisar do nome dela.
+- **Voz pelo ComfyUI** (`[voz] motor = "comfyui"`): a Nora manda cada frase para um fluxo seu do ComfyUI (exportado em "Export (API)", com `{{texto}}` no nó de texto), espera pela API local e toca o áudio gerado (WAV, FLAC ou MP3, convertidos com `soundfile`). `config/voz_comfyui.json` fica fora do Git.
 - `nora voz salvar "texto" [--pasta] [--nome] [--ouvir]`: a Nora fala o texto com a voz configurada e salva em .wav (padrão: `data/audios/`).
 - **Laboratório de voz:** `nora voz listar` e `nora voz testar "pf_dora:0.7 + af_heart:0.3"` misturam vozes do Kokoro para criar uma voz nova, de graça e no PC; a receita vai em `[voz.kokoro] voz`.
 - **Prioridade da voz** (`[audio] prioridade`, padrão `true`; `volume_outros`, padrão 0.2): no Windows, enquanto a Nora fala, os outros programas ficam mais baixos e depois voltam (pycaw).

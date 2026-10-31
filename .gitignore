@@ -4,6 +4,7 @@ data/
 # Segredos e config pessoal
 .env
 config/local.toml
+config/voz_comfyui.json
 
 # Modelos e programas baixados (grandes demais e com licenças próprias)
 models/

@@ -21,6 +21,7 @@ Escolha em `[voz] motor` (no `config/local.toml`, para valer só na sua máquina
 | **`kokoro`** (padrão) | `pf_dora` (feminina pt-BR); também `pm_alex`, `pm_santa` | seu PC (processador) | grátis | quem baixa o projeto e quer testar |
 | `piper` | `pt_BR-faber-medium` (masculina) | seu PC | grátis | alternativa; uso pessoal (a base da voz é não comercial) |
 | `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz definitiva, com mais qualidade |
+| `comfyui` | a que você montar num fluxo do ComfyUI | seu PC | grátis | vozes próprias, criadas ou clonadas com autorização |
 
 ## Instalar (uma vez)
 
@@ -203,6 +204,28 @@ nora voz salvar "Bom dia, Gabriel! Hoje é dia de prova, boa sorte." --pasta "C:
 ```
 
 Sem `--pasta`, salva em `data\audios\`; sem `--nome`, usa a data e o começo do texto. Com `--ouvir`, também toca. (Pedir isso conversando com ela, sem comando, chega com as ferramentas da v0.5.0.)
+
+## Usar uma voz feita no ComfyUI
+
+Qualquer voz que você monte no ComfyUI (clonagem a partir de uma amostra sua, ou outro nó de voz) pode ser a voz da Nora. Ela manda cada frase para o seu fluxo, pela API local do ComfyUI, e toca o áudio gerado.
+
+1. **Prepare o fluxo no ComfyUI:** no nó onde vai a frase, escreva **`{{texto}}`** no lugar do texto. O fluxo precisa terminar num nó que salve o áudio (ex.: **Save Audio**). Teste uma vez no próprio ComfyUI.
+2. **Exporte no formato da API:** menu **Workflow → Export (API)**. Salve o arquivo como `B:\Nora\config\voz_comfyui.json` (ele fica fora do Git).
+3. **No `config\local.toml`:**
+
+   ```toml
+   [voz]
+   motor = "comfyui"
+   reserva = "kokoro"   # se o ComfyUI estiver fechado ou demorar, ela fala com o Kokoro
+
+   [voz.comfyui]
+   url = "http://127.0.0.1:8188"   # o endereço que o ComfyUI mostra ao abrir
+   espera_s = 120.0
+   ```
+
+4. **Deixe o ComfyUI aberto**, rode `nora --verificar` (deve mostrar `ComfyUI ok`) e teste: `nora voz salvar "Oi, Gabriel! Esta é a minha voz nova." --ouvir`.
+
+O áudio pode sair em WAV, FLAC ou MP3: a Nora converte (precisa do `soundfile`, que vem com `.[voz]`). Dependendo do modelo e da GPU, o ComfyUI leva alguns segundos por frase: a conversa fica mais lenta que com o ElevenLabs ou o Kokoro. Use só vozes suas ou de quem autorizou, e confira a licença do modelo de voz usado no fluxo.
 
 ## Usar o ElevenLabs
 

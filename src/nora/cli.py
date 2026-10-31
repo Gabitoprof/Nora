@@ -35,6 +35,8 @@ def descrever_voz(config: Config) -> str:
         return f"kokoro {voz.kokoro.voz} (velocidade {voz.kokoro.velocidade}) em {voz.kokoro.url}"
     if voz.motor == "piper":
         return f"piper {voz.piper.voz} em {voz.piper.url}"
+    if voz.motor == "comfyui":
+        return f"comfyui {voz.comfyui.fluxo.name} em {voz.comfyui.url}"
     texto = f"elevenlabs {voz.elevenlabs.voz_id or '(sem voz_id)'} ({voz.elevenlabs.modelo})"
     return texto + (f", reserva {voz.reserva}" if voz.reserva else "")
 
@@ -86,6 +88,12 @@ def verificar(config: Config) -> list[str]:
             servicos.append((f"Kokoro{papel}", config.voz.kokoro.url))
         elif motor == "piper":
             servicos.append((f"Piper{papel}", config.voz.piper.url))
+        elif motor == "comfyui":
+            servicos.append((f"ComfyUI{papel}", config.voz.comfyui.url))
+            if not config.voz.comfyui.fluxo.is_file():
+                linhas.append(
+                    f"  {'Fluxo do ComfyUI':<24}não encontrado: {config.voz.comfyui.fluxo}"
+                )
     for nome, url in servicos:
         estado = "ok" if responde(url) else f"não respondeu em {url} (veja docs/VOZ.md)"
         linhas.append(f"  {nome:<24}{estado}")

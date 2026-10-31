@@ -55,6 +55,14 @@ voz = "pt_BR-faber-medium"
 voz_id = ""
 modelo = "eleven_flash_v2_5"
 
+[voz.comfyui]
+# Usa um fluxo seu do ComfyUI como voz. Exporte o fluxo em "Workflow > Export (API)" e escreva
+# {{texto}} no lugar da frase, no nó de texto. O ComfyUI precisa estar aberto.
+url = "http://127.0.0.1:8188"
+fluxo = "config/voz_comfyui.json"
+# Tempo máximo esperando o ComfyUI gerar cada frase.
+espera_s = 120.0
+
 [modelos.local]
 provedor = "ollama"
 modelo = "qwen3.5:9b"

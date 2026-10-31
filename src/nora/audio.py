@@ -33,6 +33,27 @@ def ler_wav(dados: bytes) -> tuple[bytes, int, int]:
         )
 
 
+def como_wav_16bits(dados: bytes) -> bytes:
+    """Qualquer áudio (WAV de 16 ou 32 bits, FLAC, MP3...) como WAV PCM 16 bits mono, que é o
+    que a Nora toca. WAV de 16 bits passa direto; o resto precisa do pacote soundfile."""
+    try:
+        amostras, taxa, canais = ler_wav(dados)
+        return para_wav(_para_mono(amostras, canais), taxa)
+    except (ValueError, EOFError, wave.Error):
+        pass
+    try:
+        import numpy
+        import soundfile
+    except ImportError as erro:
+        raise RuntimeError(
+            'Para tocar este formato de áudio, instale: pip install -e ".[voz]"'
+        ) from erro
+    sinal, taxa = soundfile.read(io.BytesIO(dados), dtype="float32", always_2d=True)
+    mono = sinal.mean(axis=1)
+    pcm = (numpy.clip(mono, -1.0, 1.0) * 32767).astype("<i2").tobytes()
+    return para_wav(pcm, int(taxa))
+
+
 def duracao_wav(dados: bytes) -> float:
     amostras, taxa, canais = ler_wav(dados)
     return len(amostras) / (2 * canais * taxa)
