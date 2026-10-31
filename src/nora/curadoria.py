@@ -1,5 +1,5 @@
-"""Curadoria da memória: depois de cada troca, o modelo local anota fatos duradouros sobre a
-pessoa (preferências, rotina, datas, pessoas próximas, planos). Roda em segundo plano."""
+"""Curadoria da memória: depois de cada troca, o modelo local anota o que vale lembrar sobre a
+pessoa (fatos duradouros, datas, planos e acontecimentos marcantes). Roda em segundo plano."""
 
 from __future__ import annotations
 
@@ -10,16 +10,22 @@ from nora.config import Config
 from nora.servico import enviar
 
 INSTRUCAO = """Você cuida da memória de uma assistente pessoal. Leia a troca abaixo entre \
-{usuario} e a assistente e anote só FATOS DURADOUROS sobre {usuario}: preferências, gostos, \
-rotina, trabalho, estudos, saúde, datas importantes, pessoas próximas, lugares, planos e \
-compromissos.
+{usuario} e a assistente e anote o que vale lembrar sobre {usuario} em conversas futuras:
+
+- fatos duradouros: preferências, gostos, rotina, trabalho, estudos, saúde, pessoas próximas, \
+animais de estimação, lugares;
+- datas importantes, planos e compromissos;
+- acontecimentos marcantes da vida de {usuario} (algo que deu certo ou errado, um susto, uma \
+conquista), com a data em que aconteceram.
 
 Regras:
 - Escreva cada fato numa frase curta, em terceira pessoa, começando pelo nome (ex.: "{usuario} \
-faz aniversário em 31 de outubro").
-- Para compromissos e planos, ponha a data quando ela for dita (hoje é {hoje}).
-- Ignore cumprimentos, perguntas gerais, conhecimento sobre o mundo e o que a assistente disse \
-sobre si mesma.
+faz aniversário em 31 de outubro", "{usuario} tem um cachorro", "Em 30/10/2026 o cachorro de \
+{usuario} fugiu e foi encontrado num ponto de ônibus perto de casa").
+- Ponha a data quando ela for dita; para acontecimentos, use a data de hoje ({hoje}) se nada \
+indicar outra.
+- Ignore cumprimentos, perguntas gerais, conhecimento sobre o mundo, humor passageiro sem \
+motivo e o que a assistente disse sobre si mesma.
 - Não invente: só o que {usuario} disse ou confirmou.
 - Se não houver nada que valha guardar, devolva a lista vazia.
 

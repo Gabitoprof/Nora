@@ -141,10 +141,21 @@ def comando_memoria(config: Config, args) -> int:
         return 1
     try:
         if args.acao == "listar":
-            fatos = memoria.listar()
-            print(f"{len(fatos)} fatos em {memoria.caminho}:")
+            por_pagina = 20
+            total = memoria.contar_contendo(args.contendo)
+            pagina = max(1, args.pagina)
+            fatos = memoria.listar(
+                limite=None if args.todos else por_pagina,
+                pular=0 if args.todos else (pagina - 1) * por_pagina,
+                contendo=args.contendo,
+            )
+            filtro = f' contendo "{args.contendo}"' if args.contendo else ""
+            print(f"{total} fatos{filtro} em {memoria.caminho}:")
             for fato in fatos:
                 print(f"  {fato.id:>4}  {fato.texto}  ({fato.atualizado[:10]})")
+            paginas = max(1, -(-total // por_pagina))
+            if not args.todos and paginas > 1:
+                print(f"Página {pagina} de {paginas}. Veja outras com --pagina N, ou --todos.")
         elif args.acao == "buscar":
             for fato in memoria.buscar(" ".join(args.texto), k=10):
                 print(f"  {fato.id:>4}  {fato.similaridade:.2f}  {fato.texto}")
@@ -207,7 +218,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     memoria_cmd = comandos.add_parser("memoria", help="ver e editar o que a Nora lembra de você")
     acoes = memoria_cmd.add_subparsers(dest="acao", required=True)
-    acoes.add_parser("listar", help="todos os fatos guardados")
+    listar_cmd = acoes.add_parser("listar", help="os fatos guardados, do mais recente")
+    listar_cmd.add_argument("--pagina", type=int, default=1, help="página (20 fatos cada)")
+    listar_cmd.add_argument("--contendo", default="", help="só os fatos com este trecho")
+    listar_cmd.add_argument("--todos", action="store_true", help="todos de uma vez")
     buscar_cmd = acoes.add_parser("buscar", help="fatos parecidos com um texto")
     buscar_cmd.add_argument("texto", nargs="+")
     lembrar_cmd = acoes.add_parser("lembrar", help="guardar um fato à mão")

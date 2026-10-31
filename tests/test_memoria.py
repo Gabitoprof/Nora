@@ -14,7 +14,7 @@ from nora.curadoria import extrair_fatos
 from nora.embeddings import EmbeddingsOllama
 from nora.memoria import Memoria
 
-DIMENSAO = 64
+DIMENSAO = 256
 
 
 def vetor_de(texto):
@@ -217,6 +217,7 @@ def test_comando_memoria_e_importar(criar_raiz, capsys, monkeypatch):
     assert "0 trocas para ler" in texto
     assert "Guardado" in texto
     assert "2 fatos em" in texto
+    assert "Página" not in texto  # só uma página
     assert "Esquecido (nº 1)." in texto
 
 
@@ -227,3 +228,19 @@ def test_persona_sabe_que_tem_memoria(criar_raiz):
     sem = carregar(criar_raiz(local="[memoria]\nativa = false\n"), ambiente={})
     assert "Você tem memória de conversas anteriores" in prompt_de_sistema(com)
     assert "Você tem memória" not in prompt_de_sistema(sem)
+
+
+def test_listar_em_paginas_e_com_filtro(memoria):
+    # cada fato com uma palavra própria, para nenhum ser confundido com outro e juntado
+    for numero in range(25):
+        assunto = "cachorro" if numero % 5 == 0 else "assunto"
+        memoria.lembrar(f"Gabriel anotou item{numero:02d} sobre {assunto}")
+    assert memoria.contar() == 25
+    primeira = memoria.listar(limite=20)
+    assert len(primeira) == 20
+    assert primeira[0].texto == "Gabriel anotou item24 sobre assunto"  # o mais recente
+    assert len(memoria.listar(limite=20, pular=20)) == 5
+    assert len(memoria.listar()) == 25
+    com_cachorro = memoria.listar(contendo="cachorro")
+    assert [f.texto for f in com_cachorro][-1] == "Gabriel anotou item00 sobre cachorro"
+    assert memoria.contar_contendo("cachorro") == 5

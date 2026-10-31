@@ -4,7 +4,7 @@ A Nora lembra de você entre uma conversa e outra. Tudo fica num arquivo **só n
 
 ## Como funciona
 
-1. **Ela anota.** Depois de cada resposta, em segundo plano, o modelo local relê a troca e anota **fatos duradouros** sobre você: preferências, rotina, datas, pessoas próximas, planos ("Gabriel faz aniversário em 31 de outubro"). Fatos quase iguais são juntados: o mais novo substitui o antigo.
+1. **Ela anota.** Depois de cada resposta, em segundo plano, o modelo local relê a troca e anota o que vale lembrar sobre você: **fatos duradouros** (preferências, rotina, pessoas próximas, animais), **datas e planos** e **acontecimentos marcantes**, com a data ("Gabriel faz aniversário em 31 de outubro", "Em 30/10/2026 o cachorro do Gabriel fugiu e foi encontrado perto de casa"). Na resposta seguinte aparece `[memória] anotei: ...`. Fatos quase iguais são juntados: o mais novo substitui o antigo.
 2. **Ela lembra.** Antes de responder, busca os fatos **parecidos com a pergunta** (por significado, não por palavra exata) e lê junto. Se você perguntar "quando é minha prova?", ela acha "Gabriel tem prova de cálculo na sexta".
 3. **Você manda.** Dá para ver, acrescentar e apagar o que ela sabe (abaixo).
 
@@ -29,7 +29,7 @@ Confira com `nora --verificar`: a linha **Memória** deve dizer `ok`.
 
 | Comando | O que faz |
 |---|---|
-| `nora memoria listar` | Todos os fatos, do mais recente para o mais antigo, com o número de cada um |
+| `nora memoria listar` | Os 20 fatos mais recentes, com o número de cada um e o total. `--pagina 2` para os anteriores, `--contendo cachorro` para filtrar, `--todos` para ver tudo |
 | `nora memoria buscar prova de cálculo` | Os fatos mais parecidos com o texto, com a nota de parecença (0 a 1) |
 | `nora memoria lembrar Gabriel prefere chá` | Guarda um fato à mão |
 | `nora memoria esquecer 12` | Apaga o fato nº 12 |

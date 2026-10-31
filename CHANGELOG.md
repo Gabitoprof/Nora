@@ -10,10 +10,11 @@ Versão em desenvolvimento: `0.2.0.dev0`.
 ### Adicionado
 
 - **Memória entre conversas** (v0.2.0): depois de cada resposta, em segundo plano, o modelo local anota fatos duradouros sobre a pessoa; antes de responder, a Nora busca os fatos parecidos com a pergunta e os lê junto. Fica em `data/memoria.db` (SQLite), com busca por significado (embeddings `bge-m3` pelo Ollama, índice `sqlite-vec` opcional). Fatos quase iguais são juntados. Guia em `docs/MEMORIA.md`.
-- `nora memoria listar | buscar | lembrar | esquecer | importar`. O `importar` tira fatos das conversas antigas de `data/historico/` e continua de onde parou.
+- `nora memoria listar | buscar | lembrar | esquecer | importar`. O `listar` mostra 20 por página (`--pagina`, `--contendo`, `--todos`). O `importar` tira fatos das conversas antigas de `data/historico/` e continua de onde parou.
 - Config `[memoria]` (`ativa`, `modelo_embeddings`, `curadoria`, `fatos_por_pergunta`, `similaridade_minima`) e extra de instalação `.[memoria]`.
 - **Digitar em vez de falar** (acessibilidade): `nora conversar --voz` (só teclado, resposta falada) e `nora ouvir` aceitando texto digitado a qualquer momento, sem precisar do nome dela.
 - **Prioridade da voz** (`[audio] prioridade`, padrão `true`; `volume_outros`, padrão 0.2): no Windows, enquanto a Nora fala, os outros programas ficam mais baixos e depois voltam (pycaw).
+- A curadoria também anota animais de estimação e acontecimentos marcantes, com a data (antes só fatos duradouros: o susto com o cachorro ficava de fora).
 - A Nora mostra o que anotou na memória (`[memória] anotei: ...`) e sabe que tem memória: sem lembrança sobre o assunto, diz que não se lembra, em vez de dizer que não tem memória.
 - `nora --verificar` confere o modelo de embeddings; `--medir` mostra quantos fatos foram usados em cada resposta.
 

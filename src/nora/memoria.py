@@ -183,12 +183,24 @@ class Memoria:
                     fatos.append(Fato(*linha, similaridade=similaridade))
             return fatos
 
-    def listar(self) -> list[Fato]:
+    def listar(self, limite: int | None = None, pular: int = 0, contendo: str = "") -> list[Fato]:
+        """Fatos do mais recente para o mais antigo; `contendo` filtra por um trecho do texto."""
+        consulta = "SELECT id, texto, criado, atualizado FROM fatos"
+        parametros: list = []
+        if contendo:
+            consulta += " WHERE texto LIKE ?"
+            parametros.append(f"%{contendo}%")
+        consulta += " ORDER BY atualizado DESC, id DESC LIMIT ? OFFSET ?"
+        parametros += [-1 if limite is None else limite, pular]
         with self._trava:
-            linhas = self._db.execute(
-                "SELECT id, texto, criado, atualizado FROM fatos ORDER BY atualizado DESC, id DESC"
-            ).fetchall()
+            linhas = self._db.execute(consulta, parametros).fetchall()
         return [Fato(*linha) for linha in linhas]
+
+    def contar_contendo(self, contendo: str) -> int:
+        with self._trava:
+            return self._db.execute(
+                "SELECT COUNT(*) FROM fatos WHERE texto LIKE ?", (f"%{contendo}%",)
+            ).fetchone()[0]
 
     def esquecer(self, fato_id: int) -> bool:
         with self._trava, self._db:
