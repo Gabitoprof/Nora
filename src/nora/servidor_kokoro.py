@@ -20,6 +20,28 @@ MODELOS = ("kokoro-v1.0.onnx", "kokoro-v1.0.int8.onnx")
 VOZES = "voices-v1.0.bin"
 
 
+def ler_receita(receita: str) -> list[tuple[str, float]]:
+    """'pf_dora:0.7 + af_heart:0.3' -> [('pf_dora', 0.7), ('af_heart', 0.3)], com os pesos
+    somando 1. Uma voz sozinha ('pf_dora') vale peso 1."""
+    partes = []
+    for parte in receita.split("+"):
+        parte = parte.strip()
+        if not parte:
+            continue
+        nome, _, peso = parte.partition(":")
+        try:
+            valor = float(peso) if peso.strip() else 1.0
+        except ValueError as erro:
+            raise ValueError(f"Peso inválido em '{parte}' (use nome:0.5).") from erro
+        if valor <= 0:
+            raise ValueError(f"O peso de '{nome.strip()}' precisa ser maior que zero.")
+        partes.append((nome.strip(), valor))
+    if not partes:
+        raise ValueError("Receita de voz vazia.")
+    total = sum(peso for _, peso in partes)
+    return [(nome, peso / total) for nome, peso in partes]
+
+
 def achar_modelo(pasta: Path) -> Path:
     for nome in MODELOS:
         if (pasta / nome).is_file():
@@ -43,6 +65,27 @@ class Sintetizador:
         self.velocidade = velocidade
         self.idioma = idioma
         self._trava = threading.Lock()
+        self._misturas: dict = {}
+        self.estilo(voz)  # confere a receita já ao abrir
+
+    def vozes(self) -> list[str]:
+        return sorted(self.kokoro.get_voices())
+
+    def estilo(self, receita: str):
+        """O "DNA" da voz: uma voz do Kokoro ou a mistura de várias, pela receita."""
+        if receita not in self._misturas:
+            disponiveis = set(self.kokoro.get_voices())
+            partes = ler_receita(receita)
+            desconhecidas = [nome for nome, _ in partes if nome not in disponiveis]
+            if desconhecidas:
+                raise ValueError(
+                    f"Voz desconhecida: {', '.join(desconhecidas)}. "
+                    "Veja as vozes com 'nora voz listar'."
+                )
+            self._misturas[receita] = sum(
+                peso * self.kokoro.get_voice_style(nome) for nome, peso in partes
+            )
+        return self._misturas[receita]
 
     def sintetizar(
         self, texto: str, voz: str | None = None, velocidade: float | None = None
@@ -52,7 +95,7 @@ class Sintetizador:
         with self._trava:
             amostras, taxa = self.kokoro.create(
                 texto,
-                voice=voz or self.voz,
+                voice=self.estilo(voz or self.voz),
                 speed=velocidade or self.velocidade,
                 lang=self.idioma,
             )

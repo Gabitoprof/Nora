@@ -169,6 +169,31 @@ Para o som não sumir, deixe o fone sempre no modo chamada:
 
 Os números mudam quando você conecta ou desconecta aparelhos; confira com `nora audio`. Com microfone separado (ou caixa de som), volte para `alto_falante = ""` e `pausar_microfone = true`.
 
+## Laboratório de voz (criar a sua voz, de graça)
+
+Cada voz do Kokoro é um "DNA" numérico, e dá para **misturar vozes** para criar uma voz nova, no seu PC e de graça:
+
+```powershell
+nora voz listar
+```
+
+```powershell
+nora voz testar "pf_dora:0.7 + af_heart:0.3" --velocidade 0.95
+```
+
+Ela fala uma frase de teste (ou a sua, com `--frase "..."`) e salva a amostra em `data\vozes\`. Quando gostar, ponha a receita no `config\local.toml`:
+
+```toml
+[voz]
+motor = "kokoro"
+
+[voz.kokoro]
+voz = "pf_dora:0.7 + af_heart:0.3"
+velocidade = 0.95
+```
+
+Dicas: mantenha a `pf_dora` (português do Brasil) com o **maior peso**, para o sotaque e a pronúncia; misture pequenas porções de outras vozes para mudar o timbre (mais grave, mais suave, mais brilhante). Os pesos não precisam somar 1; a Nora ajusta.
+
 ## Usar o ElevenLabs
 
 1. Crie uma conta em elevenlabs.io e uma chave de API (perfil → API Keys). Defina um limite de gasto.

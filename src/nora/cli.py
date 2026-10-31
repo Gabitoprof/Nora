@@ -131,6 +131,63 @@ def testar_audio(config: Config, segundos: float, entrada=input) -> int:
     return 0
 
 
+IDIOMAS_KOKORO = {
+    "a": "inglês (EUA)",
+    "b": "inglês (Reino Unido)",
+    "e": "espanhol",
+    "f": "francês",
+    "h": "hindi",
+    "i": "italiano",
+    "j": "japonês",
+    "p": "português (Brasil)",
+    "z": "chinês",
+}
+
+
+def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> int:
+    """Lista as vozes do Kokoro e toca uma voz ou mistura, para achar a voz da Nora."""
+    import re
+
+    from nora import audio
+    from nora.config import RAIZ
+    from nora.servidor_kokoro import PASTA_PADRAO, Sintetizador
+
+    kokoro = config.voz.kokoro
+    receita = getattr(args, "receita", None) or kokoro.voz
+    velocidade = getattr(args, "velocidade", None) or kokoro.velocidade
+    try:
+        sintetizador = sintetizador or Sintetizador(RAIZ / PASTA_PADRAO, receita, velocidade)
+        if args.acao == "listar":
+            print("Vozes do Kokoro (1ª letra = idioma, 2ª = f feminina / m masculina):")
+            for codigo, idioma in IDIOMAS_KOKORO.items():
+                nomes = [v for v in sintetizador.vozes() if v.startswith(codigo)]
+                if nomes:
+                    print(f"  {idioma}: {', '.join(nomes)}")
+            print('\nMisture com pesos, ex.: nora voz testar "pf_dora:0.7 + af_heart:0.3"')
+            print("Dica: mantenha uma voz pt-BR (pf_dora) com o maior peso, para o sotaque.")
+            return 0
+        frase = args.frase or (
+            f"Oi! Eu sou a {config.assistente.nome}. Esta é uma voz de teste, "
+            "para você decidir se gosta de como eu falo."
+        )
+        wav = sintetizador.sintetizar(frase, receita, velocidade)
+    except (RuntimeError, FileNotFoundError, ValueError) as erro:
+        print(f"[erro] {erro}", file=sys.stderr)
+        return 1
+    pasta = config.pasta_dados / "vozes"
+    pasta.mkdir(parents=True, exist_ok=True)
+    nome = re.sub(r"[^a-z0-9]+", "_", receita.lower()).strip("_")
+    arquivo = pasta / f"{nome}_v{velocidade:g}.wav"
+    arquivo.write_bytes(wav)
+    print(f"Voz: {receita} (velocidade {velocidade:g}). Amostra salva em {arquivo}")
+    try:
+        (tocar or (lambda w: audio.tocar_wav(w, audio.dispositivo(config.audio.alto_falante))))(wav)
+    except Exception as erro:
+        print(f"[aviso] Não consegui tocar ({erro}); abra o arquivo acima para ouvir.")
+    print(f'Gostou? No config/local.toml, em [voz.kokoro]: voz = "{receita}"')
+    return 0
+
+
 def comando_memoria(config: Config, args) -> int:
     from nora.memoria import Memoria, abrir_memoria
     from nora.servico import ServicoIndisponivel
@@ -243,6 +300,18 @@ def main(argv: list[str] | None = None) -> int:
     esquecer_cmd = acoes.add_parser("esquecer", help="apagar um fato pelo número")
     esquecer_cmd.add_argument("id", type=int)
     acoes.add_parser("importar", help="tirar fatos das conversas antigas (data/historico)")
+    voz_cmd = comandos.add_parser("voz", help="laboratório de voz: misture vozes do Kokoro")
+    voz_acoes = voz_cmd.add_subparsers(dest="acao", required=True)
+    voz_acoes.add_parser("listar", help="as vozes do Kokoro que dá para misturar")
+    testar_cmd = voz_acoes.add_parser("testar", help="ouvir uma voz ou mistura")
+    testar_cmd.add_argument(
+        "receita",
+        nargs="?",
+        default=None,
+        help='ex.: "pf_dora:0.7 + af_heart:0.3" (padrão: a voz da config)',
+    )
+    testar_cmd.add_argument("--frase", default="", help="o que ela vai falar")
+    testar_cmd.add_argument("--velocidade", type=float, default=None)
     kokoro_cmd = comandos.add_parser(
         "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"
     )
@@ -269,6 +338,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.comando == "memoria":
         return comando_memoria(config, args)
 
+    if args.comando == "voz":
+        return laboratorio_de_voz(config, args)
+
     if args.comando == "servidor-kokoro":
         from pathlib import Path
 
@@ -279,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
         pasta = Path(args.pasta) if args.pasta else RAIZ / PASTA_PADRAO
         try:
             return servir(kokoro.url, pasta, kokoro.voz, kokoro.velocidade)
-        except (RuntimeError, FileNotFoundError) as erro:
+        except (RuntimeError, FileNotFoundError, ValueError) as erro:
             print(f"[erro] {erro}", file=sys.stderr)
             return 1
 
