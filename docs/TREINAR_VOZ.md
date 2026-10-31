@@ -39,7 +39,25 @@ Quanto tempo leva: o ComfyUI gasta alguns segundos por frase; 800 frases podem l
 
 ## 3. Conferir o conjunto (10 minutos que valem a pena)
 
-Ouça umas 20 frases salteadas. Apague o **wav e a linha correspondente do `metadata.csv`** das que saíram com erro (palavra trocada, ruído, voz diferente, corte no fim). Áudio ruim no treino vira voz ruim depois.
+Áudio ruim no treino vira voz ruim depois. A Nora ajuda a achar os ruins: com o **whisper-server aberto** (o mesmo de `scripts\iniciar_voz_windows.ps1`), rode
+
+```powershell
+nora voz conferir-dataset --nome minha_voz
+```
+
+O Whisper ouve cada frase e compara com o texto esperado, e o áudio é medido. Cada frase ganha uma nota:
+
+| Nota | Quando |
+|---|---|
+| **ruim** | palavras trocadas, faltando ou sobrando; nenhuma fala; curta demais; ritmo muito fora do normal (cortou ou arrastou) |
+| **conferir** | alguma palavra diferente ou números (o Whisper escreve "28" onde o texto diz "vinte e oito"); ritmo um pouco fora; silêncio de mais de 1 s no começo ou no fim; pausa longa no meio; volume baixo; áudio estourado |
+| **boa** | nada de estranho |
+
+O resultado aparece na tela (pior primeiro, com o que era esperado e o que o Whisper ouviu) e numa planilha, `conferencia.csv`, dentro da pasta do conjunto (abre no Excel).
+
+- **Ouça as "conferir"** e apague as que estiverem ruins (o `.wav` e a linha do `metadata.csv`).
+- **Tire as ruins de uma vez:** `nora voz conferir-dataset --nome minha_voz --descartar`. Elas vão para a pasta `descartadas\`, saem do `metadata.csv` e o `gerar-dataset` não as refaz (com a semente fixa, sairiam iguais).
+- **O que ele não pega:** sotaque e pronúncia. O Whisper entende "houje" como "hoje", então ouça umas 20 frases salteadas também. Palavras que saem erradas sempre vão para `[voz.pronuncias]` (veja [VOZ.md](VOZ.md)), antes de gerar o conjunto.
 
 ## 4. Treinar no Google Colab (grátis)
 

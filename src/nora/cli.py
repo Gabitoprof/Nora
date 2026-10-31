@@ -219,6 +219,47 @@ def comando_gerar_dataset(config: Config, args, voz=None) -> int:
     return 0
 
 
+def comando_conferir_dataset(config: Config, args, ouvido=None) -> int:
+    from nora.conferir_dataset import conferir, descartar, salvar_relatorio
+    from nora.ouvido import OuvidoWhisper
+    from nora.servico import ServicoIndisponivel
+
+    pasta = config.pasta_dados / "dataset_voz" / args.nome
+    if not (pasta / "metadata.csv").is_file():
+        print(f"[erro] Conjunto não encontrado: {pasta}", file=sys.stderr)
+        return 1
+    try:
+        avaliacoes = conferir(ouvido or OuvidoWhisper(config), pasta)
+    except ServicoIndisponivel as erro:
+        print(f"[erro] {erro}\nO whisper-server precisa estar aberto.", file=sys.stderr)
+        return 1
+    except ImportError:
+        print("[erro] Falta o numpy: pip install -e .[voz]", file=sys.stderr)
+        return 1
+    relatorio = pasta / "conferencia.csv"
+    salvar_relatorio(avaliacoes, relatorio)
+    ruins = [av for av in avaliacoes if av.nota == "ruim"]
+    duvidas = [av for av in avaliacoes if av.nota == "conferir"]
+    for titulo, grupo in (("Ruins", ruins), ("Para ouvir", duvidas)):
+        if grupo:
+            print(f"\n{titulo}:")
+        for av in sorted(grupo, key=lambda a: a.acerto):
+            print(f"  {av.ident}.wav  {av.acerto:4.0%}  {'; '.join(av.problemas)}")
+            print(f"           esperado: {av.texto}")
+            print(f"           ouvido:   {av.transcricao or '(nada)'}")
+    boas = len(avaliacoes) - len(ruins) - len(duvidas)
+    print(f"\n{boas} boas, {len(duvidas)} para ouvir, {len(ruins)} ruins. Planilha: {relatorio}")
+    if args.descartar and ruins:
+        descartar(pasta, [av.ident for av in ruins])
+        print(
+            f"{len(ruins)} ruins foram para {pasta / 'descartadas'} e saíram do metadata.csv "
+            "(o gerar-dataset não as refaz)."
+        )
+    elif ruins:
+        print("Para tirar as ruins do conjunto: rode de novo com --descartar.")
+    return 0
+
+
 def salvar_fala(
     config: Config,
     texto: str,
@@ -462,6 +503,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     dataset_cmd.add_argument("--nome", default="minha_voz", help="nome do conjunto (pasta)")
     dataset_cmd.add_argument("--limite", type=int, default=0, help="usar só as N primeiras frases")
+    conferir_cmd = voz_acoes.add_parser(
+        "conferir-dataset",
+        help="o Whisper ouve cada frase do conjunto de treino e aponta as ruins",
+    )
+    conferir_cmd.add_argument("--nome", default="minha_voz", help="nome do conjunto (pasta)")
+    conferir_cmd.add_argument(
+        "--descartar",
+        action="store_true",
+        help="tirar as ruins do conjunto (vão para a pasta descartadas)",
+    )
     kokoro_cmd = comandos.add_parser(
         "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"
     )
@@ -493,6 +544,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.comando == "voz" and args.acao == "gerar-dataset":
         return comando_gerar_dataset(config, args)
+
+    if args.comando == "voz" and args.acao == "conferir-dataset":
+        return comando_conferir_dataset(config, args)
 
     if args.comando == "voz" and args.acao == "salvar":
         return salvar_fala(config, " ".join(args.texto), args.pasta, args.nome, ouvir=args.ouvir)

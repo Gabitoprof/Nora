@@ -15,6 +15,7 @@ from pathlib import Path
 from nora.audio import _para_mono, duracao_wav, ler_wav, para_wav, reamostrar_qualidade
 
 TAXA_DO_PIPER = 22_050
+DESCARTADAS = "descartadas.txt"
 _FIM_DE_FRASE = re.compile(r"(?<=[.!?…])\s+")
 
 
@@ -48,13 +49,17 @@ def gerar_dataset(
     """Fala cada frase com a voz dada e salva no formato do treino. Devolve quantas gerou."""
     wavs = pasta / "wavs"
     wavs.mkdir(parents=True, exist_ok=True)
-    pendentes = [
-        (numero, frase)
-        for numero, frase in enumerate(frases, start=1)
-        if not (wavs / f"{numero:04}.wav").is_file()
-    ]
-    prontas = len(frases) - len(pendentes)
-    saida(f"{len(frases)} frases; {prontas} já prontas, {len(pendentes)} a gerar.")
+    # As que o conferir-dataset descartou não são refeitas (sairiam iguais, com a mesma semente).
+    fora = descartadas(pasta)
+    pendentes, puladas = [], 0
+    for numero, frase in enumerate(frases, start=1):
+        if f"{numero:04}" in fora:
+            puladas += 1
+        elif not (wavs / f"{numero:04}.wav").is_file():
+            pendentes.append((numero, frase))
+    prontas = len(frases) - len(pendentes) - puladas
+    aviso = f", {puladas} descartadas" if puladas else ""
+    saida(f"{len(frases)} frases; {prontas} já prontas{aviso}, {len(pendentes)} a gerar.")
     inicio, geradas, segundos = time.perf_counter(), 0, 0.0
     for posicao, (numero, frase) in enumerate(pendentes, start=1):
         amostras, taxa, canais = ler_wav(voz.sintetizar(frase))
@@ -69,6 +74,14 @@ def gerar_dataset(
     _escrever_metadata(pasta, frases)
     saida(f"Pronto: {geradas} novas ({segundos / 60:.1f} min de fala). Conjunto em {pasta}")
     return geradas
+
+
+def descartadas(pasta: Path) -> set[str]:
+    """Números das frases tiradas pelo conferir-dataset (descartadas.txt)."""
+    arquivo = pasta / DESCARTADAS
+    if not arquivo.is_file():
+        return set()
+    return {linha.strip() for linha in arquivo.read_text(encoding="utf-8").splitlines() if linha}
 
 
 def _escrever_metadata(pasta: Path, frases: list[str]) -> None:
