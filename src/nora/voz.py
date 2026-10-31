@@ -150,7 +150,7 @@ class VozComfyUI:
 
     def _carregar_fluxo(self) -> dict:
         try:
-            return json.loads(self.fluxo.read_text(encoding="utf-8"))
+            fluxo = json.loads(self.fluxo.read_text(encoding="utf-8"))
         except FileNotFoundError as erro:
             raise ServicoIndisponivel(
                 f"Fluxo do ComfyUI não encontrado em {self.fluxo}. Exporte o seu em "
