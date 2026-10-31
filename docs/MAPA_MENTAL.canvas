@@ -18,7 +18,7 @@
 		{"id":"b7","type":"text","text":"## Open source","x":-543,"y":-107,"width":260,"height":70,"color":"4"},
 		{"id":"d7","type":"text","text":"- `data/` e `.env` fora do Git\n- Sem marca Marvel\n- Nome configurável\n- MIT ou Apache-2.0\n- Conferir licenças de modelos e vozes","x":-977,"y":-242,"width":340,"height":200,"color":"4"},
 		{"id":"b8","type":"text","text":"## Banco de ideias","x":-399,"y":-356,"width":260,"height":70,"color":"6"},
-		{"id":"d8","type":"text","text":"- Câmera: presença\n- Reconhecimento facial local\n- Privacidade primeiro\n- Obsidian como segundo cérebro (índice + grafo no HUD)\n- Trocar cérebro e voz por comando","x":-697,"y":-728,"width":340,"height":260,"color":"6"},
+		{"id":"d8","type":"text","text":"- Câmera: presença\n- Reconhecimento facial local\n- Privacidade primeiro\n- Obsidian como segundo cérebro (índice + grafo no HUD)\n- Trocar cérebro e voz por comando\n- Palavras de partículas no HUD\n- Criação de voz pelo ComfyUI","x":-697,"y":-728,"width":340,"height":300,"color":"6"},
 		{"id":"grp","type":"group","label":"Roadmap (⬜ pendente · 🔄 andamento · ✅ concluída)","x":-1340,"y":1120,"width":2660,"height":220},
 		{"id":"s0","type":"text","text":"✅ **v0.0.0 Fundação**","x":-1300,"y":1200,"width":220,"height":90,"color":"4"},
 		{"id":"s1","type":"text","text":"✅ **v0.1.0 Conversa por voz**","x":-1040,"y":1200,"width":220,"height":90,"color":"4"},

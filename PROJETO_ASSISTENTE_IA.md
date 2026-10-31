@@ -200,6 +200,15 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 - Sincronia: a voz já sai frase por frase; para palavra por palavra, usar os tempos de palavra do motor de voz (ElevenLabs e Kokoro dão o alinhamento) ou estimar pela duração do áudio.
 - Encaixe: **Etapa 4 (HUD)**, junto com o orbe e os cartões.
 
+### 8.5 Criação de voz pelo ComfyUI
+*Origem: ideia do Gabriel (31/10/2026).*
+
+- Usar o **ComfyUI** (interface de fluxos em nós, rodando no PC) como laboratório para **criar e treinar a voz da Nora**, montando o processo visualmente: gravações → limpeza do áudio → clonagem ou treino → teste.
+- O ComfyUI tem nós da comunidade para síntese e clonagem de voz (ex.: F5-TTS, Chatterbox, XTTS). **Conferir a licença de cada modelo**: alguns são só para uso não comercial (XTTS, pesos do F5-TTS); o Chatterbox é MIT.
+- A voz criada sai como arquivo/modelo e entra na Nora por um motor de voz (`[voz] motor`), como o Kokoro e o Piper.
+- Cuidados: só vozes próprias ou de quem autorizar; nada de áudio do ElevenLabs como material de treino; instalar o ComfyUI num ambiente separado da Nora, com **Python 3.12 ou 3.13**; conferir o suporte à GPU AMD (RX 9060 XT) no Windows.
+- Relacionado: laboratório de voz (`nora voz testar`, mistura de vozes do Kokoro) e treino de voz própria com o Piper.
+
 *(Adicionar novas ideias aqui.)*
 
 ---

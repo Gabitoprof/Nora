@@ -88,6 +88,7 @@ mindmap
         Grafo no HUD
       Trocar cérebro e voz por comando
       Palavras de partículas no HUD
+      Criação de voz pelo ComfyUI
 ```
 
 ---
