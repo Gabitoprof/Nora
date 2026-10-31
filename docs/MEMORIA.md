@@ -4,7 +4,7 @@ A Nora lembra de você entre uma conversa e outra. Tudo fica num arquivo **só n
 
 ## Como funciona
 
-1. **Ela anota.** Depois de cada resposta, em segundo plano, o modelo local relê a troca e anota o que vale lembrar sobre você: **fatos duradouros** (preferências, rotina, pessoas próximas, animais), **datas e planos** e **acontecimentos marcantes**, com a data ("Gabriel faz aniversário em 31 de outubro", "Em 30/10/2026 o cachorro do Gabriel fugiu e foi encontrado perto de casa"). Na resposta seguinte aparece `[memória] anotei: ...`. Fatos quase iguais são juntados: o mais novo substitui o antigo.
+1. **Ela anota.** Depois de cada resposta, em segundo plano, o modelo local relê a troca e anota o que vale lembrar sobre você: **fatos duradouros** (preferências, rotina, pessoas próximas, animais), **datas e planos** e **acontecimentos marcantes**, com a data ("Ana faz aniversário em 12 de março", "Em 05/03/2026 o gato da Ana fugiu e foi encontrado perto de casa"). Na resposta seguinte aparece `[memória] anotei: ...`. Fatos quase iguais são juntados: o mais novo substitui o antigo.
    Cada fato vai para uma **área** (saúde, trabalho, estudos, família, pets...). Ela reaproveita as áreas que já existem e **cria uma nova** quando aparece um assunto novo.
 2. **Ela guarda tudo.** Cada pergunta e resposta também fica guardada **inteira**, mesmo quando não vira fato. Assim ela lembra de qualquer coisa que você disse.
 3. **Ela lembra.** Antes de responder, busca os fatos e os **trechos de conversas antigas** mais parecidos com a pergunta (por significado, não por palavra exata) e lê junto. Se você perguntar "onde eu achei meu cachorro?", ela acha o trecho em que você contou isso.
@@ -35,7 +35,7 @@ Confira com `nora --verificar`: a linha **Memória** deve dizer `ok`.
 | `nora memoria areas` | As áreas da memória (saúde, trabalho, estudos...) e quantos fatos cada uma tem |
 | `nora memoria listar --area saúde` | Só os fatos de uma área |
 | `nora memoria buscar prova de cálculo` | Os fatos mais parecidos com o texto, com a nota de parecença (0 a 1) |
-| `nora memoria lembrar Gabriel prefere chá` | Guarda um fato à mão |
+| `nora memoria lembrar Ana prefere chá` | Guarda um fato à mão |
 | `nora memoria esquecer 12` | Apaga o fato nº 12 |
 | `nora memoria importar` | Lê as conversas antigas de `data/historico/` e tira fatos delas (pode demorar; dá para rodar de novo, ele continua de onde parou) |
 

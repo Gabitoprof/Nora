@@ -24,11 +24,11 @@ Siga [VOZ.md](VOZ.md#usar-uma-voz-feita-no-comfyui): fluxo exportado em formato 
 nora voz gerar-dataset --nome minha_voz
 ```
 
-- Usa a lista de frases do projeto (`recursos/frases_pt.txt`, ~120 frases variadas).
+- Usa a lista de frases do projeto (`recursos/frases_pt.txt`, 154 frases variadas).
 - Para chegar a **500 a 1.000 frases**, use também um texto de **domínio público** (ex.: um livro de Machado de Assis do portal Domínio Público), que a Nora corta em frases sozinha:
 
   ```powershell
-  nora voz gerar-dataset --nome minha_voz --texto "C:\Users\Gabriel Moura\Downloads\livro.txt" --limite 800
+  nora voz gerar-dataset --nome minha_voz --texto "C:\caminho\para\livro.txt" --limite 800
   ```
 
 - Usa **só a voz principal** (nunca a reserva), para não misturar vozes no conjunto.
@@ -43,19 +43,28 @@ Ouça umas 20 frases salteadas. Apague o **wav e a linha correspondente do `meta
 
 ## 4. Treinar no Google Colab (grátis)
 
-O treino precisa de GPU NVIDIA; o Colab empresta uma de graça por algumas horas por dia.
+O treino precisa de GPU NVIDIA; o Colab empresta uma de graça por algumas horas por dia. O notebook pronto está em [`scripts/treinar_piper_colab.ipynb`](../scripts/treinar_piper_colab.ipynb) e usa o Piper atual ([piper1-gpl](https://github.com/OHF-Voice/piper1-gpl), GPL-3.0, baixado dentro do Colab, nunca no repositório).
 
-1. Compacte a pasta `data\dataset_voz\minha_voz` em `.zip` e envie para o seu Google Drive.
-2. Abra um notebook de treino do Piper no Colab, com a GPU ligada (Ambiente de execução → Alterar tipo → GPU).
-3. Em vez de treinar do zero, faça o **ajuste fino** a partir de uma voz pronta do Piper (muito mais rápido, e funciona bem com algumas centenas de frases). Escolha uma voz base com **licença aberta**; bases derivadas da `lessac` herdam uso só não comercial.
-4. Treine até a voz soar natural (algumas horas; o Colab grátis pode desconectar, então salve os checkpoints no Drive).
-5. Exporte para `.onnx` e baixe os dois arquivos: `minha_voz.onnx` e `minha_voz.onnx.json`.
+1. Compacte a pasta `data\dataset_voz\minha_voz` (com `wavs\` e `metadata.csv`) em `minha_voz.zip` e envie para o Google Drive, numa pasta `Nora` (`Meu Drive/Nora/minha_voz.zip`).
+2. Abra o [Google Colab](https://colab.research.google.com), vá em **Arquivo → Fazer upload de notebook** e escolha `scripts\treinar_piper_colab.ipynb`.
+3. **Ambiente de execução → Alterar o tipo de ambiente de execução → GPU (T4)**.
+4. Na célula 1, ponha em `NOME_VOZ` o nome do conjunto (`minha_voz`). Rode as células em ordem.
 
-> Os comandos exatos do treino mudam entre versões do Piper. Quando você chegar nesta etapa, peça ao Claude para montar o notebook conferido com a versão atual.
+O que o notebook faz:
+
+- Confere o conjunto (áudios em 22.050 Hz, frases sem áudio) e estima o tempo de treino.
+- Parte de uma voz pt-BR "medium" pronta do Piper (`rhasspy/piper-checkpoints`) e faz o **ajuste fino** com as suas frases, por 2.000 épocas (a receita do Piper para menos de 5 h de fala).
+- A cada 15 minutos copia o último ponto do treino para `Meu Drive/Nora/treino_minha_voz/`. **Se o Colab desconectar**, abra de novo e rode as células outra vez: ele continua de onde parou.
+- Na célula 7 exporta para `.onnx` e toca uma frase de teste. Dá para ouvir no meio do treino: pare a célula 6, rode a 7 e depois a 6 de novo.
+- Na célula 8 salva no Drive os dois arquivos da voz: `pt_BR-minhavoz-medium.onnx` e `pt_BR-minhavoz-medium.onnx.json` (o nome perde o "_", porque o Piper usa "_" e "-" para separar idioma, nome e qualidade).
+
+Quanto tempo: com ~10 minutos de fala (as 154 frases da lista), umas 6 a 8 horas na T4, normalmente em duas ou três sessões do Colab grátis. Mais frases deixam a voz melhor, mas cada época fica mais lenta.
+
+**Licença:** as vozes base do Piper costumam derivar de dados só para uso não comercial; a voz treinada é para uso pessoal e fica fora do Git (`models/`).
 
 ## 5. Usar na Nora
 
-1. Copie `minha_voz.onnx` e `minha_voz.onnx.json` para `B:\Nora\models\piper\`.
+1. Copie `pt_BR-minhavoz-medium.onnx` e `pt_BR-minhavoz-medium.onnx.json` para `B:\Nora\models\piper\`.
 2. No `config\local.toml`:
 
    ```toml
@@ -64,9 +73,9 @@ O treino precisa de GPU NVIDIA; o Colab empresta uma de graça por algumas horas
    reserva = "kokoro"
 
    [voz.piper]
-   voz = "minha_voz"
+   voz = "pt_BR-minhavoz-medium"
    ```
 
-3. Inicie com `scripts\iniciar_voz_windows.ps1 -Voz piper -VozPiper minha_voz` e teste: `nora voz salvar "Oi, Gabriel! Esta é a minha voz." --ouvir`.
+3. Inicie com `scripts\iniciar_voz_windows.ps1 -Voz piper -VozPiper pt_BR-minhavoz-medium` e teste: `nora voz salvar "Oi! Esta é a minha voz." --ouvir`.
 
 Pronto: a mesma voz que você criou no ComfyUI, agora rápida, local e sem custo.

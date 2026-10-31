@@ -1,6 +1,6 @@
 """Memória entre conversas (v0.2.0), com busca por significado, em duas camadas:
 
-- fatos: resumos curtos anotados pela curadoria ("Gabriel tem prova em 21/11");
+- fatos: resumos curtos anotados pela curadoria ("Ana tem prova em 21/11");
 - trocas: cada pergunta e resposta inteira, para ela lembrar de tudo o que foi dito.
 
 Cada item tem um vetor (embedding). Antes de responder, a Nora busca os fatos e os trechos de

@@ -200,7 +200,7 @@ Dicas: mantenha a `pf_dora` (português do Brasil) com o **maior peso**, para o 
 A Nora fala um texto com a voz configurada (ElevenLabs, Kokoro, mistura...) e salva o áudio:
 
 ```powershell
-nora voz salvar "Bom dia, Gabriel! Hoje é dia de prova, boa sorte." --pasta "C:\Users\Gabriel Moura\Music\Nora" --nome bom-dia --ouvir
+nora voz salvar "Bom dia! Hoje é dia de prova, boa sorte." --pasta "C:\Users\voce\Music\Nora" --nome bom-dia --ouvir
 ```
 
 Sem `--pasta`, salva em `data\audios\`; sem `--nome`, usa a data e o começo do texto. Com `--ouvir`, também toca. (Pedir isso conversando com ela, sem comando, chega com as ferramentas da v0.5.0.)
@@ -223,7 +223,7 @@ Qualquer voz que você monte no ComfyUI (clonagem a partir de uma amostra sua, o
    espera_s = 120.0
    ```
 
-4. **Deixe o ComfyUI aberto**, rode `nora --verificar` (deve mostrar `ComfyUI ok`) e teste: `nora voz salvar "Oi, Gabriel! Esta é a minha voz nova." --ouvir`.
+4. **Deixe o ComfyUI aberto**, rode `nora --verificar` (deve mostrar `ComfyUI ok`) e teste: `nora voz salvar "Oi! Esta é a minha voz nova." --ouvir`.
 
 O áudio pode sair em WAV, FLAC ou MP3: a Nora converte (precisa do `soundfile`, que vem com `.[voz]`). Dependendo do modelo e da GPU, o ComfyUI leva alguns segundos por frase: a conversa fica mais lenta que com o ElevenLabs ou o Kokoro. Use só vozes suas ou de quem autorizou, e confira a licença do modelo de voz usado no fluxo.
 
