@@ -1,0 +1,118 @@
+# Frases para gerar um conjunto de treino de voz (uma por linha; linhas com # são ignoradas).
+# Escritas para o projeto Nora (licença MIT). Variadas de propósito: perguntas, exclamações,
+# números, datas, nomes e sons diferentes do português. Para 500 a 1.000 frases, junte com
+# textos de domínio público (nora voz gerar-dataset --texto livro.txt).
+Bom dia! Dormiu bem esta noite?
+Hoje o céu está limpo e a temperatura deve chegar a vinte e oito graus.
+Você tem três compromissos amanhã, o primeiro às nove e meia.
+Quer que eu leia as mensagens que chegaram enquanto você estava fora?
+Lembrei que a conta de luz vence na próxima segunda-feira.
+Que notícia boa! Fico muito feliz por você.
+Calma, vamos resolver isso juntos, um passo de cada vez.
+O trânsito está pesado na avenida principal; talvez seja melhor sair mais cedo.
+Já são onze horas da noite, não esqueça de descansar.
+A reunião foi adiada para quinta-feira, às quatorze horas.
+Encontrei duas receitas de bolo de cenoura com cobertura de chocolate.
+Você pediu para eu avisar quando a água ferver.
+Posso tocar aquela playlist tranquila que você gosta?
+A previsão indica chuva forte no fim da tarde, leve um guarda-chuva.
+Desculpe, não entendi direito. Pode repetir, por favor?
+Anotei: comprar pão, leite, ovos e frutas.
+O seu aniversário é daqui a doze dias.
+Faltam quinze minutos para o início da aula.
+Parabéns pelo resultado, todo esse esforço valeu a pena.
+Hoje é sábado, vinte e um de novembro de dois mil e vinte e seis.
+O jogo terminou empatado em dois a dois.
+Respire fundo. Inspire contando até quatro e solte devagar.
+Quer que eu marque um lembrete para tomar o remédio às oito?
+A bateria do notebook está em vinte por cento.
+Achei o arquivo que você procurava, estava na pasta de documentos.
+Que tal fazer uma pausa e beber um copo de água?
+O cachorro precisa de vacina no mês que vem.
+Seu pedido saiu para entrega e deve chegar em quarenta minutos.
+Essa música me lembra uma tarde de verão na praia.
+Infelizmente, o voo foi cancelado por causa do mau tempo.
+Hoje é um ótimo dia para começar algo novo.
+A palavra do dia é gratidão.
+Você quer que eu explique isso de um jeito mais simples?
+O prazo para entregar o trabalho termina na sexta-feira.
+Olha só que interessante: a Lua está se afastando da Terra devagarinho.
+Vou ler o resumo em voz alta, preste atenção.
+Ainda não sei a resposta, mas posso procurar para você.
+Separei os documentos por data, do mais novo para o mais antigo.
+Lembre-se de fechar a janela antes de sair.
+O mercado fecha às vinte e duas horas hoje.
+A conversa de ontem foi muito boa, obrigada por confiar em mim.
+Desliguei as luzes da sala e da cozinha.
+Quantas pessoas vão participar do jantar de domingo?
+O filme começa às sete e meia, ainda dá tempo de pegar pipoca.
+Fiquei preocupada, está tudo bem com você?
+Pronto! Tarefa concluída com sucesso.
+Hum, deixa eu pensar um pouquinho sobre isso.
+A senha precisa ter pelo menos doze caracteres.
+O ônibus chega ao ponto em cinco minutos.
+Boa noite, durma bem e sonhe com coisas boas.
+A temperatura caiu bastante, vista um casaco.
+Que tal estudar por vinte e cinco minutos e depois descansar cinco?
+Esse livro tem trezentas e quarenta páginas.
+O dólar fechou o dia em alta.
+Você já tomou café da manhã?
+Achei três restaurantes abertos perto de você.
+A consulta com o dentista é na terça-feira, às dez e quinze.
+Foi um prazer ajudar, conte comigo sempre.
+Atenção: há um alerta de ventos fortes para a região.
+Vamos revisar a matéria de cálculo antes da prova?
+O xadrez exige paciência, estratégia e muita concentração.
+A chuva fina deixou o jardim perfumado.
+Enviei a mensagem para o grupo da família.
+Você prefere que eu fale mais devagar?
+Esse é um assunto delicado, quer conversar sobre ele?
+O relógio da cozinha está atrasado dez minutos.
+Que maravilha! Conseguimos terminar antes do prazo.
+Por favor, confirme se o endereço está correto.
+O jardim precisa ser regado duas vezes por semana.
+A ponte foi interditada para reformas até dezembro.
+Seu treino de hoje é corrida leve por trinta minutos.
+Hoje faz exatamente um ano que você começou o curso.
+Não se preocupe, todo mundo erra de vez em quando.
+O código da encomenda é BR quatro cinco seis sete oito.
+A geladeira está quase vazia, quer montar uma lista de compras?
+Ouvi um barulho estranho vindo da garagem.
+Você ganhou um desconto de quinze por cento na próxima compra.
+O sol nasce às cinco e quarenta e se põe às dezoito e vinte.
+Quer ouvir uma curiosidade? Os polvos têm três corações.
+Tudo certo por aqui. E com você, como foi o dia?
+A internet voltou a funcionar normalmente.
+Coloquei o despertador para as seis e trinta.
+Que pena, eu sei que você estava animado com isso.
+O museu abre de terça a domingo, das nove às dezessete.
+Encontrei um erro na planilha, na linha quarenta e dois.
+A gasolina subiu de novo esta semana.
+Vamos fazer uma lista do que precisa levar na viagem?
+O passaporte vence em março do ano que vem.
+Você me pediu para lembrar de ligar para a sua mãe.
+A tempestade passou e o céu está abrindo.
+Essa receita rende oito porções.
+A partida começa em meia hora; quer que eu avise?
+Organizei suas fotos por ano e por lugar.
+O silêncio também é uma boa resposta às vezes.
+Ufa! Achei que não ia dar tempo.
+Já pensou em tirar um dia só para você?
+O carregador está na gaveta da escrivaninha.
+A maré estará baixa às quinze horas.
+Você tem razão, eu me enganei. Obrigada por corrigir.
+Quer que eu leia a próxima página?
+O exame de sangue fica pronto em dois dias úteis.
+O vizinho deixou um recado na portaria.
+Vamos combinar assim: eu lembro e você decide.
+A biblioteca renovou o empréstimo por mais quinze dias.
+O dia está ótimo para caminhar no parque.
+Que susto! Ainda bem que deu tudo certo.
+Os ingressos esgotaram em menos de uma hora.
+Você quer a resposta curta ou a explicação completa?
+A torneira do banheiro está pingando.
+O ensaio da banda foi transferido para as oito.
+Feliz aniversário! Que este ano seja incrível.
+Já anotei, não vou esquecer.
+O caminho mais rápido é pela rodovia, cerca de vinte minutos.
+Pode contar comigo, estou aqui para isso.

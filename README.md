@@ -99,6 +99,7 @@ A Nora lembra de você entre conversas (fatos, preferências, datas), tudo em `d
 - [Teste de GPU](docs/TESTE_GPU.md)
 - [Conversa por voz](docs/VOZ.md)
 - [Memória](docs/MEMORIA.md)
+- [Treinar uma voz própria](docs/TREINAR_VOZ.md)
 - [Usando no Obsidian](docs/OBSIDIAN.md)
 
 ## Licença

@@ -152,6 +152,40 @@ IDIOMAS_KOKORO = {
 }
 
 
+def comando_gerar_dataset(config: Config, args, voz=None) -> int:
+    from pathlib import Path
+
+    from nora.config import RAIZ
+    from nora.dataset_voz import gerar_dataset, ler_frases
+    from nora.servico import ServicoIndisponivel
+    from nora.voz import _criar_motor
+
+    arquivo = Path(args.texto or args.frases or RAIZ / "recursos" / "frases_pt.txt")
+    try:
+        frases = ler_frases(arquivo, uma_por_linha=not args.texto)
+    except FileNotFoundError:
+        print(f"[erro] Arquivo não encontrado: {arquivo}", file=sys.stderr)
+        return 1
+    if args.limite:
+        frases = frases[: args.limite]
+    if not frases:
+        print(f"[erro] Nenhuma frase aproveitável em {arquivo}.", file=sys.stderr)
+        return 1
+    # Só a voz principal: a reserva misturaria outra voz no conjunto de treino.
+    voz = voz or _criar_motor(config, config.voz.motor)
+    pasta = config.pasta_dados / "dataset_voz" / args.nome
+    print(f"Voz: {config.voz.motor}. Frases de {arquivo}.")
+    try:
+        gerar_dataset(voz, frases, pasta)
+    except ServicoIndisponivel as erro:
+        print(f"[erro] {erro}\nRode o mesmo comando de novo para continuar.", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("\n(interrompido; rode de novo para continuar de onde parou)")
+        return 1
+    return 0
+
+
 def salvar_fala(
     config: Config,
     texto: str,
@@ -375,6 +409,21 @@ def main(argv: list[str] | None = None) -> int:
     salvar_cmd.add_argument("--pasta", default="", help="onde salvar (padrão: data/audios)")
     salvar_cmd.add_argument("--nome", default="", help="nome do arquivo (sem .wav)")
     salvar_cmd.add_argument("--ouvir", action="store_true", help="também tocar depois de salvar")
+    dataset_cmd = voz_acoes.add_parser(
+        "gerar-dataset",
+        help="fala muitas frases com a voz configurada e salva no formato de treino do Piper",
+    )
+    origem = dataset_cmd.add_mutually_exclusive_group()
+    origem.add_argument(
+        "--frases",
+        default="",
+        help="arquivo com uma frase por linha (padrão: recursos/frases_pt.txt)",
+    )
+    origem.add_argument(
+        "--texto", default="", help="texto corrido (ex.: um livro), cortado em frases"
+    )
+    dataset_cmd.add_argument("--nome", default="minha_voz", help="nome do conjunto (pasta)")
+    dataset_cmd.add_argument("--limite", type=int, default=0, help="usar só as N primeiras frases")
     kokoro_cmd = comandos.add_parser(
         "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"
     )
@@ -400,6 +449,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.comando == "memoria":
         return comando_memoria(config, args)
+
+    if args.comando == "voz" and args.acao == "gerar-dataset":
+        return comando_gerar_dataset(config, args)
 
     if args.comando == "voz" and args.acao == "salvar":
         return salvar_fala(config, " ".join(args.texto), args.pasta, args.nome, ouvir=args.ouvir)
