@@ -60,7 +60,7 @@ if (Test-Path $arquivoModelo) {
 
 Write-Host "`n[3/5] Kokoro (voz local padrão, feminina pf_dora)"
 # Instala só o pacote do Kokoro (sem reinstalar a Nora, o que falharia com um "nora" aberto).
-python -c "import kokoro_onnx" 2>$null
+python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('kokoro_onnx') else 1)"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "  já instalado"
 } else {
