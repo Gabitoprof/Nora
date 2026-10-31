@@ -12,7 +12,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from nora.audio import _para_mono, duracao_wav, ler_wav, para_wav, reamostrar
+from nora.audio import _para_mono, duracao_wav, ler_wav, para_wav, reamostrar_qualidade
 
 TAXA_DO_PIPER = 22_050
 _FIM_DE_FRASE = re.compile(r"(?<=[.!?…])\s+")
@@ -59,7 +59,7 @@ def gerar_dataset(
     for posicao, (numero, frase) in enumerate(pendentes, start=1):
         amostras, taxa, canais = ler_wav(voz.sintetizar(frase))
         amostras = _para_mono(amostras, canais)
-        wav = para_wav(reamostrar(amostras, taxa, TAXA_DO_PIPER), TAXA_DO_PIPER)
+        wav = para_wav(reamostrar_qualidade(amostras, taxa, TAXA_DO_PIPER), TAXA_DO_PIPER)
         (wavs / f"{numero:04}.wav").write_bytes(wav)
         geradas += 1
         segundos += duracao_wav(wav)

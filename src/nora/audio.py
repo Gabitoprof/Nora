@@ -78,6 +78,29 @@ def reamostrar(amostras: bytes, de: int, para: int = TAXA) -> bytes:
     return destino.tobytes()
 
 
+def reamostrar_qualidade(amostras: bytes, de: int, para: int) -> bytes:
+    """Como reamostrar, mas com corte de frequências (pela FFT, com numpy): não abafa nem cria
+    chiado ao baixar a taxa. Para preparar áudio de treino; sem numpy, usa a versão simples."""
+    if de == para or not amostras:
+        return amostras
+    try:
+        import numpy
+    except ImportError:
+        return reamostrar(amostras, de, para)
+    sinal = numpy.frombuffer(amostras, dtype="<i2").astype(numpy.float64)
+    folga = de // 10  # silêncio nas pontas: a FFT trata o sinal como cíclico
+    sinal = numpy.pad(sinal, folga)
+    total = max(1, round(len(sinal) * para / de))
+    espectro = numpy.fft.rfft(sinal)
+    novo = numpy.zeros(total // 2 + 1, dtype=complex)
+    bins = min(len(novo), len(espectro))
+    novo[:bins] = espectro[:bins]
+    saida = numpy.fft.irfft(novo, total) * (total / len(sinal))
+    corte = round(folga * para / de)
+    saida = saida[corte : len(saida) - corte] if corte else saida
+    return numpy.clip(numpy.round(saida), -32768, 32767).astype("<i2").tobytes()
+
+
 def dispositivo(valor: str) -> int | str | None:
     """Converte a escolha da config: vazio = padrão do sistema, número = índice, texto = nome."""
     valor = valor.strip()

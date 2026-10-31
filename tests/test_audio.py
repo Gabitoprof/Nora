@@ -294,3 +294,20 @@ def test_saida_padrao_que_falha_continua_dando_erro(monkeypatch):
     monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
     with pytest.raises(falso.PortAudioError):
         audio.tocar_wav(audio.para_wav(pcm([5] * 160)))
+
+
+def test_reamostrar_com_qualidade_corta_o_que_nao_cabe_na_taxa_nova():
+    np = pytest.importorskip("numpy")
+    taxa = 44_100
+    t = np.arange(taxa) / taxa
+    # 1 kHz (voz) + 15 kHz (acima do limite de 11.025 Hz da taxa de 22.050)
+    sinal = 8000 * np.sin(2 * np.pi * 1000 * t) + 8000 * np.sin(2 * np.pi * 15_000 * t)
+    entrada = sinal.astype("<i2").tobytes()
+    saida = np.frombuffer(audio.reamostrar_qualidade(entrada, taxa, 22_050), dtype="<i2")
+    assert len(saida) == 22_050
+    espectro = np.abs(np.fft.rfft(saida))
+    freq = np.fft.rfftfreq(len(saida), 1 / 22_050)
+    voz = espectro[np.argmin(abs(freq - 1000))]
+    dobra = espectro[np.argmin(abs(freq - (22_050 - 15_000)))]  # onde o chiado apareceria
+    assert dobra < voz / 100  # os 15 kHz não viraram chiado em 7 kHz
+    assert audio.reamostrar_qualidade(entrada, taxa, taxa) == entrada
