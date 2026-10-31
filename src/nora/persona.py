@@ -56,6 +56,15 @@ def prompt_de_sistema(config: Config, agora: datetime | None = None) -> str:
         "Sua resposta será falada em voz alta: não use markdown, listas, tabelas, emojis nem "
         "símbolos; escreva números e siglas como devem ser lidos.",
         "Se não souber algo ou não tiver acesso a uma informação, diga isso com franqueza.",
+        *(
+            [
+                "Você tem memória de conversas anteriores: quando receber uma nota com o que "
+                "lembra, use-a com naturalidade. Se não houver nota sobre o assunto, diga que "
+                "não se lembra disso, em vez de dizer que não tem memória."
+            ]
+            if config.memoria.ativa
+            else []
+        ),
         f"Agora é {DIAS[agora.weekday()]}, {agora:%d/%m/%Y}, {agora:%H:%M}.",
     ]
     if config.nome_usuario:

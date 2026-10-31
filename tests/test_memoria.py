@@ -140,7 +140,7 @@ def test_lembra_entre_sessoes(criar_raiz):
 
         primeira = nova_conversa(config)
         assert "".join(primeira.perguntar("Minha prova de cálculo é sexta.")) == "Anotado!"
-        assert primeira.encerrar() == []
+        assert primeira.encerrar() == [f"anotei: {fato}"]
         primeira.memoria.fechar()
 
         segunda = nova_conversa(config)
@@ -185,6 +185,7 @@ def test_conversar_mostra_aviso_e_contagem(criar_raiz):
         conversar(config, entrada=lambda _: next(falas), saida=saida, medir=True)
     texto = saida.getvalue()
     assert "lembrou 0 fatos" in texto
+    assert "[memória] anotei: Gabriel gosta de café" in texto
     assert "(guardando o que aprendi nesta conversa...)" in texto
 
 
@@ -217,3 +218,12 @@ def test_comando_memoria_e_importar(criar_raiz, capsys, monkeypatch):
     assert "Guardado" in texto
     assert "2 fatos em" in texto
     assert "Esquecido (nº 1)." in texto
+
+
+def test_persona_sabe_que_tem_memoria(criar_raiz):
+    from nora.persona import prompt_de_sistema
+
+    com = carregar(criar_raiz(local="[memoria]\nativa = true\n"), ambiente={})
+    sem = carregar(criar_raiz(local="[memoria]\nativa = false\n"), ambiente={})
+    assert "Você tem memória de conversas anteriores" in prompt_de_sistema(com)
+    assert "Você tem memória" not in prompt_de_sistema(sem)

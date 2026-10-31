@@ -75,7 +75,8 @@ class Conversa:
         try:
             hoje = datetime.now().strftime("%d/%m/%Y")
             for fato in extrair_fatos(self.config, pergunta, resposta, hoje):
-                self.memoria.lembrar(fato, origem=self.historico.sessao)
+                _, novo = self.memoria.lembrar(fato, origem=self.historico.sessao)
+                self._avisar(f"{'anotei' if novo else 'atualizei'}: {fato}")
         except Exception as erro:
             self._avisar(f"Não consegui atualizar a memória ({erro}).")
 
