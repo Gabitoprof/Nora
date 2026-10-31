@@ -144,6 +144,54 @@ IDIOMAS_KOKORO = {
 }
 
 
+def salvar_fala(
+    config: Config,
+    texto: str,
+    pasta: str = "",
+    nome: str = "",
+    ouvir: bool = False,
+    voz=None,
+    tocar=None,
+) -> int:
+    """A Nora fala o texto com a voz da config (ElevenLabs, Kokoro, Piper...) e salva em .wav."""
+    import re
+    import time
+    from pathlib import Path
+
+    from nora import audio
+    from nora.servico import ServicoIndisponivel
+    from nora.voz import criar_voz
+
+    texto = " ".join(texto.split())
+    if not texto:
+        print("[erro] Escreva o texto que ela vai falar.", file=sys.stderr)
+        return 1
+    destino = Path(pasta) if pasta else config.pasta_dados / "audios"
+    if not nome:
+        inicio = re.sub(r"[^a-z0-9]+", "_", texto.lower()[:40]).strip("_") or "fala"
+        nome = f"{time.strftime('%Y-%m-%d_%H-%M-%S')}_{inicio}"
+    arquivo = destino / f"{nome.removesuffix('.wav')}.wav"
+    voz = voz or criar_voz(config)
+    try:
+        wav = voz.sintetizar(texto)
+    except ServicoIndisponivel as erro:
+        print(f"[erro] {erro}", file=sys.stderr)
+        return 1
+    destino.mkdir(parents=True, exist_ok=True)
+    arquivo.write_bytes(wav)
+    print(f"Salvo: {arquivo} ({audio.duracao_wav(wav):.1f} s)")
+    if getattr(voz, "aviso", ""):
+        print(f"[voz reserva] {voz.aviso}")
+    if ouvir:
+        try:
+            (tocar or (lambda w: audio.tocar_wav(w, audio.dispositivo(config.audio.alto_falante))))(
+                wav
+            )
+        except Exception as erro:
+            print(f"[aviso] Não consegui tocar ({erro}).")
+    return 0
+
+
 def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> int:
     """Lista as vozes do Kokoro e toca uma voz ou mistura, para achar a voz da Nora."""
     import re
@@ -312,6 +360,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     testar_cmd.add_argument("--frase", default="", help="o que ela vai falar")
     testar_cmd.add_argument("--velocidade", type=float, default=None)
+    salvar_cmd = voz_acoes.add_parser(
+        "salvar", help="a Nora fala um texto com a voz configurada e salva em .wav"
+    )
+    salvar_cmd.add_argument("texto", nargs="+", help="o que ela vai falar")
+    salvar_cmd.add_argument("--pasta", default="", help="onde salvar (padrão: data/audios)")
+    salvar_cmd.add_argument("--nome", default="", help="nome do arquivo (sem .wav)")
+    salvar_cmd.add_argument("--ouvir", action="store_true", help="também tocar depois de salvar")
     kokoro_cmd = comandos.add_parser(
         "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"
     )
@@ -337,6 +392,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.comando == "memoria":
         return comando_memoria(config, args)
+
+    if args.comando == "voz" and args.acao == "salvar":
+        return salvar_fala(config, " ".join(args.texto), args.pasta, args.nome, ouvir=args.ouvir)
 
     if args.comando == "voz":
         return laboratorio_de_voz(config, args)

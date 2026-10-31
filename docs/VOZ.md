@@ -194,6 +194,16 @@ velocidade = 0.95
 
 Dicas: mantenha a `pf_dora` (português do Brasil) com o **maior peso**, para o sotaque e a pronúncia; misture pequenas porções de outras vozes para mudar o timbre (mais grave, mais suave, mais brilhante). Os pesos não precisam somar 1; a Nora ajusta.
 
+## Salvar uma fala da Nora em .wav
+
+A Nora fala um texto com a voz configurada (ElevenLabs, Kokoro, mistura...) e salva o áudio:
+
+```powershell
+nora voz salvar "Bom dia, Gabriel! Hoje é dia de prova, boa sorte." --pasta "C:\Users\Gabriel Moura\Music\Nora" --nome bom-dia --ouvir
+```
+
+Sem `--pasta`, salva em `data\audios\`; sem `--nome`, usa a data e o começo do texto. Com `--ouvir`, também toca. (Pedir isso conversando com ela, sem comando, chega com as ferramentas da v0.5.0.)
+
 ## Usar o ElevenLabs
 
 1. Crie uma conta em elevenlabs.io e uma chave de API (perfil → API Keys). Defina um limite de gasto.

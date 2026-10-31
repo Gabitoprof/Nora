@@ -75,3 +75,37 @@ def test_laboratorio_testa_e_salva_a_amostra(criar_raiz, capsys):
 
     args = SimpleNamespace(acao="testar", receita="zz_nada", frase="", velocidade=None)
     assert laboratorio_de_voz(config, args, sintetizador_falso(), tocados.append) == 1
+
+
+def test_salvar_fala_em_wav(criar_raiz, tmp_path, capsys):
+    from nora.audio import para_wav
+    from nora.cli import salvar_fala
+
+    class VozFalsa:
+        aviso = ""
+
+        def __init__(self):
+            self.textos = []
+
+        def sintetizar(self, texto):
+            self.textos.append(texto)
+            return para_wav(b"\x00\x00" * 16_000)
+
+    config = carregar(criar_raiz(), ambiente={})
+    voz, tocados = VozFalsa(), []
+    pasta = tmp_path / "meus audios"
+    assert (
+        salvar_fala(
+            config, "  Bom dia,   Gabriel! ", str(pasta), "bom-dia", True, voz, tocados.append
+        )
+        == 0
+    )
+    assert voz.textos == ["Bom dia, Gabriel!"]
+    assert (pasta / "bom-dia.wav").is_file()
+    assert len(tocados) == 1
+    assert "(1.0 s)" in capsys.readouterr().out
+
+    assert salvar_fala(config, "Lembrete da prova", voz=voz) == 0
+    salvos = list((config.pasta_dados / "audios").glob("*_lembrete_da_prova.wav"))
+    assert len(salvos) == 1
+    assert salvar_fala(config, "   ", voz=voz) == 1
