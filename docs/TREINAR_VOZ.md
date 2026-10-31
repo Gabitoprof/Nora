@@ -55,7 +55,7 @@ O Whisper ouve cada frase e compara com o texto esperado, e o áudio é medido. 
 
 O resultado aparece na tela (pior primeiro, com o que era esperado e o que o Whisper ouviu) e numa planilha, `conferencia.csv`, dentro da pasta do conjunto (abre no Excel).
 
-- **Ouça as "conferir"** e apague as que estiverem ruins (o `.wav` e a linha do `metadata.csv`).
+- **Ouça as "conferir"** e tire as que estiverem ruins: `nora voz conferir-dataset --nome minha_voz --tirar 0079 0088` (vão para `descartadas\`, saem do `metadata.csv` e não são refeitas).
 - **Tire as ruins de uma vez:** `nora voz conferir-dataset --nome minha_voz --descartar`. Elas vão para a pasta `descartadas\`, saem do `metadata.csv` e o `gerar-dataset` não as refaz (com a semente fixa, sairiam iguais).
 - **O que ele não pega:** sotaque e pronúncia. O Whisper entende "houje" como "hoje", então ouça umas 20 frases salteadas também. Palavras que saem erradas sempre vão para `[voz.pronuncias]` (veja [VOZ.md](VOZ.md)), antes de gerar o conjunto.
 

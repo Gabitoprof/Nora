@@ -146,7 +146,7 @@ def _julgar(av: Avaliacao, ritmo_mediano: float) -> None:
 
 
 def ler_metadata(pasta: Path) -> list[tuple[str, str]]:
-    linhas = (pasta / "metadata.csv").read_text(encoding="utf-8").splitlines()
+    linhas = (pasta / "metadata.csv").read_text(encoding="utf-8-sig").splitlines()
     return [
         (ident.removesuffix(".wav"), texto.strip())
         for ident, _, texto in (linha.partition("|") for linha in linhas if linha.strip())

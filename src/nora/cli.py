@@ -228,6 +228,11 @@ def comando_conferir_dataset(config: Config, args, ouvido=None) -> int:
     if not (pasta / "metadata.csv").is_file():
         print(f"[erro] Conjunto não encontrado: {pasta}", file=sys.stderr)
         return 1
+    tirar = [nome.removesuffix(".wav").zfill(4) for nome in getattr(args, "tirar", None) or []]
+    if tirar:
+        descartar(pasta, tirar)
+        print(f"Tiradas do conjunto: {', '.join(tirar)} (estão em {pasta / 'descartadas'}).")
+        return 0
     try:
         avaliacoes = conferir(ouvido or OuvidoWhisper(config), pasta)
     except ServicoIndisponivel as erro:
@@ -512,6 +517,12 @@ def main(argv: list[str] | None = None) -> int:
         "--descartar",
         action="store_true",
         help="tirar as ruins do conjunto (vão para a pasta descartadas)",
+    )
+    conferir_cmd.add_argument(
+        "--tirar",
+        nargs="+",
+        metavar="NUMERO",
+        help="só tirar estas frases do conjunto, sem conferir (ex.: --tirar 0079 0088)",
     )
     kokoro_cmd = comandos.add_parser(
         "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"

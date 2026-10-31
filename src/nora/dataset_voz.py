@@ -81,7 +81,9 @@ def descartadas(pasta: Path) -> set[str]:
     arquivo = pasta / DESCARTADAS
     if not arquivo.is_file():
         return set()
-    return {linha.strip() for linha in arquivo.read_text(encoding="utf-8").splitlines() if linha}
+    return {
+        linha.strip() for linha in arquivo.read_text(encoding="utf-8-sig").splitlines() if linha
+    }
 
 
 def _escrever_metadata(pasta: Path, frases: list[str]) -> None:

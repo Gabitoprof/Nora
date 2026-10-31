@@ -117,3 +117,16 @@ def test_comando_conferir(criar_raiz, capsys):
     assert (pasta / "conferencia.csv").read_text(encoding="utf-8-sig").startswith("arquivo;nota")
     assert (pasta / "descartadas" / "0002.wav").is_file()
     assert comando_conferir_dataset(config, SimpleNamespace(nome="nada", descartar=False)) == 1
+
+
+def test_tirar_frases_escolhidas_sem_conferir(criar_raiz, capsys):
+    config = carregar(criar_raiz(), ambiente={})
+    pasta = config.pasta_dados / "dataset_voz" / "teste"
+    montar(pasta, [("Uma.", fala(1.0)), ("Duas.", fala(1.0)), ("Três.", fala(1.0))])
+    (pasta / "metadata.csv").write_text(
+        "﻿" + (pasta / "metadata.csv").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    args = SimpleNamespace(nome="teste", descartar=False, tirar=["2", "0003.wav"])
+    assert comando_conferir_dataset(config, args, ouvido=None) == 0
+    assert (pasta / "metadata.csv").read_text(encoding="utf-8") == "0001|Uma.\n"
+    assert (pasta / "descartadas.txt").read_text(encoding="utf-8") == "0002\n0003\n"
