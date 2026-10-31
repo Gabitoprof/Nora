@@ -27,6 +27,8 @@ from nora.servico import ServicoIndisponivel
 from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, criar_voz
 
 _FIM = object()
+# Até quantos caracteres de frases que já estão esperando vão juntos num pedido à voz.
+LIMITE_DO_LOTE = 400
 
 
 @dataclass
@@ -71,11 +73,27 @@ class Locutor:
         self._toque.join()
 
     def _sintetizar(self) -> None:
-        while (frase := self._frases.get()) is not _FIM:
+        """Sintetiza as frases em ordem. Se várias já estão esperando (a voz é mais lenta que
+        o modelo, como no ComfyUI), junta-as num pedido só: menos pedidos, menos pausas."""
+        acabou = False
+        while not acabou:
+            frase = self._frases.get()
+            if frase is _FIM:
+                break
+            lote = [frase]
+            while sum(len(f) for f in lote) < LIMITE_DO_LOTE:
+                try:
+                    proxima = self._frases.get_nowait()
+                except queue.Empty:
+                    break
+                if proxima is _FIM:
+                    acabou = True
+                    break
+                lote.append(proxima)
             if self.tempos.erros:
                 continue
             try:
-                self._audios.put(self.voz.sintetizar(frase))
+                self._audios.put(self.voz.sintetizar(" ".join(lote)))
             except ServicoIndisponivel as erro:
                 self.tempos.erros.append(str(erro))
         self._audios.put(_FIM)

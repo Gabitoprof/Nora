@@ -279,13 +279,9 @@ def test_conversa_por_voz_de_ponta_a_ponta(criar_raiz):
     assert "Você: Qual é a capital do Brasil?" in texto
     assert f"Nora: {resposta}" in texto
     assert "começou a falar em" in texto
-    falado = [json.loads(audio)["text"] for audio in tocados]
-    assert falado == [
-        "A capital do Brasil é Brasília.",
-        "Fica no Distrito Federal.",
-        "A capital do Brasil é Brasília.",
-        "Fica no Distrito Federal.",
-    ]
+    # as frases saem em ordem; as que já esperavam podem ir juntas num pedido só à voz
+    falado = " ".join(json.loads(audio)["text"] for audio in tocados)
+    assert falado == f"{resposta} {resposta}"
     assert len(whisper.pedidos) == 1  # a segunda pergunta foi digitada
 
 
