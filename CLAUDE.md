@@ -30,6 +30,7 @@ Assistente de IA pessoal por voz em tempo real, local primeiro, com memória que
 - **Não usar** "Jarvis", Marvel ou referências visuais deles em nome, logo ou divulgação.
 - Nome do assistente sempre vindo da config.
 - Conferir a licença de cada modelo e voz; preferir redistribuíveis ou baixar à parte via script. Código AGPL não entra no repositório.
+- Toda dependência, programa, modelo ou voz nova entra em `docs/LICENCAS.md` no mesmo commit, com a licença conferida na fonte (o `tests/test_licencas.py` confere as dependências do `pyproject.toml`).
 - Voz original: não imitar voz de ator ou personagem real.
 
 ## Fluxo de trabalho

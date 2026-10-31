@@ -104,4 +104,4 @@ A Nora lembra de você entre conversas (fatos, preferências, datas), tudo em `d
 
 ## Licença
 
-[MIT](LICENSE). Modelos de IA e vozes usados pelo projeto têm licenças próprias e são baixados à parte.
+O código da Nora é [MIT](LICENSE). Programas, modelos de IA e vozes que ela usa têm licenças próprias e são baixados à parte: veja [docs/LICENCAS.md](docs/LICENCAS.md) antes de redistribuir qualquer coisa.
