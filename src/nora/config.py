@@ -76,6 +76,7 @@ MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs", "comfyui")
 class Voz:
     motor: str
     reserva: str
+    pronuncias: dict[str, str]
     kokoro: VozKokoro
     piper: VozPiper
     elevenlabs: VozElevenLabs
@@ -216,8 +217,14 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
     velocidade = _campo(dados, "voz.kokoro", "velocidade", float)
     if not 0.5 <= velocidade <= 2.0:
         raise ConfigError(f"[voz.kokoro] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
+    pronuncias = dados.get("voz", {}).get("pronuncias", {})
+    if not isinstance(pronuncias, dict) or not all(
+        isinstance(chave, str) and isinstance(valor, str) for chave, valor in pronuncias.items()
+    ):
+        raise ConfigError('[voz.pronuncias] deve ter linhas como "palavra" = "como falar".')
     return Voz(
         motor=motor,
+        pronuncias={chave.strip(): valor for chave, valor in pronuncias.items() if chave.strip()},
         reserva=reserva if reserva != motor else "",
         kokoro=VozKokoro(
             url=_campo(dados, "voz.kokoro", "url", str),

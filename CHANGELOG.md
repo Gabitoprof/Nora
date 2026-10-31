@@ -15,6 +15,9 @@ Versão em desenvolvimento: `0.2.0.dev0`.
 - `nora memoria listar | buscar | lembrar | esquecer | importar`. O `listar` mostra 20 por página (`--pagina`, `--contendo`, `--todos`). O `importar` tira fatos das conversas antigas de `data/historico/` e continua de onde parou.
 - Config `[memoria]` (`ativa`, `modelo_embeddings`, `curadoria`, `fatos_por_pergunta`, `similaridade_minima`) e extra de instalação `.[memoria]`.
 - **Digitar em vez de falar** (acessibilidade): `nora conversar --voz` (só teclado, resposta falada) e `nora ouvir` aceitando texto digitado a qualquer momento, sem precisar do nome dela.
+- Uma pergunta sempre fecha o pedido à voz (o "?" fica no fim, onde a entonação sobe), mesmo quando frases são juntadas.
+- `[voz.pronuncias]`: palavras reescritas só na fala (ex.: `"amanhã" = "amanhãn"`), para qualquer motor de voz.
+- Lista de frases de treino com 154 frases, incluindo 46 perguntas e quase 50 com sons nasais (ã, ão, õe).
 - O conjunto de treino é convertido para 22.050 Hz com corte de frequências (FFT, numpy), sem abafar nem gerar chiado; antes era uma interpolação simples.
 - `nora voz gerar-dataset`: fala muitas frases com a voz principal (ex.: o fluxo do ComfyUI) e salva no formato de treino do Piper (`wavs/` mono 22.050 Hz + `metadata.csv`), continuando de onde parou; aceita lista de frases ou texto corrido (`--texto`). Lista inicial em `recursos/frases_pt.txt` e guia em `docs/TREINAR_VOZ.md` (ComfyUI → conjunto → treino no Colab → Piper na Nora).
 - Frases que já estão esperando vão juntas num pedido só à voz (até 400 caracteres): com vozes lentas, como o ComfyUI, há menos pedidos e menos pausas entre as frases.

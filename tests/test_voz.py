@@ -339,3 +339,18 @@ def test_so_teclado_responde_falando_sem_microfone(criar_raiz):
     assert "digite e ela responde falando" in saida.getvalue()
     # "Oi!" é curto demais para ir sozinho e segue junto com a frase seguinte
     assert [json.loads(a)["text"] for a in tocados] == ["Oi! Tudo bem?"]
+
+
+def test_pronuncias_do_config_valem_para_a_voz(criar_raiz):
+    extra = '[voz.pronuncias]\n"amanhã" = "amanhãn"\n'
+    with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as piper:
+        voz = criar_voz(config_com(criar_raiz, piper=piper.url, extra=extra))
+        voz.sintetizar("Até amanhã, Nora!")
+    assert json.loads(piper.pedidos[0][2])["text"] == "Até amanhãn, Nora!"
+
+
+def test_pronuncias_invalidas(criar_raiz):
+    from nora.config import ConfigError
+
+    with pytest.raises(ConfigError, match="pronuncias"):
+        config_com(criar_raiz, extra='[voz.pronuncias]\n"amanhã" = 3\n')

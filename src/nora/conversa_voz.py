@@ -27,6 +27,12 @@ from nora.servico import ServicoIndisponivel
 from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, criar_voz
 
 _FIM = object()
+
+
+def _e_pergunta(frase: str) -> bool:
+    return frase.rstrip(" \"'”)»").endswith("?")
+
+
 # Até quantos caracteres de frases que já estão esperando vão juntos num pedido à voz.
 LIMITE_DO_LOTE = 400
 
@@ -81,7 +87,9 @@ class Locutor:
             if frase is _FIM:
                 break
             lote = [frase]
-            while sum(len(f) for f in lote) < LIMITE_DO_LOTE:
+            # Uma pergunta sempre fecha o pedido: com o "?" no fim, a voz sobe a entonação; no
+            # meio do texto, muitos modelos achatam.
+            while sum(len(f) for f in lote) < LIMITE_DO_LOTE and not _e_pergunta(lote[-1]):
                 try:
                     proxima = self._frases.get_nowait()
                 except queue.Empty:

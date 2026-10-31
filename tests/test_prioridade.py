@@ -84,3 +84,32 @@ def test_frases_que_esperam_vao_juntas_para_a_voz():
     locutor.terminar()
     assert pedidos == ["Primeira.", "Segunda. Terceira. Quarta."]
     assert tocados == pedidos
+
+
+def test_pergunta_sempre_fecha_o_pedido():
+    import threading
+    import time
+
+    liberar = threading.Event()
+    pedidos = []
+
+    class VozLenta:
+        def sintetizar(self, frase):
+            pedidos.append(frase)
+            if len(pedidos) == 1:
+                liberar.wait(2)
+            return frase.encode()
+
+    locutor = Locutor(VozLenta(), lambda wav: None, 0.0)
+    locutor.falar("Oi, Gabriel.")
+    time.sleep(0.05)
+    for frase in ["Tudo bem com você?", "Hoje está calor.", "Quer sair mais tarde?", "Me avisa."]:
+        locutor.falar(frase)
+    liberar.set()
+    locutor.terminar()
+    assert pedidos == [
+        "Oi, Gabriel.",
+        "Tudo bem com você?",
+        "Hoje está calor. Quer sair mais tarde?",
+        "Me avisa.",
+    ]

@@ -229,6 +229,18 @@ O áudio pode sair em WAV, FLAC ou MP3: a Nora converte (precisa do `soundfile`,
 
 > Para ter a voz do ComfyUI **rápida e leve** no dia a dia, gere um conjunto de frases com ela e treine um Piper: veja [TREINAR_VOZ.md](TREINAR_VOZ.md).
 
+## Corrigir a pronúncia de uma palavra
+
+Se a voz fala mal alguma palavra, reescreva como ela deve soar, só na fala (a tela continua mostrando o texto original). Vale para qualquer motor de voz:
+
+```toml
+[voz.pronuncias]
+"amanhã" = "amanhãn"
+"PUCMG" = "puque eme gê"
+```
+
+Teste com `nora voz salvar "Até amanhã!" --ouvir` e ajuste até soar bem.
+
 ## Usar o ElevenLabs
 
 1. Crie uma conta em elevenlabs.io e uma chave de API (perfil → API Keys). Defina um limite de gasto.

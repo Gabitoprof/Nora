@@ -247,7 +247,9 @@ class VozComfyUI:
 def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs | VozComfyUI:
     voz = config.voz
     assistente = config.assistente
-    pronuncias = {assistente.nome: assistente.pronuncia} if assistente.pronuncia else {}
+    pronuncias = dict(voz.pronuncias)
+    if assistente.pronuncia:
+        pronuncias[assistente.nome] = assistente.pronuncia
     if motor == "kokoro":
         extras = {"voice": voz.kokoro.voz, "speed": voz.kokoro.velocidade}
         return VozHTTP("o Kokoro", voz.kokoro.url, extras, pronuncias)

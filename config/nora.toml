@@ -36,6 +36,10 @@ motor = "kokoro"
 # Precisa do servidor dela rodando (o Kokoro: iniciar_voz_windows.ps1 -Voz kokoro).
 reserva = "kokoro"
 
+[voz.pronuncias]
+# Palavras que a voz fala mal, reescritas só na fala (a tela mostra o texto original).
+# Vale para qualquer motor de voz. Ex.: "amanhã" = "amanhãn"
+
 [voz.kokoro]
 # Kokoro-82M (pesos Apache-2.0), servido por "nora servidor-kokoro".
 # Vozes pt-BR: pf_dora (feminina), pm_alex e pm_santa (masculinas).
