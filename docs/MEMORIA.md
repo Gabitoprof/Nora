@@ -5,8 +5,9 @@ A Nora lembra de você entre uma conversa e outra. Tudo fica num arquivo **só n
 ## Como funciona
 
 1. **Ela anota.** Depois de cada resposta, em segundo plano, o modelo local relê a troca e anota o que vale lembrar sobre você: **fatos duradouros** (preferências, rotina, pessoas próximas, animais), **datas e planos** e **acontecimentos marcantes**, com a data ("Gabriel faz aniversário em 31 de outubro", "Em 30/10/2026 o cachorro do Gabriel fugiu e foi encontrado perto de casa"). Na resposta seguinte aparece `[memória] anotei: ...`. Fatos quase iguais são juntados: o mais novo substitui o antigo.
-2. **Ela lembra.** Antes de responder, busca os fatos **parecidos com a pergunta** (por significado, não por palavra exata) e lê junto. Se você perguntar "quando é minha prova?", ela acha "Gabriel tem prova de cálculo na sexta".
-3. **Você manda.** Dá para ver, acrescentar e apagar o que ela sabe (abaixo).
+2. **Ela guarda tudo.** Cada pergunta e resposta também fica guardada **inteira**, mesmo quando não vira fato. Assim ela lembra de qualquer coisa que você disse.
+3. **Ela lembra.** Antes de responder, busca os fatos e os **trechos de conversas antigas** mais parecidos com a pergunta (por significado, não por palavra exata) e lê junto. Se você perguntar "onde eu achei meu cachorro?", ela acha o trecho em que você contou isso.
+4. **Você manda.** Dá para ver, acrescentar e apagar o que ela sabe (abaixo).
 
 O modelo em si não muda: ele fica mais esperto sobre você porque recebe a memória certa a cada pergunta. O histórico completo continua em `data/historico/`, palavra por palavra.
 

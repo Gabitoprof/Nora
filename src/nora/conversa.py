@@ -11,8 +11,19 @@ from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
 from nora.curadoria import extrair_fatos
 from nora.historico import Historico
-from nora.memoria import Fato, Memoria, abrir_memoria
+from nora.memoria import Fato, Memoria, Troca, abrir_memoria
 from nora.persona import prompt_de_sistema
+
+
+def _data(quando: str) -> str:
+    """'2026-10-30T10:00:00' -> '30/10/2026'."""
+    return f"{quando[8:10]}/{quando[5:7]}/{quando[:4]}" if len(quando) >= 10 else quando
+
+
+def _resumir(texto: str, limite: int = 300) -> str:
+    texto = " ".join(texto.split())
+    return texto if len(texto) <= limite else texto[: limite - 1].rstrip() + "…"
+
 
 COMANDOS_SAIR = {"sair", "tchau", "/sair", "exit", "quit"}
 AUTOMATICA = object()
@@ -33,6 +44,7 @@ class Conversa:
         self.historico = historico
         self.memoria = memoria
         self.lembrancas: list[Fato] = []  # fatos usados na última resposta
+        self.trechos: list[Troca] = []  # trechos de conversas antigas usados na última resposta
         self.avisos: list[str] = []
         self._curadorias: list[threading.Thread] = []
         self.limpar()
@@ -45,8 +57,9 @@ class Conversa:
             self.avisos.append(aviso)
 
     def _lembrar(self, texto: str) -> list[dict[str, str]]:
-        """Fatos da memória parecidos com a pergunta, como uma nota para o modelo."""
-        self.lembrancas = []
+        """Fatos e trechos de conversas antigas parecidos com a pergunta, como uma nota para o
+        modelo (que não fica guardada na conversa)."""
+        self.lembrancas, self.trechos = [], []
         if self.memoria is None:
             return []
         memoria = self.config.memoria
@@ -54,27 +67,44 @@ class Conversa:
             self.lembrancas = self.memoria.buscar(
                 texto, memoria.fatos_por_pergunta, memoria.similaridade_minima
             )
+            if memoria.trocas_por_pergunta:
+                self.trechos = self.memoria.buscar_trocas(
+                    texto,
+                    memoria.trocas_por_pergunta,
+                    memoria.similaridade_minima,
+                    exceto_sessao=self.historico.sessao,
+                )
         except Exception as erro:  # sem memória a conversa continua
-            self._avisar(
-                f"Memória indisponível ({erro}). Rode: ollama pull {memoria.modelo_embeddings}"
-            )
+            modelo = memoria.modelo_embeddings
+            self._avisar(f"Memória indisponível ({erro}). Rode: ollama pull {modelo}")
             return []
-        if not self.lembrancas:
+        if not self.lembrancas and not self.trechos:
             return []
         quem = self.config.nome_usuario or "a pessoa"
-        linhas = "\n".join(
-            f"- {fato.texto} (anotado em {fato.atualizado[:10]})" for fato in self.lembrancas
-        )
-        nota = (
+        partes = [
             f"O que você lembra de conversas anteriores com {quem} (use só se ajudar a "
-            f"responder; não liste isso sem ser pedido):\n{linhas}"
-        )
-        return [{"role": "system", "content": nota}]
+            "responder; não liste isso sem ser pedido):"
+        ]
+        partes += [f"- {f.texto} (anotado em {_data(f.atualizado)})" for f in self.lembrancas]
+        if self.trechos:
+            partes.append("Trechos dessas conversas:")
+            partes += [
+                f'- Em {_data(t.quando)}, {quem} disse: "{_resumir(t.pergunta)}" e você '
+                f'respondeu: "{_resumir(t.resposta)}"'
+                for t in self.trechos
+            ]
+        return [{"role": "system", "content": "\n".join(partes)}]
 
-    def _curar(self, pergunta: str, resposta: str) -> None:
+    def _memorizar(self, pergunta: str, resposta: str) -> None:
+        """Guarda a troca inteira e anota os fatos novos (em segundo plano)."""
         try:
-            hoje = datetime.now().strftime("%d/%m/%Y")
-            for fato in extrair_fatos(self.config, pergunta, resposta, hoje):
+            agora = datetime.now()
+            self.memoria.guardar_troca(
+                pergunta, resposta, agora.isoformat(timespec="seconds"), self.historico.sessao
+            )
+            if not self.config.memoria.curadoria:
+                return
+            for fato in extrair_fatos(self.config, pergunta, resposta, agora.strftime("%d/%m/%Y")):
                 _, novo = self.memoria.lembrar(fato, origem=self.historico.sessao)
                 self._avisar(f"{'anotei' if novo else 'atualizei'}: {fato}")
         except Exception as erro:
@@ -121,8 +151,8 @@ class Conversa:
             total_s=round(medidas.total, 3),
             lembrancas=[fato.id for fato in self.lembrancas],
         )
-        if self.memoria is not None and self.config.memoria.curadoria and resposta:
-            linha = threading.Thread(target=self._curar, args=(texto, resposta), daemon=True)
+        if self.memoria is not None and resposta:
+            linha = threading.Thread(target=self._memorizar, args=(texto, resposta), daemon=True)
             linha.start()
             self._curadorias.append(linha)
 
@@ -189,7 +219,8 @@ def conversar(
             m = conversa.cerebro.medidas
             escrever(
                 f"  [primeira palavra em {m.primeiro_pedaco:.2f} s, total {m.total:.2f} s, "
-                f"{m.tokens_por_segundo:.1f} tokens/s, lembrou {len(conversa.lembrancas)} fatos]"
+                f"{m.tokens_por_segundo:.1f} tokens/s, "
+                f"lembrou {len(conversa.lembrancas)} fatos e {len(conversa.trechos)} trechos]"
             )
     if conversa.memoria is not None:
         escrever("(guardando o que aprendi nesta conversa...)")

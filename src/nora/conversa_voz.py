@@ -152,7 +152,7 @@ def responder_falando(
             f"  [transcrição {tempos.transcricao:.2f} s, "
             f"primeira frase {tempos.primeira_frase:.2f} s, "
             f"começou a falar em {tempos.comeco_da_voz:.2f} s, "
-            f"lembrou {len(conversa.lembrancas)} fatos]"
+            f"lembrou {len(conversa.lembrancas)} fatos e {len(conversa.trechos)} trechos]"
         )
     return tempos
 

@@ -10,7 +10,7 @@ from pathlib import Path
 class Historico:
     def __init__(self, pasta_dados: Path, sessao: str | None = None) -> None:
         self.pasta = pasta_dados / "historico"
-        self.sessao = sessao or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        self.sessao = sessao or datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 
     @property
     def arquivo(self) -> Path:

@@ -219,6 +219,7 @@ def test_comando_memoria_e_importar(criar_raiz, capsys, monkeypatch):
     assert "2 fatos em" in texto
     assert "Página" not in texto  # só uma página
     assert "Esquecido (nº 1)." in texto
+    assert "1 trocas guardadas" in texto
 
 
 def test_persona_sabe_que_tem_memoria(criar_raiz):
@@ -244,3 +245,56 @@ def test_listar_em_paginas_e_com_filtro(memoria):
     com_cachorro = memoria.listar(contendo="cachorro")
     assert [f.texto for f in com_cachorro][-1] == "Gabriel anotou item00 sobre cachorro"
     assert memoria.contar_contendo("cachorro") == 5
+
+
+def test_lembra_de_tudo_mesmo_sem_fato_anotado(criar_raiz):
+    """Memória total: a troca inteira fica guardada e volta numa conversa nova, mesmo quando a
+    curadoria não acha nenhum fato para anotar."""
+    local = (
+        '[usuario]\nnome = "Gabriel"\n[memoria]\nativa = true\nsimilaridade_minima = 0.2\n'
+        "fatos_por_pergunta = 0\n"
+    )
+    with OllamaComMemoria(resposta="Que alívio que você achou!", fatos=[]) as ollama:
+        config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.url})
+        primeira = nova_conversa(config)
+        "".join(primeira.perguntar("achei meu cachorro num ponto de ônibus perto de casa"))
+        primeira.encerrar()
+        assert primeira.memoria.contar() == 0  # nenhum fato anotado...
+        assert primeira.memoria.contar_trocas() == 1  # ...mas a troca ficou guardada
+        primeira.memoria.fechar()
+
+        segunda = nova_conversa(config)
+        "".join(segunda.perguntar("onde eu achei o meu cachorro?"))
+        segunda.encerrar()
+        segunda.memoria.fechar()
+
+    nota = [m["content"] for m in ollama.conversas[-1]["messages"] if m["role"] == "system"][1]
+    assert "Trechos dessas conversas:" in nota
+    assert 'Gabriel disse: "achei meu cachorro num ponto de ônibus perto de casa"' in nota
+    assert 'você respondeu: "Que alívio que você achou!"' in nota
+    assert len(segunda.trechos) == 1
+
+
+def test_trechos_da_propria_sessao_nao_voltam(memoria):
+    memoria.guardar_troca("meu cachorro fugiu", "Que susto!", "2026-10-30T10:00:00", "sessao-a")
+    memoria.guardar_troca("meu cachorro voltou", "Que bom!", "2026-10-30T10:05:00", "sessao-b")
+    achados = memoria.buscar_trocas("cachorro", k=5, exceto_sessao="sessao-b")
+    assert [t.pergunta for t in achados] == ["meu cachorro fugiu"]
+    assert achados[0].quando == "2026-10-30T10:00:00"
+
+
+def test_banco_antigo_ganha_a_tabela_de_trocas(tmp_path):
+    caminho = tmp_path / "memoria.db"
+    antiga = Memoria(caminho, EmbeddingsFalsos())
+    if not antiga.vetorial:
+        pytest.skip("sqlite-vec não instalado")
+    antiga.lembrar("Gabriel tem prova em 21/11")
+    antiga._db.execute("DROP TABLE vec_trocas")  # como era antes desta versão
+    antiga._db.commit()
+    antiga.fechar()
+
+    nova = Memoria(caminho, EmbeddingsFalsos())
+    nova.guardar_troca("oi", "olá", "2026-10-31T09:00:00", "s")
+    assert nova.buscar_trocas("oi")[0].resposta == "olá"
+    assert nova.buscar("prova")[0].texto == "Gabriel tem prova em 21/11"
+    nova.fechar()

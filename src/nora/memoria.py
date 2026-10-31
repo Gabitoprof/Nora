@@ -1,7 +1,11 @@
-"""Memória entre conversas (v0.2.0): fatos sobre a pessoa, com busca por significado.
+"""Memória entre conversas (v0.2.0), com busca por significado, em duas camadas:
 
-Cada fato tem um vetor (embedding). Antes de responder, a Nora busca os fatos mais parecidos
-com a pergunta e os lê junto. Fica tudo em <dados>/memoria.db, só na máquina da pessoa.
+- fatos: resumos curtos anotados pela curadoria ("Gabriel tem prova em 21/11");
+- trocas: cada pergunta e resposta inteira, para ela lembrar de tudo o que foi dito.
+
+Cada item tem um vetor (embedding). Antes de responder, a Nora busca os fatos e os trechos de
+conversa mais parecidos com a pergunta e os lê junto. Fica tudo em <dados>/memoria.db, só na
+máquina da pessoa.
 
 A busca usa o sqlite-vec quando ele está instalado (`pip install -e ".[memoria]"`); sem ele,
 compara os vetores em Python, o que basta para alguns milhares de fatos.
@@ -19,6 +23,16 @@ from pathlib import Path
 
 # Acima disso, dois fatos são considerados o mesmo; o mais novo substitui o antigo.
 MESMO_FATO = 0.9
+
+
+@dataclass(frozen=True)
+class Troca:
+    id: int
+    quando: str
+    sessao: str
+    pergunta: str
+    resposta: str
+    similaridade: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -65,6 +79,14 @@ class Memoria:
                 atualizado TEXT NOT NULL,
                 origem TEXT NOT NULL DEFAULT ''
             );
+            CREATE TABLE IF NOT EXISTS trocas (
+                id INTEGER PRIMARY KEY,
+                quando TEXT NOT NULL,
+                sessao TEXT NOT NULL,
+                pergunta TEXT NOT NULL,
+                resposta TEXT NOT NULL,
+                vetor BLOB NOT NULL
+            );
             """
         )
         self.vetorial = self._carregar_sqlite_vec()
@@ -82,23 +104,31 @@ class Memoria:
         except (ImportError, AttributeError, sqlite3.Error):
             return False
 
+    def _existe(self, tabela: str) -> bool:
+        return bool(
+            self._db.execute("SELECT 1 FROM sqlite_master WHERE name = ?", (tabela,)).fetchone()
+        )
+
     def _garantir_indice(self, dimensao: int) -> None:
-        """Cria o índice do sqlite-vec na primeira vez que a dimensão dos vetores é conhecida."""
+        """Cria os índices do sqlite-vec (fatos e trocas) quando a dimensão dos vetores é
+        conhecida, e os recria se ela mudar (ex.: outro modelo de embeddings)."""
         if not self.vetorial:
             return
-        atual = self.meta("dimensao")
-        if atual == str(dimensao):
-            return
-        self._db.execute("DROP TABLE IF EXISTS vec_fatos")
-        self._db.execute(
-            f"CREATE VIRTUAL TABLE vec_fatos USING vec0("
-            f"embedding float[{dimensao}] distance_metric=cosine)"
-        )
-        for fato_id, vetor in self._db.execute("SELECT id, vetor FROM fatos").fetchall():
-            if len(vetor) // 4 == dimensao:
-                self._db.execute(
-                    "INSERT INTO vec_fatos(rowid, embedding) VALUES (?, ?)", (fato_id, vetor)
-                )
+        mesma = self.meta("dimensao") == str(dimensao)
+        for tabela in ("fatos", "trocas"):
+            indice = f"vec_{tabela}"
+            if mesma and self._existe(indice):
+                continue
+            self._db.execute(f"DROP TABLE IF EXISTS {indice}")
+            self._db.execute(
+                f"CREATE VIRTUAL TABLE {indice} USING vec0("
+                f"embedding float[{dimensao}] distance_metric=cosine)"
+            )
+            for item_id, vetor in self._db.execute(f"SELECT id, vetor FROM {tabela}").fetchall():
+                if len(vetor) // 4 == dimensao:
+                    self._db.execute(
+                        f"INSERT INTO {indice}(rowid, embedding) VALUES (?, ?)", (item_id, vetor)
+                    )
         self.definir_meta("dimensao", str(dimensao))
 
     # --- meta -----------------------------------------------------------------------------
@@ -118,17 +148,24 @@ class Memoria:
 
     # --- fatos ----------------------------------------------------------------------------
 
-    def _parecidos(self, vetor: list[float], k: int) -> list[tuple[int, float]]:
-        if self.vetorial and self.meta("dimensao") == str(len(vetor)):
+    def _parecidos(
+        self, vetor: list[float], k: int, tabela: str = "fatos"
+    ) -> list[tuple[int, float]]:
+        indice = f"vec_{tabela}"
+        if self.vetorial and self.meta("dimensao") == str(len(vetor)) and self._existe(indice):
             linhas = self._db.execute(
-                "SELECT rowid, distance FROM vec_fatos WHERE embedding MATCH ? AND k = ? "
+                f"SELECT rowid, distance FROM {indice} WHERE embedding MATCH ? AND k = ? "
                 "ORDER BY distance",
                 (_empacotar(vetor), k),
             ).fetchall()
-            return [(fato_id, 1.0 - distancia) for fato_id, distancia in linhas]
+            # distância nula: vetor sem direção (ex.: texto sem palavras); conta como nada parecido
+            return [
+                (item_id, 0.0 if distancia is None else 1.0 - distancia)
+                for item_id, distancia in linhas
+            ]
         todos = [
-            (fato_id, _cosseno(vetor, _desempacotar(dados)))
-            for fato_id, dados in self._db.execute("SELECT id, vetor FROM fatos").fetchall()
+            (item_id, _cosseno(vetor, _desempacotar(dados)))
+            for item_id, dados in self._db.execute(f"SELECT id, vetor FROM {tabela}").fetchall()
             if len(dados) // 4 == len(vetor)
         ]
         return sorted(todos, key=lambda par: par[1], reverse=True)[:k]
@@ -169,7 +206,7 @@ class Memoria:
 
     def buscar(self, texto: str, k: int = 5, minimo: float = 0.0) -> list[Fato]:
         """Os fatos mais parecidos com o texto, do mais para o menos parecido."""
-        if not self.contar():
+        if k <= 0 or not self.contar():
             return []
         vetor = self.embeddings.vetor(texto)
         with self._trava:
@@ -208,6 +245,52 @@ class Memoria:
             if self.vetorial and self.meta("dimensao"):
                 self._db.execute("DELETE FROM vec_fatos WHERE rowid = ?", (fato_id,))
             return apagados > 0
+
+    # --- trocas (tudo o que foi dito) -----------------------------------------------------
+
+    def guardar_troca(self, pergunta: str, resposta: str, quando: str, sessao: str) -> int:
+        """Guarda uma pergunta e resposta inteiras, para serem lembradas depois."""
+        vetor = self.embeddings.vetor(f"{pergunta}\n{resposta}")
+        with self._trava, self._db:
+            self._garantir_indice(len(vetor))
+            cursor = self._db.execute(
+                "INSERT INTO trocas(quando, sessao, pergunta, resposta, vetor) VALUES (?,?,?,?,?)",
+                (quando, sessao, pergunta, resposta, _empacotar(vetor)),
+            )
+            if self.vetorial:
+                self._db.execute(
+                    "INSERT INTO vec_trocas(rowid, embedding) VALUES (?, ?)",
+                    (cursor.lastrowid, _empacotar(vetor)),
+                )
+            return cursor.lastrowid
+
+    def buscar_trocas(
+        self, texto: str, k: int = 3, minimo: float = 0.0, exceto_sessao: str = ""
+    ) -> list[Troca]:
+        """Os trechos de conversa mais parecidos com o texto (sem os da sessão atual, que já
+        estão na conversa)."""
+        if k <= 0 or not self.contar_trocas():
+            return []
+        vetor = self.embeddings.vetor(texto)
+        with self._trava:
+            achados = self._parecidos(vetor, k * 4 + 10, "trocas")
+            trocas = []
+            for troca_id, similaridade in achados:
+                if similaridade < minimo:
+                    continue
+                linha = self._db.execute(
+                    "SELECT id, quando, sessao, pergunta, resposta FROM trocas WHERE id = ?",
+                    (troca_id,),
+                ).fetchone()
+                if linha and linha[2] != exceto_sessao:
+                    trocas.append(Troca(*linha, similaridade=similaridade))
+                if len(trocas) == k:
+                    break
+            return trocas
+
+    def contar_trocas(self) -> int:
+        with self._trava:
+            return self._db.execute("SELECT COUNT(*) FROM trocas").fetchone()[0]
 
     def contar(self) -> int:
         with self._trava:

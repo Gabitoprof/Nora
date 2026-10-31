@@ -88,6 +88,7 @@ class Memoria:
     curadoria: bool
     fatos_por_pergunta: int
     similaridade_minima: float
+    trocas_por_pergunta: int
 
 
 @dataclass(frozen=True)
@@ -286,6 +287,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
                 "similaridade_minima",
                 _campo(dados, "memoria", "similaridade_minima", float),
             ),
+            trocas_por_pergunta=_campo(dados, "memoria", "trocas_por_pergunta", int),
         ),
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),

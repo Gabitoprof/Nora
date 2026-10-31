@@ -107,6 +107,9 @@ curadoria = true
 # Quantos fatos parecidos com a pergunta ela lê antes de responder, e quão parecidos (0 a 1).
 fatos_por_pergunta = 5
 similaridade_minima = 0.45
+# Toda pergunta e resposta também fica guardada inteira; antes de responder, ela lê os trechos
+# de conversas antigas mais parecidos com a pergunta (0 = não usar).
+trocas_por_pergunta = 3
 
 [caminhos]
 # Banco de memória, histórico e outros dados pessoais. Fora do Git.
