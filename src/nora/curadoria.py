@@ -28,21 +28,34 @@ indicar outra.
 motivo e o que a assistente disse sobre si mesma.
 - Não invente: só o que {usuario} disse ou confirmou.
 - Se não houver nada que valha guardar, devolva a lista vazia.
+- Dê a cada fato uma área curta, em minúsculas (ex.: "saúde", "trabalho", "estudos", \
+"família", "pets"). Áreas que já existem: {areas}. Use uma delas quando o assunto couber; se \
+for um assunto novo, crie uma área nova.
 
-Responda só com JSON no formato {{"fatos": ["...", "..."]}}."""
+Responda só com JSON no formato {{"fatos": [{{"texto": "...", "area": "..."}}]}}."""
 
 
 def extrair_fatos(
-    config: Config, pergunta: str, resposta: str, hoje: str, timeout: float = 120.0
-) -> list[str]:
+    config: Config,
+    pergunta: str,
+    resposta: str,
+    hoje: str,
+    areas: list[str] | tuple[str, ...] = (),
+    timeout: float = 120.0,
+) -> list[tuple[str, str]]:
+    """Os fatos que valem guardar desta troca, como (texto, área)."""
     usuario = config.nome_usuario or "a pessoa"
+    lista_areas = ", ".join(areas) if areas else "nenhuma ainda"
     pedido = urllib.request.Request(
         f"{config.ollama_host.rstrip('/')}/api/chat",
         data=json.dumps(
             {
                 "model": config.modelo_local.modelo,
                 "messages": [
-                    {"role": "system", "content": INSTRUCAO.format(usuario=usuario, hoje=hoje)},
+                    {
+                        "role": "system",
+                        "content": INSTRUCAO.format(usuario=usuario, hoje=hoje, areas=lista_areas),
+                    },
                     {
                         "role": "user",
                         "content": f"{usuario}: {pergunta}\nAssistente: {resposta}",
@@ -62,4 +75,15 @@ def extrair_fatos(
         fatos = json.loads(conteudo).get("fatos", [])
     except (json.JSONDecodeError, AttributeError):
         return []
-    return [" ".join(str(f).split()) for f in fatos if isinstance(f, str) and f.strip()]
+    resultado = []
+    for fato in fatos if isinstance(fatos, list) else []:
+        if isinstance(fato, str):  # formato antigo, sem área
+            texto, area = fato, ""
+        elif isinstance(fato, dict):
+            texto, area = str(fato.get("texto", "")), str(fato.get("area", ""))
+        else:
+            continue
+        texto = " ".join(texto.split())
+        if texto:
+            resultado.append((texto, " ".join(area.split())))
+    return resultado

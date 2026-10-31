@@ -41,6 +41,7 @@ class Fato:
     texto: str
     criado: str
     atualizado: str
+    area: str = ""
     similaridade: float = 0.0
 
 
@@ -89,6 +90,10 @@ class Memoria:
             );
             """
         )
+        colunas = {linha[1] for linha in self._db.execute("PRAGMA table_info(fatos)")}
+        if "area" not in colunas:  # bancos criados antes das áreas
+            self._db.execute("ALTER TABLE fatos ADD COLUMN area TEXT NOT NULL DEFAULT ''")
+            self._db.commit()
         self.vetorial = self._carregar_sqlite_vec()
 
     # --- índice vetorial ------------------------------------------------------------------
@@ -170,11 +175,38 @@ class Memoria:
         ]
         return sorted(todos, key=lambda par: par[1], reverse=True)[:k]
 
-    def lembrar(self, texto: str, origem: str = "") -> tuple[int, bool]:
-        """Guarda um fato. Se já existe um quase igual, troca pelo novo texto.
+    # --- áreas -----------------------------------------------------------------------------
+
+    def areas(self) -> list[tuple[str, int]]:
+        """As áreas da memória (saúde, trabalho...) com quantos fatos cada uma tem."""
+        with self._trava:
+            return self._db.execute(
+                "SELECT area, COUNT(*) FROM fatos WHERE area != '' GROUP BY area "
+                "ORDER BY COUNT(*) DESC, area"
+            ).fetchall()
+
+    def normalizar_area(self, area: str) -> str:
+        """Nome curto em minúsculas; se já existe uma área com o mesmo nome (sem olhar acentos),
+        usa a que existe: "Saude" vira "saúde" se "saúde" já existir."""
+        from nora.ativacao import normalizar
+
+        area = " ".join(area.lower().split())[:40]
+        if not area:
+            return ""
+        chave = normalizar(area)
+        for existente, _ in self.areas():
+            if normalizar(existente) == chave:
+                return existente
+        return area
+
+    # --- fatos ----------------------------------------------------------------------------
+
+    def lembrar(self, texto: str, origem: str = "", area: str = "") -> tuple[int, bool]:
+        """Guarda um fato na área dada. Se já existe um quase igual, troca pelo novo texto.
         Devolve (id, se é um fato novo)."""
         texto = " ".join(texto.split())
         vetor = self.embeddings.vetor(texto)
+        area = self.normalizar_area(area)
         with self._trava, self._db:
             self._garantir_indice(len(vetor))
             agora = _agora()
@@ -182,8 +214,9 @@ class Memoria:
             if parecido and parecido[0][1] >= MESMO_FATO:
                 fato_id = parecido[0][0]
                 self._db.execute(
-                    "UPDATE fatos SET texto = ?, vetor = ?, atualizado = ? WHERE id = ?",
-                    (texto, _empacotar(vetor), agora, fato_id),
+                    "UPDATE fatos SET texto = ?, vetor = ?, atualizado = ?, "
+                    "area = CASE WHEN ? != '' THEN ? ELSE area END WHERE id = ?",
+                    (texto, _empacotar(vetor), agora, area, area, fato_id),
                 )
                 if self.vetorial:
                     self._db.execute("DELETE FROM vec_fatos WHERE rowid = ?", (fato_id,))
@@ -193,8 +226,9 @@ class Memoria:
                     )
                 return fato_id, False
             cursor = self._db.execute(
-                "INSERT INTO fatos(texto, vetor, criado, atualizado, origem) VALUES (?,?,?,?,?)",
-                (texto, _empacotar(vetor), agora, agora, origem),
+                "INSERT INTO fatos(texto, vetor, criado, atualizado, origem, area) "
+                "VALUES (?,?,?,?,?,?)",
+                (texto, _empacotar(vetor), agora, agora, origem, area),
             )
             fato_id = cursor.lastrowid
             if self.vetorial:
@@ -214,30 +248,41 @@ class Memoria:
             fatos = []
             for fato_id, similaridade in achados:
                 linha = self._db.execute(
-                    "SELECT id, texto, criado, atualizado FROM fatos WHERE id = ?", (fato_id,)
+                    "SELECT id, texto, criado, atualizado, area FROM fatos WHERE id = ?",
+                    (fato_id,),
                 ).fetchone()
                 if linha:
                     fatos.append(Fato(*linha, similaridade=similaridade))
             return fatos
 
-    def listar(self, limite: int | None = None, pular: int = 0, contendo: str = "") -> list[Fato]:
-        """Fatos do mais recente para o mais antigo; `contendo` filtra por um trecho do texto."""
-        consulta = "SELECT id, texto, criado, atualizado FROM fatos"
-        parametros: list = []
+    @staticmethod
+    def _filtro(contendo: str, area: str) -> tuple[str, list]:
+        condicoes, parametros = [], []
         if contendo:
-            consulta += " WHERE texto LIKE ?"
+            condicoes.append("texto LIKE ?")
             parametros.append(f"%{contendo}%")
+        if area:
+            condicoes.append("area = ?")
+            parametros.append(area)
+        return (" WHERE " + " AND ".join(condicoes) if condicoes else ""), parametros
+
+    def listar(
+        self, limite: int | None = None, pular: int = 0, contendo: str = "", area: str = ""
+    ) -> list[Fato]:
+        """Fatos do mais recente para o mais antigo; `contendo` filtra por um trecho do texto e
+        `area` por uma área."""
+        filtro, parametros = self._filtro(contendo, self.normalizar_area(area))
+        consulta = "SELECT id, texto, criado, atualizado, area FROM fatos" + filtro
         consulta += " ORDER BY atualizado DESC, id DESC LIMIT ? OFFSET ?"
         parametros += [-1 if limite is None else limite, pular]
         with self._trava:
             linhas = self._db.execute(consulta, parametros).fetchall()
         return [Fato(*linha) for linha in linhas]
 
-    def contar_contendo(self, contendo: str) -> int:
+    def contar_contendo(self, contendo: str = "", area: str = "") -> int:
+        filtro, parametros = self._filtro(contendo, self.normalizar_area(area))
         with self._trava:
-            return self._db.execute(
-                "SELECT COUNT(*) FROM fatos WHERE texto LIKE ?", (f"%{contendo}%",)
-            ).fetchone()[0]
+            return self._db.execute("SELECT COUNT(*) FROM fatos" + filtro, parametros).fetchone()[0]
 
     def esquecer(self, fato_id: int) -> bool:
         with self._trava, self._db:

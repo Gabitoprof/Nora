@@ -114,7 +114,8 @@ def test_embeddings_e_curadoria_pelo_ollama(criar_raiz):
         vetores = EmbeddingsOllama(config).vetores(["oi", "tchau"])
         fatos = extrair_fatos(config, "amanhã é meu aniversário", "Parabéns!", "30/10/2026")
     assert len(vetores) == 2 and len(vetores[0]) == DIMENSAO
-    assert fatos == ["Gabriel faz aniversário em 31 de outubro"]  # sem vazios nem não-texto
+    # formato antigo (texto puro) ainda é aceito, sem área; vazios e não-texto são descartados
+    assert fatos == [("Gabriel faz aniversário em 31 de outubro", "")]
     embed = json.loads(ollama.pedidos[0][2])
     assert embed["model"] == "bge-m3"
     curadoria = json.loads(ollama.pedidos[1][2])
@@ -298,3 +299,75 @@ def test_banco_antigo_ganha_a_tabela_de_trocas(tmp_path):
     assert nova.buscar_trocas("oi")[0].resposta == "olá"
     assert nova.buscar("prova")[0].texto == "Gabriel tem prova em 21/11"
     nova.fechar()
+
+
+def test_curadoria_com_areas(criar_raiz):
+    fatos = [
+        {"texto": "Gabriel toma remédio para pressão", "area": "Saúde"},
+        {"texto": "Gabriel trabalha com design", "area": " trabalho "},
+        {"area": "sem texto"},
+    ]
+
+    def ollama(caminho, cabecalhos, corpo):
+        conteudo = json.dumps({"fatos": fatos})
+        return 200, "application/json", json.dumps({"message": {"content": conteudo}}).encode()
+
+    with ServicoFalso(ollama) as servidor:
+        config = carregar(criar_raiz(), ambiente={"OLLAMA_HOST": servidor.url})
+        achados = extrair_fatos(config, "oi", "oi", "31/10/2026", areas=["saúde", "estudos"])
+    assert achados == [
+        ("Gabriel toma remédio para pressão", "Saúde"),
+        ("Gabriel trabalha com design", "trabalho"),
+    ]
+    instrucao = json.loads(servidor.pedidos[0][2])["messages"][0]["content"]
+    assert "Áreas que já existem: saúde, estudos." in instrucao
+
+
+def test_areas_na_memoria(memoria):
+    memoria.lembrar("Gabriel toma remédio para pressão", area="Saúde")
+    memoria.lembrar("Gabriel faz fisioterapia às terças", area="saude")  # mesma área
+    memoria.lembrar("Gabriel trabalha com design", area="trabalho")
+    memoria.lembrar("Gabriel gosta de café")  # sem área
+    assert memoria.areas() == [("saúde", 2), ("trabalho", 1)]
+    assert [f.texto for f in memoria.listar(area="SAUDE")] == [
+        "Gabriel faz fisioterapia às terças",
+        "Gabriel toma remédio para pressão",
+    ]
+    assert memoria.contar_contendo(area="trabalho") == 1
+    assert memoria.buscar("design")[0].area == "trabalho"
+    # atualizar um fato sem área não apaga a área que ele já tinha
+    memoria.lembrar("Gabriel trabalha com design")
+    assert memoria.areas() == [("saúde", 2), ("trabalho", 1)]
+
+
+def test_banco_antigo_ganha_a_coluna_de_area(tmp_path):
+    import sqlite3
+
+    caminho = tmp_path / "memoria.db"
+    banco = sqlite3.connect(caminho)
+    banco.executescript(
+        "CREATE TABLE fatos (id INTEGER PRIMARY KEY, texto TEXT NOT NULL, vetor BLOB NOT NULL,"
+        " criado TEXT NOT NULL, atualizado TEXT NOT NULL, origem TEXT NOT NULL DEFAULT '');"
+    )
+    banco.close()
+    memoria = Memoria(caminho, EmbeddingsFalsos())
+    memoria.lembrar("Gabriel estuda na PUC Minas", area="estudos")
+    assert memoria.areas() == [("estudos", 1)]
+    memoria.fechar()
+
+
+def test_comando_areas(criar_raiz, capsys, monkeypatch):
+    with OllamaComMemoria() as ollama:
+        raiz = criar_raiz(local="[memoria]\nativa = true\n")
+        monkeypatch.setattr(
+            "nora.cli.carregar", lambda: carregar(raiz, ambiente={"OLLAMA_HOST": ollama.url})
+        )
+        assert main(["memoria", "lembrar", "Gabriel", "corre", "às", "6h", "--area", "Saúde"]) == 0
+        assert main(["memoria", "lembrar", "Gabriel", "gosta", "de", "chá"]) == 0
+        assert main(["memoria", "areas"]) == 0
+        assert main(["memoria", "listar", "--area", "saude"]) == 0
+    texto = capsys.readouterr().out
+    assert "1 áreas:" in texto
+    assert "saúde" in texto and "(sem área)" in texto
+    assert "1 fatos na área saúde" in texto
+    assert "[saúde] Gabriel corre às 6h" in texto

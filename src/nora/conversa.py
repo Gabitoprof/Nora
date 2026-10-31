@@ -85,7 +85,10 @@ class Conversa:
             f"O que você lembra de conversas anteriores com {quem} (use só se ajudar a "
             "responder; não liste isso sem ser pedido):"
         ]
-        partes += [f"- {f.texto} (anotado em {_data(f.atualizado)})" for f in self.lembrancas]
+        partes += [
+            f"- {f'[{f.area}] ' if f.area else ''}{f.texto} (anotado em {_data(f.atualizado)})"
+            for f in self.lembrancas
+        ]
         if self.trechos:
             partes.append("Trechos dessas conversas:")
             partes += [
@@ -104,9 +107,12 @@ class Conversa:
             )
             if not self.config.memoria.curadoria:
                 return
-            for fato in extrair_fatos(self.config, pergunta, resposta, agora.strftime("%d/%m/%Y")):
-                _, novo = self.memoria.lembrar(fato, origem=self.historico.sessao)
-                self._avisar(f"{'anotei' if novo else 'atualizei'}: {fato}")
+            areas = [area for area, _ in self.memoria.areas()]
+            hoje = agora.strftime("%d/%m/%Y")
+            for fato, area in extrair_fatos(self.config, pergunta, resposta, hoje, areas):
+                _, novo = self.memoria.lembrar(fato, origem=self.historico.sessao, area=area)
+                onde = f" em {self.memoria.normalizar_area(area)}" if area else ""
+                self._avisar(f"{'anotei' if novo else 'atualizei'}{onde}: {fato}")
         except Exception as erro:
             self._avisar(f"Não consegui atualizar a memória ({erro}).")
 

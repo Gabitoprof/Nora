@@ -142,17 +142,20 @@ def comando_memoria(config: Config, args) -> int:
     try:
         if args.acao == "listar":
             por_pagina = 20
-            total = memoria.contar_contendo(args.contendo)
+            total = memoria.contar_contendo(args.contendo, args.area)
             pagina = max(1, args.pagina)
             fatos = memoria.listar(
                 limite=None if args.todos else por_pagina,
                 pular=0 if args.todos else (pagina - 1) * por_pagina,
                 contendo=args.contendo,
+                area=args.area,
             )
             filtro = f' contendo "{args.contendo}"' if args.contendo else ""
+            filtro += f" na área {memoria.normalizar_area(args.area)}" if args.area else ""
             print(f"{total} fatos{filtro} em {memoria.caminho}:")
             for fato in fatos:
-                print(f"  {fato.id:>4}  {fato.texto}  ({fato.atualizado[:10]})")
+                area = f"[{fato.area}] " if fato.area else ""
+                print(f"  {fato.id:>4}  {area}{fato.texto}  ({fato.atualizado[:10]})")
             paginas = max(1, -(-total // por_pagina))
             if not args.todos and paginas > 1:
                 print(f"Página {pagina} de {paginas}. Veja outras com --pagina N, ou --todos.")
@@ -160,8 +163,16 @@ def comando_memoria(config: Config, args) -> int:
             for fato in memoria.buscar(" ".join(args.texto), k=10):
                 print(f"  {fato.id:>4}  {fato.similaridade:.2f}  {fato.texto}")
         elif args.acao == "lembrar":
-            fato_id, novo = memoria.lembrar(" ".join(args.texto), origem="manual")
+            fato_id, novo = memoria.lembrar(" ".join(args.texto), origem="manual", area=args.area)
             print(f"{'Guardado' if novo else 'Atualizado'} (nº {fato_id}).")
+        elif args.acao == "areas":
+            areas = memoria.areas()
+            sem_area = memoria.contar() - sum(n for _, n in areas)
+            print(f"{len(areas)} áreas:")
+            for area, quantos in areas:
+                print(f"  {area:<20} {quantos} fatos")
+            if sem_area:
+                print(f"  {'(sem área)':<20} {sem_area} fatos")
         elif args.acao == "esquecer":
             if not memoria.esquecer(args.id):
                 print(f"Não existe fato nº {args.id}.", file=sys.stderr)
@@ -222,10 +233,13 @@ def main(argv: list[str] | None = None) -> int:
     listar_cmd.add_argument("--pagina", type=int, default=1, help="página (20 fatos cada)")
     listar_cmd.add_argument("--contendo", default="", help="só os fatos com este trecho")
     listar_cmd.add_argument("--todos", action="store_true", help="todos de uma vez")
+    listar_cmd.add_argument("--area", default="", help="só os fatos de uma área (ex.: saúde)")
+    acoes.add_parser("areas", help="as áreas da memória e quantos fatos cada uma tem")
     buscar_cmd = acoes.add_parser("buscar", help="fatos parecidos com um texto")
     buscar_cmd.add_argument("texto", nargs="+")
     lembrar_cmd = acoes.add_parser("lembrar", help="guardar um fato à mão")
     lembrar_cmd.add_argument("texto", nargs="+")
+    lembrar_cmd.add_argument("--area", default="", help="área do fato (ex.: trabalho)")
     esquecer_cmd = acoes.add_parser("esquecer", help="apagar um fato pelo número")
     esquecer_cmd.add_argument("id", type=int)
     acoes.add_parser("importar", help="tirar fatos das conversas antigas (data/historico)")
