@@ -210,7 +210,7 @@ Sem `--pasta`, salva em `data\audios\`; sem `--nome`, usa a data e o começo do 
 Qualquer voz que você monte no ComfyUI (clonagem a partir de uma amostra sua, ou outro nó de voz) pode ser a voz da Nora. Ela manda cada frase para o seu fluxo, pela API local do ComfyUI, e toca o áudio gerado.
 
 1. **Prepare o fluxo no ComfyUI:** no nó onde vai a frase, escreva **`{{texto}}`** no lugar do texto (ou, sem mexer no fluxo, diga o nó e o campo em `[voz.comfyui] campo = "12.text"`: o número é o ID do nó no JSON exportado; se errar, a Nora lista os nós e campos de texto do fluxo). O fluxo precisa terminar num nó que salve o áudio (ex.: **Save Audio**). Teste uma vez no próprio ComfyUI.
-2. **Exporte no formato da API:** menu **Workflow → Export (API)**. Salve o arquivo como `B:\Nora\config\voz_comfyui.json` (ele fica fora do Git).
+2. **Exporte no formato da API:** menu **Workflow → Export (API)** (se não aparecer, ligue **Enable dev mode options** nas configurações do ComfyUI). O formato normal (com `widgets_values`) não serve: a Nora avisa se for ele. Salve o arquivo como `B:\Nora\config\voz_comfyui.json` (ele fica fora do Git).
 3. **No `config\local.toml`:**
 
    ```toml

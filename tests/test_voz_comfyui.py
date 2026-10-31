@@ -161,3 +161,12 @@ def test_campo_configurado_em_vez_do_marcador(tmp_path):
     errado = voz_de_teste(tmp_path, "http://127.0.0.1:9", fluxo, campo="12.text")
     with pytest.raises(ServicoIndisponivel, match=r"12 \(Voz: gen_text, ref_audio\)"):
         errado.sintetizar("oi")
+
+
+def test_fluxo_no_formato_normal_avisa_para_exportar_em_api(tmp_path):
+    normal = {
+        "nodes": [{"id": 12, "widgets_values": ["{{texto}}", "Character Name: ..."]}],
+        "links": [],
+    }
+    with pytest.raises(ServicoIndisponivel, match="formato normal do ComfyUI"):
+        voz_de_teste(tmp_path, "http://127.0.0.1:9", normal).sintetizar("oi")

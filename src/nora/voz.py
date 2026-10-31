@@ -160,6 +160,13 @@ class VozComfyUI:
             raise ServicoIndisponivel(
                 f"O fluxo {self.fluxo} não é um JSON válido ({erro})."
             ) from erro
+        if isinstance(fluxo, dict) and "nodes" in fluxo and "links" in fluxo:
+            raise ServicoIndisponivel(
+                f"O fluxo {self.fluxo} está no formato normal do ComfyUI (com 'widgets_values'), "
+                "não no formato da API. Exporte de novo em 'Workflow > Export (API)' (se não "
+                "aparecer, ligue 'Enable dev mode options' nas configurações do ComfyUI)."
+            )
+        return fluxo
 
     def _por_no_campo(self, fluxo: dict, texto: str) -> dict:
         no_id, _, nome = self.campo.partition(".")
