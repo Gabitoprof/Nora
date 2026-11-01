@@ -18,7 +18,7 @@ Versão em desenvolvimento: `0.2.0.dev0`.
 - **Digitar em vez de falar** (acessibilidade): `nora conversar --voz` (só teclado, resposta falada) e `nora ouvir` aceitando texto digitado a qualquer momento, sem precisar do nome dela.
 - `[voz] realce_pergunta` (`duplo` "??", `invertido` "¿...?", `exclamado` "?!") reescreve as perguntas para vozes que não sobem a entonação no "?"; `nora voz comparar "Tudo bem?"` gera a frase em cada jeito para escolher de ouvido.
 - Uma pergunta sempre fecha o pedido à voz (o "?" fica no fim, onde a entonação sobe), mesmo quando frases são juntadas.
-- `[voz.piper] velocidade` (0.5 a 2.0) e `[audio] silencio_inicial_ms`: um pouco de silêncio antes de cada fala, para fones e placas de som que cortam o começo (o "Oi" saía engolido).
+- `[voz.piper] velocidade` (0.5 a 2.0), `variacao` e `variacao_ritmo` (naturalidade: menos robótica e menos monótona) e `[audio] silencio_inicial_ms`: um pouco de silêncio antes de cada fala, para fones e placas de som que cortam o começo (o "Oi" saía engolido).
 - `[voz.pronuncias]`: palavras reescritas só na fala (ex.: `"amanhã" = "amanhãn"`), para qualquer motor de voz.
 - Lista de frases de treino com 204 frases, incluindo 46 perguntas, quase 50 com sons nasais (ã, ão, õe) e 50 saudações e respostas curtas ("Oi!", "Tá bom.", "Tchau, até amanhã!"), que a voz treinada sem elas falava picotado.
 - O conjunto de treino é convertido para 22.050 Hz com corte de frequências (FFT, numpy), sem abafar nem gerar chiado; antes era uma interpolação simples.

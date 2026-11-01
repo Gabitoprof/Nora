@@ -54,6 +54,8 @@ class VozPiper:
     url: str
     voz: str
     velocidade: float = 1.0
+    variacao: float = 0.0  # noise_scale do Piper; 0 = o padrão do modelo
+    variacao_ritmo: float = 0.0  # noise_w_scale do Piper; 0 = o padrão do modelo
 
 
 @dataclass(frozen=True)
@@ -203,6 +205,13 @@ def _velocidade(dados: dict[str, Any], secao: str) -> float:
     return velocidade
 
 
+def _variacao(dados: dict[str, Any], chave: str) -> float:
+    valor = _campo(dados, "voz.piper", chave, float)
+    if not 0.0 <= valor <= 2.0:
+        raise ConfigError(f"[voz.piper] {chave} deve ficar entre 0 e 2 (0 = padrão), veio {valor}.")
+    return valor
+
+
 def _silencio(dados: dict[str, Any]) -> int:
     ms = _campo(dados, "audio", "silencio_inicial_ms", int)
     if not 0 <= ms <= 2000:
@@ -257,6 +266,8 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
             url=_campo(dados, "voz.piper", "url", str),
             voz=_campo(dados, "voz.piper", "voz", str),
             velocidade=_velocidade(dados, "voz.piper"),
+            variacao=_variacao(dados, "variacao"),
+            variacao_ritmo=_variacao(dados, "variacao_ritmo"),
         ),
         elevenlabs=VozElevenLabs(
             voz_id=_campo(dados, "voz.elevenlabs", "voz_id", str).strip(),

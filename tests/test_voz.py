@@ -133,6 +133,13 @@ def test_velocidade_do_piper(criar_raiz):
     local = '[voz]\nmotor = "piper"\n[voz.piper]\nvelocidade = 0.8\n'
     config = carregar(criar_raiz(local=local), ambiente={})
     assert _criar_motor_puro(config, "piper").extras == {"length_scale": 1.25}
+    natural = local + "variacao = 0.75\nvariacao_ritmo = 1.0\n"
+    config = carregar(criar_raiz(local=natural), ambiente={})
+    assert _criar_motor_puro(config, "piper").extras == {
+        "length_scale": 1.25,
+        "noise_scale": 0.75,
+        "noise_w_scale": 1.0,
+    }
     with pytest.raises(ConfigError, match="velocidade deve ficar entre 0.5 e 2.0"):
         carregar(criar_raiz(local=local.replace("0.8", "3.0")), ambiente={})
 

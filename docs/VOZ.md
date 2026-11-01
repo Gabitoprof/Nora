@@ -265,6 +265,20 @@ Se a primeira palavra sai engolida ("Oi" rápido demais), teste nesta ordem, no 
    velocidade = 0.9   # 1.0 normal; menor = mais devagar
    ```
 
+## Voz do Piper robótica ou monótona
+
+O Piper tem dois controles de naturalidade, no `config/local.toml`:
+
+```toml
+[voz.piper]
+variacao = 0.75        # variação do som (padrão do modelo: ~0.667). Mais alto = mais expressivo
+variacao_ritmo = 1.0   # variação do ritmo (padrão: ~0.8). Mais alto = menos monótono
+```
+
+Mude um de cada vez, em passos pequenos, e compare com `nora voz salvar "frase" --ouvir`. Se começar a chiar, embolar ou falar de um jeito estranho, desça. `0` volta ao padrão do modelo.
+
+Se a voz for metálica ou chiada (não só monótona), o ajuste não resolve: é treino de menos. Treine mais épocas ou com mais frases (veja [TREINAR_VOZ.md](TREINAR_VOZ.md)).
+
 ## Corrigir a pronúncia de uma palavra
 
 Se a voz fala mal alguma palavra, reescreva como ela deve soar, só na fala (a tela continua mostrando o texto original). Vale para qualquer motor de voz:

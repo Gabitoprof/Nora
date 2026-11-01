@@ -58,6 +58,10 @@ url = "http://127.0.0.1:5000"
 voz = "pt_BR-faber-medium"
 # Velocidade da fala: 1.0 normal, 0.9 um pouco mais devagar, 1.1 mais rápido (0.5 a 2.0).
 velocidade = 1.0
+# Naturalidade (0 = o padrão do modelo, normalmente 0.667 e 0.8). Voz robótica ou monótona:
+# suba aos poucos (ex.: variacao = 0.75, variacao_ritmo = 1.0); se começar a chiar ou embolar, desça.
+variacao = 0.0
+variacao_ritmo = 0.0
 
 [voz.elevenlabs]
 # Nuvem, paga por uso. Chave em ELEVENLABS_API_KEY (.env). O voz_id aparece na página da voz

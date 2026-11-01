@@ -295,6 +295,10 @@ def _criar_motor_puro(config: Config, motor: str) -> VozHTTP | VozElevenLabs | V
     if motor == "piper":
         # length_scale é o tempo de cada som: maior = mais devagar
         extras = {"length_scale": round(1 / voz.piper.velocidade, 3)}
+        if voz.piper.variacao:  # variação do som: mais alto = mais expressivo (e mais ruído)
+            extras["noise_scale"] = voz.piper.variacao
+        if voz.piper.variacao_ritmo:  # variação do ritmo: mais alto = menos monótono
+            extras["noise_w_scale"] = voz.piper.variacao_ritmo
         return VozHTTP("o Piper", voz.piper.url, extras, pronuncias)
     if motor == "comfyui":
         comfy = voz.comfyui
