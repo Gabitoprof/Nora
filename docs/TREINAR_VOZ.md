@@ -24,7 +24,7 @@ Siga [VOZ.md](VOZ.md#usar-uma-voz-feita-no-comfyui): fluxo exportado em formato 
 nora voz gerar-dataset --nome minha_voz
 ```
 
-- Usa a lista de frases do projeto (`recursos/frases_pt.txt`, 154 frases variadas).
+- Usa a lista de frases do projeto (`recursos/frases_pt.txt`, 204 frases variadas, com perguntas, sons nasais e saudações curtas).
 - Para chegar a **500 a 1.000 frases**, use também um texto de **domínio público** (ex.: um livro de Machado de Assis do portal Domínio Público), que a Nora corta em frases sozinha:
 
   ```powershell

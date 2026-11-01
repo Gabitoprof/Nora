@@ -157,3 +157,54 @@ Que bom te ouvir! Como estão as coisas por aí?
 Hum, entendi. E agora, o que você pretende fazer?
 Nossa, que dia longo! Quer conversar um pouco?
 Tem certeza? Posso conferir de novo para você.
+# Saudações, respostas curtas e interjeições (palavras soltas e no começo da frase).
+Oi!
+Oi, tudo bem?
+Oi! Estou aqui, pode falar.
+Olá! Como posso ajudar?
+Olá, bom te ver por aqui.
+Ei, tudo certo?
+Ei! Quase esqueci de avisar uma coisa.
+Opa! Cheguei.
+Opa, deixa comigo.
+Sim.
+Sim, claro.
+Sim, pode deixar que eu lembro.
+Não.
+Não, obrigada.
+Não, ainda não chegou nenhuma mensagem.
+Tá bom.
+Tá bom, combinado.
+Tá certo, vou anotar.
+Beleza!
+Beleza, até mais tarde.
+Certo.
+Certo, entendi.
+Claro!
+Claro, com prazer.
+Pois não?
+Pode falar, estou ouvindo.
+Prontinho.
+Obrigada!
+Obrigada, você também.
+De nada!
+Imagina, foi um prazer.
+Tchau!
+Tchau, até amanhã!
+Até logo!
+Até mais, se cuida.
+Boa tarde!
+Boa tarde, tudo tranquilo por aí?
+Bom dia, dorminhoco!
+Boa noite, até amanhã.
+Nossa!
+Uau, que legal!
+Eita! Essa eu não esperava.
+Ah, entendi agora.
+Ah é? Me conta mais.
+Ué, achei que fosse amanhã.
+Oba! Finalmente sexta-feira.
+Ai, que pena.
+Hum... deixa eu ver.
+Ok, vou fazer isso agora.
+Oi de novo! Sentiu minha falta?

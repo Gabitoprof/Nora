@@ -20,7 +20,7 @@ Versão em desenvolvimento: `0.2.0.dev0`.
 - Uma pergunta sempre fecha o pedido à voz (o "?" fica no fim, onde a entonação sobe), mesmo quando frases são juntadas.
 - `[voz.piper] velocidade` (0.5 a 2.0) e `[audio] silencio_inicial_ms`: um pouco de silêncio antes de cada fala, para fones e placas de som que cortam o começo (o "Oi" saía engolido).
 - `[voz.pronuncias]`: palavras reescritas só na fala (ex.: `"amanhã" = "amanhãn"`), para qualquer motor de voz.
-- Lista de frases de treino com 154 frases, incluindo 46 perguntas e quase 50 com sons nasais (ã, ão, õe).
+- Lista de frases de treino com 204 frases, incluindo 46 perguntas, quase 50 com sons nasais (ã, ão, õe) e 50 saudações e respostas curtas ("Oi!", "Tá bom.", "Tchau, até amanhã!"), que a voz treinada sem elas falava picotado.
 - O conjunto de treino é convertido para 22.050 Hz com corte de frequências (FFT, numpy), sem abafar nem gerar chiado; antes era uma interpolação simples.
 - `docs/LICENCAS.md`: o que é MIT (o código) e a licença de cada dependência, programa, modelo, voz e serviço que a Nora usa, conferida na fonte; um teste falha se uma dependência do `pyproject.toml` não estiver listada.
 - `nora voz conferir-dataset --nome X [--descartar]`: o Whisper ouve cada frase do conjunto de treino e compara com o texto; o áudio é medido (ritmo, silêncios, pausas, volume, distorção). Cada frase vira "boa", "conferir" ou "ruim", com uma planilha `conferencia.csv`; `--descartar` tira as ruins do conjunto e o `gerar-dataset` não as refaz; `--tirar 0079 0088` tira frases escolhidas de ouvido.
