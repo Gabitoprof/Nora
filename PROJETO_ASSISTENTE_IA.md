@@ -8,17 +8,16 @@
 
 ## 1. Visão
 
-Criar uma **IA de conversação por voz em tempo real**, no estilo do "Jarvis" dos filmes do Homem de Ferro, mas com **nome, voz e identidade próprios e exclusivos**.
+Criar uma **IA de conversação por voz em tempo real**, com **nome, voz e identidade próprios e exclusivos**.
 
-- **Foco:** a IA conversando em tempo real. A mesa touch com projetor vista no vídeo de referência **não é prioridade**.
+- **Foco:** a IA conversando em tempo real. Uma mesa touch com projetor **não é prioridade**.
 - **Desenvolvimento:** por etapas, cada uma gerando uma versão funcional.
 - **Objetivo futuro:** publicar como **open source no GitHub**.
 
-### Referência analisada (vídeo "Bom dia J.A.R.V.I.S")
-- **Cenário:** rotina matinal às 06:30. A pessoa senta na mesa e a IA fala primeiro, em português, com data, recado motivacional e plano do dia.
-- **Monitor ultrawide:** HUD com um orbe central animado ("MACHINE"), relógio e feed de câmera.
-- **Mesa:** projeção touch com cartões exibindo o conteúdo falado.
-- **O que gera a imersão:** voz natural, resposta rápida, interface reagindo à fala e **iniciativa própria** (a IA fala sem ser chamada).
+### O que gera a imersão
+- Voz natural e resposta rápida.
+- Interface reagindo à fala (um orbe animado, relógio, cartões com o conteúdo falado).
+- **Iniciativa própria:** a IA fala sem ser chamada, por exemplo numa rotina matinal com a data, um recado e o plano do dia.
 
 ---
 
@@ -193,7 +192,7 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 - O HUD mostra sempre o **modelo e a voz ativos** e a **origem** de cada resposta (qual ferramenta ou nota foi usada).
 
 ### 8.4 Palavras de partículas no HUD
-*Origem: vídeo de referência (31/10/2026).*
+*Origem: ideia para o HUD (31/10/2026).*
 
 - Enquanto a Nora fala, **cada palavra aparece formada por partículas** no centro do HUD, em sincronia com a voz; palavras importantes ganham outra cor (ex.: vermelho).
 - Técnica: desenhar a palavra num canvas invisível, sortear pontos dentro das letras e animar milhares de partículas (Three.js) até esses pontos; na palavra seguinte, as partículas voam para as novas posições.
