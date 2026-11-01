@@ -30,17 +30,28 @@ Start-Process -FilePath $servidor.FullName -WorkingDirectory $servidor.Directory
     "-m", "`"$arquivoModelo`"", "-l", "pt", "-t", $threads, "--host", "127.0.0.1", "--port", $PortaWhisper
 )
 
+# As vozes abrem numa janela do PowerShell que continua aberta se o servidor parar com erro,
+# para a mensagem ficar visível (antes a janela sumia junto com o erro).
+function Iniciar-Janela([string]$titulo, [string]$comando) {
+    $script = "`$Host.UI.RawUI.WindowTitle = '$titulo'; Set-Location '$raiz'; $comando; " +
+        "Write-Host ''; Write-Host '$titulo parou. Leia a mensagem acima; feche esta janela quando quiser.'"
+    Start-Process -FilePath "powershell" -ArgumentList @("-NoExit", "-Command", $script)
+}
+
 if ($Voz -eq "kokoro") {
     Write-Host "Iniciando o Kokoro (porta e voz vêm da config [voz.kokoro])..."
     $nora = Join-Path $raiz ".venv\Scripts\nora.exe"
     if (-not (Test-Path $nora)) { $nora = "nora" }
-    Start-Process -FilePath $nora -WorkingDirectory $raiz -ArgumentList @("servidor-kokoro")
+    Iniciar-Janela "Nora - Kokoro" "& '$nora' servidor-kokoro"
 } elseif ($Voz -eq "piper") {
+    $modeloPiper = Join-Path $modelos "piper\$VozPiper.onnx"
+    if (-not (Test-Path $modeloPiper)) {
+        throw "Voz do Piper não encontrada: $modeloPiper (e o .onnx.json ao lado). Confira o nome em -VozPiper."
+    }
     Write-Host "Iniciando o Piper na porta $PortaPiper com a voz $VozPiper..."
-    Start-Process -FilePath $python -ArgumentList @(
-        "-m", "piper.http_server", "-m", $VozPiper, "--data-dir", "`"$(Join-Path $modelos 'piper')`"",
-        "--host", "127.0.0.1", "--port", $PortaPiper
-    )
+    $pastaPiper = Join-Path $modelos "piper"
+    Iniciar-Janela "Nora - Piper" ("& '$python' -m piper.http_server -m '$VozPiper' --data-dir '$pastaPiper' " +
+        "--host 127.0.0.1 --port $PortaPiper")
 }
 
 Write-Host "`nJanelas abertas (deixe-as abertas). Espere alguns segundos e rode:"
