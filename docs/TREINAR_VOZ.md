@@ -59,7 +59,27 @@ O resultado aparece na tela (pior primeiro, com o que era esperado e o que o Whi
 - **Tire as ruins de uma vez:** `nora voz conferir-dataset --nome minha_voz --descartar`. Elas vão para a pasta `descartadas\`, saem do `metadata.csv` e o `gerar-dataset` não as refaz (com a semente fixa, sairiam iguais).
 - **O que ele não pega:** sotaque e pronúncia. O Whisper entende "houje" como "hoje", então ouça umas 20 frases salteadas também. Palavras que saem erradas sempre vão para `[voz.pronuncias]` (veja [VOZ.md](VOZ.md)), antes de gerar o conjunto.
 
-## 4. Treinar no Google Colab (grátis)
+## 4. Treinar no Kaggle (grátis, recomendado)
+
+O treino precisa de GPU NVIDIA. O **Kaggle** empresta uma de graça por **30 horas por semana** e roda o treino **em segundo plano**, por até 12 horas, mesmo com o navegador e o PC desligados. O notebook está em [`scripts/treinar_piper_kaggle.ipynb`](../scripts/treinar_piper_kaggle.ipynb).
+
+**Uma vez só:** crie uma conta em [kaggle.com](https://www.kaggle.com) e confirme o celular (**Settings → Phone verification**). Sem isso, a GPU e a internet ficam bloqueadas.
+
+**Cada treino:**
+
+1. **Dataset:** compacte `data\dataset_voz\minha_voz` em `minha_voz.zip`. No Kaggle: **Create → New Dataset**, envie o zip (ele descompacta sozinho) e clique em **Create**.
+2. **Notebook:** **Create → New Notebook → File → Import Notebook** e escolha `scripts\treinar_piper_kaggle.ipynb`.
+3. No painel da direita: **Accelerator** em **GPU P100** (ou **GPU T4 x2**), **Internet** ligada, e em **Add Input** (aba **Your Datasets**) o dataset do passo 1.
+4. Na célula 1, confira `NOME_VOZ` e `MAX_EPOCAS` (padrão 1.000, umas 3 a 4 horas).
+5. **Save Version → Save & Run All (Commit) → Save.** Pode fechar a página.
+6. Volte depois de algumas horas, abra a versão salva, vá na aba **Output** e baixe `pt_BR-minhavoz-medium.onnx`, `pt_BR-minhavoz-medium.onnx.json` e `teste.wav` (uma frase de teste).
+
+O treino para sozinho antes do limite de 12 horas e ainda exporta a voz. **Para treinar mais**, rode de novo com a saída da versão anterior em **Add Input** e um `MAX_EPOCAS` maior: ele continua do `last.ckpt` dela.
+
+## 4b. Ou no Google Colab (grátis)
+
+O Colab também funciona, mas a GPU grátis dura poucas horas por dia, e a aba precisa ficar aberta.
+
 
 O treino precisa de GPU NVIDIA; o Colab empresta uma de graça por algumas horas por dia. O notebook pronto está em [`scripts/treinar_piper_colab.ipynb`](../scripts/treinar_piper_colab.ipynb) e usa o Piper atual ([piper1-gpl](https://github.com/OHF-Voice/piper1-gpl), GPL-3.0, baixado dentro do Colab, nunca no repositório).
 
