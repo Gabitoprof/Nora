@@ -53,6 +53,7 @@ class VozKokoro:
 class VozPiper:
     url: str
     voz: str
+    velocidade: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -110,6 +111,7 @@ class Audio:
     alto_falante: str
     prioridade: bool
     volume_outros: float
+    silencio_inicial_ms: int = 0
 
 
 @dataclass(frozen=True)
@@ -194,6 +196,20 @@ def _campo(dados: dict[str, Any], secao: str, chave: str, tipo: type) -> Any:
     return valor
 
 
+def _velocidade(dados: dict[str, Any], secao: str) -> float:
+    velocidade = _campo(dados, secao, "velocidade", float)
+    if not 0.5 <= velocidade <= 2.0:
+        raise ConfigError(f"[{secao}] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
+    return velocidade
+
+
+def _silencio(dados: dict[str, Any]) -> int:
+    ms = _campo(dados, "audio", "silencio_inicial_ms", int)
+    if not 0 <= ms <= 2000:
+        raise ConfigError(f"[audio] silencio_inicial_ms deve ficar entre 0 e 2000, veio {ms}.")
+    return ms
+
+
 def _entre_0_e_1(secao: str, chave: str, valor: float) -> float:
     if not 0.0 <= valor <= 1.0:
         raise ConfigError(f"[{secao}] {chave} deve ficar entre 0.0 e 1.0, veio {valor}.")
@@ -217,9 +233,7 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
         raise ConfigError(
             f"[voz] reserva deve ser vazia ou um de {', '.join(MOTORES_DE_VOZ)}; veio {reserva!r}."
         )
-    velocidade = _campo(dados, "voz.kokoro", "velocidade", float)
-    if not 0.5 <= velocidade <= 2.0:
-        raise ConfigError(f"[voz.kokoro] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
+    velocidade = _velocidade(dados, "voz.kokoro")
     realce = _campo(dados, "voz", "realce_pergunta", str).strip()
     if realce not in REALCES_DE_PERGUNTA:
         opcoes = ", ".join(repr(r) for r in REALCES_DE_PERGUNTA)
@@ -242,6 +256,7 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
         piper=VozPiper(
             url=_campo(dados, "voz.piper", "url", str),
             voz=_campo(dados, "voz.piper", "voz", str),
+            velocidade=_velocidade(dados, "voz.piper"),
         ),
         elevenlabs=VozElevenLabs(
             voz_id=_campo(dados, "voz.elevenlabs", "voz_id", str).strip(),
@@ -332,6 +347,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             volume_outros=_entre_0_e_1(
                 "audio", "volume_outros", _campo(dados, "audio", "volume_outros", float)
             ),
+            silencio_inicial_ms=_silencio(dados),
         ),
         modelo_local=ModeloLocal(
             provedor=_campo(dados, "modelos.local", "provedor", str),

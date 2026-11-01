@@ -160,7 +160,7 @@ def comparar_realces(config: Config, frase: str, ouvir: bool = False, voz=None, 
     from nora.voz import _criar_motor_puro, realcar_perguntas
 
     voz = voz or _criar_motor_puro(config, config.voz.motor)
-    tocar = tocar or (lambda w: audio.tocar_wav(w, audio.dispositivo(config.audio.alto_falante)))
+    tocar = tocar or audio.tocador(config.audio)
     pasta = config.pasta_dados / "vozes"
     pasta.mkdir(parents=True, exist_ok=True)
     for modo in REALCES_DE_PERGUNTA:
@@ -305,9 +305,7 @@ def salvar_fala(
         print(f"[voz reserva] {voz.aviso}")
     if ouvir:
         try:
-            (tocar or (lambda w: audio.tocar_wav(w, audio.dispositivo(config.audio.alto_falante))))(
-                wav
-            )
+            (tocar or audio.tocador(config.audio))(wav)
         except Exception as erro:
             print(f"[aviso] Não consegui tocar ({erro}).")
     return 0
@@ -350,7 +348,7 @@ def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> i
     arquivo.write_bytes(wav)
     print(f"Voz: {receita} (velocidade {velocidade:g}). Amostra salva em {arquivo}")
     try:
-        (tocar or (lambda w: audio.tocar_wav(w, audio.dispositivo(config.audio.alto_falante))))(wav)
+        (tocar or audio.tocador(config.audio))(wav)
     except Exception as erro:
         print(f"[aviso] Não consegui tocar ({erro}); abra o arquivo acima para ouvir.")
     print(f'Gostou? No config/local.toml, em [voz.kokoro]: voz = "{receita}"')

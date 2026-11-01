@@ -6,6 +6,7 @@ import io
 import re
 import wave
 from array import array
+from collections.abc import Callable
 
 TAXA = 16_000  # Hz, o que o Whisper espera
 
@@ -349,6 +350,23 @@ def _tocar_em(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None
             raise
     padrao = int(sd.query_devices(alto_falante, "output")["default_samplerate"])
     _tocar(sd, reamostrar(amostras, taxa, padrao), padrao, 1, alto_falante)
+
+
+def com_silencio_inicial(dados: bytes, ms: int) -> bytes:
+    """Põe um pouco de silêncio antes do som. Fones Bluetooth e algumas placas de som "acordam"
+    depois que o som começou e engolem o início ("Oi" sai cortado)."""
+    if ms <= 0:
+        return dados
+    amostras, taxa, canais = ler_wav(dados)
+    silencio = b"\x00\x00" * canais * (taxa * ms // 1000)
+    return para_wav(silencio + amostras, taxa, canais)
+
+
+def tocador(config_audio) -> Callable[[bytes], None]:
+    """Função que toca um WAV na saída da config ([audio] alto_falante e silencio_inicial_ms)."""
+    alto_falante = dispositivo(config_audio.alto_falante)
+    ms = config_audio.silencio_inicial_ms
+    return lambda wav: tocar_wav(com_silencio_inicial(wav, ms), alto_falante)
 
 
 def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:

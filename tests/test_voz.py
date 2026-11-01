@@ -7,12 +7,12 @@ from fake_servico import ServicoFalso
 
 from nora.audio import duracao_wav, ler_wav, para_wav
 from nora.cli import verificar
-from nora.config import carregar
+from nora.config import ConfigError, carregar
 from nora.conversa_voz import conversar_por_voz
 from nora.frases import SeparadorDeFrases
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel, responde
-from nora.voz import VozElevenLabs, VozHTTP, criar_voz
+from nora.voz import VozElevenLabs, VozHTTP, _criar_motor_puro, criar_voz
 
 UM_SEGUNDO = para_wav(b"\x00\x00" * 16_000)
 
@@ -126,7 +126,25 @@ def test_voz_pede_o_audio_da_frase(criar_raiz):
         assert voz.sintetizar("Olá, tudo bem?") == UM_SEGUNDO
     caminho, _, corpo = piper.pedidos[0]
     assert caminho == "/synthesize"
-    assert json.loads(corpo) == {"text": "Olá, tudo bem?"}
+    assert json.loads(corpo) == {"text": "Olá, tudo bem?", "length_scale": 1.0}
+
+
+def test_velocidade_do_piper(criar_raiz):
+    local = '[voz]\nmotor = "piper"\n[voz.piper]\nvelocidade = 0.8\n'
+    config = carregar(criar_raiz(local=local), ambiente={})
+    assert _criar_motor_puro(config, "piper").extras == {"length_scale": 1.25}
+    with pytest.raises(ConfigError, match="velocidade deve ficar entre 0.5 e 2.0"):
+        carregar(criar_raiz(local=local.replace("0.8", "3.0")), ambiente={})
+
+
+def test_silencio_antes_da_fala():
+    from nora.audio import com_silencio_inicial, ler_wav, para_wav
+
+    wav = para_wav(b"\x01\x00" * 1000, taxa=10_000)
+    amostras, taxa, canais = ler_wav(com_silencio_inicial(wav, 100))
+    assert (taxa, canais) == (10_000, 1)
+    assert amostras == b"\x00\x00" * 1000 + b"\x01\x00" * 1000
+    assert com_silencio_inicial(wav, 0) == wav
 
 
 def test_voz_repassa_erro_do_piper(criar_raiz):

@@ -246,6 +246,25 @@ realce_pergunta = "invertido"
 
 Vale também para o `nora voz gerar-dataset`, então o conjunto de treino sai com as perguntas no jeito escolhido.
 
+## Começo da fala cortado ou rápido demais
+
+Se a primeira palavra sai engolida ("Oi" rápido demais), teste nesta ordem, no `config/local.toml`:
+
+1. **Silêncio antes da fala.** Fones Bluetooth e algumas placas de som "acordam" depois que o som começou e cortam o início:
+
+   ```toml
+   [audio]
+   silencio_inicial_ms = 200
+   ```
+
+   Para saber se é isso: `nora voz salvar "Oi! Tudo bem?"` e abra o arquivo em `data\audios\` num player qualquer. Se ali o "Oi" estiver normal, o corte é na saída de som, e o silêncio resolve.
+2. **Velocidade do Piper** (vale para toda a fala):
+
+   ```toml
+   [voz.piper]
+   velocidade = 0.9   # 1.0 normal; menor = mais devagar
+   ```
+
 ## Corrigir a pronúncia de uma palavra
 
 Se a voz fala mal alguma palavra, reescreva como ela deve soar, só na fala (a tela continua mostrando o texto original). Vale para qualquer motor de voz:

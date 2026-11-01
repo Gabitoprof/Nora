@@ -293,7 +293,9 @@ def _criar_motor_puro(config: Config, motor: str) -> VozHTTP | VozElevenLabs | V
         extras = {"voice": voz.kokoro.voz, "speed": voz.kokoro.velocidade}
         return VozHTTP("o Kokoro", voz.kokoro.url, extras, pronuncias)
     if motor == "piper":
-        return VozHTTP("o Piper", voz.piper.url, pronuncias=pronuncias)
+        # length_scale é o tempo de cada som: maior = mais devagar
+        extras = {"length_scale": round(1 / voz.piper.velocidade, 3)}
+        return VozHTTP("o Piper", voz.piper.url, extras, pronuncias)
     if motor == "comfyui":
         comfy = voz.comfyui
         return VozComfyUI(comfy.url, comfy.fluxo, comfy.espera_s, pronuncias, comfy.campo)

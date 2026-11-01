@@ -56,6 +56,8 @@ velocidade = 1.0
 # de uma base só para uso não comercial: uso pessoal, baixada à parte, nunca distribuída.
 url = "http://127.0.0.1:5000"
 voz = "pt_BR-faber-medium"
+# Velocidade da fala: 1.0 normal, 0.9 um pouco mais devagar, 1.1 mais rápido (0.5 a 2.0).
+velocidade = 1.0
 
 [voz.elevenlabs]
 # Nuvem, paga por uso. Chave em ELEVENLABS_API_KEY (.env). O voz_id aparece na página da voz
@@ -114,6 +116,9 @@ alto_falante = ""
 prioridade = true
 # Volume dos outros programas enquanto ela fala, de 0 (mudo) a 1 (sem mudança).
 volume_outros = 0.2
+# Silêncio antes de cada fala, em milissegundos. Se o começo da fala sai cortado ou rápido demais
+# (comum com fone Bluetooth, que "acorda" depois que o som começou), teste 150 a 300.
+silencio_inicial_ms = 0
 
 [memoria]
 # Memória entre conversas (v0.2.0), guardada em <dados>/memoria.db, só na sua máquina.

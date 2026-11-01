@@ -71,8 +71,7 @@ def conversar_maos_livres(
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
     voz = voz or criar_voz(config)
-    alto_falante = audio.dispositivo(config.audio.alto_falante)
-    tocar = tocar or (lambda wav: audio.tocar_wav(wav, alto_falante))
+    tocar = tocar or audio.tocador(config.audio)
     nome = config.assistente.nome
     palavra = config.assistente.palavra_de_ativacao
     # Uma frase completa: com só "Nora, ", o Whisper às vezes entende que o nome já foi dito
