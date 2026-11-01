@@ -3,6 +3,7 @@ import io
 import json
 import math
 import re
+from datetime import date
 
 import pytest
 from fake_servico import ServicoFalso
@@ -10,7 +11,7 @@ from fake_servico import ServicoFalso
 from nora.cli import main
 from nora.config import carregar
 from nora.conversa import conversar, nova_conversa
-from nora.curadoria import extrair_fatos
+from nora.curadoria import FatoExtraido, extrair_fatos
 from nora.embeddings import EmbeddingsOllama
 from nora.memoria import Memoria
 
@@ -74,7 +75,7 @@ def memoria(tmp_path, request):
 
 
 def test_lembra_busca_e_esquece(memoria):
-    id_aniversario, novo = memoria.lembrar("Gabriel faz aniversário em 31 de outubro")
+    id_aniversario, novo = memoria.lembrar("Gabriel faz aniversário em 12 de março")
     assert novo
     memoria.lembrar("Gabriel tem prova de cálculo na sexta-feira")
     memoria.lembrar("Gabriel gosta de café sem açúcar")
@@ -109,13 +110,16 @@ def test_memoria_persiste_no_arquivo(tmp_path):
 
 
 def test_embeddings_e_curadoria_pelo_ollama(criar_raiz):
-    with OllamaComMemoria(fatos=["Gabriel faz aniversário em 31 de outubro", "  ", 7]) as ollama:
+    with OllamaComMemoria(fatos=["Gabriel faz aniversário em 12 de março", "  ", 7]) as ollama:
         config = carregar(criar_raiz(), ambiente={"OLLAMA_HOST": ollama.url})
         vetores = EmbeddingsOllama(config).vetores(["oi", "tchau"])
         fatos = extrair_fatos(config, "amanhã é meu aniversário", "Parabéns!", "30/10/2026")
     assert len(vetores) == 2 and len(vetores[0]) == DIMENSAO
-    # formato antigo (texto puro) ainda é aceito, sem área; vazios e não-texto são descartados
-    assert fatos == [("Gabriel faz aniversário em 31 de outubro", "")]
+    # formato antigo (texto puro) ainda é aceito, sem área; vazios e não-texto são descartados;
+    # a data escrita no texto vira data da agenda (aniversário: todo ano)
+    assert fatos == [
+        FatoExtraido("Gabriel faz aniversário em 12 de março", "", date(2027, 3, 12), True)
+    ]
     embed = json.loads(ollama.pedidos[0][2])
     assert embed["model"] == "bge-m3"
     curadoria = json.loads(ollama.pedidos[1][2])
@@ -258,20 +262,20 @@ def test_lembra_de_tudo_mesmo_sem_fato_anotado(criar_raiz):
     with OllamaComMemoria(resposta="Que alívio que você achou!", fatos=[]) as ollama:
         config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.url})
         primeira = nova_conversa(config)
-        "".join(primeira.perguntar("achei meu cachorro num ponto de ônibus perto de casa"))
+        "".join(primeira.perguntar("achei meu gato embaixo da escada"))
         primeira.encerrar()
         assert primeira.memoria.contar() == 0  # nenhum fato anotado...
         assert primeira.memoria.contar_trocas() == 1  # ...mas a troca ficou guardada
         primeira.memoria.fechar()
 
         segunda = nova_conversa(config)
-        "".join(segunda.perguntar("onde eu achei o meu cachorro?"))
+        "".join(segunda.perguntar("onde eu achei o meu gato?"))
         segunda.encerrar()
         segunda.memoria.fechar()
 
     nota = [m["content"] for m in ollama.conversas[-1]["messages"] if m["role"] == "system"][1]
     assert "Trechos dessas conversas:" in nota
-    assert 'Gabriel disse: "achei meu cachorro num ponto de ônibus perto de casa"' in nota
+    assert 'Gabriel disse: "achei meu gato embaixo da escada"' in nota
     assert 'você respondeu: "Que alívio que você achou!"' in nota
     assert len(segunda.trechos) == 1
 
@@ -315,7 +319,7 @@ def test_curadoria_com_areas(criar_raiz):
     with ServicoFalso(ollama) as servidor:
         config = carregar(criar_raiz(), ambiente={"OLLAMA_HOST": servidor.url})
         achados = extrair_fatos(config, "oi", "oi", "31/10/2026", areas=["saúde", "estudos"])
-    assert achados == [
+    assert [(f.texto, f.area) for f in achados] == [
         ("Gabriel toma remédio para pressão", "Saúde"),
         ("Gabriel trabalha com design", "trabalho"),
     ]

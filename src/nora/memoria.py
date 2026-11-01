@@ -1,7 +1,8 @@
 """Memória entre conversas (v0.2.0), com busca por significado, em duas camadas:
 
 - fatos: resumos curtos anotados pela curadoria ("Ana tem prova em 21/11");
-- trocas: cada pergunta e resposta inteira, para ela lembrar de tudo o que foi dito.
+- trocas: cada pergunta e resposta inteira, para ela lembrar de tudo o que foi dito;
+- agenda: os fatos com data (prova, viagem, aniversário), para achar pelo dia ("amanhã").
 
 Cada item tem um vetor (embedding). Antes de responder, a Nora busca os fatos e os trechos de
 conversa mais parecidos com a pergunta e os lê junto. Fica tudo em <dados>/memoria.db, só na
@@ -18,8 +19,10 @@ import sqlite3
 import struct
 import threading
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
+
+from nora.agenda import Evento, datas_no_texto, ocorrencia
 
 # Acima disso, dois fatos são considerados o mesmo; o mais novo substitui o antigo.
 MESMO_FATO = 0.9
@@ -88,6 +91,16 @@ class Memoria:
                 resposta TEXT NOT NULL,
                 vetor BLOB NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS agenda (
+                id INTEGER PRIMARY KEY,
+                data TEXT NOT NULL,
+                anual INTEGER NOT NULL DEFAULT 0,
+                texto TEXT NOT NULL,
+                area TEXT NOT NULL DEFAULT '',
+                fato_id INTEGER,
+                criado TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS agenda_data ON agenda(data);
             """
         )
         colunas = {linha[1] for linha in self._db.execute("PRAGMA table_info(fatos)")}
@@ -95,6 +108,8 @@ class Memoria:
             self._db.execute("ALTER TABLE fatos ADD COLUMN area TEXT NOT NULL DEFAULT ''")
             self._db.commit()
         self.vetorial = self._carregar_sqlite_vec()
+        if self.meta("agenda_preenchida") is None:  # bancos de antes da agenda
+            self.preencher_agenda()
 
     # --- índice vetorial ------------------------------------------------------------------
 
@@ -287,9 +302,105 @@ class Memoria:
     def esquecer(self, fato_id: int) -> bool:
         with self._trava, self._db:
             apagados = self._db.execute("DELETE FROM fatos WHERE id = ?", (fato_id,)).rowcount
+            self._db.execute("DELETE FROM agenda WHERE fato_id = ?", (fato_id,))
             if self.vetorial and self.meta("dimensao"):
                 self._db.execute("DELETE FROM vec_fatos WHERE rowid = ?", (fato_id,))
             return apagados > 0
+
+    # --- agenda (fatos com data) ---------------------------------------------------------
+
+    def marcar(
+        self,
+        data: date,
+        texto: str,
+        anual: bool = False,
+        area: str = "",
+        fato_id: int | None = None,
+    ) -> int:
+        """Põe um evento na agenda. Se ele vem de um fato que já tinha data, troca a antiga."""
+        texto = " ".join(texto.split())
+        with self._trava, self._db:
+            if fato_id is not None:
+                self._db.execute("DELETE FROM agenda WHERE fato_id = ?", (fato_id,))
+            else:
+                self._db.execute(
+                    "DELETE FROM agenda WHERE data = ? AND texto = ?", (data.isoformat(), texto)
+                )
+            cursor = self._db.execute(
+                "INSERT INTO agenda(data, anual, texto, area, fato_id, criado) "
+                "VALUES (?,?,?,?,?,?)",
+                (data.isoformat(), int(anual), texto, area, fato_id, _agora()),
+            )
+            return cursor.lastrowid
+
+    def marcar_do_fato(
+        self, fato_id: int, texto: str, area: str = "", hoje: date | None = None
+    ) -> list[int]:
+        """Põe na agenda as datas escritas no texto do fato ("prova em 21/11")."""
+        datas = datas_no_texto(texto, hoje or date.today())
+        if not datas:
+            return []
+        with self._trava, self._db:
+            self._db.execute("DELETE FROM agenda WHERE fato_id = ?", (fato_id,))
+            ids = []
+            for data, anual in datas:
+                cursor = self._db.execute(
+                    "INSERT INTO agenda(data, anual, texto, area, fato_id, criado) "
+                    "VALUES (?,?,?,?,?,?)",
+                    (data.isoformat(), int(anual), texto, area, fato_id, _agora()),
+                )
+                ids.append(cursor.lastrowid)
+            return ids
+
+    def preencher_agenda(self, hoje: date | None = None) -> int:
+        """Passa os fatos que já existiam pela agenda (uma vez, em bancos antigos)."""
+        with self._trava:
+            fatos = self._db.execute(
+                "SELECT id, texto, area FROM fatos WHERE id NOT IN "
+                "(SELECT fato_id FROM agenda WHERE fato_id IS NOT NULL)"
+            ).fetchall()
+        marcados = sum(bool(self.marcar_do_fato(i, texto, area, hoje)) for i, texto, area in fatos)
+        self.definir_meta("agenda_preenchida", _agora())
+        return marcados
+
+    def _eventos(self, linhas) -> list[Evento]:
+        return [
+            Evento(i, date.fromisoformat(d), texto, bool(anual), area, fato_id)
+            for i, d, anual, texto, area, fato_id in linhas
+        ]
+
+    def agenda(self, inicio: date, fim: date) -> list[tuple[date, Evento]]:
+        """Os eventos que caem no período, em ordem de data (os anuais, no ano do período)."""
+        with self._trava:
+            linhas = self._db.execute(
+                "SELECT id, data, anual, texto, area, fato_id FROM agenda "
+                "WHERE anual = 1 OR (data >= ? AND data <= ?)",
+                (inicio.isoformat(), fim.isoformat()),
+            ).fetchall()
+        achados = []
+        for evento in self._eventos(linhas):
+            dia = ocorrencia(evento, inicio, fim)
+            if dia:
+                achados.append((dia, evento))
+        return sorted(achados, key=lambda par: (par[0], par[1].id))
+
+    def eventos_contendo(self, trecho: str) -> list[Evento]:
+        """Eventos cujo texto tem o trecho (sem olhar maiúsculas), do mais antigo."""
+        with self._trava:
+            linhas = self._db.execute(
+                "SELECT id, data, anual, texto, area, fato_id FROM agenda "
+                "WHERE texto LIKE ? ORDER BY data",
+                (f"%{trecho}%",),
+            ).fetchall()
+        return self._eventos(linhas)
+
+    def desmarcar(self, evento_id: int) -> bool:
+        with self._trava, self._db:
+            return self._db.execute("DELETE FROM agenda WHERE id = ?", (evento_id,)).rowcount > 0
+
+    def contar_agenda(self) -> int:
+        with self._trava:
+            return self._db.execute("SELECT COUNT(*) FROM agenda").fetchone()[0]
 
     # --- trocas (tudo o que foi dito) -----------------------------------------------------
 

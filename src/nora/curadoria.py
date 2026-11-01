@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import json
 import urllib.request
+from datetime import date, datetime
+from typing import NamedTuple
 
+from nora.agenda import NOMES_DOS_DIAS, datas_no_texto
 from nora.config import Config
 from nora.servico import enviar
 
@@ -20,10 +23,15 @@ conquista), com a data em que aconteceram.
 
 Regras:
 - Escreva cada fato numa frase curta, em terceira pessoa, começando pelo nome (ex.: "{usuario} \
-faz aniversário em 31 de outubro", "{usuario} tem um cachorro", "Em 30/10/2026 o cachorro de \
-{usuario} fugiu e foi encontrado num ponto de ônibus perto de casa").
+faz aniversário em 12 de março", "{usuario} tem um gato", "Em 05/03/2026 o gato de {usuario} \
+fugiu e voltou sozinho para casa").
 - Ponha a data quando ela for dita; para acontecimentos, use a data de hoje ({hoje}) se nada \
 indicar outra.
+- Quando o fato tiver um dia (compromisso, prova, consulta, viagem, aniversário, data \
+comemorativa, acontecimento), ponha esse dia também em "data", no formato AAAA-MM-DD. Hoje é \
+{dia_da_semana}, {hoje}: calcule a partir daí "amanhã", "sexta", "dia 21", "semana que vem". \
+Escreva a data também no texto do fato (ex.: "{usuario} tem prova de cálculo em 21/11/2026").
+- Use "anual": true para o que se repete todo ano (aniversários, datas comemorativas).
 - Ignore cumprimentos, perguntas gerais, conhecimento sobre o mundo, humor passageiro sem \
 motivo e o que a assistente disse sobre si mesma.
 - Não invente: só o que {usuario} disse ou confirmou.
@@ -32,7 +40,33 @@ motivo e o que a assistente disse sobre si mesma.
 "família", "pets"). Áreas que já existem: {areas}. Use uma delas quando o assunto couber; se \
 for um assunto novo, crie uma área nova.
 
-Responda só com JSON no formato {{"fatos": [{{"texto": "...", "area": "..."}}]}}."""
+Responda só com JSON no formato {{"fatos": [{{"texto": "...", "area": "...", \
+"data": "AAAA-MM-DD ou vazio", "anual": false}}]}}."""
+
+
+class FatoExtraido(NamedTuple):
+    texto: str
+    area: str = ""
+    data: date | None = None
+    anual: bool = False
+
+
+def _dia(hoje: str) -> date:
+    try:
+        return datetime.strptime(hoje, "%d/%m/%Y").date()
+    except ValueError:
+        return date.today()
+
+
+def _ler_data(valor, texto: str, dia: date) -> tuple[date | None, bool]:
+    """A data que o modelo deu ou, se faltou ou veio errada, a que estiver escrita no texto."""
+    if isinstance(valor, str) and valor.strip():
+        try:
+            return date.fromisoformat(valor.strip()[:10]), False
+        except ValueError:
+            pass
+    achadas = datas_no_texto(texto, dia)
+    return (achadas[0][0], achadas[0][1]) if achadas else (None, False)
 
 
 def extrair_fatos(
@@ -42,9 +76,10 @@ def extrair_fatos(
     hoje: str,
     areas: list[str] | tuple[str, ...] = (),
     timeout: float = 120.0,
-) -> list[tuple[str, str]]:
-    """Os fatos que valem guardar desta troca, como (texto, área)."""
+) -> list[FatoExtraido]:
+    """Os fatos que valem guardar desta troca, com área e, se tiverem, data."""
     usuario = config.nome_usuario or "a pessoa"
+    dia = _dia(hoje)
     lista_areas = ", ".join(areas) if areas else "nenhuma ainda"
     pedido = urllib.request.Request(
         f"{config.ollama_host.rstrip('/')}/api/chat",
@@ -54,7 +89,12 @@ def extrair_fatos(
                 "messages": [
                     {
                         "role": "system",
-                        "content": INSTRUCAO.format(usuario=usuario, hoje=hoje, areas=lista_areas),
+                        "content": INSTRUCAO.format(
+                            usuario=usuario,
+                            hoje=hoje,
+                            dia_da_semana=NOMES_DOS_DIAS[dia.weekday()],
+                            areas=lista_areas,
+                        ),
                     },
                     {
                         "role": "user",
@@ -77,13 +117,15 @@ def extrair_fatos(
         return []
     resultado = []
     for fato in fatos if isinstance(fatos, list) else []:
-        if isinstance(fato, str):  # formato antigo, sem área
-            texto, area = fato, ""
-        elif isinstance(fato, dict):
-            texto, area = str(fato.get("texto", "")), str(fato.get("area", ""))
-        else:
+        if isinstance(fato, str):  # formato antigo, sem área nem data
+            fato = {"texto": fato}
+        elif not isinstance(fato, dict):
             continue
-        texto = " ".join(texto.split())
-        if texto:
-            resultado.append((texto, " ".join(area.split())))
+        texto = " ".join(str(fato.get("texto", "")).split())
+        if not texto:
+            continue
+        data, anual_no_texto = _ler_data(fato.get("data"), texto, dia)
+        anual = fato.get("anual") is True or anual_no_texto
+        area = " ".join(str(fato.get("area", "")).split())
+        resultado.append(FatoExtraido(texto, area, data, anual if data else False))
     return resultado

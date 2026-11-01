@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import TextIO
 
+from nora.agenda import intervalo_da_pergunta, quando
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
 from nora.curadoria import extrair_fatos
@@ -56,6 +57,44 @@ class Conversa:
         if aviso not in self.avisos:
             self.avisos.append(aviso)
 
+    def _agenda(self, texto: str, hoje: date) -> list[str]:
+        """Linhas da agenda para a nota: os próximos dias, o período citado na pergunta e,
+        se ela fala de aniversário, os aniversários anotados."""
+        dias = self.config.memoria.agenda_dias
+        vistos: set[tuple[date, int]] = set()
+
+        def linhas(eventos) -> list[str]:
+            novas = []
+            for dia, evento in eventos:
+                if (dia, evento.id) not in vistos:
+                    vistos.add((dia, evento.id))
+                    novas.append(f"- {quando(dia, hoje)}: {evento.texto}")
+            return novas
+
+        partes = []
+        if dias > 0:
+            proximos = linhas(self.memoria.agenda(hoje, hoje + timedelta(days=dias - 1)))
+            if proximos:
+                partes += [f"Agenda dos próximos {dias} dias (hoje incluído):", *proximos]
+        periodo = intervalo_da_pergunta(texto, hoje)
+        if periodo:
+            inicio, fim = periodo
+            achados = self.memoria.agenda(inicio, fim)
+            novas = linhas(achados)
+            nome = f"{inicio:%d/%m/%Y}" + (f" a {fim:%d/%m/%Y}" if fim != inicio else "")
+            if novas:
+                partes += [f"Na agenda para {nome}:", *novas]
+            elif not achados:
+                partes.append(f"Não há nada anotado na agenda para {nome}.")
+        if "aniversari" in texto.lower().replace("á", "a"):
+            aniversarios = [
+                (evento.data, evento) for evento in self.memoria.eventos_contendo("anivers")
+            ]
+            novas = linhas(aniversarios)
+            if novas:
+                partes += ["Aniversários anotados (a data original):", *novas]
+        return partes
+
     def _lembrar(self, texto: str) -> list[dict[str, str]]:
         """Fatos e trechos de conversas antigas parecidos com a pergunta, como uma nota para o
         modelo (que não fica guardada na conversa)."""
@@ -77,18 +116,24 @@ class Conversa:
         except Exception as erro:  # sem memória a conversa continua
             modelo = memoria.modelo_embeddings
             self._avisar(f"Memória indisponível ({erro}). Rode: ollama pull {modelo}")
-            return []
-        if not self.lembrancas and not self.trechos:
+        try:
+            agenda = self._agenda(texto, date.today())
+        except Exception as erro:
+            self._avisar(f"Agenda indisponível ({erro}).")
+            agenda = []
+        if not self.lembrancas and not self.trechos and not agenda:
             return []
         quem = self.config.nome_usuario or "a pessoa"
         partes = [
             f"O que você lembra de conversas anteriores com {quem} (use só se ajudar a "
-            "responder; não liste isso sem ser pedido):"
+            "responder; não liste isso sem ser pedido; não acrescente detalhes que não "
+            "estejam aqui):"
         ]
         partes += [
             f"- {f'[{f.area}] ' if f.area else ''}{f.texto} (anotado em {_data(f.atualizado)})"
             for f in self.lembrancas
         ]
+        partes += agenda
         if self.trechos:
             partes.append("Trechos dessas conversas:")
             partes += [
@@ -109,10 +154,16 @@ class Conversa:
                 return
             areas = [area for area, _ in self.memoria.areas()]
             hoje = agora.strftime("%d/%m/%Y")
-            for fato, area in extrair_fatos(self.config, pergunta, resposta, hoje, areas):
-                _, novo = self.memoria.lembrar(fato, origem=self.historico.sessao, area=area)
-                onde = f" em {self.memoria.normalizar_area(area)}" if area else ""
-                self._avisar(f"{'anotei' if novo else 'atualizei'}{onde}: {fato}")
+            for fato in extrair_fatos(self.config, pergunta, resposta, hoje, areas):
+                fato_id, novo = self.memoria.lembrar(
+                    fato.texto, origem=self.historico.sessao, area=fato.area
+                )
+                area = self.memoria.normalizar_area(fato.area)
+                if fato.data:
+                    self.memoria.marcar(fato.data, fato.texto, fato.anual, area, fato_id)
+                onde = f" em {area}" if area else ""
+                na_agenda = f" (agenda: {fato.data:%d/%m/%Y})" if fato.data else ""
+                self._avisar(f"{'anotei' if novo else 'atualizei'}{onde}: {fato.texto}{na_agenda}")
         except Exception as erro:
             self._avisar(f"Não consegui atualizar a memória ({erro}).")
 

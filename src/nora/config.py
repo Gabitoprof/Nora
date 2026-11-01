@@ -101,6 +101,7 @@ class Memoria:
     fatos_por_pergunta: int
     similaridade_minima: float
     trocas_por_pergunta: int
+    agenda_dias: int = 7
 
 
 @dataclass(frozen=True)
@@ -322,6 +323,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
                 _campo(dados, "memoria", "similaridade_minima", float),
             ),
             trocas_por_pergunta=_campo(dados, "memoria", "trocas_por_pergunta", int),
+            agenda_dias=_campo(dados, "memoria", "agenda_dias", int),
         ),
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),

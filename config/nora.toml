@@ -129,6 +129,10 @@ similaridade_minima = 0.45
 # Toda pergunta e resposta também fica guardada inteira; antes de responder, ela lê os trechos
 # de conversas antigas mais parecidos com a pergunta (0 = não usar).
 trocas_por_pergunta = 3
+# Fatos com data (prova, consulta, aniversário) vão também para uma agenda. Antes de responder,
+# ela lê o que está marcado para os próximos N dias (0 = não usar) e para o dia de que a pergunta
+# fala ("amanhã", "sexta", "dia 21", "semana que vem", "em dezembro").
+agenda_dias = 7
 
 [caminhos]
 # Banco de memória, histórico e outros dados pessoais. Fora do Git.

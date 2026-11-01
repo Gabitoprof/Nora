@@ -408,6 +408,45 @@ def comando_memoria(config: Config, args) -> int:
             from nora.importar import importar_historico
 
             return importar_historico(config, memoria)
+        elif args.acao == "agenda":
+            from datetime import date, timedelta
+
+            from nora.agenda import quando
+
+            hoje = date.today()
+            fim = hoje + timedelta(days=max(1, args.dias) - 1)
+            eventos = memoria.agenda(hoje - timedelta(days=args.passados), fim)
+            print(
+                f"Agenda de {(hoje - timedelta(days=args.passados)):%d/%m/%Y} a {fim:%d/%m/%Y} "
+                f"({memoria.contar_agenda()} eventos anotados no total):"
+            )
+            if not eventos:
+                print("  (nada marcado nesse período)")
+            for dia, evento in eventos:
+                todo_ano = " [todo ano]" if evento.anual else ""
+                print(f"  {evento.id:>4}  {quando(dia, hoje)}{todo_ano}  {evento.texto}")
+        elif args.acao == "marcar":
+            from datetime import date
+
+            from nora.agenda import ler_data
+
+            data = ler_data(args.data, date.today())
+            if data is None:
+                print(f"[erro] Não entendi a data '{args.data}'. Use 21/11/2026.", file=sys.stderr)
+                return 1
+            texto = " ".join(args.texto)
+            if args.data not in texto:
+                texto = f"{texto} ({data:%d/%m/%Y})"
+            fato_id, _ = memoria.lembrar(texto, origem="manual", area=args.area)
+            area = memoria.normalizar_area(args.area)
+            evento_id = memoria.marcar(data, texto, args.anual, area, fato_id)
+            todo_ano = ", todo ano" if args.anual else ""
+            print(f"Marcado para {data:%d/%m/%Y}{todo_ano} (nº {evento_id}).")
+        elif args.acao == "desmarcar":
+            if not memoria.desmarcar(args.id):
+                print(f"Não existe evento nº {args.id} na agenda.", file=sys.stderr)
+                return 1
+            print(f"Tirado da agenda (nº {args.id}). O fato continua na memória.")
     except ServicoIndisponivel as erro:
         modelo = config.memoria.modelo_embeddings
         print(
@@ -469,6 +508,18 @@ def main(argv: list[str] | None = None) -> int:
     esquecer_cmd = acoes.add_parser("esquecer", help="apagar um fato pelo número")
     esquecer_cmd.add_argument("id", type=int)
     acoes.add_parser("importar", help="tirar fatos das conversas antigas (data/historico)")
+    agenda_cmd = acoes.add_parser("agenda", help="os compromissos e datas anotados")
+    agenda_cmd.add_argument("--dias", type=int, default=30, help="quantos dias à frente (30)")
+    agenda_cmd.add_argument(
+        "--passados", type=int, default=0, help="incluir também os N dias que passaram"
+    )
+    marcar_cmd = acoes.add_parser("marcar", help="pôr um compromisso na agenda à mão")
+    marcar_cmd.add_argument("data", help="ex.: 21/11/2026, 21/11 ou 2026-11-21")
+    marcar_cmd.add_argument("texto", nargs="+", help="o que é (ex.: prova de cálculo)")
+    marcar_cmd.add_argument("--anual", action="store_true", help="repete todo ano")
+    marcar_cmd.add_argument("--area", default="", help="área (ex.: estudos)")
+    desmarcar_cmd = acoes.add_parser("desmarcar", help="tirar um evento da agenda pelo número")
+    desmarcar_cmd.add_argument("id", type=int)
     voz_cmd = comandos.add_parser("voz", help="laboratório de voz: misture vozes do Kokoro")
     voz_acoes = voz_cmd.add_subparsers(dest="acao", required=True)
     voz_acoes.add_parser("listar", help="as vozes do Kokoro que dá para misturar")

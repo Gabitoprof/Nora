@@ -45,11 +45,16 @@ def importar_historico(config: Config, memoria: Memoria, saida=print) -> int:
         dia = f"{quando[8:10]}/{quando[5:7]}/{quando[:4]}"
         memoria.guardar_troca(pergunta, resposta, quando, sessao)
         areas = [area for area, _ in memoria.areas()]
-        for fato, area in extrair_fatos(config, pergunta, resposta, dia, areas):
-            _, novo = memoria.lembrar(fato, origem=f"historico {quando[:10]}", area=area)
+        for fato in extrair_fatos(config, pergunta, resposta, dia, areas):
+            fato_id, novo = memoria.lembrar(
+                fato.texto, origem=f"historico {quando[:10]}", area=fato.area
+            )
             novos += novo
-            onde = f"[{memoria.normalizar_area(area)}] " if area else ""
-            saida(f"  {'+' if novo else '~'} {onde}{fato}")
+            area = memoria.normalizar_area(fato.area)
+            if fato.data:
+                memoria.marcar(fato.data, fato.texto, fato.anual, area, fato_id)
+            onde = f"[{area}] " if area else ""
+            saida(f"  {'+' if novo else '~'} {onde}{fato.texto}")
         memoria.definir_meta("importado_ate", quando)
         if numero % 10 == 0:
             saida(f"  ({numero}/{len(pendentes)})")

@@ -27,6 +27,14 @@ pip install -e ".[dev,voz,kokoro,memoria]"
 
 Confira com `nora --verificar`: a linha **Memória** deve dizer `ok`.
 
+## Agenda: lembrar pelo dia
+
+A busca por significado acha "quando é minha prova?", mas não acha "o que tenho amanhã?": a pergunta não tem nenhuma palavra em comum com "prova em 21/11". Por isso, todo fato com data também vai para uma **agenda**:
+
+- **Ao anotar:** a curadoria transforma "amanhã", "sexta", "dia 21" e "21/11" em datas de verdade e guarda o fato na agenda (aniversários e datas comemorativas ficam marcados como **todo ano**). Na conversa aparece `[memória] anotei: ... (agenda: 21/11/2026)`.
+- **Ao responder:** ela sempre lê o que está marcado para os **próximos 7 dias** (`agenda_dias`) e, se a pergunta falar de um período, o que está marcado nele. Pergunte do jeito natural: "o que tenho amanhã?", "tenho algo essa semana?", "e na sexta?", "e no dia 21?", "o que tem em dezembro?", "quando é meu aniversário?".
+- **Fatos antigos:** os que já tinham data escrita no texto entram na agenda sozinhos, na primeira vez que a memória é aberta.
+
 ## Ver e editar
 
 | Comando | O que faz |
@@ -37,6 +45,9 @@ Confira com `nora --verificar`: a linha **Memória** deve dizer `ok`.
 | `nora memoria buscar prova de cálculo` | Os fatos mais parecidos com o texto, com a nota de parecença (0 a 1) |
 | `nora memoria lembrar Ana prefere chá` | Guarda um fato à mão |
 | `nora memoria esquecer 12` | Apaga o fato nº 12 |
+| `nora memoria agenda` | Os compromissos e datas dos próximos 30 dias (`--dias 90` para mais, `--passados 7` para ver também a semana que passou) |
+| `nora memoria marcar 21/11/2026 prova de cálculo` | Põe um compromisso na agenda à mão (e guarda como fato). `--anual` para o que repete todo ano |
+| `nora memoria desmarcar 3` | Tira o evento nº 3 da agenda (o fato continua na memória) |
 | `nora memoria importar` | Lê as conversas antigas de `data/historico/` e tira fatos delas (pode demorar; dá para rodar de novo, ele continua de onde parou) |
 
 Com `--medir`, cada resposta mostra quantos fatos ela usou (`lembrou N fatos`).
@@ -50,6 +61,7 @@ curadoria = true             # false: ela lembra, mas não anota fatos novos soz
 fatos_por_pergunta = 5       # quantos fatos ela lê antes de responder
 similaridade_minima = 0.45   # suba se ela trouxer fatos sem relação; desça se esquecer coisas
 modelo_embeddings = "bge-m3"
+agenda_dias = 7              # quantos dias à frente da agenda ela lê antes de responder (0 = não)
 ```
 
 ## Limites desta versão
