@@ -72,7 +72,7 @@ O que o notebook faz:
 
 - Confere o conjunto (áudios em 22.050 Hz, frases sem áudio) e estima o tempo de treino.
 - Parte de uma voz pt-BR "medium" pronta do Piper (`rhasspy/piper-checkpoints`) e faz o **ajuste fino** com as suas frases, por 2.000 épocas (a receita do Piper para menos de 5 h de fala).
-- A cada 15 minutos copia o último ponto do treino para `Meu Drive/Nora/treino_minha_voz/`. **Se o Colab desconectar**, abra de novo e rode as células outra vez: ele continua de onde parou.
+- A cada 5 minutos grava o último ponto do treino em `Meu Drive/Nora/treino_minha_voz/` e mostra `[drive] salvo às HH:MM`: até esse horário, o treino está garantido. **Se o Colab desconectar**, abra de novo e rode as células outra vez: ele continua de onde parou.
 - Na célula 7 exporta para `.onnx` e toca uma frase de teste. Dá para ouvir no meio do treino: pare a célula 6, rode a 7 e depois a 6 de novo.
 - Na célula 8 salva no Drive os dois arquivos da voz: `pt_BR-minhavoz-medium.onnx` e `pt_BR-minhavoz-medium.onnx.json` (o nome perde o "_", porque o Piper usa "_" e "-" para separar idioma, nome e qualidade).
 
