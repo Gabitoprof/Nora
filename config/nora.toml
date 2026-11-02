@@ -182,6 +182,20 @@ trocas_por_pergunta = 3
 # fala ("amanhã", "sexta", "dia 21", "semana que vem", "em dezembro").
 agenda_dias = 7
 
+[notas]
+# Notas do Obsidian (v0.3.0): a Nora lê o seu vault e usa os trechos parecidos com a pergunta
+# ("o que eu anotei sobre a prova?"). Só lê, nunca altera. Ponha o caminho do vault no
+# config/local.toml (ex.: pasta = "C:/Users/voce/Documents/Obsidian"); vazio = sem notas.
+# Usa o mesmo modelo de embeddings da memória (bge-m3). O índice fica em <dados>/notas.db.
+pasta = ""
+# Quantos trechos das notas ela lê antes de responder, e quão parecidos (0 a 1).
+trechos_por_pergunta = 3
+similaridade_minima = 0.5
+# Pastas do vault que ela não lê (além das ocultas, como .obsidian e .trash). Ex.: ["Diário"]
+ignorar = []
+# Ao abrir uma conversa, lê em segundo plano as notas novas ou alteradas.
+atualizar_ao_abrir = true
+
 [caminhos]
 # Banco de memória, histórico e outros dados pessoais. Fora do Git.
 dados = "data"

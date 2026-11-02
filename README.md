@@ -10,7 +10,7 @@ Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principa
 - **Pensa no seu PC, e chama a nuvem quando precisa:** o modelo local pelo [Ollama](https://ollama.com) (Qwen 3.5 9B numa GPU de 16 GB) conversa sem custo; as perguntas difíceis sobem para o ChatGPT, com o Claude de reserva (os dois opcionais, com chave própria), com a mesma voz. "Modo jogo" libera a placa de vídeo.
 - **Várias vozes:** Kokoro (local, grátis, padrão), Piper (local; dá para treinar a sua), ElevenLabs (nuvem, a mais natural) e ComfyUI (vozes que você cria). Uma voz de reserva entra sozinha se a principal falhar, e dá para trocar de voz falando ("troque para a voz do Piper").
 - **Emoção na voz:** ela escolhe sozinha o tom de cada frase (alegre, carinhosa, calma, risada, sussurro...) pelo contexto; no ElevenLabs v3, ri, suspira e sussurra de verdade.
-- **Memória:** anota fatos sobre você por área (saúde, estudos, trabalho...), guarda cada conversa inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias, jeito de responder, o tom que funciona com você).
+- **Memória:** anota fatos sobre você por área (saúde, estudos, trabalho...), guarda cada conversa inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias, jeito de responder, o tom que funciona com você). Também lê as notas do seu Obsidian para responder ("o que eu anotei sobre a prova?").
 - **Respeita o resto do PC:** abaixa o som dos outros programas enquanto fala.
 - **Privada:** memória, histórico e configurações pessoais ficam em `data/` e `config/local.toml`, só na sua máquina.
 
@@ -81,7 +81,7 @@ Já vem ligada. Ela anota sozinha o que vale lembrar e mostra `[memória] anotei
 | `nora memoria preferencias` | Como você pediu que ela fale |
 | `nora memoria esquecer 12` | Apaga um fato |
 
-Tudo em [docs/MEMORIA.md](docs/MEMORIA.md).
+Tudo em [docs/MEMORIA.md](docs/MEMORIA.md). Para a Nora ler as suas notas do Obsidian: `[notas] pasta` no `config/local.toml` e `nora notas ler` (veja [docs/OBSIDIAN.md](docs/OBSIDIAN.md)).
 
 ## Personalizando
 
@@ -129,7 +129,7 @@ Tudo em [docs/MEMORIA.md](docs/MEMORIA.md).
 - [Memória: fatos, agenda, aprender pela conversa](docs/MEMORIA.md)
 - [Treinar uma voz própria (Piper)](docs/TREINAR_VOZ.md)
 - [Teste de GPU](docs/TESTE_GPU.md)
-- [Usando no Obsidian](docs/OBSIDIAN.md)
+- [Obsidian: o projeto como vault e a Nora lendo as suas notas](docs/OBSIDIAN.md)
 - [Licenças de terceiros](docs/LICENCAS.md)
 - [Histórico de versões](CHANGELOG.md)
 

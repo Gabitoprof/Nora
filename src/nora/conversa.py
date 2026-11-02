@@ -14,6 +14,7 @@ from nora.curadoria import curar
 from nora.emocao import FiltroDeTela, sem_emocoes
 from nora.historico import Historico
 from nora.memoria import Fato, Memoria, Troca, abrir_memoria
+from nora.notas import IndiceDeNotas, Trecho, abrir_notas
 from nora.persona import prompt_de_sistema
 from nora.roteador import Roteador
 
@@ -41,11 +42,14 @@ class Conversa:
         cerebro: CerebroLocal,
         historico: Historico,
         memoria: Memoria | None = None,
+        notas: IndiceDeNotas | None = None,
     ) -> None:
         self.config = config
         self.cerebro = cerebro
         self.historico = historico
         self.memoria = memoria
+        self.notas = notas
+        self.trechos_de_notas: list[Trecho] = []  # trechos das notas usados na última resposta
         self.lembrancas: list[Fato] = []  # fatos usados na última resposta
         self.trechos: list[Troca] = []  # trechos de conversas antigas usados na última resposta
         self.avisos: list[str] = []
@@ -113,10 +117,34 @@ class Conversa:
     def _lembrar(self, texto: str) -> list[dict[str, str]]:
         """Preferências, fatos e trechos de conversas antigas parecidos com a pergunta, como
         notas para o modelo (que não ficam guardadas na conversa)."""
-        self.lembrancas, self.trechos = [], []
+        self.lembrancas, self.trechos, self.trechos_de_notas = [], [], []
+        notas = self._notas(texto)
         if self.memoria is None:
+            return notas
+        return self._preferencias() + self._lembrancas(texto) + notas
+
+    def _notas(self, texto: str) -> list[dict[str, str]]:
+        """Os trechos das notas do Obsidian parecidos com a pergunta."""
+        if self.notas is None:
             return []
-        return self._preferencias() + self._lembrancas(texto)
+        config = self.config.notas
+        try:
+            self.trechos_de_notas = self.notas.buscar(
+                texto, config.trechos_por_pergunta, config.similaridade_minima
+            )
+        except Exception as erro:  # sem as notas a conversa continua
+            self._avisar(f"Notas indisponíveis ({erro}).")
+            return []
+        if not self.trechos_de_notas:
+            return []
+        quem = self.config.nome_usuario or "a pessoa"
+        partes = [
+            f"Trechos das notas que {quem} escreveu no Obsidian, parecidos com a pergunta (use "
+            "só se ajudar; quando usar, diga de qual nota veio; não invente o que não estiver "
+            "aqui):"
+        ]
+        partes += [f'- Nota "{t.titulo}": {_resumir(t.texto, 700)}' for t in self.trechos_de_notas]
+        return [{"role": "system", "content": "\n".join(partes)}]
 
     def _lembrancas(self, texto: str) -> list[dict[str, str]]:
         memoria = self.config.memoria
@@ -196,6 +224,19 @@ class Conversa:
         except Exception as erro:
             self._avisar(f"Não consegui atualizar a memória ({erro}).")
 
+    def atualizar_notas(self) -> None:
+        try:
+            resumo = self.notas.atualizar()
+        except Exception as erro:
+            self._avisar(f"Não consegui ler as notas do Obsidian ({erro}).")
+            return
+        if resumo.lidas or resumo.removidas:
+            self._avisar(
+                f"Notas: li {resumo.lidas} nota(s) nova(s) ou alterada(s)"
+                f"{f' e esqueci {resumo.removidas} apagada(s)' if resumo.removidas else ''}; "
+                f"{resumo.notas} notas no índice."
+            )
+
     def avisos_do_cerebro(self) -> list[str]:
         """Avisos do roteador (quem respondeu na falta de quem) ainda não mostrados."""
         pegar = getattr(self.cerebro, "avisos_pendentes", None)
@@ -262,11 +303,21 @@ class Conversa:
             self._curadorias.append(linha)
 
 
-def nova_conversa(config: Config, cerebro: CerebroLocal | None = None, memoria=AUTOMATICA):
-    """Conversa com o cérebro local, o histórico e (se ligada na config) a memória."""
+def nova_conversa(
+    config: Config, cerebro: CerebroLocal | None = None, memoria=AUTOMATICA, notas=AUTOMATICA
+):
+    """Conversa com o cérebro local, o histórico e (se ligadas na config) a memória e as notas.
+    As notas novas ou alteradas são lidas em segundo plano, sem atrasar o começo."""
     if memoria is AUTOMATICA:
         memoria = abrir_memoria(config)
-    return Conversa(config, cerebro or Roteador(config), Historico(config.pasta_dados), memoria)
+    if notas is AUTOMATICA:
+        notas = abrir_notas(config)
+    conversa = Conversa(
+        config, cerebro or Roteador(config), Historico(config.pasta_dados), memoria, notas
+    )
+    if notas is not None and config.notas.atualizar_ao_abrir:
+        threading.Thread(target=conversa.atualizar_notas, daemon=True).start()
+    return conversa
 
 
 def conversar(
@@ -338,7 +389,8 @@ def conversar(
                 f"  [{conversa.origem}: primeira palavra em {m.primeiro_pedaco:.2f} s, "
                 f"total {m.total:.2f} s, "
                 f"{m.tokens_por_segundo:.1f} tokens/s, "
-                f"lembrou {len(conversa.lembrancas)} fatos e {len(conversa.trechos)} trechos]"
+                f"lembrou {len(conversa.lembrancas)} fatos, {len(conversa.trechos)} trechos "
+                f"e {len(conversa.trechos_de_notas)} notas]"
             )
     if conversa.memoria is not None:
         escrever("(guardando o que aprendi nesta conversa...)")

@@ -115,6 +115,15 @@ class Memoria:
 
 
 @dataclass(frozen=True)
+class Notas:
+    pasta: Path | None = None  # o vault do Obsidian; None = sem notas
+    trechos_por_pergunta: int = 3
+    similaridade_minima: float = 0.5
+    ignorar: tuple[str, ...] = ()
+    atualizar_ao_abrir: bool = True
+
+
+@dataclass(frozen=True)
 class Audio:
     microfone: str
     alto_falante: str
@@ -185,6 +194,31 @@ class Config:
     chave_elevenlabs: str = field(default="", repr=False)
     chave_anthropic: str = field(default="", repr=False)
     chave_openai: str = field(default="", repr=False)
+    notas: Notas = field(default_factory=Notas)
+
+
+def _notas(dados: dict[str, Any], raiz: Path) -> Notas:
+    texto = _campo(dados, "notas", "pasta", str).strip()
+    pasta = None
+    if texto:
+        pasta = Path(texto).expanduser()
+        if not pasta.is_absolute():
+            pasta = raiz / pasta
+    ignorar = _campo(dados, "notas", "ignorar", list)
+    if not all(isinstance(item, str) for item in ignorar):
+        raise ConfigError('[notas] ignorar deve ser uma lista de pastas, como ["Diário"].')
+    trechos = _campo(dados, "notas", "trechos_por_pergunta", int)
+    if trechos < 0:
+        raise ConfigError("[notas] trechos_por_pergunta não pode ser negativo.")
+    return Notas(
+        pasta=pasta,
+        trechos_por_pergunta=trechos,
+        similaridade_minima=_entre_0_e_1(
+            "notas", "similaridade_minima", _campo(dados, "notas", "similaridade_minima", float)
+        ),
+        ignorar=tuple(ignorar),
+        atualizar_ao_abrir=_campo(dados, "notas", "atualizar_ao_abrir", bool),
+    )
 
 
 def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
@@ -449,6 +483,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             esforco_pesado=_esforco(dados, "esforco_pesado", "modelos.openai", ESFORCOS_OPENAI),
         ),
         roteador=_roteador(dados),
+        notas=_notas(dados, raiz),
         pasta_dados=pasta_dados,
         ollama_host=ambiente.get("OLLAMA_HOST") or "http://127.0.0.1:11434",
         tem_chave_anthropic=bool(ambiente.get("ANTHROPIC_API_KEY")),

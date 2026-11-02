@@ -118,6 +118,18 @@ def verificar(config: Config) -> list[str]:
         else:
             estado = f"falta o modelo: ollama pull {embeddings}"
         linhas.append(f"  {'Memória':<24}{estado}")
+    if config.notas.pasta is None:
+        linhas.append(f"  {'Notas (Obsidian)':<24}sem pasta ([notas] pasta no config/local.toml)")
+    elif not config.notas.pasta.is_dir():
+        linhas.append(f"  {'Notas (Obsidian)':<24}a pasta não existe: {config.notas.pasta}")
+    else:
+        from nora.notas import abrir_notas
+
+        indice = abrir_notas(config)
+        total = indice.contar_notas()
+        indice.fechar()
+        situacao = f"{total} notas no índice" if total else "ainda sem índice: nora notas ler"
+        linhas.append(f"  {'Notas (Obsidian)':<24}ok, {config.notas.pasta} ({situacao})")
     servicos = [("whisper-server", config.ouvido.url)]
     for motor, papel in [(config.voz.motor, ""), (config.voz.reserva, " (reserva)")]:
         if motor == "kokoro":
@@ -403,6 +415,60 @@ def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> i
     return 0
 
 
+def comando_notas(config: Config, args) -> int:
+    from nora.notas import abrir_notas
+
+    indice = abrir_notas(config)
+    if indice is None:
+        print(
+            "Sem pasta de notas. No config/local.toml, ponha o caminho do vault do Obsidian:\n"
+            "  [notas]\n"
+            '  pasta = "C:/Users/voce/Documents/Obsidian"',
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        if args.acao == "ler":
+            print(f"Lendo as notas de {config.notas.pasta}...")
+
+            def andamento(lidas: int, total: int) -> None:
+                if lidas == total or lidas % 20 == 0:
+                    print(f"  {lidas}/{total} notas")
+
+            try:
+                resumo = indice.atualizar(andamento)
+            except FileNotFoundError as erro:
+                print(f"[erro] {erro}", file=sys.stderr)
+                return 1
+            except Exception as erro:
+                print(
+                    f"[erro] {erro} (o Ollama está aberto? ollama pull "
+                    f"{config.memoria.modelo_embeddings})",
+                    file=sys.stderr,
+                )
+                return 1
+            print(
+                f"Pronto: {resumo.lidas} nota(s) lida(s), {resumo.removidas} esquecida(s). "
+                f"Índice: {resumo.notas} notas, {resumo.trechos} trechos, em {indice.caminho}."
+            )
+        elif args.acao == "buscar":
+            achados = indice.buscar(" ".join(args.texto), k=args.quantos)
+            if not achados:
+                print("Nada encontrado (rode antes: nora notas ler).")
+            for trecho in achados:
+                print(f"[{trecho.similaridade:.2f}] {trecho.titulo}  ({trecho.caminho})")
+                print(f"    {' '.join(trecho.texto.split())[:300]}")
+        else:
+            print(
+                f"Vault: {config.notas.pasta}\n"
+                f"Índice: {indice.contar_notas()} notas, {indice.contar_trechos()} trechos, "
+                f"em {indice.caminho}"
+            )
+    finally:
+        indice.fechar()
+    return 0
+
+
 def comando_memoria(config: Config, args) -> int:
     from nora.memoria import Memoria, abrir_memoria
     from nora.servico import ServicoIndisponivel
@@ -571,6 +637,13 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="salva cada fala ouvida em data/falas (para diagnóstico)",
     )
+    notas_cmd = comandos.add_parser("notas", help="notas do Obsidian que a Nora lê")
+    acoes_notas = notas_cmd.add_subparsers(dest="acao", required=True)
+    acoes_notas.add_parser("ler", help="lê as notas novas ou alteradas do vault")
+    buscar_notas = acoes_notas.add_parser("buscar", help="mostra os trechos parecidos com o texto")
+    buscar_notas.add_argument("texto", nargs="+")
+    buscar_notas.add_argument("--quantos", type=int, default=5)
+    acoes_notas.add_parser("status", help="quantas notas estão no índice")
     memoria_cmd = comandos.add_parser("memoria", help="ver e editar o que a Nora lembra de você")
     acoes = memoria_cmd.add_subparsers(dest="acao", required=True)
     listar_cmd = acoes.add_parser("listar", help="os fatos guardados, do mais recente")
@@ -690,6 +763,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.comando == "memoria":
         return comando_memoria(config, args)
+    if args.comando == "notas":
+        return comando_notas(config, args)
 
     if args.comando == "voz" and args.acao == "comparar":
         return comparar_realces(config, " ".join(args.frase), ouvir=args.ouvir)
