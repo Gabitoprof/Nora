@@ -20,7 +20,8 @@
 | kokoro-onnx | MIT | `kokoro` | Voz local Kokoro |
 | phonemizer-fork e espeakng-loader (trazem o espeak-ng) | GPL-3.0 | `kokoro`, indiretamente | Fonemas para o Kokoro |
 | sqlite-vec | MIT ou Apache-2.0 (à escolha) | `memoria` | Busca vetorial da memória |
-| anthropic (SDK oficial do Claude) | Apache-2.0 | `nuvem` | Cérebro na nuvem: as perguntas difíceis vão para o Claude |
+| anthropic (SDK oficial do Claude) | Apache-2.0 | `nuvem` | Cérebro na nuvem: o Claude |
+| openai (SDK oficial da OpenAI) | Apache-2.0 | `nuvem` | Cérebro na nuvem: o ChatGPT, padrão para as perguntas complexas |
 | pytest | MIT | `dev` | Testes |
 | ruff | MIT | `dev` | Formatação e lint |
 
@@ -53,6 +54,7 @@ Nenhum deles é copiado para o repositório.
 
 | Serviço | Termos | Observação |
 |---|---|---|
+| API da OpenAI (ChatGPT) | Termos de uso da OpenAI | Exige chave própria (`OPENAI_API_KEY` no `.env`) e é cobrada por uso. Padrão do roteador para as perguntas complexas; o que vai para a API é a conversa daquela pergunta, com a persona e as notas da memória |
 | API da Anthropic (Claude) | Termos comerciais da Anthropic | Exige chave própria (`ANTHROPIC_API_KEY` no `.env`) e é cobrada por uso. Usada pelo roteador (v0.3.0) nas perguntas difíceis, no modo nuvem e no modo jogo; o que vai para a API é a conversa daquela pergunta, com a persona e as notas da memória |
 | ElevenLabs | Termos de uso da ElevenLabs | Exige conta e chave própria (`.env`). **Não use o áudio gerado para treinar outra voz**: os termos não permitem |
 

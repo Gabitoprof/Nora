@@ -141,8 +141,18 @@ class ModeloNuvem:
     esforco_pesado: str = "medium"
 
 
+@dataclass(frozen=True)
+class ModeloOpenAI:
+    rapido: str = "gpt-5.5"
+    pesado: str = "gpt-5.5"
+    esforco_rapido: str = "low"
+    esforco_pesado: str = "medium"
+
+
 MODOS_DO_ROTEADOR = ("automatico", "local", "nuvem")
+NUVENS = ("openai", "anthropic")
 ESFORCOS = ("low", "medium", "high", "xhigh", "max")
+ESFORCOS_OPENAI = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
 
 
 @dataclass(frozen=True)
@@ -150,6 +160,7 @@ class Roteador:
     modo: str = "automatico"
     escalar: bool = True
     triagem: bool = True
+    complexas: str = "openai"  # quem responde as complexas; a outra nuvem é a reserva
 
 
 @dataclass(frozen=True)
@@ -165,6 +176,7 @@ class Config:
     emocao: Emocao
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
+    modelo_openai: ModeloOpenAI
     roteador: Roteador
     pasta_dados: Path
     ollama_host: str
@@ -172,6 +184,7 @@ class Config:
     arquivos: tuple[Path, ...]
     chave_elevenlabs: str = field(default="", repr=False)
     chave_anthropic: str = field(default="", repr=False)
+    chave_openai: str = field(default="", repr=False)
 
 
 def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
@@ -229,10 +242,12 @@ def _velocidade(dados: dict[str, Any], secao: str) -> float:
     return velocidade
 
 
-def _esforco(dados: dict[str, Any], chave: str) -> str:
-    valor = _campo(dados, "modelos.nuvem", chave, str)
-    if valor not in ESFORCOS:
-        raise ConfigError(f"[modelos.nuvem] {chave} deve ser um de {ESFORCOS}, veio {valor!r}.")
+def _esforco(
+    dados: dict[str, Any], chave: str, secao: str = "modelos.nuvem", validos=ESFORCOS
+) -> str:
+    valor = _campo(dados, secao, chave, str)
+    if valor not in validos:
+        raise ConfigError(f"[{secao}] {chave} deve ser um de {validos}, veio {valor!r}.")
     return valor
 
 
@@ -240,10 +255,14 @@ def _roteador(dados: dict[str, Any]) -> Roteador:
     modo = _campo(dados, "roteador", "modo", str)
     if modo not in MODOS_DO_ROTEADOR:
         raise ConfigError(f"[roteador] modo deve ser um de {MODOS_DO_ROTEADOR}, veio {modo!r}.")
+    complexas = _campo(dados, "roteador", "complexas", str)
+    if complexas not in NUVENS:
+        raise ConfigError(f"[roteador] complexas deve ser um de {NUVENS}, veio {complexas!r}.")
     return Roteador(
         modo=modo,
         escalar=_campo(dados, "roteador", "escalar", bool),
         triagem=_campo(dados, "roteador", "triagem", bool),
+        complexas=complexas,
     )
 
 
@@ -423,11 +442,18 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             esforco_rapido=_esforco(dados, "esforco_rapido"),
             esforco_pesado=_esforco(dados, "esforco_pesado"),
         ),
+        modelo_openai=ModeloOpenAI(
+            rapido=_campo(dados, "modelos.openai", "rapido", str),
+            pesado=_campo(dados, "modelos.openai", "pesado", str),
+            esforco_rapido=_esforco(dados, "esforco_rapido", "modelos.openai", ESFORCOS_OPENAI),
+            esforco_pesado=_esforco(dados, "esforco_pesado", "modelos.openai", ESFORCOS_OPENAI),
+        ),
         roteador=_roteador(dados),
         pasta_dados=pasta_dados,
         ollama_host=ambiente.get("OLLAMA_HOST") or "http://127.0.0.1:11434",
         tem_chave_anthropic=bool(ambiente.get("ANTHROPIC_API_KEY")),
         chave_elevenlabs=ambiente.get("ELEVENLABS_API_KEY", ""),
         chave_anthropic=ambiente.get("ANTHROPIC_API_KEY", ""),
+        chave_openai=ambiente.get("OPENAI_API_KEY", ""),
         arquivos=tuple(arquivos),
     )

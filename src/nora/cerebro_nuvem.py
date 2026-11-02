@@ -58,6 +58,10 @@ class CerebroNuvem:
     cliente: object = None
     medidas: Medidas = field(default_factory=Medidas)
 
+    @property
+    def nome(self) -> str:
+        return nome_do_modelo(self.modelo)
+
     def _cliente(self):
         if self.cliente is not None:
             return self.cliente

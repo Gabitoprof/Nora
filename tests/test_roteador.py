@@ -1,4 +1,4 @@
-"""Roteador de modelos: local conversa, o Claude pega as difíceis, comandos e reservas."""
+"""Roteador de modelos: local conversa, a nuvem (ChatGPT, depois Claude) pega as difíceis."""
 
 import re
 from types import SimpleNamespace
@@ -7,6 +7,7 @@ import pytest
 
 from nora.cerebro import CerebroIndisponivel, Medidas
 from nora.cerebro_nuvem import RECUSA, CerebroNuvem, nome_do_modelo, separar_sistema
+from nora.cerebro_openai import CerebroOpenAI
 from nora.config import carregar
 from nora.conversa import nova_conversa
 from nora.roteador import (
@@ -17,6 +18,7 @@ from nora.roteador import (
     insatisfeito,
     pede_pesado,
     peso_da_pergunta,
+    quem_foi_chamado,
 )
 
 
@@ -84,13 +86,50 @@ class LocalFalso:
             raise
 
 
-def montar(criar_raiz, local=None, cliente=None, toml=""):
+class OpenAIFalso:
+    """Imita o SDK openai: responses.create(stream=True) devolve eventos."""
+
+    def __init__(self, resposta="Resposta do ChatGPT.", erro=None, recusa=False, quebra=False):
+        self.pedidos = []
+        cliente = self
+
+        def evento(tipo, **dados):
+            return SimpleNamespace(type=tipo, **dados)
+
+        def eventos():
+            if recusa:
+                yield evento("response.refusal.delta", delta="não posso")
+            else:
+                for pedaco in re.findall(r"\S+\s*", resposta):
+                    yield evento("response.output_text.delta", delta=pedaco)
+            if quebra:
+                yield evento("error", message="caiu no meio")
+            uso = SimpleNamespace(output_tokens=4)
+            yield evento("response.completed", response=SimpleNamespace(usage=uso))
+
+        class Respostas:
+            def create(self, **pedido):
+                cliente.pedidos.append(pedido)
+                if erro:
+                    raise erro
+                return eventos()
+
+        self.responses = Respostas()
+
+
+def montar(criar_raiz, local=None, cliente=None, toml="", openai=None):
     config = carregar(criar_raiz(local=toml), ambiente={"ANTHROPIC_API_KEY": "chave"})
     cliente = cliente or ClienteFalso()
-    nuvem = config.modelo_nuvem
+    nuvem, gpt = config.modelo_nuvem, config.modelo_openai
     rapido = CerebroNuvem(config, nuvem.rapido, nuvem.esforco_rapido, cliente=cliente)
     pesado = CerebroNuvem(config, nuvem.pesado, nuvem.esforco_pesado, cliente=cliente)
-    roteador = Roteador(config, local or LocalFalso(), rapido, pesado)
+    extras = {}
+    if openai:  # sem cliente falso, o ChatGPT fica indisponível (sem OPENAI_API_KEY)
+        extras = {
+            "rapido_openai": CerebroOpenAI(config, gpt.rapido, gpt.esforco_rapido, cliente=openai),
+            "pesado_openai": CerebroOpenAI(config, gpt.pesado, gpt.esforco_pesado, cliente=openai),
+        }
+    roteador = Roteador(config, local or LocalFalso(), rapido, pesado, **extras)
     return roteador, cliente
 
 
@@ -166,7 +205,7 @@ def test_comandos_trocam_o_cerebro(criar_raiz):
 def test_reservas_quando_um_dos_cerebros_falha(criar_raiz):
     roteador, cliente = montar(criar_raiz, local=LocalFalso(falhar=True))
     assert falar(roteador, "oi") == "Resposta do Claude."
-    assert "respondi pelo Claude" in roteador.avisos_pendentes()[0]
+    assert "respondi pela nuvem" in roteador.avisos_pendentes()[0]
 
     sem_rede = ClienteFalso(erro=ConnectionError("rede caiu"))
     roteador, _ = montar(criar_raiz, cliente=sem_rede, toml='[roteador]\nmodo = "nuvem"\n')
@@ -181,7 +220,7 @@ def test_sem_chave_o_roteador_e_so_o_local(criar_raiz):
     assert not roteador.nuvem_disponivel()
     assert falar(roteador, "pensa com calma: algo difícil") == "Resposta local."
     assert ESCALAR not in local.pedidos[0][-1]["content"]  # sem Claude, nada de escalar
-    assert "falta a chave" in falar(roteador, "usa o Claude")
+    assert "falta a ANTHROPIC_API_KEY" in falar(roteador, "usa o Claude")
 
 
 def test_cerebro_nuvem_monta_o_pedido_e_trata_recusa(criar_raiz):
@@ -255,4 +294,87 @@ def test_testar_conexao_diz_o_que_falta(criar_raiz, monkeypatch):
     assert "ANTHROPIC_API_KEY" in testar_conexao(carregar(criar_raiz(), ambiente={}))
     monkeypatch.setitem(sys.modules, "anthropic", None)  # pacote não instalado
     config = carregar(criar_raiz(), ambiente={"ANTHROPIC_API_KEY": "x"})
+    assert "pip install" in testar_conexao(config)
+
+
+def test_chatgpt_e_o_padrao_das_dificeis_e_o_claude_a_reserva(criar_raiz):
+    gpt = OpenAIFalso()
+    roteador, claude = montar(criar_raiz, openai=gpt)
+    resposta = falar(roteador, "monta um plano de estudos de cálculo para 3 semanas")
+    assert resposta.endswith("Resposta do ChatGPT.") and claude.pedidos == []
+    pedido = gpt.pedidos[0]
+    assert pedido["model"] == "gpt-5.5" and pedido["instructions"] == "Você é a Nora."
+    assert pedido["reasoning"] == {"effort": "medium"} and pedido["stream"]
+    assert pedido["input"][-1]["role"] == "user"
+    assert roteador.origem == "ChatGPT (gpt-5.5)" and roteador.medidas.tokens == 4
+    assert falar(roteador, "oi") == "Resposta local."  # a conversa continua no local
+
+    # o ChatGPT falha, recusa ou não responde: pede ao Claude
+    for falho in (
+        OpenAIFalso(erro=ConnectionError("rede")),
+        OpenAIFalso(recusa=True),
+        OpenAIFalso(resposta=""),
+    ):
+        roteador, claude = montar(criar_raiz, openai=falho)
+        assert falar(roteador, "escreve um script python").endswith("Resposta do Claude.")
+        assert roteador.origem == "Claude Sonnet 5.5"
+        assert "Pedi ao Claude" in roteador.avisos_pendentes()[0]
+
+
+def test_chatgpt_que_cai_no_meio_nao_repete_a_resposta_no_claude(criar_raiz):
+    roteador, claude = montar(criar_raiz, openai=OpenAIFalso("Começo da resposta.", quebra=True))
+    resposta = falar(roteador, "escreve um script python")
+    assert resposta.endswith("Começo da resposta.") and claude.pedidos == []
+    assert "pela metade" in roteador.avisos_pendentes()[0]
+
+
+def test_escolher_a_nuvem_pelo_nome(criar_raiz):
+    assert quem_foi_chamado("pergunta pro ChatGPT como funciona um motor") == "openai"
+    assert quem_foi_chamado("usa o chat gpt nessa") == "openai"
+    assert quem_foi_chamado("consulta o Claude sobre isso") == "anthropic"
+    assert quem_foi_chamado("pensa com calma nessa") == ""
+    assert comando_em("use o ChatGPT") == "nuvem"
+
+    gpt = OpenAIFalso()
+    roteador, claude = montar(criar_raiz, openai=gpt)
+    assert falar(roteador, "pergunta pro Claude como funciona um motor").endswith(
+        "Resposta do Claude."
+    )
+    assert gpt.pedidos == []
+    # comando: a conversa toda vai para quem foi escolhido (o modelo rápido na conversa)
+    assert "tudo pelo ChatGPT" in falar(roteador, "use o ChatGPT")
+    assert falar(roteador, "oi") == "Resposta do ChatGPT."
+    assert gpt.pedidos[-1]["reasoning"] == {"effort": "low"}
+    assert "tudo pelo Claude" in falar(roteador, "usa o Claude")
+    assert falar(roteador, "oi") == "Resposta do Claude."
+    assert "chamo o ChatGPT" in falar(roteador, "modo automático")
+
+
+def test_sem_chave_da_openai_o_claude_responde_calado_e_avisa_se_pedido(criar_raiz):
+    roteador, claude = montar(criar_raiz)  # só o Claude configurado
+    assert not roteador.disponivel("openai")
+    assert falar(roteador, "escreve um script python").endswith("Resposta do Claude.")
+    assert roteador.avisos_pendentes() == []  # ChatGPT só não configurado: sem aviso
+    assert falar(roteador, "pergunta pro ChatGPT o que é um motor").endswith("Resposta do Claude.")
+    assert "OPENAI_API_KEY" in roteador.avisos_pendentes()[0]
+
+
+def test_complexas_pode_preferir_o_claude(criar_raiz):
+    gpt = OpenAIFalso()
+    roteador, claude = montar(criar_raiz, openai=gpt, toml='[roteador]\ncomplexas = "anthropic"\n')
+    assert falar(roteador, "escreve um script python").endswith("Resposta do Claude.")
+    assert gpt.pedidos == []
+
+
+def test_cerebro_openai_sem_chave_e_testar_conexao(criar_raiz, monkeypatch):
+    import sys
+
+    from nora.cerebro_openai import testar_conexao
+
+    sem_chave = CerebroOpenAI(carregar(criar_raiz(), ambiente={}), "gpt-5.5")
+    with pytest.raises(CerebroIndisponivel, match="OPENAI_API_KEY"):
+        list(sem_chave.responder([{"role": "user", "content": "oi"}]))
+    assert "OPENAI_API_KEY" in testar_conexao(carregar(criar_raiz(), ambiente={}))
+    monkeypatch.setitem(sys.modules, "openai", None)
+    config = carregar(criar_raiz(), ambiente={"OPENAI_API_KEY": "x"})
     assert "pip install" in testar_conexao(config)

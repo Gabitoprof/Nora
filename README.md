@@ -2,12 +2,12 @@
 
 Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principalmente no seu computador**, lembra do que vocês conversaram e evolui com o uso. Inspirado nos assistentes da ficção, com nome, voz e personalidade próprios e configuráveis.
 
-> **Status:** `v0.2.0` lançada (**memória**): a Nora acorda com o nome, ouve, pensa no modelo local, responde falando e lembra de você entre conversas. Em desenvolvimento: `v0.3.0` (roteador de modelos), que já traz o **Claude para as perguntas difíceis** e a **emoção automática na voz**. Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
+> **Status:** `v0.2.0` lançada (**memória**): a Nora acorda com o nome, ouve, pensa no modelo local, responde falando e lembra de você entre conversas. Em desenvolvimento: `v0.3.0` (roteador de modelos), que já traz o **ChatGPT e o Claude para as perguntas difíceis** e a **emoção automática na voz**. Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
 
 ## O que ela já faz
 
 - **Conversa por voz, mãos livres:** comece a frase com "Nora" e ela responde falando, frase por frase, enquanto ainda pensa. Também dá para digitar e ouvir a resposta.
-- **Pensa no seu PC, e chama o Claude quando precisa:** o modelo local pelo [Ollama](https://ollama.com) (Qwen 3.5 9B numa GPU de 16 GB) conversa sem custo; as perguntas difíceis sobem para o Claude (opcional, com chave própria), com a mesma voz. "Modo jogo" libera a placa de vídeo.
+- **Pensa no seu PC, e chama a nuvem quando precisa:** o modelo local pelo [Ollama](https://ollama.com) (Qwen 3.5 9B numa GPU de 16 GB) conversa sem custo; as perguntas difíceis sobem para o ChatGPT, com o Claude de reserva (os dois opcionais, com chave própria), com a mesma voz. "Modo jogo" libera a placa de vídeo.
 - **Várias vozes:** Kokoro (local, grátis, padrão), Piper (local; dá para treinar a sua), ElevenLabs (nuvem, a mais natural) e ComfyUI (vozes que você cria). Uma voz de reserva entra sozinha se a principal falhar.
 - **Emoção na voz:** ela escolhe sozinha o tom de cada frase (alegre, carinhosa, calma, risada, sussurro...) pelo contexto; no ElevenLabs v3, ri, suspira e sussurra de verdade.
 - **Memória:** anota fatos sobre você por área (saúde, estudos, trabalho...), guarda cada conversa inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias, jeito de responder, o tom que funciona com você).
@@ -103,7 +103,7 @@ Tudo em [docs/MEMORIA.md](docs/MEMORIA.md).
   intensidade = 0.5      # 0 = sem emoção, 1 = bem expressiva
   ```
 
-- **`.env`**: copie de `.env.example` para guardar chaves de API (ElevenLabs, Anthropic). Também é ignorado pelo Git. Para o Claude: `ANTHROPIC_API_KEY` no `.env` e `pip install -e ".[nuvem]"` (veja [docs/CEREBRO.md](docs/CEREBRO.md)).
+- **`.env`**: copie de `.env.example` para guardar chaves de API (ElevenLabs, OpenAI, Anthropic). Também é ignorado pelo Git. Para a nuvem: `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY` no `.env` e `pip install -e ".[nuvem]"` (veja [docs/CEREBRO.md](docs/CEREBRO.md)).
 
 ## Estrutura
 
@@ -124,7 +124,7 @@ Tudo em [docs/MEMORIA.md](docs/MEMORIA.md).
 - [Objetivo do projeto](docs/OBJETIVO.md)
 - [Mapa mental e roadmap](docs/MAPA_MENTAL.md)
 - [Documento completo do projeto](PROJETO_ASSISTENTE_IA.md)
-- [Cérebro: local, Claude e roteador](docs/CEREBRO.md)
+- [Cérebro: local, ChatGPT, Claude e roteador](docs/CEREBRO.md)
 - [Voz: instalar, motores, emoção, pronúncia](docs/VOZ.md)
 - [Memória: fatos, agenda, aprender pela conversa](docs/MEMORIA.md)
 - [Treinar uma voz própria (Piper)](docs/TREINAR_VOZ.md)

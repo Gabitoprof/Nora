@@ -1,11 +1,15 @@
 """Roteador de modelos (v0.3.0): decide quem responde cada pergunta.
 
-- automático: o cérebro local (Ollama) conversa; quando acha a pergunta difícil demais, escreve
-  {pensar} e a pergunta sobe para o Claude, com uma frase de espera na mesma voz;
-- "pensa com calma", "pergunta difícil", "usa o Claude" na pergunta: direto para o Claude;
-- comandos: "use o cérebro local", "use o Claude", "modo automático", "modo jogo" (tira o
-  modelo local da placa de vídeo e responde tudo pela nuvem), "sair do modo jogo";
-- reserva: sem Ollama, responde o Claude; sem Claude, responde o local; os dois avisam.
+- automático: o cérebro local (Ollama) conversa; as perguntas difíceis (triagem, {pensar} do
+  local, reclamação) vão para a nuvem, com uma frase de espera na mesma voz;
+- nuvem: as difíceis vão primeiro para o ChatGPT (`[roteador] complexas`); se ele falhar, recusar
+  ou não responder, para o Claude; se os dois falharem, o local responde;
+- "pensa com calma", "pergunta difícil", "pergunta pro ChatGPT", "usa o Claude" na pergunta:
+  direto para a nuvem (e para quem foi chamado);
+- comandos: "use o cérebro local", "use o ChatGPT", "use o Claude", "modo automático",
+  "modo jogo" (tira o modelo local da placa de vídeo e responde tudo pela nuvem),
+  "sair do modo jogo";
+- reserva: sem Ollama, responde a nuvem; sem nuvem, responde o local; todos avisam.
 
 Para a conversa, o roteador é um cérebro como outro qualquer: responder(), medidas, aquecer().
 """
@@ -17,8 +21,10 @@ import re
 import unicodedata
 from collections.abc import Iterator
 
+from nora import cerebro_nuvem, cerebro_openai
 from nora.cerebro import CerebroIndisponivel, CerebroLocal, Medidas
-from nora.cerebro_nuvem import CerebroNuvem, nome_do_modelo, problema_do_pacote
+from nora.cerebro_nuvem import CerebroNuvem
+from nora.cerebro_openai import CerebroOpenAI
 from nora.config import Config
 
 ESCALAR = "{pensar}"
@@ -34,12 +40,16 @@ FRASES_DE_ESPERA = (
     "Vou caprichar nessa, só um momento.",
     "Hum, deixa eu ver isso direito.",
 )
+NOMES = {"openai": "ChatGPT", "anthropic": "Claude"}
+CHAVES = {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
 
-_PEDE_PESADO = re.compile(
-    r"\b(pensa|pense|pensar) (com calma|bem|direito)\b|\bpergunta dificil\b|"
+_NUVENS = r"(claude|chat ?gpt|gpt|openai)"
+_PEDE_NUVEM = re.compile(
     r"\b(usa|use|usando|utilize|utiliza|utilizar|chama|chame|consulta|consulte|pergunta pro|"
-    r"pergunte ao|pede pro|pede para o|pede ao) (o )?claude\b"
+    r"pergunta pra|pergunta para o|pergunte ao|pergunte pro|pede pro|pede para o|pede ao) "
+    rf"(o )?{_NUVENS}\b"
 )
+_PEDE_PESADO = re.compile(r"\b(pensa|pense|pensar) (com calma|bem|direito)\b|\bpergunta dificil\b")
 _COMANDOS = (
     (
         "jogo_fim",
@@ -55,11 +65,10 @@ _COMANDOS = (
     (
         "nuvem",
         r"\b(use|usa|usar|utilize|utiliza|troca|troque|mude|muda|passa|passe)\b.{0,20}"
-        r"\b(claude|nuvem)\b"
+        rf"\b({_NUVENS[1:-1]}|nuvem)\b"
         r"|\bmodo nuvem\b|\bcerebro da nuvem\b",
     ),
 )
-
 
 # Triagem: sinais de pergunta pesada, vistos no texto antes de qualquer modelo. Não depende do
 # cérebro local se julgar capaz (modelos pequenos costumam se achar capazes demais).
@@ -92,7 +101,7 @@ _SINAIS_DE_PESO = (
         r"traduza|traduz este|traduz esse|e-?mail formal|artigo|relatorio|curriculo)\b",
     ),
 )
-# Reação a uma resposta ruim do local: a pergunta ganha uma segunda chance com o Claude.
+# Reação a uma resposta ruim do local: a pergunta ganha uma segunda chance na nuvem.
 _INSATISFEITO = (
     r"\b(nao (e|foi) (isso|bem isso|o que (eu )?perguntei)|ta errado|esta errado|errou|"
     r"resposta errada|nao entendi|voce nao entendeu|explica melhor|explique melhor|"
@@ -132,7 +141,22 @@ def comando_em(texto: str) -> str | None:
 
 
 def pede_pesado(texto: str) -> bool:
-    return bool(_PEDE_PESADO.search(_texto(texto)))
+    limpo = _texto(texto)
+    return bool(_PEDE_PESADO.search(limpo) or _PEDE_NUVEM.search(limpo))
+
+
+def provedor_em(texto: str) -> str:
+    """Qual nuvem o texto cita: "anthropic" (Claude), "openai" (ChatGPT) ou ""."""
+    achou = re.search(_NUVENS, _texto(texto))
+    if not achou:
+        return ""
+    return "anthropic" if achou.group(1) == "claude" else "openai"
+
+
+def quem_foi_chamado(texto: str) -> str:
+    """A nuvem pedida na pergunta ("pergunta pro ChatGPT ..."), ou "" se não pediu nenhuma."""
+    achou = _PEDE_NUVEM.search(_texto(texto))
+    return provedor_em(achou.group(0)) if achou else ""
 
 
 class Roteador:
@@ -142,18 +166,24 @@ class Roteador:
         local: CerebroLocal | None = None,
         rapido: CerebroNuvem | None = None,
         pesado: CerebroNuvem | None = None,
+        rapido_openai: CerebroOpenAI | None = None,
+        pesado_openai: CerebroOpenAI | None = None,
     ) -> None:
-        nuvem = config.modelo_nuvem
+        claude, gpt = config.modelo_nuvem, config.modelo_openai
         self.config = config
         self.local = local or CerebroLocal(config)
-        self.rapido = rapido or CerebroNuvem(config, nuvem.rapido, nuvem.esforco_rapido)
-        self.pesado = pesado or CerebroNuvem(config, nuvem.pesado, nuvem.esforco_pesado)
+        self.rapido = rapido or CerebroNuvem(config, claude.rapido, claude.esforco_rapido)
+        self.pesado = pesado or CerebroNuvem(config, claude.pesado, claude.esforco_pesado)
+        self.rapido_openai = rapido_openai or CerebroOpenAI(config, gpt.rapido, gpt.esforco_rapido)
+        self.pesado_openai = pesado_openai or CerebroOpenAI(config, gpt.pesado, gpt.esforco_pesado)
         self.modo = config.roteador.modo  # automatico | local | nuvem
+        self.provedor = config.roteador.complexas  # a nuvem que tenta primeiro
         self.jogo = False
         self.ativo = self.local  # quem respondeu por último (para as medidas)
         self.origem = ""
         self.avisos: list[str] = []
         self._avisou_sem_nuvem = False
+        self._avisou_sem: set[str] = set()
 
     # --- o que a conversa usa ---------------------------------------------------------------
 
@@ -166,27 +196,39 @@ class Roteador:
             return 0.0
         return self.local.aquecer()
 
-    def nuvem_disponivel(self) -> bool:
-        if self.rapido.cliente is not None or self.pesado.cliente is not None:
+    def _cerebros(self, provedor: str):
+        if provedor == "openai":
+            return self.rapido_openai, self.pesado_openai
+        return self.rapido, self.pesado
+
+    def disponivel(self, provedor: str) -> bool:
+        rapido, pesado = self._cerebros(provedor)
+        if rapido.cliente is not None or pesado.cliente is not None:
             return True  # (testes) cliente já pronto
-        if not self.config.chave_anthropic:
-            return False
-        try:
-            import anthropic  # noqa: F401
-        except ImportError:
-            return False
-        return True
+        return not self._falta(provedor)
+
+    def nuvem_disponivel(self) -> bool:
+        return self.disponivel("openai") or self.disponivel("anthropic")
+
+    def _falta(self, provedor: str) -> str:
+        """O que falta para usar essa nuvem ("" se nada)."""
+        chave = self.config.chave_openai if provedor == "openai" else self.config.chave_anthropic
+        if not chave:
+            return f"falta a {CHAVES[provedor]} no .env"
+        modulo = cerebro_openai if provedor == "openai" else cerebro_nuvem
+        return modulo.problema_do_pacote()
 
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
         pergunta = next((m["content"] for m in reversed(mensagens) if m["role"] == "user"), "")
         comando = comando_em(pergunta)
         if comando:
-            yield self._trocar(comando)
+            yield self._trocar(comando, pergunta)
             return
+        chamado = quem_foi_chamado(pergunta)
         anterior_local = self.origem.startswith("local")
         if self.jogo or self.modo == "nuvem":
             pesada = pede_pesado(pergunta) or bool(self._triagem(pergunta))
-            yield from self._nuvem(mensagens, self.pesado if pesada else self.rapido, pesada)
+            yield from self._nuvem(mensagens, pesada, espera=pesada, chamado=chamado)
             return
         if self.modo == "local":
             yield from self._local(mensagens, escalar=False)
@@ -198,7 +240,7 @@ class Roteador:
             or ("segunda chance" if anterior_local and insatisfeito(pergunta) else "")
         )
         if motivo and self.nuvem_disponivel():
-            yield from self._nuvem(mensagens, self.pesado, espera=True)
+            yield from self._nuvem(mensagens, pesada=True, espera=True, chamado=chamado)
             return
         if motivo:
             self._avisar_sem_nuvem()
@@ -209,16 +251,13 @@ class Roteador:
         return peso_da_pergunta(pergunta) if self.config.roteador.triagem else ""
 
     def _avisar_sem_nuvem(self) -> None:
-        """Uma vez por conversa: a pergunta era para o Claude, mas ele não está disponível."""
+        """Uma vez por conversa: a pergunta era para a nuvem, mas nenhuma está disponível."""
         if self._avisou_sem_nuvem:
             return
         self._avisou_sem_nuvem = True
-        if not self.config.chave_anthropic:
-            falta = "falta a ANTHROPIC_API_KEY no .env"
-        else:
-            falta = problema_do_pacote() or "o Claude não respondeu"
+        faltas = "; ".join(f"{NOMES[p]}: {self._falta(p)}" for p in ("openai", "anthropic"))
         self.avisos.append(
-            f"Essa pergunta era para o Claude, mas ele não está disponível ({falta}). "
+            f"Essa pergunta era para a nuvem, mas ela não está disponível ({faltas}). "
             "Respondi pelo cérebro local."
         )
 
@@ -241,8 +280,8 @@ class Roteador:
             for pedaco in fluxo:
                 inicio += pedaco
                 if ESCALAR in inicio:
-                    fluxo.close()  # a pergunta sobe para o Claude
-                    yield from self._nuvem(mensagens, self.pesado, espera=True)
+                    fluxo.close()  # a pergunta sobe para a nuvem
+                    yield from self._nuvem(mensagens, pesada=True, espera=True)
                     return
                 comeco = inicio.lstrip()
                 if len(comeco) >= len(ESCALAR) or not ESCALAR.startswith(comeco):
@@ -254,28 +293,51 @@ class Roteador:
         except CerebroIndisponivel as erro:
             if not self.nuvem_disponivel():
                 raise
-            self.avisos.append(f"O cérebro local não respondeu ({erro}); respondi pelo Claude.")
-            yield from self._nuvem(mensagens, self.rapido, espera=False, reserva=False)
+            self.avisos.append(f"O cérebro local não respondeu ({erro}); respondi pela nuvem.")
+            yield from self._nuvem(mensagens, pesada=False, espera=False, reserva=False)
 
-    def _nuvem(self, mensagens, cerebro: CerebroNuvem, espera: bool, reserva: bool = True):
+    def _ordem(self, chamado: str) -> list[str]:
+        """As nuvens a tentar, na ordem: a chamada (ou a preferida), depois a outra."""
+        primeira = chamado or self.provedor
+        ordem = [primeira, "anthropic" if primeira == "openai" else "openai"]
+        if chamado and not self.disponivel(chamado) and chamado not in self._avisou_sem:
+            self._avisou_sem.add(chamado)  # pediu essa nuvem pelo nome: diz por que não foi ela
+            self.avisos.append(f"O {NOMES[chamado]} não está disponível ({self._falta(chamado)}).")
+        return [p for p in ordem if self.disponivel(p)]
+
+    def _nuvem(self, mensagens, pesada: bool, espera: bool, chamado: str = "", reserva=True):
+        """Tenta as nuvens na ordem; sem nenhuma resposta, o local (se `reserva`)."""
         if espera:
             yield random.choice(FRASES_DE_ESPERA) + " "
-        self._usar(cerebro, nome_do_modelo(cerebro.modelo))
-        try:
-            yield from cerebro.responder(mensagens)
-        except CerebroIndisponivel as erro:
-            if not reserva:
-                raise
+        ordem = self._ordem(chamado)
+        erro: CerebroIndisponivel | None = None
+        for posicao, provedor in enumerate(ordem):
+            rapido, pesado = self._cerebros(provedor)
+            cerebro = pesado if pesada else rapido
+            self._usar(cerebro, cerebro.nome)
+            escreveu = False
+            try:
+                for pedaco in cerebro.responder(mensagens):
+                    escreveu = True
+                    yield pedaco
+                return
+            except CerebroIndisponivel as falha:
+                erro = falha
+                if escreveu:  # já falou metade: trocar de cérebro agora repetiria o começo
+                    self.avisos.append(f"{falha} A resposta ficou pela metade.")
+                    return
+                if posicao + 1 < len(ordem):
+                    self.avisos.append(f"{falha} Pedi ao {NOMES[ordem[posicao + 1]]}.")
+        if not reserva:
+            raise erro or CerebroIndisponivel("Nenhuma nuvem disponível.")
+        if erro:
             self.avisos.append(f"{erro} Respondi pelo cérebro local.")
-            yield from self._local(mensagens, escalar=False)
+        yield from self._local(mensagens, escalar=False)
 
     # --- comandos ---------------------------------------------------------------------------
 
-    def _trocar(self, comando: str) -> str:
+    def _trocar(self, comando: str, pergunta: str = "") -> str:
         self._usar(self.local, "comando")
-        sem_nuvem = (
-            " Mas ainda não tenho acesso ao Claude: falta a chave ANTHROPIC_API_KEY no .env."
-        )
         if comando == "jogo":
             self.jogo = True
             try:
@@ -283,19 +345,31 @@ class Roteador:
             except CerebroIndisponivel:
                 pass  # o Ollama já estava fora: a placa de vídeo já está livre
             resposta = "Modo jogo ligado: liberei a placa de vídeo e respondo pela nuvem."
-            return resposta + ("" if self.nuvem_disponivel() else sem_nuvem)
+            if not self.nuvem_disponivel():
+                resposta += self._sem_acesso(self.provedor)
+            return resposta
         if comando == "jogo_fim":
             self.jogo = False
             return "Modo jogo desligado. Voltei a pensar por aqui."
         if comando == "nuvem":
             self.modo = "nuvem"
-            resposta = "Pronto, agora respondo tudo pelo Claude."
-            return resposta + ("" if self.nuvem_disponivel() else sem_nuvem)
+            self.provedor = provedor_em(pergunta) or self.provedor
+            nome = NOMES[self.provedor]
+            resposta = f"Pronto, agora respondo tudo pelo {nome}."
+            return resposta + ("" if self.disponivel(self.provedor) else self._sem_acesso())
         if comando == "local":
             self.modo = "local"
             return "Pronto, agora respondo só com o cérebro local."
         self.modo = "automatico"
-        return "Pronto, modo automático: converso por aqui e chamo o Claude nas perguntas difíceis."
+        self.provedor = self.config.roteador.complexas
+        return (
+            "Pronto, modo automático: converso por aqui e chamo o "
+            f"{NOMES[self.provedor]} nas perguntas difíceis."
+        )
+
+    def _sem_acesso(self, provedor: str = "") -> str:
+        provedor = provedor or self.provedor
+        return f" Mas ainda não tenho acesso ao {NOMES[provedor]}: {self._falta(provedor)}."
 
     def avisos_pendentes(self) -> list[str]:
         avisos, self.avisos = self.avisos, []

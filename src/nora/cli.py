@@ -54,9 +54,17 @@ def verificar(config: Config) -> list[str]:
         else "não definida (sem ela, o Claude não entra: só o cérebro local)"
     )
     from nora.cerebro_nuvem import problema_do_pacote
+    from nora.cerebro_openai import problema_do_pacote as problema_openai
 
     sdk = problema_do_pacote() or "instalado"
-    nuvem = config.modelo_nuvem
+    sdk_openai = problema_openai() or "instalado"
+    chave_openai = (
+        "definida"
+        if config.chave_openai
+        else "não definida (sem ela, as difíceis vão direto para o Claude)"
+    )
+    nuvem, gpt = config.modelo_nuvem, config.modelo_openai
+    primeira = "ChatGPT" if config.roteador.complexas == "openai" else "Claude"
     modelo = config.modelo_local.modelo
     linhas = [
         "Config:",
@@ -70,13 +78,17 @@ def verificar(config: Config) -> list[str]:
         f" (modo pensando {'ligado' if config.modelo_local.pensar else 'desligado'})",
         f"  nuvem       rápido {nuvem.rapido} ({nuvem.esforco_rapido}), "
         f"pesado {nuvem.pesado} ({nuvem.esforco_pesado})",
-        f"  roteador    {config.roteador.modo}"
-        f"{', o local passa as difíceis para o Claude' if config.roteador.escalar else ''}",
+        f"  ChatGPT     rápido {gpt.rapido} ({gpt.esforco_rapido}), "
+        f"pesado {gpt.pesado} ({gpt.esforco_pesado})",
+        f"  roteador    {config.roteador.modo}, difíceis primeiro no {primeira}"
+        f"{', o local passa as difíceis para a nuvem' if config.roteador.escalar else ''}",
         f"  dados       {config.pasta_dados}",
         "",
         "Ambiente:",
         f"  chave da API Anthropic  {chave}",
         f"  pacote do Claude        {sdk}",
+        f"  chave da API OpenAI     {chave_openai}",
+        f"  pacote do ChatGPT       {sdk_openai}",
     ]
     if config.tem_chave_anthropic and sdk == "instalado":
         from nora.cerebro_nuvem import testar_conexao
@@ -84,6 +96,12 @@ def verificar(config: Config) -> list[str]:
         falha = testar_conexao(config)
         situacao = f"ok, chave aceita e {nuvem.pesado} disponível" if not falha else falha
         linhas.append(f"  Claude                  {situacao}")
+    if config.chave_openai and sdk_openai == "instalado":
+        from nora.cerebro_openai import testar_conexao as testar_openai
+
+        falha = testar_openai(config)
+        situacao = f"ok, chave aceita e {gpt.pesado} disponível" if not falha else falha
+        linhas.append(f"  ChatGPT                 {situacao}")
     instalados = modelos_ollama(config.ollama_host)
     if instalados is None:
         linhas.append(f"  Ollama                  não respondeu em {config.ollama_host}")

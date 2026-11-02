@@ -103,6 +103,14 @@ pesado = "claude-sonnet-5-5"
 esforco_rapido = "low"
 esforco_pesado = "medium"
 
+[modelos.openai]
+# ChatGPT pela API da OpenAI (chave OPENAI_API_KEY no .env; pip install -e ".[nuvem]").
+rapido = "gpt-5.5"
+pesado = "gpt-5.5"
+# Quanto pensa antes de responder: none, minimal, low, medium, high, xhigh, max.
+esforco_rapido = "low"
+esforco_pesado = "medium"
+
 [roteador]
 # Quem responde: "automatico" (o local conversa e passa as perguntas difíceis para o Claude),
 # "local" (só o Ollama) ou "nuvem" (só o Claude). Dá para trocar falando: "use o Claude",
@@ -114,6 +122,9 @@ escalar = true
 # perguntas longas) vão direto para o Claude, sem depender do local se julgar. E, se o local
 # respondeu e você reclamar ("tá errado", "explica melhor"), a pergunta ganha uma segunda chance.
 triagem = true
+# Quem responde as perguntas complexas: "openai" (ChatGPT) ou "anthropic" (Claude). Se ela não
+# responder (erro, sem chave, recusa), a outra nuvem responde; se as duas falharem, o local.
+complexas = "openai"
 
 [escuta]
 # Modo mãos livres ("nora ouvir"): detecção de fala (Silero VAD) e palavra de ativação.

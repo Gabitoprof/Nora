@@ -1,57 +1,69 @@
 # Cérebro da Nora: local e nuvem (v0.3.0)
 
-A Nora tem dois cérebros e um **roteador** que decide quem responde cada pergunta:
+A Nora tem três cérebros e um **roteador** que decide quem responde cada pergunta:
 
 | Cérebro | Onde roda | Custo | Para quê |
 |---|---|---|---|
 | **Local** (Ollama, `qwen3.5:9b`) | seu PC | grátis | a conversa do dia a dia, rápida e privada |
-| **Claude** (API da Anthropic) | nuvem | pago por uso | as perguntas difíceis, o modo nuvem e o modo jogo |
+| **ChatGPT** (API da OpenAI) | nuvem | pago por uso | o padrão para as perguntas e tarefas complexas |
+| **Claude** (API da Anthropic) | nuvem | pago por uso | a reserva do ChatGPT (e o que você pedir a ele pelo nome) |
 
 Para você, nada muda: a resposta sai com a mesma voz, a mesma personalidade, a mesma memória e a mesma emoção, venha de onde vier.
 
-## Instalar o Claude (uma vez)
+## Ligar a nuvem (uma vez)
 
-1. Crie uma chave em [console.anthropic.com](https://console.anthropic.com) (**API Keys**). Defina um **limite de gasto** no Console, para não ter surpresa.
+As duas nuvens são opcionais e independentes: configure uma, as duas ou nenhuma.
+
+1. Crie as chaves:
+   - ChatGPT: [platform.openai.com](https://platform.openai.com) (**API keys**). A API é cobrada à parte da assinatura do ChatGPT.
+   - Claude: [console.anthropic.com](https://console.anthropic.com) (**API Keys**).
+
+   Defina um **limite de gasto** em cada painel, para não ter surpresa.
 2. No `.env` da Nora (copie do `.env.example` se não tiver):
 
    ```
-   ANTHROPIC_API_KEY=sua-chave
+   OPENAI_API_KEY=sua-chave-da-openai
+   ANTHROPIC_API_KEY=sua-chave-da-anthropic
    ```
 
-3. Instale o pacote do Claude:
+3. Instale os pacotes das nuvens (dentro do `.venv`):
 
    ```powershell
-   pip install -e ".[nuvem]"
+   python -m pip install -e ".[nuvem]"
    ```
 
-4. Confira: `nora --verificar` deve mostrar a chave **definida** e o pacote do Claude **instalado**.
+4. Confira: `nora --verificar` mostra cada chave, cada pacote e, com chave, se a conexão deu certo (`ChatGPT ok, chave aceita...`, `Claude ok, chave aceita...`).
 
-Sem a chave, a Nora funciona igual a antes, só com o cérebro local.
+Só com a chave do Claude, ele faz o papel do ChatGPT, sem aviso. Sem nenhuma chave, a Nora funciona só com o cérebro local.
 
 ## Como o roteador decide
 
 Você não precisa de comando nenhum: no automático, ela decide sozinha, por três caminhos.
 
-- **Triagem:** perguntas com cara de pesadas vão direto para o Claude, sem depender do cérebro local se julgar capaz (modelos pequenos costumam se achar capazes demais): código, contas e fórmulas, "analisa", "compara", "explica em detalhes", planos e cronogramas, textos para escrever, resumir ou traduzir, e perguntas longas ou com texto colado.
-- **O local passa adiante:** na conversa do dia a dia, o cérebro local responde. Quando ele mesmo acha a pergunta difícil demais, passa para o Claude.
-- **Segunda chance:** se o local respondeu e você reclamar ("não é isso", "tá errado", "não entendi", "explica melhor"), a pergunta vai para o Claude.
+- **Triagem:** perguntas com cara de pesadas vão direto para a nuvem, sem depender do cérebro local se julgar capaz (modelos pequenos costumam se achar capazes demais): código, contas e fórmulas, "analisa", "compara", "explica em detalhes", planos e cronogramas, textos para escrever, resumir ou traduzir, e perguntas longas ou com texto colado.
+- **O local passa adiante:** na conversa do dia a dia, o cérebro local responde. Quando ele mesmo acha a pergunta difícil demais, passa para a nuvem.
+- **Segunda chance:** se o local respondeu e você reclamar ("não é isso", "tá errado", "não entendi", "explica melhor"), a pergunta vai para a nuvem.
 
-Enquanto o Claude pensa, a Nora diz uma frase de espera ("Deixa eu pensar com calma.").
+Na nuvem, a ordem é: **ChatGPT → Claude → local**. Enquanto a nuvem pensa, a Nora diz uma frase de espera ("Deixa eu pensar com calma.").
 
-- **Atalho (opcional):** "pensa com calma", "pergunta difícil", "pergunta pro Claude" ou "usa o Claude" dentro da pergunta vão direto para o Claude.
-- **Reserva:** se o Ollama não responder, o Claude responde. Se o Claude falhar (sem internet, chave errada, limite de uso), o local responde. Nos dois casos aparece um aviso `[cérebro] ...`.
-- **Sem o Claude configurado:** quando uma pergunta devia ir para o Claude, aparece uma vez `[cérebro] Essa pergunta era para o Claude, mas ele não está disponível (falta ...)`, e o local responde.
+- **ChatGPT sem resposta, Claude responde:** se o ChatGPT der erro (sem internet, chave recusada, sem créditos), recusar a pergunta ou não devolver nada, a mesma pergunta vai para o Claude, e aparece `[cérebro] ... Pedi ao Claude.`. Se os dois falharem, o local responde.
+- **Caiu no meio:** se a resposta começou a sair e a nuvem caiu, a Nora não repete tudo em outro cérebro (você ouviria o começo duas vezes): avisa que a resposta ficou pela metade.
+- **Chamar pelo nome:** "pergunta pro ChatGPT ...", "usa o Claude e me diz ...", "consulta o Claude sobre ..." mandam aquela pergunta direto para quem você chamou (o outro fica de reserva). Se o chamado não estiver configurado, aparece uma vez `[cérebro] O ChatGPT não está disponível (falta ...)` e o outro responde.
+- **Atalho:** "pensa com calma" ou "pergunta difícil" dentro da pergunta vão direto para a nuvem.
+- **Reserva do local:** se o Ollama não responder, a nuvem responde, com aviso `[cérebro] ...`.
+- **Sem nenhuma nuvem configurada:** quando uma pergunta devia subir, aparece uma vez `[cérebro] Essa pergunta era para a nuvem, mas ela não está disponível (ChatGPT: falta ...; Claude: falta ...)`, e o local responde.
 
-Com `--medir`, cada resposta mostra quem respondeu (`[local (qwen3.5:9b): ...]` ou `[Claude Sonnet 5.5: ...]`), e o histórico guarda isso em cada resposta.
+Com `--medir`, cada resposta mostra quem respondeu (`[local (qwen3.5:9b): ...]`, `[ChatGPT (gpt-5.5): ...]` ou `[Claude Sonnet 5.5: ...]`), e o histórico guarda isso em cada resposta.
 
 ## Comandos de voz (ou digitados)
 
 | Diga | O que acontece |
 |---|---|
 | "use o cérebro local" | só o Ollama responde (nada vai para a nuvem) |
-| "use o Claude" | tudo vai para o Claude (o modelo rápido; "pensa com calma" usa o pesado) |
-| "modo automático" | volta ao padrão |
-| "modo jogo" | **libera a placa de vídeo** (tira o modelo local da memória) e responde tudo pela nuvem; bom para jogar com a Nora ligada |
+| "use o ChatGPT" | a conversa toda vai para o ChatGPT (o modelo rápido; as difíceis usam o pesado); o Claude fica de reserva |
+| "use o Claude" | a conversa toda vai para o Claude; o ChatGPT fica de reserva |
+| "modo automático" | volta ao padrão (local conversa, ChatGPT nas difíceis) |
+| "modo jogo" | **libera a placa de vídeo** (tira o modelo local da memória) e responde tudo pela nuvem (pela última escolhida: ChatGPT, ou o Claude depois de "use o Claude"); bom para jogar com a Nora ligada |
 | "sair do modo jogo" | volta a pensar no PC |
 
 A troca vale até você fechar a Nora. Para mudar o padrão, use `[roteador] modo` na config.
@@ -59,17 +71,26 @@ A troca vale até você fechar a Nora. Para mudar o padrão, use `[roteador] mod
 ## Ajustes (`config/local.toml`)
 
 ```toml
+[modelos.openai]
+rapido = "gpt-5.5"              # conversa depois de "use o ChatGPT" e no modo jogo
+pesado = "gpt-5.5"              # as perguntas complexas
+esforco_rapido = "low"          # none, minimal, low, medium, high, xhigh, max
+esforco_pesado = "medium"
+
 [modelos.nuvem]
-rapido = "claude-haiku-5-5"     # conversa no modo nuvem e no modo jogo
-pesado = "claude-sonnet-5-5"    # as perguntas difíceis
-esforco_rapido = "low"          # quanto pensa antes de responder: low, medium, high, xhigh, max
+rapido = "claude-haiku-5-5"     # conversa depois de "use o Claude"
+pesado = "claude-sonnet-5-5"    # as complexas, quando o Claude responde
+esforco_rapido = "low"          # low, medium, high, xhigh, max
 esforco_pesado = "medium"
 
 [roteador]
 modo = "automatico"             # automatico, local ou nuvem
-escalar = true                  # o local pode passar as difíceis para o Claude
+complexas = "openai"            # quem tenta primeiro: "openai" (ChatGPT) ou "anthropic" (Claude)
+escalar = true                  # o local pode passar as difíceis para a nuvem
 triagem = true                  # perguntas com cara de pesadas vão direto; reclamação dá segunda chance
 ```
+
+Para inverter a ordem (Claude primeiro, ChatGPT de reserva), use `complexas = "anthropic"`. Os nomes dos modelos mudam com o tempo: confira os disponíveis no painel de cada empresa e troque aqui; o `--verificar` diz se o modelo pesado existe para a sua chave.
 
 Esforço mais alto deixa as respostas melhores, mas mais lentas e mais caras. Para voz em tempo real, `low` e `medium` costumam ser o equilíbrio.
 
@@ -77,11 +98,11 @@ Nos modelos que aceitam (Sonnet 5.5, Opus 5.5), se o Claude recusar uma pergunta
 
 ## Privacidade e custo
 
-- O que vai para a nuvem é **só a pergunta que o Claude responde**, com a persona e as notas da memória daquela pergunta. A conversa do dia a dia fica no PC.
+- O que vai para a nuvem é **só a pergunta que a nuvem responde**, com a persona, as notas da memória daquela pergunta e a conversa recente. A conversa do dia a dia fica no PC. Se o ChatGPT falhar, a mesma pergunta vai também para o Claude.
 - Com "use o cérebro local", nada sai do seu computador.
-- O custo depende do uso. O Haiku é bem barato; o Sonnet custa mais, por isso só entra nas perguntas difíceis. Acompanhe o gasto no Console da Anthropic.
+- O custo depende do uso. O Haiku é bem barato; o Sonnet custa mais, por isso só entra nas perguntas difíceis. Acompanhe o gasto nos painéis da OpenAI e da Anthropic.
 
 ## Limites desta versão
 
-- A triagem olha palavras, não o sentido: às vezes manda para o Claude algo simples ("organiza minha semana" vai como plano) ou deixa passar algo difícil escrito de um jeito comum. A segunda chance cobre o segundo caso; se a triagem mandar coisa demais para a nuvem, desligue com `triagem = false`.
+- A triagem olha palavras, não o sentido: às vezes manda para a nuvem algo simples ("organiza minha semana" vai como plano) ou deixa passar algo difícil escrito de um jeito comum. A segunda chance cobre o segundo caso; se a triagem mandar coisa demais para a nuvem, desligue com `triagem = false`.
 - Trocar a **voz** por comando e o índice das notas do Obsidian ainda vêm nesta etapa.
