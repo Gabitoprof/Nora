@@ -5,7 +5,9 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
-Versão em desenvolvimento: `0.2.0.dev0`.
+## [0.2.0] - 2026-11-02
+
+**Memória.** A Nora lembra de você entre uma conversa e outra: anota fatos em áreas (saúde, estudos, trabalho...), guarda cada troca inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias e preferências). Critério da etapa atingido: no teste, fatos ditos numa conversa (a prova, o aniversário) foram lembrados em conversas novas, inclusive pela data ("foi ontem, 31 de outubro"). Junto vieram a digitação no lugar da fala, a prioridade da voz sobre outros programas e o caminho para criar uma voz própria (dataset, verificador e treino do Piper no Kaggle ou no Colab).
 
 ### Adicionado
 

@@ -181,7 +181,7 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 ### 8.2 Obsidian como segundo cérebro
 *Origem: [Referência 01](docs/referencias/video-01-assistente-local.md).*
 
-- O assistente lê o **vault do Obsidian** (notas `.md`) como base de conhecimento, indexada no SQLite + sqlite-vec. Encaixe: **Etapa 2** (índice).
+- O assistente lê o **vault do Obsidian** (notas `.md`) como base de conhecimento, indexada no SQLite + sqlite-vec. Encaixe: **Etapa 3** (índice; saiu da Etapa 2 para ela não ficar grande demais).
 - O HUD desenha o **grafo das notas** e destaca as que foram usadas na resposta. Encaixe: **Etapa 4**.
 - Só pastas liberadas no config são lidas. Notas pessoais continuam fora do GitHub.
 

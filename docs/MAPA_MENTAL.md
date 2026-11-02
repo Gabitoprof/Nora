@@ -45,7 +45,11 @@ mindmap
     Memória
       SQLite e sqlite-vec
       Histórico bruto
+        Memória total
       Memória curada
+        Áreas por assunto
+        Agenda de datas
+        Aprende pronúncia e jeito de falar
       Conhecimento
       Futuro LoRA
     Extensões
@@ -98,7 +102,7 @@ mindmap
 ```mermaid
 flowchart LR
   v00["v0.0.0 Fundação"]:::done --> v01["v0.1.0 Conversa por voz"]:::done
-  v01 --> v02["v0.2.0 Memória"]:::doing
+  v01 --> v02["v0.2.0 Memória"]:::done
   v02 --> v03["v0.3.0 Roteador de modelos"]:::pend
   v03 --> v04["v0.4.0 HUD"]:::pend
   v04 --> v05["v0.5.0 Ferramentas MCP"]:::pend
@@ -116,7 +120,7 @@ flowchart LR
 |---|---|---|---|
 | v0.0.0 | Fundação | ✅ | Projeto roda o "hello world" e a config carrega |
 | v0.1.0 | Conversa por voz | ✅ | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
-| v0.2.0 | Memória | 🔄 | Lembra de fatos entre sessões |
+| v0.2.0 | Memória | ✅ | Lembra de fatos entre sessões |
 | v0.3.0 | Roteador de modelos | ⬜ | Pergunta difícil vai para a API e volta com a mesma voz |
 | v0.4.0 | HUD | ⬜ | Interface reage à voz em tempo real |
 | v0.5.0 | Ferramentas MCP | ⬜ | Executa ações por voz |
