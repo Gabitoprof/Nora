@@ -1,12 +1,13 @@
 from types import SimpleNamespace
 
-import numpy as np
 import pytest
 
-from nora.audio import duracao_wav
-from nora.cli import laboratorio_de_voz
-from nora.config import carregar
-from nora.servidor_kokoro import Sintetizador, ler_receita
+np = pytest.importorskip("numpy")  # o laboratório mistura vozes com numpy (extra [voz])
+
+from nora.audio import duracao_wav  # noqa: E402
+from nora.cli import laboratorio_de_voz  # noqa: E402
+from nora.config import carregar  # noqa: E402
+from nora.servidor_kokoro import Sintetizador, ler_receita  # noqa: E402
 
 
 def test_ler_receita():
