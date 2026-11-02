@@ -85,7 +85,20 @@ def test_quadros_e_falas_de_blocos_irregulares():
             return 0.9 if q[0] else 0.0
 
     detectadas = list(falas(quadros, VadFalso(), DetectorDeFala(silencio_ms=64, minimo_ms=32)))
-    assert len(detectadas) == 1
+    assert len([f for f in detectadas if f is not None]) == 1
+
+
+def test_microfone_captando_sem_parar_ainda_da_folga_para_o_teclado():
+    """Com áudio chegando sem parar (e ninguém falando), o laço precisa receber None de vez em
+    quando para ler o que foi digitado; antes, o texto só era lido depois de uma fala."""
+
+    class VadCalado:
+        def probabilidade(self, q):
+            return 0.0
+
+    silencio = [b"\x00\x00" * 512] * 25
+    saida = list(falas(silencio, VadCalado(), DetectorDeFala()))
+    assert saida.count(None) == 2  # uma folga a cada 10 quadros
 
 
 # --- conversa mãos livres -----------------------------------------------------------------------

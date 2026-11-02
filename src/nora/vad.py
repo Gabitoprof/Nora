@@ -133,6 +133,10 @@ class DetectorDeFala:
         return fala if voz >= self._minimo else None
 
 
+# Quadros de 32 ms sem fala entre duas folgas para o teclado (~0,3 s).
+QUADROS_POR_FOLGA = 10
+
+
 def em_quadros(blocos: Iterable[bytes]) -> Iterator[bytes | None]:
     """Reagrupa blocos de PCM de qualquer tamanho em quadros de 512 amostras. Um bloco vazio
     (o microfone sem áudio novo) vira None, para quem consome poder fazer outras coisas."""
@@ -148,12 +152,20 @@ def em_quadros(blocos: Iterable[bytes]) -> Iterator[bytes | None]:
 
 
 def falas(quadros: Iterable[bytes | None], vad, detector: DetectorDeFala) -> Iterator[bytes | None]:
-    """Passa cada quadro pelo VAD e pelo detector; devolve as falas completas (e None quando o
-    microfone está sem áudio novo)."""
+    """Passa cada quadro pelo VAD e pelo detector; devolve as falas completas, e None quando o
+    microfone está sem áudio novo ou a cada ~0,3 s de áudio sem fala completa: com o microfone
+    captando sem parar, quem consome também precisa de uma folga para olhar o teclado."""
+    sem_fala = 0
     for quadro in quadros:
         if quadro is None:
             yield None
             continue
         fala = detector.alimentar(quadro, vad.probabilidade(quadro))
         if fala:
+            sem_fala = 0
             yield fala
+            continue
+        sem_fala += 1
+        if sem_fala >= QUADROS_POR_FOLGA:
+            sem_fala = 0
+            yield None
