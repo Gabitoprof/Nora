@@ -30,7 +30,9 @@ indicar outra.
 - Quando o fato tiver um dia (compromisso, prova, consulta, viagem, aniversário, data \
 comemorativa, acontecimento), ponha esse dia também em "data", no formato AAAA-MM-DD. Hoje é \
 {dia_da_semana}, {hoje}: calcule a partir daí "amanhã", "sexta", "dia 21", "semana que vem". \
-Escreva a data também no texto do fato (ex.: "{usuario} tem prova de cálculo em 21/11/2026").
+Escreva a data também no texto do fato (ex.: "{usuario} tem prova de cálculo em 21/11/2026"). \
+Não ponha "data" só porque a conversa aconteceu hoje: um pedido, uma ideia ou um plano sem dia \
+marcado ficam sem data.
 - Use "anual": true para o que se repete todo ano (aniversários, datas comemorativas).
 - Ignore cumprimentos, perguntas gerais, conhecimento sobre o mundo, humor passageiro sem \
 motivo e o que a assistente disse sobre si mesma.

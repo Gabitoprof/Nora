@@ -110,6 +110,10 @@ esforco_pesado = "medium"
 modo = "automatico"
 # No automático, o cérebro local pode passar adiante as perguntas que acha difíceis demais.
 escalar = true
+# Triagem: perguntas com cara de pesadas (código, contas, análises, planos, textos para escrever,
+# perguntas longas) vão direto para o Claude, sem depender do local se julgar. E, se o local
+# respondeu e você reclamar ("tá errado", "explica melhor"), a pergunta ganha uma segunda chance.
+triagem = true
 
 [escuta]
 # Modo mãos livres ("nora ouvir"): detecção de fala (Silero VAD) e palavra de ativação.

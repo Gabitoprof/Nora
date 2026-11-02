@@ -9,7 +9,15 @@ from nora.cerebro import CerebroIndisponivel, Medidas
 from nora.cerebro_nuvem import RECUSA, CerebroNuvem, nome_do_modelo, separar_sistema
 from nora.config import carregar
 from nora.conversa import nova_conversa
-from nora.roteador import ESCALAR, FRASES_DE_ESPERA, Roteador, comando_em, pede_pesado
+from nora.roteador import (
+    ESCALAR,
+    FRASES_DE_ESPERA,
+    Roteador,
+    comando_em,
+    insatisfeito,
+    pede_pesado,
+    peso_da_pergunta,
+)
 
 
 class FluxoFalso:
@@ -116,7 +124,7 @@ def test_conversa_do_dia_a_dia_fica_no_local(criar_raiz):
 def test_local_passa_a_dificil_para_o_claude_com_frase_de_espera(criar_raiz):
     local = LocalFalso(resposta=f" {ESCALAR}")
     roteador, cliente = montar(criar_raiz, local=local)
-    resposta = falar(roteador, "calcule a integral de x ao quadrado de 0 a 3")
+    resposta = falar(roteador, "me fala sobre a vida das formigas")
     espera, resto = resposta.split(" ", 1)[0], resposta
     assert any(resto.startswith(f) for f in FRASES_DE_ESPERA), espera
     assert resposta.endswith("Resposta do Claude.") and ESCALAR not in resposta
@@ -204,3 +212,36 @@ def test_conversa_usa_o_roteador_e_guarda_quem_respondeu(criar_raiz):
     "".join(conversa.perguntar("pensa com calma: algo difícil"))
     assert conversa.origem == "Claude Sonnet 5.5"
     assert '"modelo": "Claude Sonnet 5.5"' in conversa.historico.arquivo.read_text("utf-8")
+
+
+def test_triagem_manda_as_pesadas_direto_e_segunda_chance(criar_raiz):
+    roteador, cliente = montar(criar_raiz)
+    assert peso_da_pergunta("monta um plano de estudos de cálculo para 3 semanas") == "plano"
+    assert peso_da_pergunta("quanto é 17 x 23?") == "conta"
+    assert peso_da_pergunta("escreve um script python que renomeia fotos") == "código"
+    assert peso_da_pergunta("me conta uma piada") == ""
+    resposta = falar(roteador, "monta um plano de estudos de cálculo para 3 semanas")
+    assert resposta.endswith("Resposta do Claude.") and roteador.local.pedidos == []
+
+    # o local responde a conversa; a reclamação seguinte vai para o Claude
+    falar(roteador, "qual o maior planeta?")
+    assert roteador.origem.startswith("local")
+    antes = len(cliente.pedidos)
+    assert falar(roteador, "tá errado isso").endswith("Resposta do Claude.")
+    assert len(cliente.pedidos) == antes + 1
+    # reclamar de uma resposta que já veio do Claude não repete a subida
+    assert roteador.origem.startswith("Claude")
+    assert insatisfeito("não entendi") and not insatisfeito("obrigado!")
+
+
+def test_triagem_desligada_e_aviso_quando_falta_o_claude(criar_raiz):
+    roteador, cliente = montar(criar_raiz, toml="[roteador]\ntriagem = false\n")
+    assert falar(roteador, "monta um plano de estudos") == "Resposta local."
+    assert cliente.pedidos == []
+
+    config = carregar(criar_raiz(), ambiente={})
+    sem_claude = Roteador(config, LocalFalso())
+    assert falar(sem_claude, "pensa com calma: monta um plano de estudos") == "Resposta local."
+    falar(sem_claude, "escreve um script python")
+    avisos = sem_claude.avisos_pendentes()
+    assert len(avisos) == 1 and "falta a ANTHROPIC_API_KEY" in avisos[0]  # avisa uma vez só

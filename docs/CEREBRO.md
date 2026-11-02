@@ -30,9 +30,17 @@ Sem a chave, a Nora funciona igual a antes, só com o cérebro local.
 
 ## Como o roteador decide
 
-- **Automático (padrão):** o cérebro local conversa. Quando acha a pergunta difícil demais para ele (contas complexas, código, uma análise detalhada, um plano com muitas etapas), passa adiante, e a pergunta sobe para o Claude. Enquanto o Claude pensa, a Nora diz uma frase de espera ("Deixa eu pensar com calma.").
-- **Pedido direto:** "pensa com calma", "pergunta difícil", "pergunta pro Claude" ou "usa o Claude" dentro da pergunta vão direto para o Claude.
+Você não precisa de comando nenhum: no automático, ela decide sozinha, por três caminhos.
+
+- **Triagem:** perguntas com cara de pesadas vão direto para o Claude, sem depender do cérebro local se julgar capaz (modelos pequenos costumam se achar capazes demais): código, contas e fórmulas, "analisa", "compara", "explica em detalhes", planos e cronogramas, textos para escrever, resumir ou traduzir, e perguntas longas ou com texto colado.
+- **O local passa adiante:** na conversa do dia a dia, o cérebro local responde. Quando ele mesmo acha a pergunta difícil demais, passa para o Claude.
+- **Segunda chance:** se o local respondeu e você reclamar ("não é isso", "tá errado", "não entendi", "explica melhor"), a pergunta vai para o Claude.
+
+Enquanto o Claude pensa, a Nora diz uma frase de espera ("Deixa eu pensar com calma.").
+
+- **Atalho (opcional):** "pensa com calma", "pergunta difícil", "pergunta pro Claude" ou "usa o Claude" dentro da pergunta vão direto para o Claude.
 - **Reserva:** se o Ollama não responder, o Claude responde. Se o Claude falhar (sem internet, chave errada, limite de uso), o local responde. Nos dois casos aparece um aviso `[cérebro] ...`.
+- **Sem o Claude configurado:** quando uma pergunta devia ir para o Claude, aparece uma vez `[cérebro] Essa pergunta era para o Claude, mas ele não está disponível (falta ...)`, e o local responde.
 
 Com `--medir`, cada resposta mostra quem respondeu (`[local (qwen3.5:9b): ...]` ou `[Claude Sonnet 5.5: ...]`), e o histórico guarda isso em cada resposta.
 
@@ -60,6 +68,7 @@ esforco_pesado = "medium"
 [roteador]
 modo = "automatico"             # automatico, local ou nuvem
 escalar = true                  # o local pode passar as difíceis para o Claude
+triagem = true                  # perguntas com cara de pesadas vão direto; reclamação dá segunda chance
 ```
 
 Esforço mais alto deixa as respostas melhores, mas mais lentas e mais caras. Para voz em tempo real, `low` e `medium` costumam ser o equilíbrio.
@@ -74,5 +83,5 @@ Nos modelos que aceitam (Sonnet 5.5, Opus 5.5), se o Claude recusar uma pergunta
 
 ## Limites desta versão
 
-- O cérebro local às vezes passa adiante perguntas que conseguiria responder, ou responde sozinho algumas que deveriam subir. Se acontecer muito, desligue com `escalar = false` e use os pedidos diretos ("pensa com calma").
+- A triagem olha palavras, não o sentido: às vezes manda para o Claude algo simples ("organiza minha semana" vai como plano) ou deixa passar algo difícil escrito de um jeito comum. A segunda chance cobre o segundo caso; se a triagem mandar coisa demais para a nuvem, desligue com `triagem = false`.
 - Trocar a **voz** por comando e o índice das notas do Obsidian ainda vêm nesta etapa.

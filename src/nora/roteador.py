@@ -59,6 +59,60 @@ _COMANDOS = (
 )
 
 
+# Triagem: sinais de pergunta pesada, vistos no texto antes de qualquer modelo. Não depende do
+# cérebro local se julgar capaz (modelos pequenos costumam se achar capazes demais).
+_SINAIS_DE_PESO = (
+    (
+        "código",
+        r"\b(codigo|script|programa|programar|funcao|python|javascript|typescript|java|sql|"
+        r"regex|html|css|api|bug|traceback|compilar|compila|debug|algoritmo)\b|```",
+    ),
+    (
+        "conta",
+        r"\d+(?:[.,]\d+)?\s*[-+*/^x×÷]\s*\d+|\b(calcule|calcula|calcular|resolva|resolve a|"
+        r"integral|derivada|equacao|inequacao|matriz|logaritmo|juros|porcentagem de|"
+        r"probabilidade|estatistica)\b",
+    ),
+    (
+        "análise",
+        r"\b(analise|analisa|analisar|compare|compara|comparar|comparacao|avalie|avalia|"
+        r"pros e contras|vantagens e desvantagens|explique em detalhes|explica em detalhes|"
+        r"detalhadamente|aprofunda|por que exatamente)\b",
+    ),
+    (
+        "plano",
+        r"\b(plano de|planejamento|cronograma|roteiro de|passo a passo|estrategia|"
+        r"monte um|monta um|montar um|organize|organiza um)\b",
+    ),
+    (
+        "texto",
+        r"\b(escreva|escreve|redija|redacao|resuma|resume este|resume esse|revise|revisa|"
+        r"traduza|traduz este|traduz esse|e-?mail formal|artigo|relatorio|curriculo)\b",
+    ),
+)
+# Reação a uma resposta ruim do local: a pergunta ganha uma segunda chance com o Claude.
+_INSATISFEITO = (
+    r"\b(nao (e|foi) (isso|bem isso|o que (eu )?perguntei)|ta errado|esta errado|errou|"
+    r"resposta errada|nao entendi|voce nao entendeu|explica melhor|explique melhor|"
+    r"nao faz sentido|nada a ver|que isso)\b"
+)
+
+
+def peso_da_pergunta(texto: str) -> str:
+    """Por que a pergunta parece pesada ("código", "conta"...), ou "" se parece conversa."""
+    limpo = _texto(texto)
+    if len(limpo.split()) > 60 or len(texto) > 400:
+        return "texto longo"
+    for motivo, padrao in _SINAIS_DE_PESO:
+        if re.search(padrao, limpo):
+            return motivo
+    return ""
+
+
+def insatisfeito(texto: str) -> bool:
+    return bool(re.search(_INSATISFEITO, _texto(texto)))
+
+
 def _texto(texto: str) -> str:
     sem_acento = unicodedata.normalize("NFKD", texto.lower())
     return " ".join("".join(c for c in sem_acento if not unicodedata.combining(c)).split())
@@ -97,6 +151,7 @@ class Roteador:
         self.ativo = self.local  # quem respondeu por último (para as medidas)
         self.origem = ""
         self.avisos: list[str] = []
+        self._avisou_sem_nuvem = False
 
     # --- o que a conversa usa ---------------------------------------------------------------
 
@@ -126,16 +181,44 @@ class Roteador:
         if comando:
             yield self._trocar(comando)
             return
+        anterior_local = self.origem.startswith("local")
         if self.jogo or self.modo == "nuvem":
-            pesada = pede_pesado(pergunta)
+            pesada = pede_pesado(pergunta) or bool(self._triagem(pergunta))
             yield from self._nuvem(mensagens, self.pesado if pesada else self.rapido, pesada)
-        elif self.modo == "local":
+            return
+        if self.modo == "local":
             yield from self._local(mensagens, escalar=False)
-        elif pede_pesado(pergunta) and self.nuvem_disponivel():
+            return
+        motivo = (
+            "pedido"
+            if pede_pesado(pergunta)
+            else self._triagem(pergunta)
+            or ("segunda chance" if anterior_local and insatisfeito(pergunta) else "")
+        )
+        if motivo and self.nuvem_disponivel():
             yield from self._nuvem(mensagens, self.pesado, espera=True)
+            return
+        if motivo:
+            self._avisar_sem_nuvem()
+        escalar = self.config.roteador.escalar and self.nuvem_disponivel()
+        yield from self._local(mensagens, escalar=escalar)
+
+    def _triagem(self, pergunta: str) -> str:
+        return peso_da_pergunta(pergunta) if self.config.roteador.triagem else ""
+
+    def _avisar_sem_nuvem(self) -> None:
+        """Uma vez por conversa: a pergunta era para o Claude, mas ele não está disponível."""
+        if self._avisou_sem_nuvem:
+            return
+        self._avisou_sem_nuvem = True
+        if not self.config.chave_anthropic:
+            falta = "falta a ANTHROPIC_API_KEY no .env"
         else:
-            escalar = self.config.roteador.escalar and self.nuvem_disponivel()
-            yield from self._local(mensagens, escalar=escalar)
+            falta = 'falta o pacote do Claude (pip install -e ".[nuvem]")'
+        self.avisos.append(
+            f"Essa pergunta era para o Claude, mas ele não está disponível ({falta}). "
+            "Respondi pelo cérebro local."
+        )
 
     # --- caminhos ---------------------------------------------------------------------------
 

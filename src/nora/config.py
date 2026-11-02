@@ -149,6 +149,7 @@ ESFORCOS = ("low", "medium", "high", "xhigh", "max")
 class Roteador:
     modo: str = "automatico"
     escalar: bool = True
+    triagem: bool = True
 
 
 @dataclass(frozen=True)
@@ -238,7 +239,11 @@ def _roteador(dados: dict[str, Any]) -> Roteador:
     modo = _campo(dados, "roteador", "modo", str)
     if modo not in MODOS_DO_ROTEADOR:
         raise ConfigError(f"[roteador] modo deve ser um de {MODOS_DO_ROTEADOR}, veio {modo!r}.")
-    return Roteador(modo=modo, escalar=_campo(dados, "roteador", "escalar", bool))
+    return Roteador(
+        modo=modo,
+        escalar=_campo(dados, "roteador", "escalar", bool),
+        triagem=_campo(dados, "roteador", "triagem", bool),
+    )
 
 
 def _variacao(dados: dict[str, Any], chave: str) -> float:
