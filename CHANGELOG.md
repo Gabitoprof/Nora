@@ -5,6 +5,13 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
+Versão em desenvolvimento: `0.3.0.dev0`.
+
+### Adicionado
+
+- **Emoção na voz** (`[emocao]`): a Nora escolhe sozinha a emoção de cada frase (alegre, empolgada, carinhosa, calma, séria, triste, curiosa, sussurro, risada, suspiro) pelo contexto: o que você disse, o que ela lembra, a agenda e a hora. No ElevenLabs v3 vira audio tag (ela ri, suspira, sussurra); no Flash, ajuste de tom por frase (estabilidade, estilo, velocidade); nas vozes locais e na reserva, a marca só é tirada. A tela, o histórico e a memória nunca mostram as marcas. `intensidade` (0 a 1) e `reacoes_por_resposta` controlam o exagero.
+- **Aprende com as suas reações:** a curadoria vê o tom da resposta anterior e, quando você reage ("kkkk", "calma, menos", se abre depois de um tom carinhoso), guarda como preferência de tom, sem você precisar pedir.
+
 ## [0.2.0] - 2026-11-02
 
 **Memória.** A Nora lembra de você entre uma conversa e outra: anota fatos em áreas (saúde, estudos, trabalho...), guarda cada troca inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias e preferências). Critério da etapa atingido: no teste, fatos ditos numa conversa (a prova, o aniversário) foram lembrados em conversas novas, inclusive pela data ("foi ontem, 31 de outubro"). Junto vieram a digitação no lugar da fala, a prioridade da voz sobre outros programas e o caminho para criar uma voz própria (dataset, verificador e treino do Piper no Kaggle ou no Colab).

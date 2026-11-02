@@ -48,6 +48,12 @@ falar, escrita do jeito que soa (ex.: {{"palavra": "hoje", "fala": "ôje"}}).
 repita minha pergunta", "seja mais direta", "me chama de você"), anote uma frase curta no \
 imperativo, dirigida à assistente (ex.: "Não repita a pergunta antes de responder."). Pedidos \
 só para aquela resposta não contam.
+- Também em "preferencias": o que a reação de {usuario} ao TOM da resposta anterior da \
+assistente mostrar, mesmo sem pedido direto. As etiquetas entre chaves na resposta anterior \
+({{risada}}, {{carinhosa}}, {{empolgada}}...) mostram a emoção que a voz usou. Ex.: riu de uma \
+brincadeira sobre estudos → "Brincadeiras sobre estudos funcionam com {usuario}."; reclamou de \
+exagero ("calma", "menos") → "Seja menos expressiva."; se abriu depois de um tom carinhoso → \
+"Quando {usuario} estiver chateado, use um tom carinhoso." Só anote quando a reação for clara.
 
 Responda só com JSON no formato {{"fatos": [{{"texto": "...", "area": "...", \
 "data": "AAAA-MM-DD ou vazio", "anual": false}}], "pronuncias": [{{"palavra": "...", \
@@ -99,6 +105,7 @@ def curar(
     hoje: str,
     areas: list[str] | tuple[str, ...] = (),
     timeout: float = 120.0,
+    anterior: str = "",
 ) -> Curadoria:
     """Os fatos que valem guardar desta troca (com área e, se tiverem, data), as pronúncias
     corrigidas e as preferências sobre o jeito de falar."""
@@ -122,7 +129,10 @@ def curar(
                     },
                     {
                         "role": "user",
-                        "content": f"{usuario}: {pergunta}\nAssistente: {resposta}",
+                        "content": (
+                            f"Resposta anterior da assistente: {anterior}\n" if anterior else ""
+                        )
+                        + f"{usuario}: {pergunta}\nAssistente: {resposta}",
                     },
                 ],
                 "stream": False,

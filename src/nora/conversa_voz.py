@@ -20,6 +20,7 @@ from nora import audio
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
 from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
+from nora.emocao import FiltroDeTela
 from nora.frases import SeparadorDeFrases
 from nora.ouvido import OuvidoWhisper
 from nora.prioridade import abafar_outros
@@ -150,10 +151,12 @@ def responder_falando(
                 locutor.tempos.primeira_frase = time.perf_counter() - inicio
             locutor.falar(frase)
 
+    tela = FiltroDeTela()  # a tela não mostra as etiquetas de emoção; a voz recebe tudo
     try:
         for pedaco in conversa.perguntar(texto):
-            escrever(pedaco, fim="")
+            escrever(tela.alimentar(pedaco), fim="")
             falar(separador.alimentar(pedaco))
+        escrever(tela.finalizar(), fim="")
         falar(separador.finalizar())
     except CerebroIndisponivel as erro:
         escrever(f"\n[erro] {erro}")

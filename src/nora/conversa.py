@@ -11,6 +11,7 @@ from nora.agenda import intervalo_da_pergunta, quando
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
 from nora.curadoria import curar
+from nora.emocao import FiltroDeTela, sem_emocoes
 from nora.historico import Historico
 from nora.memoria import Fato, Memoria, Troca, abrir_memoria
 from nora.persona import prompt_de_sistema
@@ -159,7 +160,7 @@ class Conversa:
             ]
         return [{"role": "system", "content": "\n".join(partes)}]
 
-    def _memorizar(self, pergunta: str, resposta: str) -> None:
+    def _memorizar(self, pergunta: str, resposta: str, anterior: str = "") -> None:
         """Guarda a troca inteira e anota os fatos novos (em segundo plano)."""
         try:
             agora = datetime.now()
@@ -170,7 +171,7 @@ class Conversa:
                 return
             areas = [area for area, _ in self.memoria.areas()]
             hoje = agora.strftime("%d/%m/%Y")
-            curadoria = curar(self.config, pergunta, resposta, hoje, areas)
+            curadoria = curar(self.config, pergunta, resposta, hoje, areas, anterior=anterior)
             for palavra, fala in curadoria.pronuncias:
                 self.memoria.ensinar_pronuncia(palavra, fala)
                 self._avisar(f"aprendi a pronúncia: {palavra} → {fala}")
@@ -210,6 +211,10 @@ class Conversa:
 
     def perguntar(self, texto: str):
         """Devolve a resposta aos pedaços e guarda pergunta e resposta no histórico."""
+        # a resposta anterior (com as etiquetas de emoção) mostra a que tom a pessoa reage agora
+        anterior = next(
+            (m["content"] for m in reversed(self.mensagens) if m["role"] == "assistant"), ""
+        )
         self.mensagens.append({"role": "user", "content": texto})
         self.historico.registrar("usuario", texto)
         envio = self.mensagens[:-1] + self._lembrar(texto) + self.mensagens[-1:]
@@ -221,8 +226,11 @@ class Conversa:
         except CerebroIndisponivel:
             self.mensagens.pop()
             raise
-        resposta = "".join(partes).strip()
-        self.mensagens.append({"role": "assistant", "content": resposta})
+        # A resposta crua tem as etiquetas de emoção ({alegre}...), que só a voz usa: a conversa
+        # guarda a crua (o modelo segue o próprio jeito), o histórico e a memória, a limpa.
+        crua = "".join(partes).strip()
+        resposta = sem_emocoes(crua)
+        self.mensagens.append({"role": "assistant", "content": crua})
         medidas = self.cerebro.medidas
         self.historico.registrar(
             "assistente",
@@ -233,7 +241,9 @@ class Conversa:
             lembrancas=[fato.id for fato in self.lembrancas],
         )
         if self.memoria is not None and resposta:
-            linha = threading.Thread(target=self._memorizar, args=(texto, resposta), daemon=True)
+            linha = threading.Thread(
+                target=self._memorizar, args=(texto, resposta, anterior), daemon=True
+            )
             linha.start()
             self._curadorias.append(linha)
 
@@ -284,9 +294,11 @@ def conversar(
             continue
 
         escrever(f"{nome}: ", fim="")
+        tela = FiltroDeTela()  # as etiquetas de emoção ({alegre}...) não aparecem
         try:
             for pedaco in conversa.perguntar(texto):
-                escrever(pedaco, fim="")
+                escrever(tela.alimentar(pedaco), fim="")
+            escrever(tela.finalizar(), fim="")
         except CerebroIndisponivel as erro:
             escrever(f"\n[erro] {erro}")
             continue

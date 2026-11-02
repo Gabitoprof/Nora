@@ -279,6 +279,27 @@ Mude um de cada vez, em passos pequenos, e compare com `nora voz salvar "frase" 
 
 Se a voz for metálica ou chiada (não só monótona), o ajuste não resolve: é treino de menos. Treine mais épocas ou com mais frases (veja [TREINAR_VOZ.md](TREINAR_VOZ.md)).
 
+## Emoção na voz
+
+A Nora escolhe sozinha a emoção de cada frase, olhando o que você disse e como disse, o que ela lembra de você, a agenda e a hora do dia. Você não marca nada.
+
+| Motor | O que acontece |
+|---|---|
+| ElevenLabs **v3** (`modelo = "eleven_v3"`) | Vira audio tag: ela ri, suspira, sussurra, fala animada ou triste. Mais expressivo, mas começa a falar um pouco mais devagar |
+| ElevenLabs Flash, Turbo ou Multilingual | Esses modelos não entendem as tags: a emoção vira ajuste de tom por frase (mais ou menos estável, mais ou menos ênfase, um pouco mais rápida ou mais lenta) |
+| Piper, Kokoro, ComfyUI | A marca é tirada; a voz fala normal (inclusive quando entra como reserva) |
+
+Ajustes no `config/local.toml`:
+
+```toml
+[emocao]
+ativa = true
+intensidade = 0.5          # 0 = sem emoção, 1 = bem expressiva
+reacoes_por_resposta = 1   # no máximo quantas risadas ou suspiros por resposta
+```
+
+Ela também aprende com as suas reações: se você ri de uma brincadeira, reclama de exagero ou se abre depois de um tom carinhoso, a curadoria guarda isso como preferência (`nora memoria preferencias`). Para mudar na hora, diga: "não precisa rir tanto", "pode ser mais animada".
+
 ## Corrigir a pronúncia de uma palavra
 
 Se a voz fala mal alguma palavra, reescreva como ela deve soar, só na fala (a tela continua mostrando o texto original). Vale para qualquer motor de voz:

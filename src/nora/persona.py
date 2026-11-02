@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from nora.config import Config
+from nora.emocao import instrucoes
 
 DIAS = [
     "segunda-feira",
@@ -65,6 +66,11 @@ def prompt_de_sistema(config: Config, agora: datetime | None = None) -> str:
                 "poucas palavras: isso fica guardado e vale para as próximas conversas.",
             ]
             if config.memoria.ativa
+            else []
+        ),
+        *(
+            [instrucoes(config.emocao.intensidade, config.emocao.reacoes_por_resposta)]
+            if config.emocao.ativa and config.emocao.intensidade > 0
             else []
         ),
         f"Agora é {DIAS[agora.weekday()]}, {agora:%d/%m/%Y}, {agora:%H:%M}.",

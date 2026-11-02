@@ -36,6 +36,13 @@ class Persona:
 
 
 @dataclass(frozen=True)
+class Emocao:
+    ativa: bool = True
+    intensidade: float = 0.5
+    reacoes_por_resposta: int = 1
+
+
+@dataclass(frozen=True)
 class Ouvido:
     motor: str
     url: str
@@ -142,6 +149,7 @@ class Config:
     audio: Audio
     escuta: Escuta
     memoria: Memoria
+    emocao: Emocao
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
     pasta_dados: Path
@@ -350,6 +358,13 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             ),
             trocas_por_pergunta=_campo(dados, "memoria", "trocas_por_pergunta", int),
             agenda_dias=_campo(dados, "memoria", "agenda_dias", int),
+        ),
+        emocao=Emocao(
+            ativa=_campo(dados, "emocao", "ativa", bool),
+            intensidade=_entre_0_e_1(
+                "emocao", "intensidade", _campo(dados, "emocao", "intensidade", float)
+            ),
+            reacoes_por_resposta=_campo(dados, "emocao", "reacoes_por_resposta", int),
         ),
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),

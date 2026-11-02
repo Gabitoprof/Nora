@@ -13,6 +13,7 @@ from pathlib import Path
 
 from nora.audio import para_wav
 from nora.config import Config
+from nora.emocao import ajustes_de_voz, para_v3, sem_emocoes
 from nora.servico import ServicoIndisponivel, enviar
 
 ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
@@ -71,7 +72,7 @@ class VozHTTP:
     ultima_duracao: float = 0.0
 
     def sintetizar(self, texto: str) -> bytes:
-        texto = aplicar_pronuncias(texto, self.pronuncias)
+        texto = aplicar_pronuncias(sem_emocoes(texto), self.pronuncias)
         pedido = urllib.request.Request(
             f"{self.url.rstrip('/')}/synthesize",
             data=json.dumps({"text": texto, **self.extras}).encode("utf-8"),
@@ -93,8 +94,16 @@ class VozElevenLabs:
     pronuncias: dict = field(default_factory=dict)
     timeout: float = 60.0
     ultima_duracao: float = 0.0
+    intensidade: float = 0.5  # da emoção ([emocao]); 0 = sem emoção
+
+    def _preparar(self, texto: str) -> tuple[str, dict | None]:
+        """O v3 entende audio tags; os outros modelos recebem a emoção como ajuste de voz."""
+        if self.modelo.startswith("eleven_v3"):
+            return para_v3(texto, self.intensidade), None
+        return sem_emocoes(texto), ajustes_de_voz(texto, self.intensidade)
 
     def sintetizar(self, texto: str) -> bytes:
+        texto, ajustes = self._preparar(texto)
         texto = aplicar_pronuncias(texto, self.pronuncias)
         if not self.chave:
             raise ServicoIndisponivel("Falta ELEVENLABS_API_KEY no .env para usar o ElevenLabs.")
@@ -105,9 +114,14 @@ class VozElevenLabs:
         consulta = urllib.parse.urlencode({"output_format": f"pcm_{ELEVENLABS_TAXA}"})
         pedido = urllib.request.Request(
             f"{ELEVENLABS_API}/{urllib.parse.quote(self.voz_id)}?{consulta}",
-            data=json.dumps({"text": texto, "model_id": self.modelo, "language_code": "pt"}).encode(
-                "utf-8"
-            ),
+            data=json.dumps(
+                {
+                    "text": texto,
+                    "model_id": self.modelo,
+                    "language_code": "pt",
+                    **({"voice_settings": ajustes} if ajustes else {}),
+                }
+            ).encode("utf-8"),
             headers={"Content-Type": "application/json", "xi-api-key": self.chave},
         )
         inicio = time.perf_counter()
@@ -251,7 +265,7 @@ class VozComfyUI:
     def sintetizar(self, texto: str) -> bytes:
         from nora.audio import como_wav_16bits
 
-        texto = aplicar_pronuncias(texto, self.pronuncias)
+        texto = aplicar_pronuncias(sem_emocoes(texto), self.pronuncias)
         fluxo = self._carregar_fluxo()
         if self.campo:
             fluxo = self._por_no_campo(fluxo, texto)
@@ -334,8 +348,13 @@ def _criar_motor_puro(config: Config, motor: str) -> VozHTTP | VozElevenLabs | V
     if motor == "comfyui":
         comfy = voz.comfyui
         return VozComfyUI(comfy.url, comfy.fluxo, comfy.espera_s, pronuncias, comfy.campo)
+    intensidade = config.emocao.intensidade if config.emocao.ativa else 0.0
     return VozElevenLabs(
-        config.chave_elevenlabs, voz.elevenlabs.voz_id, voz.elevenlabs.modelo, pronuncias
+        config.chave_elevenlabs,
+        voz.elevenlabs.voz_id,
+        voz.elevenlabs.modelo,
+        pronuncias,
+        intensidade=intensidade,
     )
 
 

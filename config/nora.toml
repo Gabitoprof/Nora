@@ -124,6 +124,16 @@ volume_outros = 0.2
 # (comum com fone Bluetooth, que "acorda" depois que o som começou), teste 150 a 300.
 silencio_inicial_ms = 0
 
+[emocao]
+# Emoção na voz: a Nora escolhe sozinha a emoção de cada frase (alegre, carinhosa, calma, risada,
+# sussurro...) pelo contexto: o que você disse, o que ela lembra, a agenda e a hora. No ElevenLabs
+# v3 vira audio tag (ri, sussurra, suspira); no Flash, ajuste de tom; nas vozes locais, nada muda.
+ativa = true
+# 0 = sem emoção, 0.5 = moderada, 1 = bem expressiva.
+intensidade = 0.5
+# No máximo quantas risadas ou suspiros por resposta.
+reacoes_por_resposta = 1
+
 [memoria]
 # Memória entre conversas (v0.2.0), guardada em <dados>/memoria.db, só na sua máquina.
 ativa = true
