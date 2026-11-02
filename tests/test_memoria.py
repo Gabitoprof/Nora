@@ -40,6 +40,7 @@ class OllamaComMemoria(ServicoFalso):
     def __init__(self, resposta="Anotado!", fatos=()):
         self.conversas = []
         self.fatos = list(fatos)
+        self.extras = {}  # outras chaves da curadoria (pronuncias, preferencias)
 
         def responder(caminho, cabecalhos, corpo):
             pedido = json.loads(corpo)
@@ -47,7 +48,7 @@ class OllamaComMemoria(ServicoFalso):
                 vetores = [vetor_de(t) for t in pedido["input"]]
                 return 200, "application/json", json.dumps({"embeddings": vetores}).encode()
             if pedido.get("format") == "json":
-                conteudo = json.dumps({"fatos": self.fatos})
+                conteudo = json.dumps({"fatos": self.fatos, **self.extras})
                 return (
                     200,
                     "application/json",

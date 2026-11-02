@@ -35,6 +35,15 @@ A busca por significado acha "quando é minha prova?", mas não acha "o que tenh
 - **Ao responder:** ela sempre lê o que está marcado para os **próximos 7 dias** (`agenda_dias`) e, se a pergunta falar de um período, o que está marcado nele. Pergunte do jeito natural: "o que tenho amanhã?", "tenho algo essa semana?", "e na sexta?", "e no dia 21?", "o que tem em dezembro?", "quando é meu aniversário?".
 - **Fatos antigos:** os que já tinham data escrita no texto entram na agenda sozinhos, na primeira vez que a memória é aberta.
 
+## Aprender pela conversa: pronúncia e jeito de falar
+
+Você ensina conversando, e ela guarda:
+
+- **Pronúncia:** "Nora, você fala 'houje', o certo é 'ôje'." A curadoria anota a palavra e como falar, e na conversa aparece `[memória] aprendi a pronúncia: hoje → ôje`. Vale na hora, para qualquer voz (ElevenLabs, Piper, Kokoro, ComfyUI) e também para o `gerar-dataset`, então a próxima voz treinada já nasce com a pronúncia certa. Dica: para ensinar pronúncia, **digite** a correção; falando, o Whisper escreve "hoje" das duas vezes.
+- **Jeito de falar:** "Não precisa repetir minha pergunta", "Seja mais direta", "Me chama pelo nome." Ela guarda como preferência (`[memória] vou lembrar de: ...`) e segue em todas as conversas: as preferências vão junto em toda resposta, não só quando o assunto é parecido.
+
+Pedidos só para aquela resposta ("resume isso") não viram preferência.
+
 ## Ver e editar
 
 | Comando | O que faz |
@@ -47,6 +56,8 @@ A busca por significado acha "quando é minha prova?", mas não acha "o que tenh
 | `nora memoria esquecer 12` | Apaga o fato nº 12 |
 | `nora memoria agenda` | Os compromissos e datas dos próximos 30 dias (`--dias 90` para mais, `--passados 7` para ver também a semana que passou) |
 | `nora memoria marcar 21/11/2026 prova de cálculo` | Põe um compromisso na agenda à mão (e guarda como fato). `--anual` para o que repete todo ano |
+| `nora memoria pronuncias` | As pronúncias que ela aprendeu. `nora memoria pronuncias hoje ôje` ensina uma à mão; `--esquecer hoje` apaga |
+| `nora memoria preferencias` | O que você pediu sobre o jeito de ela falar. `nora memoria preferencias "Seja mais direta."` guarda à mão; `--esquecer 2` apaga |
 | `nora memoria desmarcar 3` | Tira o evento nº 3 da agenda (o fato continua na memória) |
 | `nora memoria importar` | Lê as conversas antigas de `data/historico/` e tira fatos delas (pode demorar; dá para rodar de novo, ele continua de onde parou) |
 

@@ -185,6 +185,18 @@ def comparar_realces(config: Config, frase: str, ouvir: bool = False, voz=None, 
     return 0
 
 
+def _com_aprendidas(config: Config, voz):
+    """A voz com as pronúncias ensinadas na conversa (se a memória estiver ligada)."""
+    from nora.memoria import abrir_memoria
+    from nora.voz import com_pronuncias_aprendidas
+
+    try:
+        memoria = abrir_memoria(config)
+    except Exception:
+        return voz
+    return com_pronuncias_aprendidas(voz, memoria)
+
+
 def comando_gerar_dataset(config: Config, args, voz=None) -> int:
     from pathlib import Path
 
@@ -205,7 +217,7 @@ def comando_gerar_dataset(config: Config, args, voz=None) -> int:
         print(f"[erro] Nenhuma frase aproveitável em {arquivo}.", file=sys.stderr)
         return 1
     # Só a voz principal: a reserva misturaria outra voz no conjunto de treino.
-    voz = voz or _criar_motor(config, config.voz.motor)
+    voz = voz or _com_aprendidas(config, _criar_motor(config, config.voz.motor))
     pasta = config.pasta_dados / "dataset_voz" / args.nome
     print(f"Voz: {config.voz.motor}. Frases de {arquivo}.")
     try:
@@ -292,7 +304,7 @@ def salvar_fala(
         inicio = re.sub(r"[^a-z0-9]+", "_", texto.lower()[:40]).strip("_") or "fala"
         nome = f"{time.strftime('%Y-%m-%d_%H-%M-%S')}_{inicio}"
     arquivo = destino / f"{nome.removesuffix('.wav')}.wav"
-    voz = voz or criar_voz(config)
+    voz = voz or _com_aprendidas(config, criar_voz(config))
     try:
         wav = voz.sintetizar(texto)
     except ServicoIndisponivel as erro:
@@ -440,6 +452,39 @@ def comando_memoria(config: Config, args) -> int:
             evento_id = memoria.marcar(data, texto, args.anual, area, fato_id)
             todo_ano = ", todo ano" if args.anual else ""
             print(f"Marcado para {data:%d/%m/%Y}{todo_ano} (nº {evento_id}).")
+        elif args.acao == "pronuncias":
+            if args.esquecer:
+                if not memoria.esquecer_pronuncia(args.esquecer):
+                    print(f"Não há pronúncia guardada para '{args.esquecer}'.", file=sys.stderr)
+                    return 1
+                print(f"Esquecida a pronúncia de '{args.esquecer}'.")
+            elif args.palavra:
+                if not args.fala:
+                    print(
+                        "[erro] Diga como falar: nora memoria pronuncias hoje ôje", file=sys.stderr
+                    )
+                    return 1
+                memoria.ensinar_pronuncia(args.palavra, " ".join(args.fala))
+                print(f"Guardado: {args.palavra} → {' '.join(args.fala)}")
+            else:
+                aprendidas = memoria.pronuncias()
+                print(f"{len(aprendidas)} pronúncias aprendidas (valem para qualquer voz):")
+                for palavra, fala in aprendidas.items():
+                    print(f"  {palavra} → {fala}")
+        elif args.acao == "preferencias":
+            if args.esquecer:
+                if not memoria.esquecer_preferencia(args.esquecer):
+                    print(f"Não existe preferência nº {args.esquecer}.", file=sys.stderr)
+                    return 1
+                print(f"Esquecida (nº {args.esquecer}).")
+            elif args.texto:
+                numero, nova = memoria.preferir(" ".join(args.texto))
+                print(f"{'Guardada' if nova else 'Já estava guardada'} (nº {numero}).")
+            else:
+                guardadas = memoria.preferencias()
+                print(f"{len(guardadas)} preferências sobre o jeito de falar:")
+                for numero, texto in guardadas:
+                    print(f"  {numero:>4}  {texto}")
         elif args.acao == "desmarcar":
             if not memoria.desmarcar(args.id):
                 print(f"Não existe evento nº {args.id} na agenda.", file=sys.stderr)
@@ -516,6 +561,17 @@ def main(argv: list[str] | None = None) -> int:
     marcar_cmd.add_argument("texto", nargs="+", help="o que é (ex.: prova de cálculo)")
     marcar_cmd.add_argument("--anual", action="store_true", help="repete todo ano")
     marcar_cmd.add_argument("--area", default="", help="área (ex.: estudos)")
+    pronuncias_cmd = acoes.add_parser(
+        "pronuncias", help="as pronúncias que ela aprendeu (ou ensinar uma à mão)"
+    )
+    pronuncias_cmd.add_argument("palavra", nargs="?", help="palavra a ensinar (ex.: hoje)")
+    pronuncias_cmd.add_argument("fala", nargs="*", help="como falar (ex.: ôje)")
+    pronuncias_cmd.add_argument("--esquecer", default="", metavar="PALAVRA")
+    preferencias_cmd = acoes.add_parser(
+        "preferencias", help="o que você pediu sobre o jeito de ela falar (ou guardar um pedido)"
+    )
+    preferencias_cmd.add_argument("texto", nargs="*", help='ex.: "Seja mais direta."')
+    preferencias_cmd.add_argument("--esquecer", type=int, default=0, metavar="NUMERO")
     desmarcar_cmd = acoes.add_parser("desmarcar", help="tirar um evento da agenda pelo número")
     desmarcar_cmd.add_argument("id", type=int)
     voz_cmd = comandos.add_parser("voz", help="laboratório de voz: misture vozes do Kokoro")

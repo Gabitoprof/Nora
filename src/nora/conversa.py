@@ -10,7 +10,7 @@ from typing import TextIO
 from nora.agenda import intervalo_da_pergunta, quando
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
-from nora.curadoria import extrair_fatos
+from nora.curadoria import curar
 from nora.historico import Historico
 from nora.memoria import Fato, Memoria, Troca, abrir_memoria
 from nora.persona import prompt_de_sistema
@@ -95,12 +95,28 @@ class Conversa:
                 partes += ["Aniversários anotados (a data original):", *novas]
         return partes
 
+    def _preferencias(self) -> list[dict[str, str]]:
+        """O que a pessoa pediu sobre o jeito de falar, em toda resposta."""
+        try:
+            preferencias = self.memoria.preferencias()
+        except Exception:
+            return []
+        if not preferencias:
+            return []
+        quem = self.config.nome_usuario or "a pessoa"
+        linhas = [f"Como {quem} pediu que você fale (siga sempre):"]
+        linhas += [f"- {texto}" for _, texto in preferencias[-20:]]
+        return [{"role": "system", "content": "\n".join(linhas)}]
+
     def _lembrar(self, texto: str) -> list[dict[str, str]]:
-        """Fatos e trechos de conversas antigas parecidos com a pergunta, como uma nota para o
-        modelo (que não fica guardada na conversa)."""
+        """Preferências, fatos e trechos de conversas antigas parecidos com a pergunta, como
+        notas para o modelo (que não ficam guardadas na conversa)."""
         self.lembrancas, self.trechos = [], []
         if self.memoria is None:
             return []
+        return self._preferencias() + self._lembrancas(texto)
+
+    def _lembrancas(self, texto: str) -> list[dict[str, str]]:
         memoria = self.config.memoria
         try:
             self.lembrancas = self.memoria.buscar(
@@ -154,7 +170,15 @@ class Conversa:
                 return
             areas = [area for area, _ in self.memoria.areas()]
             hoje = agora.strftime("%d/%m/%Y")
-            for fato in extrair_fatos(self.config, pergunta, resposta, hoje, areas):
+            curadoria = curar(self.config, pergunta, resposta, hoje, areas)
+            for palavra, fala in curadoria.pronuncias:
+                self.memoria.ensinar_pronuncia(palavra, fala)
+                self._avisar(f"aprendi a pronúncia: {palavra} → {fala}")
+            for preferencia in curadoria.preferencias:
+                _, nova = self.memoria.preferir(preferencia)
+                if nova:
+                    self._avisar(f"vou lembrar de: {preferencia}")
+            for fato in curadoria.fatos:
                 fato_id, novo = self.memoria.lembrar(
                     fato.texto, origem=self.historico.sessao, area=fato.area
                 )

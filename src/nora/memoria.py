@@ -2,7 +2,8 @@
 
 - fatos: resumos curtos anotados pela curadoria ("Ana tem prova em 21/11");
 - trocas: cada pergunta e resposta inteira, para ela lembrar de tudo o que foi dito;
-- agenda: os fatos com data (prova, viagem, aniversário), para achar pelo dia ("amanhã").
+- agenda: os fatos com data (prova, viagem, aniversário), para achar pelo dia ("amanhã");
+- pronúncias e preferências: o que a pessoa ensinou sobre como a Nora deve falar.
 
 Cada item tem um vetor (embedding). Antes de responder, a Nora busca os fatos e os trechos de
 conversa mais parecidos com a pergunta e os lê junto. Fica tudo em <dados>/memoria.db, só na
@@ -101,6 +102,16 @@ class Memoria:
                 criado TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS agenda_data ON agenda(data);
+            CREATE TABLE IF NOT EXISTS pronuncias (
+                palavra TEXT PRIMARY KEY,
+                fala TEXT NOT NULL,
+                criado TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS preferencias (
+                id INTEGER PRIMARY KEY,
+                texto TEXT NOT NULL UNIQUE,
+                criado TEXT NOT NULL
+            );
             """
         )
         colunas = {linha[1] for linha in self._db.execute("PRAGMA table_info(fatos)")}
@@ -401,6 +412,64 @@ class Memoria:
     def contar_agenda(self) -> int:
         with self._trava:
             return self._db.execute("SELECT COUNT(*) FROM agenda").fetchone()[0]
+
+    # --- como falar: pronúncias e preferências -------------------------------------------
+
+    def ensinar_pronuncia(self, palavra: str, fala: str) -> bool:
+        """Guarda como falar uma palavra ("hoje" -> "ôje"). Devolve se é nova."""
+        palavra, fala = " ".join(palavra.split()).lower(), " ".join(fala.split())
+        if not palavra or not fala or palavra == fala.lower():
+            return False
+        with self._trava, self._db:
+            existia = self._db.execute(
+                "SELECT 1 FROM pronuncias WHERE palavra = ?", (palavra,)
+            ).fetchone()
+            self._db.execute(
+                "INSERT INTO pronuncias(palavra, fala, criado) VALUES (?, ?, ?) "
+                "ON CONFLICT(palavra) DO UPDATE SET fala = excluded.fala",
+                (palavra, fala, _agora()),
+            )
+            return existia is None
+
+    def pronuncias(self) -> dict[str, str]:
+        with self._trava:
+            return dict(self._db.execute("SELECT palavra, fala FROM pronuncias ORDER BY palavra"))
+
+    def esquecer_pronuncia(self, palavra: str) -> bool:
+        with self._trava, self._db:
+            return (
+                self._db.execute(
+                    "DELETE FROM pronuncias WHERE palavra = ?", (palavra.strip().lower(),)
+                ).rowcount
+                > 0
+            )
+
+    def preferir(self, texto: str) -> tuple[int, bool]:
+        """Guarda uma preferência sobre o jeito de falar. Devolve (número, se é nova)."""
+        texto = " ".join(texto.split())
+        with self._trava, self._db:
+            linha = self._db.execute(
+                "SELECT id FROM preferencias WHERE texto = ?", (texto,)
+            ).fetchone()
+            if linha:
+                return linha[0], False
+            cursor = self._db.execute(
+                "INSERT INTO preferencias(texto, criado) VALUES (?, ?)", (texto, _agora())
+            )
+            return cursor.lastrowid, True
+
+    def preferencias(self) -> list[tuple[int, str]]:
+        with self._trava:
+            return self._db.execute("SELECT id, texto FROM preferencias ORDER BY id").fetchall()
+
+    def esquecer_preferencia(self, preferencia_id: int) -> bool:
+        with self._trava, self._db:
+            return (
+                self._db.execute(
+                    "DELETE FROM preferencias WHERE id = ?", (preferencia_id,)
+                ).rowcount
+                > 0
+            )
 
     # --- trocas (tudo o que foi dito) -----------------------------------------------------
 

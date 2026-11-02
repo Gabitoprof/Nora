@@ -18,6 +18,37 @@ from nora.servico import ServicoIndisponivel, enviar
 ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
 
 
+@dataclass
+class VozComPronuncias:
+    """Aplica as pronúncias que a pessoa ensinou na conversa (guardadas na memória) antes de
+    mandar à voz. Lê a cada frase, então o que ela aprendeu vale na hora."""
+
+    voz: object
+    fonte: object  # função que devolve {palavra: como falar}
+
+    def sintetizar(self, texto: str) -> bytes:
+        try:
+            pronuncias = self.fonte()
+        except Exception:  # sem memória, fala sem as pronúncias aprendidas
+            pronuncias = {}
+        return self.voz.sintetizar(aplicar_pronuncias(texto, pronuncias))
+
+    # Atributos da voz de dentro (ex.: o aviso da reserva) passam direto, para ler e escrever.
+    def __getattr__(self, nome):
+        return getattr(self.voz, nome)
+
+    def __setattr__(self, nome, valor):
+        if nome in ("voz", "fonte"):
+            object.__setattr__(self, nome, valor)
+        else:
+            setattr(self.voz, nome, valor)
+
+
+def com_pronuncias_aprendidas(voz, memoria):
+    """A voz, aplicando também as pronúncias aprendidas na memória (se houver memória)."""
+    return voz if memoria is None else VozComPronuncias(voz, memoria.pronuncias)
+
+
 def aplicar_pronuncias(texto: str, pronuncias: dict[str, str]) -> str:
     """Troca palavras inteiras pelo jeito de falar (ex.: 'Nora' -> 'Nóra'), sem olhar maiúsculas."""
     for palavra, fala in pronuncias.items():

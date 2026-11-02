@@ -40,8 +40,18 @@ motivo e o que a assistente disse sobre si mesma.
 "família", "pets"). Áreas que já existem: {areas}. Use uma delas quando o assunto couber; se \
 for um assunto novo, crie uma área nova.
 
+Além dos fatos, anote o que {usuario} ensinar sobre o jeito de a assistente falar:
+- "pronuncias": quando {usuario} corrigir como a assistente fala uma palavra (ex.: "você fala \
+houje, o certo é ôje"; "fala Nóra, com o aberto"), anote a palavra escrita normalmente e como \
+falar, escrita do jeito que soa (ex.: {{"palavra": "hoje", "fala": "ôje"}}).
+- "preferencias": quando {usuario} pedir uma mudança duradoura no jeito de responder (ex.: "não \
+repita minha pergunta", "seja mais direta", "me chama de você"), anote uma frase curta no \
+imperativo, dirigida à assistente (ex.: "Não repita a pergunta antes de responder."). Pedidos \
+só para aquela resposta não contam.
+
 Responda só com JSON no formato {{"fatos": [{{"texto": "...", "area": "...", \
-"data": "AAAA-MM-DD ou vazio", "anual": false}}]}}."""
+"data": "AAAA-MM-DD ou vazio", "anual": false}}], "pronuncias": [{{"palavra": "...", \
+"fala": "..."}}], "preferencias": ["..."]}}."""
 
 
 class FatoExtraido(NamedTuple):
@@ -49,6 +59,14 @@ class FatoExtraido(NamedTuple):
     area: str = ""
     data: date | None = None
     anual: bool = False
+
+
+class Curadoria(NamedTuple):
+    """O que vale guardar de uma troca."""
+
+    fatos: list[FatoExtraido]
+    pronuncias: list[tuple[str, str]]  # (palavra, como falar)
+    preferencias: list[str]
 
 
 def _dia(hoje: str) -> date:
@@ -69,15 +87,21 @@ def _ler_data(valor, texto: str, dia: date) -> tuple[date | None, bool]:
     return (achadas[0][0], achadas[0][1]) if achadas else (None, False)
 
 
-def extrair_fatos(
+def extrair_fatos(*args, **kwargs) -> list[FatoExtraido]:
+    """Só os fatos da troca (veja curar)."""
+    return curar(*args, **kwargs).fatos
+
+
+def curar(
     config: Config,
     pergunta: str,
     resposta: str,
     hoje: str,
     areas: list[str] | tuple[str, ...] = (),
     timeout: float = 120.0,
-) -> list[FatoExtraido]:
-    """Os fatos que valem guardar desta troca, com área e, se tiverem, data."""
+) -> Curadoria:
+    """Os fatos que valem guardar desta troca (com área e, se tiverem, data), as pronúncias
+    corrigidas e as preferências sobre o jeito de falar."""
     usuario = config.nome_usuario or "a pessoa"
     dia = _dia(hoje)
     lista_areas = ", ".join(areas) if areas else "nenhuma ainda"
@@ -112,9 +136,10 @@ def extrair_fatos(
     )
     conteudo = json.loads(enviar("o Ollama", pedido, timeout))["message"]["content"]
     try:
-        fatos = json.loads(conteudo).get("fatos", [])
+        dados = json.loads(conteudo)
+        fatos = dados.get("fatos", [])
     except (json.JSONDecodeError, AttributeError):
-        return []
+        return Curadoria([], [], [])
     resultado = []
     for fato in fatos if isinstance(fatos, list) else []:
         if isinstance(fato, str):  # formato antigo, sem área nem data
@@ -128,4 +153,20 @@ def extrair_fatos(
         anual = fato.get("anual") is True or anual_no_texto
         area = " ".join(str(fato.get("area", "")).split())
         resultado.append(FatoExtraido(texto, area, data, anual if data else False))
-    return resultado
+    pronuncias = []
+    for item in dados.get("pronuncias", []) if isinstance(dados.get("pronuncias"), list) else []:
+        if isinstance(item, dict):
+            palavra = " ".join(str(item.get("palavra", "")).split())
+            fala = " ".join(str(item.get("fala", "")).split())
+            if palavra and fala and palavra.lower() != fala.lower():
+                pronuncias.append((palavra, fala))
+    preferencias = (
+        [
+            " ".join(item.split())
+            for item in (dados.get("preferencias") or [])
+            if isinstance(item, str) and item.strip()
+        ]
+        if isinstance(dados.get("preferencias"), list)
+        else []
+    )
+    return Curadoria(resultado, pronuncias, preferencias)

@@ -24,7 +24,7 @@ from nora.frases import SeparadorDeFrases
 from nora.ouvido import OuvidoWhisper
 from nora.prioridade import abafar_outros
 from nora.servico import ServicoIndisponivel
-from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, criar_voz
+from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, com_pronuncias_aprendidas, criar_voz
 
 _FIM = object()
 
@@ -200,7 +200,7 @@ def conversar_por_voz(
     saida = saida or sys.stdout
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
-    voz = voz or criar_voz(config)
+    voz = com_pronuncias_aprendidas(voz or criar_voz(config), conversa.memoria)
     microfone = audio.dispositivo(config.audio.microfone)
     gravar = gravar or (lambda entrada: audio.gravar_ate_enter(entrada, microfone))
     tocar = tocar or audio.tocador(config.audio)
