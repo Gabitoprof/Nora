@@ -7,13 +7,47 @@ import re
 import time
 import urllib.parse
 import urllib.request
+import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from nora.audio import para_wav
 from nora.config import Config
+from nora.emocao import ajustes_de_voz, para_v3, sem_emocoes
 from nora.servico import ServicoIndisponivel, enviar
 
 ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
+
+
+@dataclass
+class VozComPronuncias:
+    """Aplica as pronúncias que a pessoa ensinou na conversa (guardadas na memória) antes de
+    mandar à voz. Lê a cada frase, então o que ela aprendeu vale na hora."""
+
+    voz: object
+    fonte: object  # função que devolve {palavra: como falar}
+
+    def sintetizar(self, texto: str) -> bytes:
+        try:
+            pronuncias = self.fonte()
+        except Exception:  # sem memória, fala sem as pronúncias aprendidas
+            pronuncias = {}
+        return self.voz.sintetizar(aplicar_pronuncias(texto, pronuncias))
+
+    # Atributos da voz de dentro (ex.: o aviso da reserva) passam direto, para ler e escrever.
+    def __getattr__(self, nome):
+        return getattr(self.voz, nome)
+
+    def __setattr__(self, nome, valor):
+        if nome in ("voz", "fonte"):
+            object.__setattr__(self, nome, valor)
+        else:
+            setattr(self.voz, nome, valor)
+
+
+def com_pronuncias_aprendidas(voz, memoria):
+    """A voz, aplicando também as pronúncias aprendidas na memória (se houver memória)."""
+    return voz if memoria is None else VozComPronuncias(voz, memoria.pronuncias)
 
 
 def aplicar_pronuncias(texto: str, pronuncias: dict[str, str]) -> str:
@@ -38,7 +72,7 @@ class VozHTTP:
     ultima_duracao: float = 0.0
 
     def sintetizar(self, texto: str) -> bytes:
-        texto = aplicar_pronuncias(texto, self.pronuncias)
+        texto = aplicar_pronuncias(sem_emocoes(texto), self.pronuncias)
         pedido = urllib.request.Request(
             f"{self.url.rstrip('/')}/synthesize",
             data=json.dumps({"text": texto, **self.extras}).encode("utf-8"),
@@ -60,8 +94,16 @@ class VozElevenLabs:
     pronuncias: dict = field(default_factory=dict)
     timeout: float = 60.0
     ultima_duracao: float = 0.0
+    intensidade: float = 0.5  # da emoção ([emocao]); 0 = sem emoção
+
+    def _preparar(self, texto: str) -> tuple[str, dict | None]:
+        """O v3 entende audio tags; os outros modelos recebem a emoção como ajuste de voz."""
+        if self.modelo.startswith("eleven_v3"):
+            return para_v3(texto, self.intensidade), None
+        return sem_emocoes(texto), ajustes_de_voz(texto, self.intensidade)
 
     def sintetizar(self, texto: str) -> bytes:
+        texto, ajustes = self._preparar(texto)
         texto = aplicar_pronuncias(texto, self.pronuncias)
         if not self.chave:
             raise ServicoIndisponivel("Falta ELEVENLABS_API_KEY no .env para usar o ElevenLabs.")
@@ -72,9 +114,14 @@ class VozElevenLabs:
         consulta = urllib.parse.urlencode({"output_format": f"pcm_{ELEVENLABS_TAXA}"})
         pedido = urllib.request.Request(
             f"{ELEVENLABS_API}/{urllib.parse.quote(self.voz_id)}?{consulta}",
-            data=json.dumps({"text": texto, "model_id": self.modelo, "language_code": "pt"}).encode(
-                "utf-8"
-            ),
+            data=json.dumps(
+                {
+                    "text": texto,
+                    "model_id": self.modelo,
+                    "language_code": "pt",
+                    **({"voice_settings": ajustes} if ajustes else {}),
+                }
+            ).encode("utf-8"),
             headers={"Content-Type": "application/json", "xi-api-key": self.chave},
         )
         inicio = time.perf_counter()
@@ -105,17 +152,209 @@ class VozComReserva:
             return wav
 
 
-def _criar_motor(config: Config, motor: str) -> VozHTTP | VozElevenLabs:
+_PERGUNTA = re.compile(r"([^.!?…]*?)\?+(?=[\s\"'”)»]|$)")
+
+
+def realcar_perguntas(texto: str, modo: str) -> str:
+    """Reescreve as perguntas para a voz marcar melhor a entonação: "duplo" (??), "invertido"
+    (¿...?) ou "exclamado" (?!). Modo vazio devolve o texto como está."""
+    if not modo:
+        return texto
+
+    def trocar(achado: re.Match) -> str:
+        corpo = achado.group(1)
+        if modo == "duplo":
+            return f"{corpo}??"
+        if modo == "exclamado":
+            return f"{corpo}?!"
+        inicio = len(corpo) - len(corpo.lstrip())
+        return f"{corpo[:inicio]}¿{corpo[inicio:]}?"
+
+    return _PERGUNTA.sub(trocar, texto)
+
+
+@dataclass
+class VozComRealce:
+    """Passa as perguntas pelo realce antes de mandar à voz."""
+
+    voz: object
+    modo: str
+
+    def sintetizar(self, texto: str) -> bytes:
+        return self.voz.sintetizar(realcar_perguntas(texto, self.modo))
+
+
+MARCADOR = "{{texto}}"
+
+
+def _trocar_texto(no, texto: str) -> tuple[object, int]:
+    """Troca {{texto}} pela frase em todos os textos do fluxo; devolve (fluxo, quantas trocas)."""
+    if isinstance(no, str):
+        return no.replace(MARCADOR, texto), no.count(MARCADOR)
+    if isinstance(no, dict):
+        trocas = 0
+        novo = {}
+        for chave, valor in no.items():
+            novo[chave], n = _trocar_texto(valor, texto)
+            trocas += n
+        return novo, trocas
+    if isinstance(no, list):
+        itens = [_trocar_texto(valor, texto) for valor in no]
+        return [item for item, _ in itens], sum(n for _, n in itens)
+    return no, 0
+
+
+@dataclass
+class VozComfyUI:
+    """Usa um fluxo do ComfyUI como voz: troca {{texto}} pela frase, pede a execução pela API
+    (/prompt), espera terminar (/history) e baixa o áudio gerado (/view)."""
+
+    url: str
+    fluxo: Path
+    espera_s: float = 120.0
+    pronuncias: dict = field(default_factory=dict)
+    campo: str = ""  # "ID.campo": onde vai a frase, em vez de {{texto}}
+    intervalo: float = 0.2
+    ultima_duracao: float = 0.0
+
+    def _pedir(self, caminho: str, corpo: dict | None = None) -> bytes:
+        pedido = urllib.request.Request(
+            f"{self.url.rstrip('/')}{caminho}",
+            data=None if corpo is None else json.dumps(corpo).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        return enviar("o ComfyUI", pedido, 30.0)
+
+    def _carregar_fluxo(self) -> dict:
+        try:
+            fluxo = json.loads(self.fluxo.read_text(encoding="utf-8"))
+        except FileNotFoundError as erro:
+            raise ServicoIndisponivel(
+                f"Fluxo do ComfyUI não encontrado em {self.fluxo}. Exporte o seu em "
+                "'Workflow > Export (API)' e salve nesse caminho."
+            ) from erro
+        except json.JSONDecodeError as erro:
+            raise ServicoIndisponivel(
+                f"O fluxo {self.fluxo} não é um JSON válido ({erro})."
+            ) from erro
+        if isinstance(fluxo, dict) and "nodes" in fluxo and "links" in fluxo:
+            raise ServicoIndisponivel(
+                f"O fluxo {self.fluxo} está no formato normal do ComfyUI (com 'widgets_values'), "
+                "não no formato da API. Exporte de novo em 'Workflow > Export (API)' (se não "
+                "aparecer, ligue 'Enable dev mode options' nas configurações do ComfyUI)."
+            )
+        return fluxo
+
+    def _por_no_campo(self, fluxo: dict, texto: str) -> dict:
+        no_id, _, nome = self.campo.partition(".")
+        no = fluxo.get(no_id)
+        if not isinstance(no, dict) or nome not in no.get("inputs", {}):
+            nos = ", ".join(
+                f"{chave} ({valor.get('_meta', {}).get('title') or valor.get('class_type', '?')}: "
+                f"{', '.join(k for k, v in valor.get('inputs', {}).items() if isinstance(v, str))})"
+                for chave, valor in fluxo.items()
+                if isinstance(valor, dict)
+            )
+            raise ServicoIndisponivel(
+                f"[voz.comfyui] campo = '{self.campo}' não existe no fluxo. Nós e campos de "
+                f"texto: {nos}"
+            )
+        no["inputs"][nome] = texto
+        return fluxo
+
+    def sintetizar(self, texto: str) -> bytes:
+        from nora.audio import como_wav_16bits
+
+        texto = aplicar_pronuncias(sem_emocoes(texto), self.pronuncias)
+        fluxo = self._carregar_fluxo()
+        if self.campo:
+            fluxo = self._por_no_campo(fluxo, texto)
+        else:
+            fluxo, trocas = _trocar_texto(fluxo, texto)
+            if not trocas:
+                raise ServicoIndisponivel(
+                    f"O fluxo {self.fluxo} não tem {MARCADOR}: escreva {MARCADOR} no nó de "
+                    'texto, ou diga o nó e o campo em [voz.comfyui] campo (ex.: "12.text").'
+                )
+        inicio = time.perf_counter()
+        resposta = json.loads(
+            self._pedir("/prompt", {"prompt": fluxo, "client_id": f"nora-{uuid.uuid4().hex}"})
+        )
+        if "prompt_id" not in resposta:
+            raise ServicoIndisponivel(
+                f"O ComfyUI recusou o fluxo: {resposta.get('error', resposta)}"
+            )
+        prompt_id = resposta["prompt_id"]
+        while True:
+            historico = json.loads(self._pedir(f"/history/{prompt_id}")).get(prompt_id)
+            if historico:
+                status = historico.get("status", {})
+                if status.get("status_str") == "error":
+                    raise ServicoIndisponivel("O fluxo do ComfyUI deu erro (veja a janela dele).")
+                audios = [
+                    arquivo
+                    for saida in historico.get("outputs", {}).values()
+                    for arquivo in saida.get("audio", [])
+                ]
+                if audios:
+                    break
+                if status.get("completed"):
+                    raise ServicoIndisponivel(
+                        "O fluxo do ComfyUI terminou sem gerar áudio. Ele precisa de um nó que "
+                        "salve o áudio (ex.: Save Audio)."
+                    )
+            if time.perf_counter() - inicio > self.espera_s:
+                raise ServicoIndisponivel(
+                    f"O ComfyUI não terminou em {self.espera_s:.0f} s ([voz.comfyui] espera_s)."
+                )
+            time.sleep(self.intervalo)
+        arquivo = audios[0]
+        consulta = urllib.parse.urlencode(
+            {
+                "filename": arquivo["filename"],
+                "subfolder": arquivo.get("subfolder", ""),
+                "type": arquivo.get("type", "output"),
+            }
+        )
+        wav = como_wav_16bits(self._pedir(f"/view?{consulta}"))
+        self.ultima_duracao = time.perf_counter() - inicio
+        return wav
+
+
+def _criar_motor(config: Config, motor: str, realce: str | None = None):
+    """O motor de voz pedido, com o realce de perguntas da config (ou o `realce` dado)."""
+    motor_puro = _criar_motor_puro(config, motor)
+    modo = config.voz.realce_pergunta if realce is None else realce
+    return VozComRealce(motor_puro, modo) if modo else motor_puro
+
+
+def _criar_motor_puro(config: Config, motor: str) -> VozHTTP | VozElevenLabs | VozComfyUI:
     voz = config.voz
     assistente = config.assistente
-    pronuncias = {assistente.nome: assistente.pronuncia} if assistente.pronuncia else {}
+    pronuncias = dict(voz.pronuncias)
+    if assistente.pronuncia:
+        pronuncias[assistente.nome] = assistente.pronuncia
     if motor == "kokoro":
         extras = {"voice": voz.kokoro.voz, "speed": voz.kokoro.velocidade}
         return VozHTTP("o Kokoro", voz.kokoro.url, extras, pronuncias)
     if motor == "piper":
-        return VozHTTP("o Piper", voz.piper.url, pronuncias=pronuncias)
+        # length_scale é o tempo de cada som: maior = mais devagar
+        extras = {"length_scale": round(1 / voz.piper.velocidade, 3)}
+        if voz.piper.variacao:  # variação do som: mais alto = mais expressivo (e mais ruído)
+            extras["noise_scale"] = voz.piper.variacao
+        if voz.piper.variacao_ritmo:  # variação do ritmo: mais alto = menos monótono
+            extras["noise_w_scale"] = voz.piper.variacao_ritmo
+        return VozHTTP("o Piper", voz.piper.url, extras, pronuncias)
+    if motor == "comfyui":
+        comfy = voz.comfyui
+        return VozComfyUI(comfy.url, comfy.fluxo, comfy.espera_s, pronuncias, comfy.campo)
+    intensidade = config.emocao.intensidade if config.emocao.ativa else 0.0
     return VozElevenLabs(
-        config.chave_elevenlabs, voz.elevenlabs.voz_id, voz.elevenlabs.modelo, pronuncias
+        config.chave_elevenlabs,
+        voz.elevenlabs.voz_id,
+        voz.elevenlabs.modelo,
+        pronuncias,
+        intensidade=intensidade,
     )
 
 

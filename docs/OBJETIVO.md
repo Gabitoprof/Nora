@@ -1,6 +1,6 @@
 # Objetivo base do projeto
 
-> Nome provisório: **Nora**. O nome final do projeto e do assistente ainda está em aberto.
+> Nome: **Nora**, para o projeto e para o assistente (o nome do assistente é configurável).
 > Detalhes técnicos: [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md) · Visão em mapa: [`MAPA_MENTAL.md`](MAPA_MENTAL.md)
 
 ## Em uma frase
@@ -26,7 +26,7 @@ Construir um **assistente de IA pessoal que conversa por voz em tempo real**, co
 
 ## O que NÃO é o objetivo (por enquanto)
 
-- A mesa com projetor e touch do vídeo de referência: fica para o futuro.
+- Uma mesa com projetor e touch: fica para o futuro.
 - Copiar personagens ou marcas existentes: o assistente tem identidade própria.
 - Treinar um modelo do zero: usamos modelos prontos, e a evolução vem da memória e, mais tarde, de ajuste fino (LoRA).
 

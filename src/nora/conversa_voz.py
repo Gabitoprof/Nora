@@ -12,20 +12,30 @@ import sys
 import threading
 import time
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from typing import TextIO
 
 from nora import audio
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
-from nora.conversa import COMANDOS_SAIR, Conversa
+from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
+from nora.emocao import FiltroDeTela
 from nora.frases import SeparadorDeFrases
-from nora.historico import Historico
 from nora.ouvido import OuvidoWhisper
+from nora.prioridade import abafar_outros
 from nora.servico import ServicoIndisponivel
-from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, criar_voz
+from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, com_pronuncias_aprendidas, criar_voz
 
 _FIM = object()
+
+
+def _e_pergunta(frase: str) -> bool:
+    return frase.rstrip(" \"'”)»").endswith("?")
+
+
+# Até quantos caracteres de frases que já estão esperando vão juntos num pedido à voz.
+LIMITE_DO_LOTE = 400
 
 
 @dataclass
@@ -46,10 +56,12 @@ class Locutor:
         voz: VozHTTP | VozElevenLabs | VozComReserva,
         tocar: Callable[[bytes], None],
         inicio: float,
+        abafar=nullcontext,
     ) -> None:
         self.voz = voz
         self.tocar = tocar
         self.inicio = inicio
+        self.abafar = abafar
         self.tempos = Tempos()
         self._frases: queue.Queue = queue.Queue()
         self._audios: queue.Queue = queue.Queue(maxsize=2)
@@ -68,23 +80,53 @@ class Locutor:
         self._toque.join()
 
     def _sintetizar(self) -> None:
-        while (frase := self._frases.get()) is not _FIM:
+        """Sintetiza as frases em ordem. Se várias já estão esperando (a voz é mais lenta que
+        o modelo, como no ComfyUI), junta-as num pedido só: menos pedidos, menos pausas."""
+        acabou = False
+        while not acabou:
+            frase = self._frases.get()
+            if frase is _FIM:
+                break
+            lote = [frase]
+            # Uma pergunta sempre fecha o pedido: com o "?" no fim, a voz sobe a entonação; no
+            # meio do texto, muitos modelos achatam.
+            while sum(len(f) for f in lote) < LIMITE_DO_LOTE and not _e_pergunta(lote[-1]):
+                try:
+                    proxima = self._frases.get_nowait()
+                except queue.Empty:
+                    break
+                if proxima is _FIM:
+                    acabou = True
+                    break
+                lote.append(proxima)
             if self.tempos.erros:
                 continue
             try:
-                self._audios.put(self.voz.sintetizar(frase))
+                self._audios.put(self.voz.sintetizar(" ".join(lote)))
             except ServicoIndisponivel as erro:
                 self.tempos.erros.append(str(erro))
         self._audios.put(_FIM)
 
     def _tocar(self) -> None:
-        while (wav := self._audios.get()) is not _FIM:
-            if not self.tempos.comeco_da_voz:
-                self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
-            try:
-                self.tocar(wav)
-            except Exception as erro:  # um problema no alto-falante não derruba a conversa
-                self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
+        wav = self._audios.get()
+        if wav is _FIM:
+            return
+        with self.abafar():  # os outros programas ficam mais baixos enquanto ela fala
+            while wav is not _FIM:
+                if not self.tempos.comeco_da_voz:
+                    self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
+                try:
+                    self.tocar(wav)
+                except Exception as erro:  # um problema no alto-falante não derruba a conversa
+                    self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
+                wav = self._audios.get()
+
+
+def abafador(config: Config):
+    """O que fazer com os outros programas enquanto a Nora fala, conforme [audio] prioridade."""
+    if not config.audio.prioridade:
+        return nullcontext
+    return lambda: abafar_outros(config.audio.volume_outros)
 
 
 def responder_falando(
@@ -98,7 +140,7 @@ def responder_falando(
     medir: bool,
 ) -> Tempos:
     """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve."""
-    locutor = Locutor(voz, tocar, inicio)
+    locutor = Locutor(voz, tocar, inicio, abafador(conversa.config))
     locutor.tempos.transcricao = transcricao
     separador = SeparadorDeFrases()
     escrever(f"{conversa.config.assistente.nome}: ", fim="")
@@ -109,10 +151,12 @@ def responder_falando(
                 locutor.tempos.primeira_frase = time.perf_counter() - inicio
             locutor.falar(frase)
 
+    tela = FiltroDeTela()  # a tela não mostra as etiquetas de emoção; a voz recebe tudo
     try:
         for pedaco in conversa.perguntar(texto):
-            escrever(pedaco, fim="")
+            escrever(tela.alimentar(pedaco), fim="")
             falar(separador.alimentar(pedaco))
+        escrever(tela.finalizar(), fim="")
         falar(separador.finalizar())
     except CerebroIndisponivel as erro:
         escrever(f"\n[erro] {erro}")
@@ -125,14 +169,19 @@ def responder_falando(
     tempos = locutor.tempos
     for erro in dict.fromkeys(tempos.erros):
         escrever(f"[erro na voz] {erro}")
+    for aviso in audio.avisos_de_saida():
+        escrever(f"[som] {aviso}")
     if getattr(voz, "aviso", ""):
         escrever(f"[voz reserva] {voz.aviso}")
         voz.aviso = ""
+    for aviso in conversa.avisos_pendentes():
+        escrever(f"[memória] {aviso}")
     if medir:
         escrever(
             f"  [transcrição {tempos.transcricao:.2f} s, "
             f"primeira frase {tempos.primeira_frase:.2f} s, "
-            f"começou a falar em {tempos.comeco_da_voz:.2f} s]"
+            f"começou a falar em {tempos.comeco_da_voz:.2f} s, "
+            f"lembrou {len(conversa.lembrancas)} fatos e {len(conversa.trechos)} trechos]"
         )
     return tempos
 
@@ -147,15 +196,17 @@ def conversar_por_voz(
     voz: VozHTTP | VozElevenLabs | VozComReserva | None = None,
     gravar: Callable[[Callable[[str], str]], bytes] | None = None,
     tocar: Callable[[bytes], None] | None = None,
+    so_teclado: bool = False,
 ) -> int:
+    """Conversa com resposta falada. Por padrão, Enter grava a fala e texto digitado vale como
+    pergunta; com `so_teclado`, não usa microfone: a pessoa digita e a Nora responde falando."""
     saida = saida or sys.stdout
-    conversa = Conversa(config, cerebro or CerebroLocal(config), Historico(config.pasta_dados))
+    conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
-    voz = voz or criar_voz(config)
+    voz = com_pronuncias_aprendidas(voz or criar_voz(config), conversa.memoria)
     microfone = audio.dispositivo(config.audio.microfone)
-    alto_falante = audio.dispositivo(config.audio.alto_falante)
     gravar = gravar or (lambda entrada: audio.gravar_ate_enter(entrada, microfone))
-    tocar = tocar or (lambda wav: audio.tocar_wav(wav, alto_falante))
+    tocar = tocar or audio.tocador(config.audio)
     nome = config.assistente.nome
 
     def escrever(texto: str = "", fim: str = "\n") -> None:
@@ -167,14 +218,17 @@ def conversar_por_voz(
         escrever(f" pronto em {conversa.cerebro.aquecer():.1f} s.")
     except CerebroIndisponivel as erro:
         escrever(f"\n[erro] {erro}")
-    escrever(
-        f"Conversa por voz com {nome}. Aperte Enter, fale e aperte Enter de novo. "
-        "Também dá para digitar. 'sair' encerra."
-    )
+    if so_teclado:
+        escrever(f"Conversa com {nome}: digite e ela responde falando. 'sair' encerra.")
+    else:
+        escrever(
+            f"Conversa por voz com {nome}. Aperte Enter, fale e aperte Enter de novo. "
+            "Também dá para digitar. 'sair' encerra."
+        )
 
     while True:
         try:
-            comando = entrada("\n[Enter para falar] ").strip()
+            comando = entrada("\nVocê: " if so_teclado else "\n[Enter para falar] ").strip()
         except (EOFError, KeyboardInterrupt):
             escrever()
             break
@@ -183,6 +237,8 @@ def conversar_por_voz(
         if comando == "/limpar":
             conversa.limpar()
             escrever("(conversa reiniciada)")
+            continue
+        if so_teclado and not comando:
             continue
 
         try:
@@ -210,5 +266,9 @@ def conversar_por_voz(
             continue
 
         responder_falando(conversa, voz, tocar, texto, inicio, transcricao, escrever, medir)
+    if conversa.memoria is not None:
+        escrever("(guardando o que aprendi nesta conversa...)")
+    for aviso in conversa.encerrar():
+        escrever(f"[memória] {aviso}")
     escrever(f"Até mais! (conversa salva em {conversa.historico.arquivo})")
     return 0

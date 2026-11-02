@@ -26,6 +26,10 @@ def test_verificar_encontra_o_modelo_no_ollama(criar_raiz):
         assert modelos_ollama(host) == ["qwen3.5:9b"]
         linhas = verificar(carregar(criar_raiz(), ambiente={"OLLAMA_HOST": host}))
         assert any("qwen3.5:9b instalado" in linha for linha in linhas)
+        com_memoria = verificar(
+            carregar(criar_raiz(local="[memoria]\nativa = true\n"), ambiente={"OLLAMA_HOST": host})
+        )
+        assert any("Memória" in linha and "ollama pull bge-m3" in linha for linha in com_memoria)
     finally:
         servidor.shutdown()
 

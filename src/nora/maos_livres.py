@@ -5,7 +5,9 @@ eco, então ela ouviria a própria voz)."""
 
 from __future__ import annotations
 
+import queue
 import sys
+import threading
 import time
 from collections.abc import Callable, Iterable
 from typing import TextIO
@@ -14,13 +16,12 @@ from nora import audio
 from nora.ativacao import e_despedida, extrair_pedido
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import RAIZ, Config
-from nora.conversa import Conversa
+from nora.conversa import COMANDOS_SAIR, nova_conversa
 from nora.conversa_voz import responder_falando
-from nora.historico import Historico
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel
 from nora.vad import DetectorDeFala, SileroVAD, baixar_modelo, em_quadros, falas
-from nora.voz import criar_voz
+from nora.voz import com_pronuncias_aprendidas, criar_voz
 
 MODELO_VAD = "models/silero_vad.onnx"
 
@@ -40,6 +41,17 @@ def preparar_falas(config: Config, microfone: audio.Microfone):
     return falas(em_quadros(microfone.blocos()), vad, detector), recomecar, microfone.pausar
 
 
+def _ler_teclado(entrada: Callable[[str], str], destino: queue.Queue) -> None:
+    """Lê linhas digitadas e as entrega ao laço principal (roda numa linha à parte)."""
+    try:
+        while True:
+            linha = entrada("").strip()
+            if linha:
+                destino.put(linha)
+    except (EOFError, KeyboardInterrupt, StopIteration, RuntimeError, OSError):
+        destino.put(None)
+
+
 def conversar_maos_livres(
     config: Config,
     saida: TextIO | None = None,
@@ -52,13 +64,14 @@ def conversar_maos_livres(
     tocar: Callable[[bytes], None] | None = None,
     fontes: tuple[Iterable[bytes], Callable[[], None], Callable[[], None]] | None = None,
     relogio: Callable[[], float] = time.monotonic,
+    teclado: bool = True,
+    entrada: Callable[[str], str] = input,
 ) -> int:
     saida = saida or sys.stdout
-    conversa = Conversa(config, cerebro or CerebroLocal(config), Historico(config.pasta_dados))
+    conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
-    voz = voz or criar_voz(config)
-    alto_falante = audio.dispositivo(config.audio.alto_falante)
-    tocar = tocar or (lambda wav: audio.tocar_wav(wav, alto_falante))
+    voz = com_pronuncias_aprendidas(voz or criar_voz(config), conversa.memoria)
+    tocar = tocar or audio.tocador(config.audio)
     nome = config.assistente.nome
     palavra = config.assistente.palavra_de_ativacao
     # Uma frase completa: com só "Nora, ", o Whisper às vezes entende que o nome já foi dito
@@ -95,9 +108,52 @@ def conversar_maos_livres(
         if gravar_falas:
             escrever(f"(gravando cada fala ouvida em {config.pasta_dados / 'falas'})")
 
+        if teclado:
+            escrever("Também dá para digitar: escreva e aperte Enter ('sair' encerra).")
+        digitados: queue.Queue[str | None] = queue.Queue()
+        if teclado:
+            threading.Thread(target=_ler_teclado, args=(entrada, digitados), daemon=True).start()
+
         janela_ate = 0.0
         pasta_falas = config.pasta_dados / "falas"
-        for numero, fala in enumerate(falas_detectadas, start=1):
+
+        def atender(texto: str, pedido: str, inicio: float, transcricao: float) -> None:
+            nonlocal janela_ate
+            if config.escuta.pausar_microfone:
+                pausar()  # para não se ouvir pela caixa de som
+            if e_despedida(pedido):
+                dizer("Até mais!")
+                janela_ate = 0.0
+            elif not pedido:
+                dizer("Oi, pode falar.")
+                janela_ate = relogio() + config.escuta.janela_s
+            else:
+                responder_falando(
+                    conversa, voz, tocar, pedido, inicio, transcricao, escrever, medir
+                )
+                janela_ate = relogio() + config.escuta.janela_s
+            recomecar()
+
+        numero = 0
+        sair = False
+        for fala in falas_detectadas:
+            # O que foi digitado: não precisa do nome dela.
+            while not digitados.empty():
+                linha = digitados.get_nowait()
+                if linha is None:
+                    continue
+                if linha.lower() in COMANDOS_SAIR:
+                    sair = True
+                    break
+                pedido = extrair_pedido(linha, palavra)
+                escrever(f"Você (digitado): {linha}")
+                atender(linha, linha if pedido is None else pedido, time.perf_counter(), 0.0)
+            if sair:
+                break
+            if fala is None:
+                continue
+
+            numero += 1
             inicio = time.perf_counter()
             if gravar_falas:
                 pasta_falas.mkdir(parents=True, exist_ok=True)
@@ -121,20 +177,7 @@ def conversar_maos_livres(
                 continue
 
             escrever(f"Você: {texto}")
-            if config.escuta.pausar_microfone:
-                pausar()  # para não se ouvir pela caixa de som
-            if e_despedida(pedido):
-                dizer("Até mais!")
-                janela_ate = 0.0
-            elif not pedido:
-                dizer("Oi, pode falar.")
-                janela_ate = relogio() + config.escuta.janela_s
-            else:
-                responder_falando(
-                    conversa, voz, tocar, pedido, inicio, transcricao, escrever, medir
-                )
-                janela_ate = relogio() + config.escuta.janela_s
-            recomecar()
+            atender(texto, pedido, inicio, transcricao)
     except KeyboardInterrupt:
         escrever()
     except RuntimeError as erro:
@@ -143,5 +186,9 @@ def conversar_maos_livres(
     finally:
         if microfone is not None:
             microfone.__exit__(None, None, None)
+    if conversa.memoria is not None:
+        escrever("(guardando o que aprendi nesta conversa...)")
+    for aviso in conversa.encerrar():
+        escrever(f"[memória] {aviso}")
     escrever(f"Até mais! (conversa salva em {conversa.historico.arquivo})")
     return 0

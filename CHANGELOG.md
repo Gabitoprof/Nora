@@ -5,6 +5,52 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
+Versão em desenvolvimento: `0.3.0.dev0`.
+
+### Adicionado
+
+- **Emoção na voz** (`[emocao]`): a Nora escolhe sozinha a emoção de cada frase (alegre, empolgada, carinhosa, calma, séria, triste, curiosa, sussurro, risada, suspiro) pelo contexto: o que você disse, o que ela lembra, a agenda e a hora. No ElevenLabs v3 vira audio tag (ela ri, suspira, sussurra); no Flash, ajuste de tom por frase (estabilidade, estilo, velocidade); nas vozes locais e na reserva, a marca só é tirada. A tela, o histórico e a memória nunca mostram as marcas. `intensidade` (0 a 1) e `reacoes_por_resposta` controlam o exagero.
+- **Aprende com as suas reações:** a curadoria vê o tom da resposta anterior e, quando você reage ("kkkk", "calma, menos", se abre depois de um tom carinhoso), guarda como preferência de tom, sem você precisar pedir.
+
+## [0.2.0] - 2026-11-02
+
+**Memória.** A Nora lembra de você entre uma conversa e outra: anota fatos em áreas (saúde, estudos, trabalho...), guarda cada troca inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias e preferências). Critério da etapa atingido: no teste, fatos ditos numa conversa (a prova, o aniversário) foram lembrados em conversas novas, inclusive pela data ("foi ontem, 31 de outubro"). Junto vieram a digitação no lugar da fala, a prioridade da voz sobre outros programas e o caminho para criar uma voz própria (dataset, verificador e treino do Piper no Kaggle ou no Colab).
+
+### Adicionado
+
+- **Memória entre conversas** (v0.2.0): depois de cada resposta, em segundo plano, o modelo local anota fatos duradouros sobre a pessoa; antes de responder, a Nora busca os fatos parecidos com a pergunta e os lê junto. Fica em `data/memoria.db` (SQLite), com busca por significado (embeddings `bge-m3` pelo Ollama, índice `sqlite-vec` opcional). Fatos quase iguais são juntados. Guia em `docs/MEMORIA.md`.
+- **Aprender pela conversa:** quando você corrige a pronúncia ("o certo é ôje") ou pede outro jeito de falar ("não repita minha pergunta"), a curadoria guarda: as pronúncias valem na hora para qualquer voz (e para o `gerar-dataset`), e as preferências vão junto em toda resposta. `nora memoria pronuncias | preferencias` para ver, ensinar à mão e esquecer.
+- **Agenda da memória:** fatos com data (prova, consulta, aniversário) vão também para uma agenda; a curadoria converte "amanhã", "sexta", "dia 21" e "21/11" em datas, e aniversários repetem todo ano. Antes de responder, a Nora lê o que está marcado para os próximos 7 dias (`[memoria] agenda_dias`) e para o período de que a pergunta fala ("o que tenho amanhã?", "e na sexta?", "em dezembro"), o que a busca por significado sozinha não achava. `nora memoria agenda | marcar | desmarcar`. Fatos antigos com data entram na agenda sozinhos.
+- **Memória total:** além dos fatos anotados, cada pergunta e resposta fica guardada inteira, com seu vetor; antes de responder, a Nora também lê os trechos de conversas antigas mais parecidos com a pergunta (`[memoria] trocas_por_pergunta`, padrão 3). O `importar` guarda também as trocas antigas.
+- **Áreas da memória:** cada fato ganha uma área (saúde, trabalho, estudos...). A curadoria recebe as áreas que já existem, reaproveita a que couber e cria uma nova quando o assunto é novo; "Saude" e "saúde" contam como a mesma. `nora memoria areas` e `listar --area saúde`; `lembrar --area`. Bancos antigos ganham a coluna sozinhos.
+- `nora memoria listar | buscar | lembrar | esquecer | importar`. O `listar` mostra 20 por página (`--pagina`, `--contendo`, `--todos`). O `importar` tira fatos das conversas antigas de `data/historico/` e continua de onde parou.
+- Config `[memoria]` (`ativa`, `modelo_embeddings`, `curadoria`, `fatos_por_pergunta`, `similaridade_minima`) e extra de instalação `.[memoria]`.
+- **Digitar em vez de falar** (acessibilidade): `nora conversar --voz` (só teclado, resposta falada) e `nora ouvir` aceitando texto digitado a qualquer momento, sem precisar do nome dela.
+- `[voz] realce_pergunta` (`duplo` "??", `invertido` "¿...?", `exclamado` "?!") reescreve as perguntas para vozes que não sobem a entonação no "?"; `nora voz comparar "Tudo bem?"` gera a frase em cada jeito para escolher de ouvido.
+- Uma pergunta sempre fecha o pedido à voz (o "?" fica no fim, onde a entonação sobe), mesmo quando frases são juntadas.
+- `[voz.piper] velocidade` (0.5 a 2.0), `variacao` e `variacao_ritmo` (naturalidade: menos robótica e menos monótona) e `[audio] silencio_inicial_ms`: um pouco de silêncio antes de cada fala, para fones e placas de som que cortam o começo (o "Oi" saía engolido).
+- `[voz.pronuncias]`: palavras reescritas só na fala (ex.: `"amanhã" = "amanhãn"`), para qualquer motor de voz.
+- Lista de frases de treino com 204 frases, incluindo 46 perguntas, quase 50 com sons nasais (ã, ão, õe) e 50 saudações e respostas curtas ("Oi!", "Tá bom.", "Tchau, até amanhã!"), que a voz treinada sem elas falava picotado.
+- O conjunto de treino é convertido para 22.050 Hz com corte de frequências (FFT, numpy), sem abafar nem gerar chiado; antes era uma interpolação simples.
+- `docs/LICENCAS.md`: o que é MIT (o código) e a licença de cada dependência, programa, modelo, voz e serviço que a Nora usa, conferida na fonte; um teste falha se uma dependência do `pyproject.toml` não estiver listada.
+- `nora voz conferir-dataset --nome X [--descartar]`: o Whisper ouve cada frase do conjunto de treino e compara com o texto; o áudio é medido (ritmo, silêncios, pausas, volume, distorção). Cada frase vira "boa", "conferir" ou "ruim", com uma planilha `conferencia.csv`; `--descartar` tira as ruins do conjunto e o `gerar-dataset` não as refaz; `--tirar 0079 0088` tira frases escolhidas de ouvido.
+- **Notebook de treino do Piper no Kaggle** (`scripts/treinar_piper_kaggle.ipynb`): 30 h de GPU grátis por semana e treino em segundo plano (até 12 h, com o PC desligado); para antes do limite, exporta a voz e uma frase de teste, e continua de um treino anterior.
+- **Notebook de treino do Piper no Colab** (`scripts/treinar_piper_colab.ipynb`): confere o conjunto, faz o ajuste fino a partir de uma voz pt-BR do Piper (piper1-gpl, baixado no Colab), salva o progresso no Google Drive (a cada 5 minutos, com aviso na tela) para continuar se o Colab desconectar, para quando não há GPU, exporta o `.onnx` e toca uma frase de teste. Passo a passo em `docs/TREINAR_VOZ.md`.
+- `nora voz gerar-dataset`: fala muitas frases com a voz principal (ex.: o fluxo do ComfyUI) e salva no formato de treino do Piper (`wavs/` mono 22.050 Hz + `metadata.csv`), continuando de onde parou; aceita lista de frases ou texto corrido (`--texto`). Lista inicial em `recursos/frases_pt.txt` e guia em `docs/TREINAR_VOZ.md` (ComfyUI → conjunto → treino no Colab → Piper na Nora).
+- Frases que já estão esperando vão juntas num pedido só à voz (até 400 caracteres): com vozes lentas, como o ComfyUI, há menos pedidos e menos pausas entre as frases.
+- **Voz pelo ComfyUI** (`[voz] motor = "comfyui"`): a Nora manda cada frase para um fluxo seu do ComfyUI (exportado em "Export (API)", com `{{texto}}` no nó de texto), espera pela API local e toca o áudio gerado (WAV, FLAC ou MP3, convertidos com `soundfile`). `config/voz_comfyui.json` fica fora do Git. Em vez de `{{texto}}`, dá para indicar o nó e o campo da frase em `[voz.comfyui] campo` (ex.: `"12.text"`); se errar, a Nora lista os nós e campos de texto do fluxo.
+- `nora voz salvar "texto" [--pasta] [--nome] [--ouvir]`: a Nora fala o texto com a voz configurada e salva em .wav (padrão: `data/audios/`).
+- **Laboratório de voz:** `nora voz listar` e `nora voz testar "pf_dora:0.7 + af_heart:0.3"` misturam vozes do Kokoro para criar uma voz nova, de graça e no PC; a receita vai em `[voz.kokoro] voz`.
+- **Prioridade da voz** (`[audio] prioridade`, padrão `true`; `volume_outros`, padrão 0.2): no Windows, enquanto a Nora fala, os outros programas ficam mais baixos e depois voltam (pycaw).
+- A curadoria também anota animais de estimação e acontecimentos marcantes, com a data (antes só fatos duradouros: o susto com o cachorro ficava de fora).
+- A Nora mostra o que anotou na memória (`[memória] anotei: ...`) e sabe que tem memória: sem lembrança sobre o assunto, diz que não se lembra, em vez de dizer que não tem memória.
+- `nora --verificar` confere o modelo de embeddings; `--medir` mostra quantos fatos foram usados em cada resposta.
+
+### Corrigido
+
+- Se a saída de som escolhida em `[audio] alto_falante` não abrir (sumiu, mudou de número, ou está ocupada por outro programa), a Nora toca na saída padrão e avisa, em vez de ficar muda.
+- CHANGELOG da 0.1.0: a ativação aceita "Nora", "Norah" e "Nóra" (não "Ela").
+
 ## [0.1.0] - 2026-10-30
 
 **Conversa por voz.** A Nora acorda com o nome, ouve, pensa no modelo local (Qwen 3.5 9B na RX 9060 XT) e responde falando, frase por frase. Critério da etapa atingido: no teste com fone Bluetooth e voz do ElevenLabs, a voz começou entre 1,4 e 2,4 s depois do fim da fala (transcrição ~0,7 s no processador; primeira frase ~0,9 a 1,5 s), sem contar a pausa de 0,7 s que encerra a fala.
@@ -32,7 +78,7 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 - Voz configurável em `[voz] motor`: **`kokoro`** (novo padrão, voz feminina pt-BR `pf_dora`, local), `piper` ou **`elevenlabs`** (nuvem, chave em `ELEVENLABS_API_KEY`, voz em `[voz.elevenlabs] voz_id`).
 - `nora servidor-kokoro`: servidor de voz local com o Kokoro-82M, no mesmo formato do Piper (`POST /synthesize`). Extra de instalação `.[kokoro]`.
 - Scripts de voz instalam o Kokoro e iniciam a voz escolhida (`-Voz kokoro|piper|nenhuma`).
-- `nora ouvir`: conversa mãos livres (parte 3 da v0.1.0). O Silero VAD (MIT, baixado do PyPI na primeira vez) detecta começo e fim da fala; a fala vira pergunta quando começa com a palavra de ativação ("Nora", aceitando "Ela"); depois de responder, dá para continuar por `janela_s` segundos sem dizer o nome; "tchau" encerra. Config `[escuta]` (`limiar`, `silencio_ms`, `janela_s`).
+- `nora ouvir`: conversa mãos livres (parte 3 da v0.1.0). O Silero VAD (MIT, baixado do PyPI na primeira vez) detecta começo e fim da fala; a fala vira pergunta quando começa com a palavra de ativação ("Nora", aceitando "Norah" e "Nóra"); depois de responder, dá para continuar por `janela_s` segundos sem dizer o nome; "tchau" encerra. Config `[escuta]` (`limiar`, `silencio_ms`, `janela_s`).
 - Pronúncia do nome: `[assistente] pronuncia` muda só como a voz fala o nome (a tela continua mostrando o nome).
 - O ouvido envia ao Whisper uma dica com o nome da assistente ("Conversa com a assistente Nora."), para ele escrever "Nora" do jeito certo.
 - `nora ouvir --gravar-falas` salva cada fala ouvida em `data/falas/`, para diagnóstico. O detector guarda 0,5 s antes do começo da fala, para não cortar a primeira sílaba.

@@ -8,17 +8,16 @@
 
 ## 1. Visão
 
-Criar uma **IA de conversação por voz em tempo real**, no estilo do "Jarvis" dos filmes do Homem de Ferro, mas com **nome, voz e identidade próprios e exclusivos**.
+Criar uma **IA de conversação por voz em tempo real**, com **nome, voz e identidade próprios e exclusivos**.
 
-- **Foco:** a IA conversando em tempo real. A mesa touch com projetor vista no vídeo de referência **não é prioridade**.
+- **Foco:** a IA conversando em tempo real. Uma mesa touch com projetor **não é prioridade**.
 - **Desenvolvimento:** por etapas, cada uma gerando uma versão funcional.
 - **Objetivo futuro:** publicar como **open source no GitHub**.
 
-### Referência analisada (vídeo "Bom dia J.A.R.V.I.S")
-- **Cenário:** rotina matinal às 06:30. A pessoa senta na mesa e a IA fala primeiro, em português, com data, recado motivacional e plano do dia.
-- **Monitor ultrawide:** HUD com um orbe central animado ("MACHINE"), relógio e feed de câmera.
-- **Mesa:** projeção touch com cartões exibindo o conteúdo falado.
-- **O que gera a imersão:** voz natural, resposta rápida, interface reagindo à fala e **iniciativa própria** (a IA fala sem ser chamada).
+### O que gera a imersão
+- Voz natural e resposta rápida.
+- Interface reagindo à fala (um orbe animado, relógio, cartões com o conteúdo falado).
+- **Iniciativa própria:** a IA fala sem ser chamada, por exemplo numa rotina matinal com a data, um recado e o plano do dia.
 
 ---
 
@@ -111,18 +110,18 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
 
 ## 5. Roadmap por etapas (cada etapa = uma versão)
 
-| Versão | Etapa | Entregas | Critério de pronto |
-|---|---|---|---|
-| **v0.0.0** | Fundação | Repositório, licença, README, estrutura, `.gitignore`, `.env.example`, config de **nome, persona, voz e modelos** | Projeto roda o "hello world" e a config carrega |
-| **v0.1.0** | Conversa por voz | Wake word, VAD, whisper.cpp (Vulkan), Ollama, Piper | Falar o nome, perguntar e ouvir a resposta em < 2 s |
-| **v0.2.0** | Memória | SQLite + sqlite-vec: histórico, memória curada, conhecimento | Lembra de fatos entre sessões |
-| **v0.3.0** | Roteador de modelos | Escalonamento para Claude e outros, frase de espera, modo jogo, fallback | Pergunta difícil vai para a API e volta com a mesma voz |
-| **v0.4.0** | HUD | Orbe reativo, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
-| **v0.5.0** | Ferramentas MCP | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
-| **v0.6.0** | Rotinas e iniciativa | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
-| **v0.7.0** | Agentes e subagentes | Especialistas chamados pelo orquestrador | Tarefas complexas delegadas |
-| **v0.8.0** | Modo distribuído | Separação "corpo 24h" × "cérebro" | Funciona com o PC desligado (via API) |
-| **v1.0.0** | Lançamento | Instalador, docs completas, backends AMD/NVIDIA/CPU | Terceiros instalam e usam |
+| Versão | Etapa | Status | Entregas | Critério de pronto |
+|---|---|---|---|---|
+| **v0.0.0** | Fundação | ✅ | Repositório, licença, README, estrutura, `.gitignore`, `.env.example`, config de **nome, persona, voz e modelos** | Projeto roda o "hello world" e a config carrega |
+| **v0.1.0** | Conversa por voz | ✅ | Ativação pelo nome (transcrição), Silero VAD, whisper.cpp, Ollama (Qwen 3.5 9B), vozes Kokoro, Piper e ElevenLabs com reserva, mãos livres | Falar o nome, perguntar e ouvir a resposta em < 2 s |
+| **v0.2.0** | Memória | ✅ | SQLite + sqlite-vec: fatos por áreas, memória total (todas as trocas), agenda de datas, aprender pronúncia e jeito de falar; voz própria (dataset, verificador, treino do Piper) | Lembra de fatos entre sessões |
+| **v0.3.0** | Roteador de modelos | 🔄 | Escalonamento para Claude e outros, frase de espera, modo jogo, fallback, troca de cérebro e de voz por comando, índice das notas do Obsidian, **emoção na voz** (já entregue) | Pergunta difícil vai para a API e volta com a mesma voz |
+| **v0.4.0** | HUD | ⬜ | Orbe reativo, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
+| **v0.5.0** | Ferramentas MCP | ⬜ | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
+| **v0.6.0** | Rotinas e iniciativa | ⬜ | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
+| **v0.7.0** | Agentes e subagentes | ⬜ | Especialistas chamados pelo orquestrador | Tarefas complexas delegadas |
+| **v0.8.0** | Modo distribuído | ⬜ | Separação "corpo 24h" × "cérebro" | Funciona com o PC desligado (via API) |
+| **v1.0.0** | Lançamento | ⬜ | Instalador, docs completas, backends AMD/NVIDIA/CPU | Terceiros instalam e usam |
 
 ### Versionamento semântico (`vMAIOR.MENOR.CORREÇÃO`)
 
@@ -182,7 +181,7 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 ### 8.2 Obsidian como segundo cérebro
 *Origem: [Referência 01](docs/referencias/video-01-assistente-local.md).*
 
-- O assistente lê o **vault do Obsidian** (notas `.md`) como base de conhecimento, indexada no SQLite + sqlite-vec. Encaixe: **Etapa 2** (índice).
+- O assistente lê o **vault do Obsidian** (notas `.md`) como base de conhecimento, indexada no SQLite + sqlite-vec. Encaixe: **Etapa 3** (índice; saiu da Etapa 2 para ela não ficar grande demais).
 - O HUD desenha o **grafo das notas** e destaca as que foram usadas na resposta. Encaixe: **Etapa 4**.
 - Só pastas liberadas no config são lidas. Notas pessoais continuam fora do GitHub.
 
@@ -191,6 +190,24 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 
 - "Use o cérebro local", "troque para o Gemma", "mude sua voz para…": força o roteador para um modelo ou uma voz específica. Encaixe: **Etapa 3**.
 - O HUD mostra sempre o **modelo e a voz ativos** e a **origem** de cada resposta (qual ferramenta ou nota foi usada).
+
+### 8.4 Palavras de partículas no HUD
+*Origem: ideia para o HUD (31/10/2026).*
+
+- Enquanto a Nora fala, **cada palavra aparece formada por partículas** no centro do HUD, em sincronia com a voz; palavras importantes ganham outra cor (ex.: vermelho).
+- Técnica: desenhar a palavra num canvas invisível, sortear pontos dentro das letras e animar milhares de partículas (Three.js) até esses pontos; na palavra seguinte, as partículas voam para as novas posições.
+- Sincronia: a voz já sai frase por frase; para palavra por palavra, usar os tempos de palavra do motor de voz (ElevenLabs e Kokoro dão o alinhamento) ou estimar pela duração do áudio.
+- Encaixe: **Etapa 4 (HUD)**, junto com o orbe e os cartões.
+
+### 8.5 Criação de voz pelo ComfyUI
+*Origem: ideia do Gabriel (31/10/2026).*
+
+- Usar o **ComfyUI** (interface de fluxos em nós, rodando no PC) como laboratório para **criar e treinar a voz da Nora**, montando o processo visualmente: gravações → limpeza do áudio → clonagem ou treino → teste.
+- O ComfyUI tem nós da comunidade para síntese e clonagem de voz (ex.: F5-TTS, Chatterbox, XTTS). **Conferir a licença de cada modelo**: alguns são só para uso não comercial (XTTS, pesos do F5-TTS); o Chatterbox é MIT.
+- A voz criada sai como arquivo/modelo e entra na Nora por um motor de voz (`[voz] motor`), como o Kokoro e o Piper.
+- Cuidados: só vozes próprias ou de quem autorizar; nada de áudio do ElevenLabs como material de treino; instalar o ComfyUI num ambiente separado da Nora, com **Python 3.12 ou 3.13**; conferir o suporte à GPU AMD (RX 9060 XT) no Windows.
+- Relacionado: laboratório de voz (`nora voz testar`, mistura de vozes do Kokoro) e treino de voz própria com o Piper.
+- **Status (v0.2.0):** feito o motor `comfyui`, o `nora voz gerar-dataset`, o `nora voz conferir-dataset` e os notebooks de treino do Piper (Kaggle e Colab). **Aprendizado:** a voz treinada nunca fica mais natural do que a de origem; o Qwen3-TTS fala português com sotaque, e o Piper herdou o sotaque. Para uma voz natural, a origem precisa ser pt-BR de verdade (gravar uma voz real, com autorização, ou um modelo que fale bem português e permita treinar).
 
 *(Adicionar novas ideias aqui.)*
 

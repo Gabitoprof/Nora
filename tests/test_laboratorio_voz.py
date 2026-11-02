@@ -1,0 +1,112 @@
+from types import SimpleNamespace
+
+import pytest
+
+np = pytest.importorskip("numpy")  # o laboratório mistura vozes com numpy (extra [voz])
+
+from nora.audio import duracao_wav  # noqa: E402
+from nora.cli import laboratorio_de_voz  # noqa: E402
+from nora.config import carregar  # noqa: E402
+from nora.servidor_kokoro import Sintetizador, ler_receita  # noqa: E402
+
+
+def test_ler_receita():
+    assert ler_receita("pf_dora") == [("pf_dora", 1.0)]
+    assert ler_receita(" pf_dora:3 + af_heart:1 ") == [("pf_dora", 0.75), ("af_heart", 0.25)]
+    for ruim in ["", "pf_dora:abc", "pf_dora:0", "+"]:
+        with pytest.raises(ValueError):
+            ler_receita(ruim)
+
+
+class KokoroFalso:
+    VOZES = {"pf_dora": 1.0, "af_heart": 3.0, "pm_alex": 5.0}
+
+    def __init__(self):
+        self.estilos = []
+
+    def get_voices(self):
+        return list(self.VOZES)
+
+    def get_voice_style(self, nome):
+        return np.full((510, 1, 256), self.VOZES[nome], dtype=np.float32)
+
+    def create(self, texto, voice, speed, lang):
+        self.estilos.append(float(voice[0, 0, 0]))
+        return np.zeros(2400, dtype=np.float32), 24_000
+
+
+def sintetizador_falso(receita="pf_dora"):
+    s = Sintetizador.__new__(Sintetizador)
+    s.kokoro, s.voz, s.velocidade, s.idioma = KokoroFalso(), receita, 1.0, "pt-br"
+    s._misturas = {}
+    import threading
+
+    s._trava = threading.Lock()
+    return s
+
+
+def test_mistura_de_vozes_e_voz_desconhecida():
+    s = sintetizador_falso()
+    s.sintetizar("oi", "pf_dora:0.75 + af_heart:0.25")
+    assert s.kokoro.estilos == [pytest.approx(0.75 * 1 + 0.25 * 3)]
+    s.sintetizar("oi")  # a voz padrão, sozinha
+    assert s.kokoro.estilos[-1] == pytest.approx(1.0)
+    with pytest.raises(ValueError, match="Voz desconhecida: xx_nada"):
+        s.sintetizar("oi", "pf_dora + xx_nada")
+
+
+def test_laboratorio_testa_e_salva_a_amostra(criar_raiz, capsys):
+    config = carregar(criar_raiz(), ambiente={})
+    tocados = []
+    args = SimpleNamespace(
+        acao="testar", receita="pf_dora:0.7+pm_alex:0.3", frase="", velocidade=1.1
+    )
+    assert laboratorio_de_voz(config, args, sintetizador_falso(), tocados.append) == 0
+    texto = capsys.readouterr().out
+    assert 'voz = "pf_dora:0.7+pm_alex:0.3"' in texto
+    amostra = config.pasta_dados / "vozes" / "pf_dora_0_7_pm_alex_0_3_v1.1.wav"
+    assert amostra.is_file() and duracao_wav(amostra.read_bytes()) == pytest.approx(0.1)
+    assert len(tocados) == 1
+
+    args = SimpleNamespace(acao="listar", receita=None, frase="", velocidade=None)
+    assert laboratorio_de_voz(config, args, sintetizador_falso(), tocados.append) == 0
+    texto = capsys.readouterr().out
+    assert "português (Brasil): pf_dora, pm_alex" in texto
+    assert "inglês (EUA): af_heart" in texto
+
+    args = SimpleNamespace(acao="testar", receita="zz_nada", frase="", velocidade=None)
+    assert laboratorio_de_voz(config, args, sintetizador_falso(), tocados.append) == 1
+
+
+def test_salvar_fala_em_wav(criar_raiz, tmp_path, capsys):
+    from nora.audio import para_wav
+    from nora.cli import salvar_fala
+
+    class VozFalsa:
+        aviso = ""
+
+        def __init__(self):
+            self.textos = []
+
+        def sintetizar(self, texto):
+            self.textos.append(texto)
+            return para_wav(b"\x00\x00" * 16_000)
+
+    config = carregar(criar_raiz(), ambiente={})
+    voz, tocados = VozFalsa(), []
+    pasta = tmp_path / "meus audios"
+    assert (
+        salvar_fala(
+            config, "  Bom dia,   Gabriel! ", str(pasta), "bom-dia", True, voz, tocados.append
+        )
+        == 0
+    )
+    assert voz.textos == ["Bom dia, Gabriel!"]
+    assert (pasta / "bom-dia.wav").is_file()
+    assert len(tocados) == 1
+    assert "(1.0 s)" in capsys.readouterr().out
+
+    assert salvar_fala(config, "Lembrete da prova", voz=voz) == 0
+    salvos = list((config.pasta_dados / "audios").glob("*_lembrete_da_prova.wav"))
+    assert len(salvos) == 1
+    assert salvar_fala(config, "   ", voz=voz) == 1

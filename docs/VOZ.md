@@ -1,4 +1,4 @@
-# Conversa por voz (v0.1.0)
+# Voz da Nora
 
 A Nora conversa por voz usando programas locais, cada um no seu processo, e fala com eles pela rede local:
 
@@ -19,8 +19,9 @@ Escolha em `[voz] motor` (no `config/local.toml`, para valer só na sua máquina
 | Motor | Voz | Onde roda | Custo | Para quem |
 |---|---|---|---|---|
 | **`kokoro`** (padrão) | `pf_dora` (feminina pt-BR); também `pm_alex`, `pm_santa` | seu PC (processador) | grátis | quem baixa o projeto e quer testar |
-| `piper` | `pt_BR-faber-medium` (masculina) | seu PC | grátis | alternativa; uso pessoal (a base da voz é não comercial) |
-| `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz definitiva, com mais qualidade |
+| `piper` | `pt_BR-faber-medium` (masculina) ou uma voz treinada por você ([TREINAR_VOZ.md](TREINAR_VOZ.md)) | seu PC | grátis | voz própria, leve; uso pessoal (bases não comerciais) |
+| `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz mais natural; com `eleven_v3`, emoção de verdade ([Emoção na voz](#emoção-na-voz)) |
+| `comfyui` | a que você montar num fluxo do ComfyUI | seu PC | grátis | vozes próprias, criadas ou clonadas com autorização |
 
 ## Instalar (uma vez)
 
@@ -89,6 +90,19 @@ Com `--medir`, cada resposta mostra três tempos, contados a partir do momento e
 | primeira frase | a primeira frase da resposta ficar pronta | |
 | **começou a falar** | o som da Nora começar a sair | **< 2 s** (MVP), < 1 s (final) |
 
+## Digitar em vez de falar
+
+Para quem tem dificuldade na fala, ou em lugares onde não dá para falar, a Nora aceita **texto digitado** e responde **falando**:
+
+| Comando | Você | Ela |
+|---|---|---|
+| `nora conversar --voz` | só digita (não usa microfone) | responde falando e escrevendo |
+| `nora ouvir` | fala "Nora, ..." **ou** digita a qualquer momento | responde falando |
+| `nora falar` | aperta Enter e fala, **ou** digita a pergunta | responde falando |
+| `nora conversar` | digita | responde só escrevendo |
+
+No `nora ouvir`, o que você digita não precisa do nome dela. Digitar `sair` encerra.
+
 ## Mãos livres (`nora ouvir`)
 
 Em vez de apertar Enter, a Nora fica ouvindo o tempo todo e responde quando a frase **começa com o nome dela**:
@@ -123,6 +137,20 @@ Limites desta versão:
 - **Toda fala passa pelo Whisper**, mesmo as que não são para ela. Com TV ou conversa no ambiente, o processador trabalha mais. `--mostrar-ignoradas` mostra o que ela ouviu e ignorou.
 - **Enquanto ela fala, ela não ouve** (o microfone fica pausado), porque ainda não há cancelamento de eco. Com **fone Bluetooth** isso também é necessário: com o microfone aberto, o fone fica no modo chamada e a saída de som normal fica muda. Ao reabrir o microfone, o fone pode levar um instante para trocar de modo. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
 
+## Música tocando junto (prioridade da voz)
+
+Quando outro programa está tocando som (música, vídeo), a Nora fala por cima assim:
+
+```toml
+[audio]
+prioridade = true     # enquanto ela fala, os outros programas ficam mais baixos e depois voltam
+volume_outros = 0.2   # quanto sobra do volume deles (0 = mudo, 1 = sem mudança)
+```
+
+Com `prioridade = false`, ela fala misturada com o resto, no volume normal. Para respostas só escritas, use `nora conversar`.
+
+Funciona no Windows (biblioteca `pycaw`, instalada com `.[voz]`). Se a saída escolhida em `alto_falante` não abrir (o aparelho sumiu, mudou de número ou está ocupado por outro programa), a Nora usa a saída padrão do Windows e avisa com `[som] ...`.
+
 ## Fone Bluetooth (microfone e som no mesmo fone)
 
 Fones Bluetooth têm dois modos: **música** (som bom, sem microfone) e **chamada** (microfone ligado, som com qualidade de telefone). Quando o microfone abre, o fone vai para o modo chamada e a saída "Fones de ouvido" fica **muda**; cada troca de modo leva cerca de 1 segundo de silêncio.
@@ -141,6 +169,148 @@ Para o som não sumir, deixe o fone sempre no modo chamada:
    ```
 
 Os números mudam quando você conecta ou desconecta aparelhos; confira com `nora audio`. Com microfone separado (ou caixa de som), volte para `alto_falante = ""` e `pausar_microfone = true`.
+
+## Laboratório de voz (criar a sua voz, de graça)
+
+Cada voz do Kokoro é um "DNA" numérico, e dá para **misturar vozes** para criar uma voz nova, no seu PC e de graça:
+
+```powershell
+nora voz listar
+```
+
+```powershell
+nora voz testar "pf_dora:0.7 + af_heart:0.3" --velocidade 0.95
+```
+
+Ela fala uma frase de teste (ou a sua, com `--frase "..."`) e salva a amostra em `data\vozes\`. Quando gostar, ponha a receita no `config\local.toml`:
+
+```toml
+[voz]
+motor = "kokoro"
+
+[voz.kokoro]
+voz = "pf_dora:0.7 + af_heart:0.3"
+velocidade = 0.95
+```
+
+Dicas: mantenha a `pf_dora` (português do Brasil) com o **maior peso**, para o sotaque e a pronúncia; misture pequenas porções de outras vozes para mudar o timbre (mais grave, mais suave, mais brilhante). Os pesos não precisam somar 1; a Nora ajusta.
+
+## Salvar uma fala da Nora em .wav
+
+A Nora fala um texto com a voz configurada (ElevenLabs, Kokoro, mistura...) e salva o áudio:
+
+```powershell
+nora voz salvar "Bom dia! Hoje é dia de prova, boa sorte." --pasta "C:\Users\voce\Music\Nora" --nome bom-dia --ouvir
+```
+
+Sem `--pasta`, salva em `data\audios\`; sem `--nome`, usa a data e o começo do texto. Com `--ouvir`, também toca. (Pedir isso conversando com ela, sem comando, chega com as ferramentas da v0.5.0.)
+
+## Usar uma voz feita no ComfyUI
+
+Qualquer voz que você monte no ComfyUI (clonagem a partir de uma amostra sua, ou outro nó de voz) pode ser a voz da Nora. Ela manda cada frase para o seu fluxo, pela API local do ComfyUI, e toca o áudio gerado.
+
+1. **Prepare o fluxo no ComfyUI:** no nó onde vai a frase, escreva **`{{texto}}`** no lugar do texto (ou, sem mexer no fluxo, diga o nó e o campo em `[voz.comfyui] campo = "12.text"`: o número é o ID do nó no JSON exportado; se errar, a Nora lista os nós e campos de texto do fluxo). O fluxo precisa terminar num nó que salve o áudio (ex.: **Save Audio**). Teste uma vez no próprio ComfyUI.
+2. **Exporte no formato da API:** menu **Workflow → Export (API)** (se não aparecer, ligue **Enable dev mode options** nas configurações do ComfyUI). O formato normal (com `widgets_values`) não serve: a Nora avisa se for ele. Salve o arquivo como `B:\Nora\config\voz_comfyui.json` (ele fica fora do Git).
+3. **No `config\local.toml`:**
+
+   ```toml
+   [voz]
+   motor = "comfyui"
+   reserva = "kokoro"   # se o ComfyUI estiver fechado ou demorar, ela fala com o Kokoro
+
+   [voz.comfyui]
+   url = "http://127.0.0.1:8188"   # o endereço que o ComfyUI mostra ao abrir
+   espera_s = 120.0
+   ```
+
+4. **Deixe o ComfyUI aberto**, rode `nora --verificar` (deve mostrar `ComfyUI ok`) e teste: `nora voz salvar "Oi! Esta é a minha voz nova." --ouvir`.
+
+O áudio pode sair em WAV, FLAC ou MP3: a Nora converte (precisa do `soundfile`, que vem com `.[voz]`). Dependendo do modelo e da GPU, o ComfyUI leva alguns segundos por frase: a conversa fica mais lenta que com o ElevenLabs ou o Kokoro. Use só vozes suas ou de quem autorizou, e confira a licença do modelo de voz usado no fluxo.
+
+> Para ter a voz do ComfyUI **rápida e leve** no dia a dia, gere um conjunto de frases com ela e treine um Piper: veja [TREINAR_VOZ.md](TREINAR_VOZ.md).
+
+## Perguntas que soam como afirmação
+
+Alguns modelos de voz não sobem a entonação no "?". Dá para testar jeitos de escrever a pergunta que ajudam o modelo a perceber:
+
+```powershell
+nora voz comparar "Amanhã você vai à academia?" --ouvir
+```
+
+Ela gera a mesma frase normal, `duplo` ("??"), `invertido` ("¿...?") e `exclamado` ("?!"), salva em `data\vozes\pergunta_*.wav` e toca cada uma. Escolha a melhor e ponha no `config\local.toml`:
+
+```toml
+[voz]
+realce_pergunta = "invertido"
+```
+
+Vale também para o `nora voz gerar-dataset`, então o conjunto de treino sai com as perguntas no jeito escolhido.
+
+## Começo da fala cortado ou rápido demais
+
+Se a primeira palavra sai engolida ("Oi" rápido demais), teste nesta ordem, no `config/local.toml`:
+
+1. **Silêncio antes da fala.** Fones Bluetooth e algumas placas de som "acordam" depois que o som começou e cortam o início:
+
+   ```toml
+   [audio]
+   silencio_inicial_ms = 200
+   ```
+
+   Para saber se é isso: `nora voz salvar "Oi! Tudo bem?"` e abra o arquivo em `data\audios\` num player qualquer. Se ali o "Oi" estiver normal, o corte é na saída de som, e o silêncio resolve.
+2. **Velocidade do Piper** (vale para toda a fala):
+
+   ```toml
+   [voz.piper]
+   velocidade = 0.9   # 1.0 normal; menor = mais devagar
+   ```
+
+## Voz do Piper robótica ou monótona
+
+O Piper tem dois controles de naturalidade, no `config/local.toml`:
+
+```toml
+[voz.piper]
+variacao = 0.75        # variação do som (padrão do modelo: ~0.667). Mais alto = mais expressivo
+variacao_ritmo = 1.0   # variação do ritmo (padrão: ~0.8). Mais alto = menos monótono
+```
+
+Mude um de cada vez, em passos pequenos, e compare com `nora voz salvar "frase" --ouvir`. Se começar a chiar, embolar ou falar de um jeito estranho, desça. `0` volta ao padrão do modelo.
+
+Se a voz for metálica ou chiada (não só monótona), o ajuste não resolve: é treino de menos. Treine mais épocas ou com mais frases (veja [TREINAR_VOZ.md](TREINAR_VOZ.md)).
+
+## Emoção na voz
+
+A Nora escolhe sozinha a emoção de cada frase, olhando o que você disse e como disse, o que ela lembra de você, a agenda e a hora do dia. Você não marca nada.
+
+| Motor | O que acontece |
+|---|---|
+| ElevenLabs **v3** (`modelo = "eleven_v3"`) | Vira audio tag: ela ri, suspira, sussurra, fala animada ou triste. Mais expressivo, mas começa a falar um pouco mais devagar |
+| ElevenLabs Flash, Turbo ou Multilingual | Esses modelos não entendem as tags: a emoção vira ajuste de tom por frase (mais ou menos estável, mais ou menos ênfase, um pouco mais rápida ou mais lenta) |
+| Piper, Kokoro, ComfyUI | A marca é tirada; a voz fala normal (inclusive quando entra como reserva) |
+
+Ajustes no `config/local.toml`:
+
+```toml
+[emocao]
+ativa = true
+intensidade = 0.5          # 0 = sem emoção, 1 = bem expressiva
+reacoes_por_resposta = 1   # no máximo quantas risadas ou suspiros por resposta
+```
+
+Ela também aprende com as suas reações: se você ri de uma brincadeira, reclama de exagero ou se abre depois de um tom carinhoso, a curadoria guarda isso como preferência (`nora memoria preferencias`). Para mudar na hora, diga: "não precisa rir tanto", "pode ser mais animada".
+
+## Corrigir a pronúncia de uma palavra
+
+Se a voz fala mal alguma palavra, reescreva como ela deve soar, só na fala (a tela continua mostrando o texto original). Vale para qualquer motor de voz:
+
+```toml
+[voz.pronuncias]
+"amanhã" = "amanhãn"
+"PUCMG" = "puque eme gê"
+```
+
+Teste com `nora voz salvar "Até amanhã!" --ouvir` e ajuste até soar bem.
 
 ## Usar o ElevenLabs
 

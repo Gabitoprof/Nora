@@ -1,0 +1,378 @@
+import hashlib
+import io
+import json
+import math
+import re
+from datetime import date
+
+import pytest
+from fake_servico import ServicoFalso
+
+from nora.cli import main
+from nora.config import carregar
+from nora.conversa import conversar, nova_conversa
+from nora.curadoria import FatoExtraido, extrair_fatos
+from nora.embeddings import EmbeddingsOllama
+from nora.memoria import Memoria
+
+DIMENSAO = 256
+
+
+def vetor_de(texto):
+    """Embedding falso: saco de palavras com hash. Textos com palavras em comum ficam perto."""
+    vetor = [0.0] * DIMENSAO
+    for palavra in re.findall(r"\w+", texto.lower()):
+        if len(palavra) > 2:
+            vetor[int(hashlib.md5(palavra.encode()).hexdigest(), 16) % DIMENSAO] += 1.0
+    norma = math.sqrt(sum(x * x for x in vetor)) or 1.0
+    return [x / norma for x in vetor]
+
+
+class EmbeddingsFalsos:
+    def vetor(self, texto):
+        return vetor_de(texto)
+
+
+class OllamaComMemoria(ServicoFalso):
+    """Ollama falso: /api/embed com vetores falsos, /api/chat respondendo em streaming ou,
+    quando pedem JSON (curadoria), devolvendo os fatos combinados."""
+
+    def __init__(self, resposta="Anotado!", fatos=()):
+        self.conversas = []
+        self.fatos = list(fatos)
+        self.extras = {}  # outras chaves da curadoria (pronuncias, preferencias)
+
+        def responder(caminho, cabecalhos, corpo):
+            pedido = json.loads(corpo)
+            if caminho == "/api/embed":
+                vetores = [vetor_de(t) for t in pedido["input"]]
+                return 200, "application/json", json.dumps({"embeddings": vetores}).encode()
+            if pedido.get("format") == "json":
+                conteudo = json.dumps({"fatos": self.fatos, **self.extras})
+                return (
+                    200,
+                    "application/json",
+                    json.dumps({"message": {"content": conteudo}}).encode(),
+                )
+            self.conversas.append(pedido)
+            linhas = [
+                {"message": {"content": resposta}, "done": False},
+                {"message": {"content": ""}, "done": True, "eval_count": 3, "eval_duration": 10**8},
+            ]
+            return 200, "application/x-ndjson", b"\n".join(json.dumps(x).encode() for x in linhas)
+
+        super().__init__(responder)
+
+
+@pytest.fixture(params=[True, False], ids=["sqlite-vec", "python"])
+def memoria(tmp_path, request):
+    m = Memoria(tmp_path / "memoria.db", EmbeddingsFalsos())
+    if not request.param:
+        m.vetorial = False
+    elif not m.vetorial:
+        pytest.skip("sqlite-vec não instalado")
+    yield m
+    m.fechar()
+
+
+def test_lembra_busca_e_esquece(memoria):
+    id_aniversario, novo = memoria.lembrar("Gabriel faz aniversário em 12 de março")
+    assert novo
+    memoria.lembrar("Gabriel tem prova de cálculo na sexta-feira")
+    memoria.lembrar("Gabriel gosta de café sem açúcar")
+    achados = memoria.buscar("quando é o aniversário do Gabriel?", k=2)
+    assert achados[0].id == id_aniversario
+    assert achados[0].similaridade > achados[1].similaridade
+    assert memoria.buscar("aniversário", k=5, minimo=0.99) == []
+    assert memoria.esquecer(id_aniversario)
+    assert not memoria.esquecer(id_aniversario)
+    assert [f.texto for f in memoria.listar()] == [
+        "Gabriel gosta de café sem açúcar",
+        "Gabriel tem prova de cálculo na sexta-feira",
+    ]
+
+
+def test_fato_repetido_atualiza_em_vez_de_duplicar(memoria):
+    primeiro, _ = memoria.lembrar("Gabriel   gosta de café sem açúcar")
+    segundo, novo = memoria.lembrar("Gabriel gosta de café sem açúcar")
+    assert (segundo, novo) == (primeiro, False)
+    assert memoria.contar() == 1
+    assert memoria.listar()[0].texto == "Gabriel gosta de café sem açúcar"
+
+
+def test_memoria_persiste_no_arquivo(tmp_path):
+    caminho = tmp_path / "memoria.db"
+    m = Memoria(caminho, EmbeddingsFalsos())
+    m.lembrar("Gabriel mora em Salvador")
+    m.fechar()
+    reaberta = Memoria(caminho, EmbeddingsFalsos())
+    assert reaberta.buscar("onde Gabriel mora?")[0].texto == "Gabriel mora em Salvador"
+    reaberta.fechar()
+
+
+def test_embeddings_e_curadoria_pelo_ollama(criar_raiz):
+    with OllamaComMemoria(fatos=["Gabriel faz aniversário em 12 de março", "  ", 7]) as ollama:
+        config = carregar(criar_raiz(), ambiente={"OLLAMA_HOST": ollama.url})
+        vetores = EmbeddingsOllama(config).vetores(["oi", "tchau"])
+        fatos = extrair_fatos(config, "amanhã é meu aniversário", "Parabéns!", "30/10/2026")
+    assert len(vetores) == 2 and len(vetores[0]) == DIMENSAO
+    # formato antigo (texto puro) ainda é aceito, sem área; vazios e não-texto são descartados;
+    # a data escrita no texto vira data da agenda (aniversário: todo ano)
+    assert fatos == [
+        FatoExtraido("Gabriel faz aniversário em 12 de março", "", date(2027, 3, 12), True)
+    ]
+    embed = json.loads(ollama.pedidos[0][2])
+    assert embed["model"] == "bge-m3"
+    curadoria = json.loads(ollama.pedidos[1][2])
+    assert curadoria["format"] == "json" and curadoria["think"] is False
+    assert "30/10/2026" in curadoria["messages"][0]["content"]
+
+
+def test_curadoria_com_json_quebrado_devolve_nada(criar_raiz):
+    def quebrado(*_):
+        return 200, "application/json", json.dumps({"message": {"content": "{fatos:"}}).encode()
+
+    with ServicoFalso(quebrado) as ollama:
+        config = carregar(criar_raiz(), ambiente={"OLLAMA_HOST": ollama.url})
+        assert extrair_fatos(config, "oi", "oi", "30/10/2026") == []
+
+
+def test_lembra_entre_sessoes(criar_raiz):
+    """O critério da v0.2.0: um fato dito numa conversa é lembrado numa conversa nova."""
+    local = '[usuario]\nnome = "Gabriel"\n[memoria]\nativa = true\nsimilaridade_minima = 0.2\n'
+    fato = "Gabriel tem prova de cálculo na sexta-feira"
+    with OllamaComMemoria(fatos=[fato]) as ollama:
+        config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.url})
+
+        primeira = nova_conversa(config)
+        assert "".join(primeira.perguntar("Minha prova de cálculo é sexta.")) == "Anotado!"
+        assert primeira.encerrar() == [f"anotei: {fato}"]
+        primeira.memoria.fechar()
+
+        segunda = nova_conversa(config)
+        ollama.fatos = []
+        "".join(segunda.perguntar("Quando é a minha prova de cálculo?"))
+        segunda.encerrar()
+        segunda.memoria.fechar()
+
+    enviado = ollama.conversas[-1]["messages"]
+    notas = [m["content"] for m in enviado if m["role"] == "system"]
+    assert len(notas) == 2  # a persona e a nota da memória
+    assert fato in notas[1]
+    assert enviado[-1] == {"role": "user", "content": "Quando é a minha prova de cálculo?"}
+    assert [f.texto for f in segunda.lembrancas] == [fato]
+    # a nota da memória não fica guardada na conversa, só é enviada
+    assert all(fato not in m["content"] for m in segunda.mensagens)
+
+
+def test_sem_modelo_de_embeddings_a_conversa_segue(criar_raiz):
+    def sem_embed(caminho, cabecalhos, corpo):
+        if caminho == "/api/embed":
+            return 404, "application/json", b'{"error":"model \\"bge-m3\\" not found"}'
+        linha = {"message": {"content": "Oi!"}, "done": True}
+        return 200, "application/x-ndjson", json.dumps(linha).encode()
+
+    local = "[memoria]\nativa = true\ncuradoria = false\n"
+    with ServicoFalso(sem_embed) as ollama:
+        config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.url})
+        conversa = nova_conversa(config)
+        conversa.memoria.lembrar = lambda *a, **k: (1, True)
+        conversa.memoria.contar = lambda: 1  # finge que já há fatos, para tentar buscar
+        assert "".join(conversa.perguntar("oi")) == "Oi!"
+    assert "ollama pull bge-m3" in conversa.avisos_pendentes()[0]
+
+
+def test_conversar_mostra_aviso_e_contagem(criar_raiz):
+    local = "[memoria]\nativa = true\nsimilaridade_minima = 0.2\n"
+    with OllamaComMemoria(fatos=["Gabriel gosta de café"]) as ollama:
+        config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.url})
+        falas = iter(["eu gosto de café", "sair"])
+        saida = io.StringIO()
+        conversar(config, entrada=lambda _: next(falas), saida=saida, medir=True)
+    texto = saida.getvalue()
+    assert "lembrou 0 fatos" in texto
+    assert "[memória] anotei: Gabriel gosta de café" in texto
+    assert "(guardando o que aprendi nesta conversa...)" in texto
+
+
+def test_comando_memoria_e_importar(criar_raiz, capsys, monkeypatch):
+    local = '[usuario]\nnome = "Gabriel"\n[memoria]\nativa = true\n'
+    with OllamaComMemoria(fatos=["Gabriel vai viajar para Itaparica"]) as ollama:
+        raiz = criar_raiz(local=local)
+        historico = raiz / "data" / "historico"
+        historico.mkdir(parents=True)
+        registros = [
+            {"quando": "2026-10-30T10:00:00", "papel": "usuario", "texto": "vou viajar"},
+            {"quando": "2026-10-30T10:00:05", "papel": "assistente", "texto": "Boa viagem!"},
+        ]
+        (historico / "2026-10-30.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in registros) + "\nlixo\n", encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "nora.cli.carregar", lambda: carregar(raiz, ambiente={"OLLAMA_HOST": ollama.url})
+        )
+        assert main(["memoria", "importar"]) == 0
+        assert main(["memoria", "importar"]) == 0  # de novo: nada pendente
+        assert main(["memoria", "lembrar", "Gabriel", "prefere", "chá"]) == 0
+        assert main(["memoria", "listar"]) == 0
+        assert main(["memoria", "esquecer", "1"]) == 0
+        assert main(["memoria", "esquecer", "99"]) == 1
+    texto = capsys.readouterr().out
+    assert "1 trocas para ler" in texto
+    assert "+ Gabriel vai viajar para Itaparica" in texto
+    assert "0 trocas para ler" in texto
+    assert "Guardado" in texto
+    assert "2 fatos em" in texto
+    assert "Página" not in texto  # só uma página
+    assert "Esquecido (nº 1)." in texto
+    assert "1 trocas guardadas" in texto
+
+
+def test_persona_sabe_que_tem_memoria(criar_raiz):
+    from nora.persona import prompt_de_sistema
+
+    com = carregar(criar_raiz(local="[memoria]\nativa = true\n"), ambiente={})
+    sem = carregar(criar_raiz(local="[memoria]\nativa = false\n"), ambiente={})
+    assert "Você tem memória de conversas anteriores" in prompt_de_sistema(com)
+    assert "Você tem memória" not in prompt_de_sistema(sem)
+
+
+def test_listar_em_paginas_e_com_filtro(memoria):
+    # cada fato com uma palavra própria, para nenhum ser confundido com outro e juntado
+    for numero in range(25):
+        assunto = "cachorro" if numero % 5 == 0 else "assunto"
+        memoria.lembrar(f"Gabriel anotou item{numero:02d} sobre {assunto}")
+    assert memoria.contar() == 25
+    primeira = memoria.listar(limite=20)
+    assert len(primeira) == 20
+    assert primeira[0].texto == "Gabriel anotou item24 sobre assunto"  # o mais recente
+    assert len(memoria.listar(limite=20, pular=20)) == 5
+    assert len(memoria.listar()) == 25
+    com_cachorro = memoria.listar(contendo="cachorro")
+    assert [f.texto for f in com_cachorro][-1] == "Gabriel anotou item00 sobre cachorro"
+    assert memoria.contar_contendo("cachorro") == 5
+
+
+def test_lembra_de_tudo_mesmo_sem_fato_anotado(criar_raiz):
+    """Memória total: a troca inteira fica guardada e volta numa conversa nova, mesmo quando a
+    curadoria não acha nenhum fato para anotar."""
+    local = (
+        '[usuario]\nnome = "Gabriel"\n[memoria]\nativa = true\nsimilaridade_minima = 0.2\n'
+        "fatos_por_pergunta = 0\n"
+    )
+    with OllamaComMemoria(resposta="Que alívio que você achou!", fatos=[]) as ollama:
+        config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.url})
+        primeira = nova_conversa(config)
+        "".join(primeira.perguntar("achei meu gato embaixo da escada"))
+        primeira.encerrar()
+        assert primeira.memoria.contar() == 0  # nenhum fato anotado...
+        assert primeira.memoria.contar_trocas() == 1  # ...mas a troca ficou guardada
+        primeira.memoria.fechar()
+
+        segunda = nova_conversa(config)
+        "".join(segunda.perguntar("onde eu achei o meu gato?"))
+        segunda.encerrar()
+        segunda.memoria.fechar()
+
+    nota = [m["content"] for m in ollama.conversas[-1]["messages"] if m["role"] == "system"][1]
+    assert "Trechos dessas conversas:" in nota
+    assert 'Gabriel disse: "achei meu gato embaixo da escada"' in nota
+    assert 'você respondeu: "Que alívio que você achou!"' in nota
+    assert len(segunda.trechos) == 1
+
+
+def test_trechos_da_propria_sessao_nao_voltam(memoria):
+    memoria.guardar_troca("meu cachorro fugiu", "Que susto!", "2026-10-30T10:00:00", "sessao-a")
+    memoria.guardar_troca("meu cachorro voltou", "Que bom!", "2026-10-30T10:05:00", "sessao-b")
+    achados = memoria.buscar_trocas("cachorro", k=5, exceto_sessao="sessao-b")
+    assert [t.pergunta for t in achados] == ["meu cachorro fugiu"]
+    assert achados[0].quando == "2026-10-30T10:00:00"
+
+
+def test_banco_antigo_ganha_a_tabela_de_trocas(tmp_path):
+    caminho = tmp_path / "memoria.db"
+    antiga = Memoria(caminho, EmbeddingsFalsos())
+    if not antiga.vetorial:
+        pytest.skip("sqlite-vec não instalado")
+    antiga.lembrar("Gabriel tem prova em 21/11")
+    antiga._db.execute("DROP TABLE vec_trocas")  # como era antes desta versão
+    antiga._db.commit()
+    antiga.fechar()
+
+    nova = Memoria(caminho, EmbeddingsFalsos())
+    nova.guardar_troca("oi", "olá", "2026-10-31T09:00:00", "s")
+    assert nova.buscar_trocas("oi")[0].resposta == "olá"
+    assert nova.buscar("prova")[0].texto == "Gabriel tem prova em 21/11"
+    nova.fechar()
+
+
+def test_curadoria_com_areas(criar_raiz):
+    fatos = [
+        {"texto": "Gabriel toma remédio para pressão", "area": "Saúde"},
+        {"texto": "Gabriel trabalha com design", "area": " trabalho "},
+        {"area": "sem texto"},
+    ]
+
+    def ollama(caminho, cabecalhos, corpo):
+        conteudo = json.dumps({"fatos": fatos})
+        return 200, "application/json", json.dumps({"message": {"content": conteudo}}).encode()
+
+    with ServicoFalso(ollama) as servidor:
+        config = carregar(criar_raiz(), ambiente={"OLLAMA_HOST": servidor.url})
+        achados = extrair_fatos(config, "oi", "oi", "31/10/2026", areas=["saúde", "estudos"])
+    assert [(f.texto, f.area) for f in achados] == [
+        ("Gabriel toma remédio para pressão", "Saúde"),
+        ("Gabriel trabalha com design", "trabalho"),
+    ]
+    instrucao = json.loads(servidor.pedidos[0][2])["messages"][0]["content"]
+    assert "Áreas que já existem: saúde, estudos." in instrucao
+
+
+def test_areas_na_memoria(memoria):
+    memoria.lembrar("Gabriel toma remédio para pressão", area="Saúde")
+    memoria.lembrar("Gabriel faz fisioterapia às terças", area="saude")  # mesma área
+    memoria.lembrar("Gabriel trabalha com design", area="trabalho")
+    memoria.lembrar("Gabriel gosta de café")  # sem área
+    assert memoria.areas() == [("saúde", 2), ("trabalho", 1)]
+    assert [f.texto for f in memoria.listar(area="SAUDE")] == [
+        "Gabriel faz fisioterapia às terças",
+        "Gabriel toma remédio para pressão",
+    ]
+    assert memoria.contar_contendo(area="trabalho") == 1
+    assert memoria.buscar("design")[0].area == "trabalho"
+    # atualizar um fato sem área não apaga a área que ele já tinha
+    memoria.lembrar("Gabriel trabalha com design")
+    assert memoria.areas() == [("saúde", 2), ("trabalho", 1)]
+
+
+def test_banco_antigo_ganha_a_coluna_de_area(tmp_path):
+    import sqlite3
+
+    caminho = tmp_path / "memoria.db"
+    banco = sqlite3.connect(caminho)
+    banco.executescript(
+        "CREATE TABLE fatos (id INTEGER PRIMARY KEY, texto TEXT NOT NULL, vetor BLOB NOT NULL,"
+        " criado TEXT NOT NULL, atualizado TEXT NOT NULL, origem TEXT NOT NULL DEFAULT '');"
+    )
+    banco.close()
+    memoria = Memoria(caminho, EmbeddingsFalsos())
+    memoria.lembrar("Gabriel estuda na PUC Minas", area="estudos")
+    assert memoria.areas() == [("estudos", 1)]
+    memoria.fechar()
+
+
+def test_comando_areas(criar_raiz, capsys, monkeypatch):
+    with OllamaComMemoria() as ollama:
+        raiz = criar_raiz(local="[memoria]\nativa = true\n")
+        monkeypatch.setattr(
+            "nora.cli.carregar", lambda: carregar(raiz, ambiente={"OLLAMA_HOST": ollama.url})
+        )
+        assert main(["memoria", "lembrar", "Gabriel", "corre", "às", "6h", "--area", "Saúde"]) == 0
+        assert main(["memoria", "lembrar", "Gabriel", "gosta", "de", "chá"]) == 0
+        assert main(["memoria", "areas"]) == 0
+        assert main(["memoria", "listar", "--area", "saude"]) == 0
+    texto = capsys.readouterr().out
+    assert "1 áreas:" in texto
+    assert "saúde" in texto and "(sem área)" in texto
+    assert "1 fatos na área saúde" in texto
+    assert "[saúde] Gabriel corre às 6h" in texto

@@ -35,8 +35,15 @@ def descrever_voz(config: Config) -> str:
         return f"kokoro {voz.kokoro.voz} (velocidade {voz.kokoro.velocidade}) em {voz.kokoro.url}"
     if voz.motor == "piper":
         return f"piper {voz.piper.voz} em {voz.piper.url}"
+    if voz.motor == "comfyui":
+        return f"comfyui {voz.comfyui.fluxo.name} em {voz.comfyui.url}"
     texto = f"elevenlabs {voz.elevenlabs.voz_id or '(sem voz_id)'} ({voz.elevenlabs.modelo})"
     return texto + (f", reserva {voz.reserva}" if voz.reserva else "")
+
+
+def _instalado(modelo: str, instalados: list[str]) -> bool:
+    """O Ollama lista "bge-m3:latest" para quem pediu "bge-m3"."""
+    return modelo in instalados or f"{modelo}:latest" in instalados
 
 
 def verificar(config: Config) -> list[str]:
@@ -62,16 +69,31 @@ def verificar(config: Config) -> list[str]:
     instalados = modelos_ollama(config.ollama_host)
     if instalados is None:
         linhas.append(f"  Ollama                  não respondeu em {config.ollama_host}")
-    elif modelo in instalados:
+    elif _instalado(modelo, instalados):
         linhas.append(f"  Ollama                  ok, {modelo} instalado")
     else:
         linhas.append(f"  Ollama                  ok, mas falta o modelo: ollama pull {modelo}")
+    if config.memoria.ativa:
+        embeddings = config.memoria.modelo_embeddings
+        if instalados is None:
+            estado = "depende do Ollama"
+        elif _instalado(embeddings, instalados):
+            estado = f"ok, {embeddings} instalado, em {config.pasta_dados / 'memoria.db'}"
+        else:
+            estado = f"falta o modelo: ollama pull {embeddings}"
+        linhas.append(f"  {'Memória':<24}{estado}")
     servicos = [("whisper-server", config.ouvido.url)]
     for motor, papel in [(config.voz.motor, ""), (config.voz.reserva, " (reserva)")]:
         if motor == "kokoro":
             servicos.append((f"Kokoro{papel}", config.voz.kokoro.url))
         elif motor == "piper":
             servicos.append((f"Piper{papel}", config.voz.piper.url))
+        elif motor == "comfyui":
+            servicos.append((f"ComfyUI{papel}", config.voz.comfyui.url))
+            if not config.voz.comfyui.fluxo.is_file():
+                linhas.append(
+                    f"  {'Fluxo do ComfyUI':<24}não encontrado: {config.voz.comfyui.fluxo}"
+                )
     for nome, url in servicos:
         estado = "ok" if responde(url) else f"não respondeu em {url} (veja docs/VOZ.md)"
         linhas.append(f"  {nome:<24}{estado}")
@@ -117,6 +139,368 @@ def testar_audio(config: Config, segundos: float, entrada=input) -> int:
     return 0
 
 
+IDIOMAS_KOKORO = {
+    "a": "inglês (EUA)",
+    "b": "inglês (Reino Unido)",
+    "e": "espanhol",
+    "f": "francês",
+    "h": "hindi",
+    "i": "italiano",
+    "j": "japonês",
+    "p": "português (Brasil)",
+    "z": "chinês",
+}
+
+
+def comparar_realces(config: Config, frase: str, ouvir: bool = False, voz=None, tocar=None) -> int:
+    """Gera a frase em cada realce de pergunta e salva em data/vozes/pergunta_<realce>.wav."""
+    from nora import audio
+    from nora.config import REALCES_DE_PERGUNTA
+    from nora.servico import ServicoIndisponivel
+    from nora.voz import _criar_motor_puro, realcar_perguntas
+
+    voz = voz or _criar_motor_puro(config, config.voz.motor)
+    tocar = tocar or audio.tocador(config.audio)
+    pasta = config.pasta_dados / "vozes"
+    pasta.mkdir(parents=True, exist_ok=True)
+    for modo in REALCES_DE_PERGUNTA:
+        texto = realcar_perguntas(frase, modo)
+        nome = modo or "normal"
+        try:
+            wav = voz.sintetizar(texto)
+        except ServicoIndisponivel as erro:
+            print(f"[erro] {erro}", file=sys.stderr)
+            return 1
+        arquivo = pasta / f"pergunta_{nome}.wav"
+        arquivo.write_bytes(wav)
+        print(f"  {nome:<10} {texto}  ->  {arquivo}")
+        if ouvir:
+            try:
+                tocar(wav)
+            except Exception as erro:
+                print(f"  [aviso] não consegui tocar ({erro})")
+    print(
+        'Gostou de um? No config/local.toml, em [voz]: realce_pergunta = "duplo" (ou o escolhido)'
+    )
+    return 0
+
+
+def _com_aprendidas(config: Config, voz):
+    """A voz com as pronúncias ensinadas na conversa (se a memória estiver ligada)."""
+    from nora.memoria import abrir_memoria
+    from nora.voz import com_pronuncias_aprendidas
+
+    try:
+        memoria = abrir_memoria(config)
+    except Exception:
+        return voz
+    return com_pronuncias_aprendidas(voz, memoria)
+
+
+def comando_gerar_dataset(config: Config, args, voz=None) -> int:
+    from pathlib import Path
+
+    from nora.config import RAIZ
+    from nora.dataset_voz import gerar_dataset, ler_frases
+    from nora.servico import ServicoIndisponivel
+    from nora.voz import _criar_motor
+
+    arquivo = Path(args.texto or args.frases or RAIZ / "recursos" / "frases_pt.txt")
+    try:
+        frases = ler_frases(arquivo, uma_por_linha=not args.texto)
+    except FileNotFoundError:
+        print(f"[erro] Arquivo não encontrado: {arquivo}", file=sys.stderr)
+        return 1
+    if args.limite:
+        frases = frases[: args.limite]
+    if not frases:
+        print(f"[erro] Nenhuma frase aproveitável em {arquivo}.", file=sys.stderr)
+        return 1
+    # Só a voz principal: a reserva misturaria outra voz no conjunto de treino.
+    voz = voz or _com_aprendidas(config, _criar_motor(config, config.voz.motor))
+    pasta = config.pasta_dados / "dataset_voz" / args.nome
+    print(f"Voz: {config.voz.motor}. Frases de {arquivo}.")
+    try:
+        gerar_dataset(voz, frases, pasta)
+    except ServicoIndisponivel as erro:
+        print(f"[erro] {erro}\nRode o mesmo comando de novo para continuar.", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("\n(interrompido; rode de novo para continuar de onde parou)")
+        return 1
+    return 0
+
+
+def comando_conferir_dataset(config: Config, args, ouvido=None) -> int:
+    from nora.conferir_dataset import conferir, descartar, salvar_relatorio
+    from nora.ouvido import OuvidoWhisper
+    from nora.servico import ServicoIndisponivel
+
+    pasta = config.pasta_dados / "dataset_voz" / args.nome
+    if not (pasta / "metadata.csv").is_file():
+        print(f"[erro] Conjunto não encontrado: {pasta}", file=sys.stderr)
+        return 1
+    tirar = [nome.removesuffix(".wav").zfill(4) for nome in getattr(args, "tirar", None) or []]
+    if tirar:
+        descartar(pasta, tirar)
+        print(f"Tiradas do conjunto: {', '.join(tirar)} (estão em {pasta / 'descartadas'}).")
+        return 0
+    try:
+        avaliacoes = conferir(ouvido or OuvidoWhisper(config), pasta)
+    except ServicoIndisponivel as erro:
+        print(f"[erro] {erro}\nO whisper-server precisa estar aberto.", file=sys.stderr)
+        return 1
+    except ImportError:
+        print("[erro] Falta o numpy: pip install -e .[voz]", file=sys.stderr)
+        return 1
+    relatorio = pasta / "conferencia.csv"
+    salvar_relatorio(avaliacoes, relatorio)
+    ruins = [av for av in avaliacoes if av.nota == "ruim"]
+    duvidas = [av for av in avaliacoes if av.nota == "conferir"]
+    for titulo, grupo in (("Ruins", ruins), ("Para ouvir", duvidas)):
+        if grupo:
+            print(f"\n{titulo}:")
+        for av in sorted(grupo, key=lambda a: a.acerto):
+            print(f"  {av.ident}.wav  {av.acerto:4.0%}  {'; '.join(av.problemas)}")
+            print(f"           esperado: {av.texto}")
+            print(f"           ouvido:   {av.transcricao or '(nada)'}")
+    boas = len(avaliacoes) - len(ruins) - len(duvidas)
+    print(f"\n{boas} boas, {len(duvidas)} para ouvir, {len(ruins)} ruins. Planilha: {relatorio}")
+    if args.descartar and ruins:
+        descartar(pasta, [av.ident for av in ruins])
+        print(
+            f"{len(ruins)} ruins foram para {pasta / 'descartadas'} e saíram do metadata.csv "
+            "(o gerar-dataset não as refaz)."
+        )
+    elif ruins:
+        print("Para tirar as ruins do conjunto: rode de novo com --descartar.")
+    return 0
+
+
+def salvar_fala(
+    config: Config,
+    texto: str,
+    pasta: str = "",
+    nome: str = "",
+    ouvir: bool = False,
+    voz=None,
+    tocar=None,
+) -> int:
+    """A Nora fala o texto com a voz da config (ElevenLabs, Kokoro, Piper...) e salva em .wav."""
+    import re
+    import time
+    from pathlib import Path
+
+    from nora import audio
+    from nora.servico import ServicoIndisponivel
+    from nora.voz import criar_voz
+
+    texto = " ".join(texto.split())
+    if not texto:
+        print("[erro] Escreva o texto que ela vai falar.", file=sys.stderr)
+        return 1
+    destino = Path(pasta) if pasta else config.pasta_dados / "audios"
+    if not nome:
+        inicio = re.sub(r"[^a-z0-9]+", "_", texto.lower()[:40]).strip("_") or "fala"
+        nome = f"{time.strftime('%Y-%m-%d_%H-%M-%S')}_{inicio}"
+    arquivo = destino / f"{nome.removesuffix('.wav')}.wav"
+    voz = voz or _com_aprendidas(config, criar_voz(config))
+    try:
+        wav = voz.sintetizar(texto)
+    except ServicoIndisponivel as erro:
+        print(f"[erro] {erro}", file=sys.stderr)
+        return 1
+    destino.mkdir(parents=True, exist_ok=True)
+    arquivo.write_bytes(wav)
+    print(f"Salvo: {arquivo} ({audio.duracao_wav(wav):.1f} s)")
+    if getattr(voz, "aviso", ""):
+        print(f"[voz reserva] {voz.aviso}")
+    if ouvir:
+        try:
+            (tocar or audio.tocador(config.audio))(wav)
+        except Exception as erro:
+            print(f"[aviso] Não consegui tocar ({erro}).")
+    return 0
+
+
+def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> int:
+    """Lista as vozes do Kokoro e toca uma voz ou mistura, para achar a voz da Nora."""
+    import re
+
+    from nora import audio
+    from nora.config import RAIZ
+    from nora.servidor_kokoro import PASTA_PADRAO, Sintetizador
+
+    kokoro = config.voz.kokoro
+    receita = getattr(args, "receita", None) or kokoro.voz
+    velocidade = getattr(args, "velocidade", None) or kokoro.velocidade
+    try:
+        sintetizador = sintetizador or Sintetizador(RAIZ / PASTA_PADRAO, receita, velocidade)
+        if args.acao == "listar":
+            print("Vozes do Kokoro (1ª letra = idioma, 2ª = f feminina / m masculina):")
+            for codigo, idioma in IDIOMAS_KOKORO.items():
+                nomes = [v for v in sintetizador.vozes() if v.startswith(codigo)]
+                if nomes:
+                    print(f"  {idioma}: {', '.join(nomes)}")
+            print('\nMisture com pesos, ex.: nora voz testar "pf_dora:0.7 + af_heart:0.3"')
+            print("Dica: mantenha uma voz pt-BR (pf_dora) com o maior peso, para o sotaque.")
+            return 0
+        frase = args.frase or (
+            f"Oi! Eu sou a {config.assistente.nome}. Esta é uma voz de teste, "
+            "para você decidir se gosta de como eu falo."
+        )
+        wav = sintetizador.sintetizar(frase, receita, velocidade)
+    except (RuntimeError, FileNotFoundError, ValueError) as erro:
+        print(f"[erro] {erro}", file=sys.stderr)
+        return 1
+    pasta = config.pasta_dados / "vozes"
+    pasta.mkdir(parents=True, exist_ok=True)
+    nome = re.sub(r"[^a-z0-9]+", "_", receita.lower()).strip("_")
+    arquivo = pasta / f"{nome}_v{velocidade:g}.wav"
+    arquivo.write_bytes(wav)
+    print(f"Voz: {receita} (velocidade {velocidade:g}). Amostra salva em {arquivo}")
+    try:
+        (tocar or audio.tocador(config.audio))(wav)
+    except Exception as erro:
+        print(f"[aviso] Não consegui tocar ({erro}); abra o arquivo acima para ouvir.")
+    print(f'Gostou? No config/local.toml, em [voz.kokoro]: voz = "{receita}"')
+    return 0
+
+
+def comando_memoria(config: Config, args) -> int:
+    from nora.memoria import Memoria, abrir_memoria
+    from nora.servico import ServicoIndisponivel
+
+    memoria: Memoria | None = abrir_memoria(config)
+    if memoria is None:
+        print("A memória está desligada ([memoria] ativa = false).", file=sys.stderr)
+        return 1
+    try:
+        if args.acao == "listar":
+            por_pagina = 20
+            total = memoria.contar_contendo(args.contendo, args.area)
+            pagina = max(1, args.pagina)
+            fatos = memoria.listar(
+                limite=None if args.todos else por_pagina,
+                pular=0 if args.todos else (pagina - 1) * por_pagina,
+                contendo=args.contendo,
+                area=args.area,
+            )
+            filtro = f' contendo "{args.contendo}"' if args.contendo else ""
+            filtro += f" na área {memoria.normalizar_area(args.area)}" if args.area else ""
+            print(f"{total} fatos{filtro} em {memoria.caminho}:")
+            for fato in fatos:
+                area = f"[{fato.area}] " if fato.area else ""
+                print(f"  {fato.id:>4}  {area}{fato.texto}  ({fato.atualizado[:10]})")
+            paginas = max(1, -(-total // por_pagina))
+            if not args.todos and paginas > 1:
+                print(f"Página {pagina} de {paginas}. Veja outras com --pagina N, ou --todos.")
+        elif args.acao == "buscar":
+            for fato in memoria.buscar(" ".join(args.texto), k=10):
+                print(f"  {fato.id:>4}  {fato.similaridade:.2f}  {fato.texto}")
+        elif args.acao == "lembrar":
+            fato_id, novo = memoria.lembrar(" ".join(args.texto), origem="manual", area=args.area)
+            print(f"{'Guardado' if novo else 'Atualizado'} (nº {fato_id}).")
+        elif args.acao == "areas":
+            areas = memoria.areas()
+            sem_area = memoria.contar() - sum(n for _, n in areas)
+            print(f"{len(areas)} áreas:")
+            for area, quantos in areas:
+                print(f"  {area:<20} {quantos} fatos")
+            if sem_area:
+                print(f"  {'(sem área)':<20} {sem_area} fatos")
+        elif args.acao == "esquecer":
+            if not memoria.esquecer(args.id):
+                print(f"Não existe fato nº {args.id}.", file=sys.stderr)
+                return 1
+            print(f"Esquecido (nº {args.id}).")
+        elif args.acao == "importar":
+            from nora.importar import importar_historico
+
+            return importar_historico(config, memoria)
+        elif args.acao == "agenda":
+            from datetime import date, timedelta
+
+            from nora.agenda import quando
+
+            hoje = date.today()
+            fim = hoje + timedelta(days=max(1, args.dias) - 1)
+            eventos = memoria.agenda(hoje - timedelta(days=args.passados), fim)
+            print(
+                f"Agenda de {(hoje - timedelta(days=args.passados)):%d/%m/%Y} a {fim:%d/%m/%Y} "
+                f"({memoria.contar_agenda()} eventos anotados no total):"
+            )
+            if not eventos:
+                print("  (nada marcado nesse período)")
+            for dia, evento in eventos:
+                todo_ano = " [todo ano]" if evento.anual else ""
+                print(f"  {evento.id:>4}  {quando(dia, hoje)}{todo_ano}  {evento.texto}")
+        elif args.acao == "marcar":
+            from datetime import date
+
+            from nora.agenda import ler_data
+
+            data = ler_data(args.data, date.today())
+            if data is None:
+                print(f"[erro] Não entendi a data '{args.data}'. Use 21/11/2026.", file=sys.stderr)
+                return 1
+            texto = " ".join(args.texto)
+            if args.data not in texto:
+                texto = f"{texto} ({data:%d/%m/%Y})"
+            fato_id, _ = memoria.lembrar(texto, origem="manual", area=args.area)
+            area = memoria.normalizar_area(args.area)
+            evento_id = memoria.marcar(data, texto, args.anual, area, fato_id)
+            todo_ano = ", todo ano" if args.anual else ""
+            print(f"Marcado para {data:%d/%m/%Y}{todo_ano} (nº {evento_id}).")
+        elif args.acao == "pronuncias":
+            if args.esquecer:
+                if not memoria.esquecer_pronuncia(args.esquecer):
+                    print(f"Não há pronúncia guardada para '{args.esquecer}'.", file=sys.stderr)
+                    return 1
+                print(f"Esquecida a pronúncia de '{args.esquecer}'.")
+            elif args.palavra:
+                if not args.fala:
+                    print(
+                        "[erro] Diga como falar: nora memoria pronuncias hoje ôje", file=sys.stderr
+                    )
+                    return 1
+                memoria.ensinar_pronuncia(args.palavra, " ".join(args.fala))
+                print(f"Guardado: {args.palavra} → {' '.join(args.fala)}")
+            else:
+                aprendidas = memoria.pronuncias()
+                print(f"{len(aprendidas)} pronúncias aprendidas (valem para qualquer voz):")
+                for palavra, fala in aprendidas.items():
+                    print(f"  {palavra} → {fala}")
+        elif args.acao == "preferencias":
+            if args.esquecer:
+                if not memoria.esquecer_preferencia(args.esquecer):
+                    print(f"Não existe preferência nº {args.esquecer}.", file=sys.stderr)
+                    return 1
+                print(f"Esquecida (nº {args.esquecer}).")
+            elif args.texto:
+                numero, nova = memoria.preferir(" ".join(args.texto))
+                print(f"{'Guardada' if nova else 'Já estava guardada'} (nº {numero}).")
+            else:
+                guardadas = memoria.preferencias()
+                print(f"{len(guardadas)} preferências sobre o jeito de falar:")
+                for numero, texto in guardadas:
+                    print(f"  {numero:>4}  {texto}")
+        elif args.acao == "desmarcar":
+            if not memoria.desmarcar(args.id):
+                print(f"Não existe evento nº {args.id} na agenda.", file=sys.stderr)
+                return 1
+            print(f"Tirado da agenda (nº {args.id}). O fato continua na memória.")
+    except ServicoIndisponivel as erro:
+        modelo = config.memoria.modelo_embeddings
+        print(
+            f"[erro] {erro}\nA memória usa o Ollama: rode 'ollama pull {modelo}'.", file=sys.stderr
+        )
+        return 1
+    finally:
+        memoria.fechar()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nora", description="Assistente de IA pessoal por voz.")
     parser.add_argument("--versao", action="version", version=f"nora {__version__}")
@@ -127,6 +511,9 @@ def main(argv: list[str] | None = None) -> int:
     conversar_cmd = comandos.add_parser("conversar", help="conversa digitada com o modelo local")
     conversar_cmd.add_argument(
         "--medir", action="store_true", help="mostra o tempo de cada resposta"
+    )
+    conversar_cmd.add_argument(
+        "--voz", action="store_true", help="a resposta também sai falada (sem usar microfone)"
     )
     falar_cmd = comandos.add_parser("falar", help="conversa por voz (aperte Enter para falar)")
     falar_cmd.add_argument("--medir", action="store_true", help="mostra o tempo de cada etapa")
@@ -148,6 +535,100 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="salva cada fala ouvida em data/falas (para diagnóstico)",
     )
+    memoria_cmd = comandos.add_parser("memoria", help="ver e editar o que a Nora lembra de você")
+    acoes = memoria_cmd.add_subparsers(dest="acao", required=True)
+    listar_cmd = acoes.add_parser("listar", help="os fatos guardados, do mais recente")
+    listar_cmd.add_argument("--pagina", type=int, default=1, help="página (20 fatos cada)")
+    listar_cmd.add_argument("--contendo", default="", help="só os fatos com este trecho")
+    listar_cmd.add_argument("--todos", action="store_true", help="todos de uma vez")
+    listar_cmd.add_argument("--area", default="", help="só os fatos de uma área (ex.: saúde)")
+    acoes.add_parser("areas", help="as áreas da memória e quantos fatos cada uma tem")
+    buscar_cmd = acoes.add_parser("buscar", help="fatos parecidos com um texto")
+    buscar_cmd.add_argument("texto", nargs="+")
+    lembrar_cmd = acoes.add_parser("lembrar", help="guardar um fato à mão")
+    lembrar_cmd.add_argument("texto", nargs="+")
+    lembrar_cmd.add_argument("--area", default="", help="área do fato (ex.: trabalho)")
+    esquecer_cmd = acoes.add_parser("esquecer", help="apagar um fato pelo número")
+    esquecer_cmd.add_argument("id", type=int)
+    acoes.add_parser("importar", help="tirar fatos das conversas antigas (data/historico)")
+    agenda_cmd = acoes.add_parser("agenda", help="os compromissos e datas anotados")
+    agenda_cmd.add_argument("--dias", type=int, default=30, help="quantos dias à frente (30)")
+    agenda_cmd.add_argument(
+        "--passados", type=int, default=0, help="incluir também os N dias que passaram"
+    )
+    marcar_cmd = acoes.add_parser("marcar", help="pôr um compromisso na agenda à mão")
+    marcar_cmd.add_argument("data", help="ex.: 21/11/2026, 21/11 ou 2026-11-21")
+    marcar_cmd.add_argument("texto", nargs="+", help="o que é (ex.: prova de cálculo)")
+    marcar_cmd.add_argument("--anual", action="store_true", help="repete todo ano")
+    marcar_cmd.add_argument("--area", default="", help="área (ex.: estudos)")
+    pronuncias_cmd = acoes.add_parser(
+        "pronuncias", help="as pronúncias que ela aprendeu (ou ensinar uma à mão)"
+    )
+    pronuncias_cmd.add_argument("palavra", nargs="?", help="palavra a ensinar (ex.: hoje)")
+    pronuncias_cmd.add_argument("fala", nargs="*", help="como falar (ex.: ôje)")
+    pronuncias_cmd.add_argument("--esquecer", default="", metavar="PALAVRA")
+    preferencias_cmd = acoes.add_parser(
+        "preferencias", help="o que você pediu sobre o jeito de ela falar (ou guardar um pedido)"
+    )
+    preferencias_cmd.add_argument("texto", nargs="*", help='ex.: "Seja mais direta."')
+    preferencias_cmd.add_argument("--esquecer", type=int, default=0, metavar="NUMERO")
+    desmarcar_cmd = acoes.add_parser("desmarcar", help="tirar um evento da agenda pelo número")
+    desmarcar_cmd.add_argument("id", type=int)
+    voz_cmd = comandos.add_parser("voz", help="laboratório de voz: misture vozes do Kokoro")
+    voz_acoes = voz_cmd.add_subparsers(dest="acao", required=True)
+    voz_acoes.add_parser("listar", help="as vozes do Kokoro que dá para misturar")
+    testar_cmd = voz_acoes.add_parser("testar", help="ouvir uma voz ou mistura")
+    testar_cmd.add_argument(
+        "receita",
+        nargs="?",
+        default=None,
+        help='ex.: "pf_dora:0.7 + af_heart:0.3" (padrão: a voz da config)',
+    )
+    testar_cmd.add_argument("--frase", default="", help="o que ela vai falar")
+    testar_cmd.add_argument("--velocidade", type=float, default=None)
+    salvar_cmd = voz_acoes.add_parser(
+        "salvar", help="a Nora fala um texto com a voz configurada e salva em .wav"
+    )
+    salvar_cmd.add_argument("texto", nargs="+", help="o que ela vai falar")
+    salvar_cmd.add_argument("--pasta", default="", help="onde salvar (padrão: data/audios)")
+    salvar_cmd.add_argument("--nome", default="", help="nome do arquivo (sem .wav)")
+    salvar_cmd.add_argument("--ouvir", action="store_true", help="também tocar depois de salvar")
+    comparar_cmd = voz_acoes.add_parser(
+        "comparar", help="a mesma pergunta em cada realce, para escolher o que soa melhor"
+    )
+    comparar_cmd.add_argument("frase", nargs="+", help='ex.: "Tudo bem com você?"')
+    comparar_cmd.add_argument("--ouvir", action="store_true", help="tocar cada versão")
+    dataset_cmd = voz_acoes.add_parser(
+        "gerar-dataset",
+        help="fala muitas frases com a voz configurada e salva no formato de treino do Piper",
+    )
+    origem = dataset_cmd.add_mutually_exclusive_group()
+    origem.add_argument(
+        "--frases",
+        default="",
+        help="arquivo com uma frase por linha (padrão: recursos/frases_pt.txt)",
+    )
+    origem.add_argument(
+        "--texto", default="", help="texto corrido (ex.: um livro), cortado em frases"
+    )
+    dataset_cmd.add_argument("--nome", default="minha_voz", help="nome do conjunto (pasta)")
+    dataset_cmd.add_argument("--limite", type=int, default=0, help="usar só as N primeiras frases")
+    conferir_cmd = voz_acoes.add_parser(
+        "conferir-dataset",
+        help="o Whisper ouve cada frase do conjunto de treino e aponta as ruins",
+    )
+    conferir_cmd.add_argument("--nome", default="minha_voz", help="nome do conjunto (pasta)")
+    conferir_cmd.add_argument(
+        "--descartar",
+        action="store_true",
+        help="tirar as ruins do conjunto (vão para a pasta descartadas)",
+    )
+    conferir_cmd.add_argument(
+        "--tirar",
+        nargs="+",
+        metavar="NUMERO",
+        help="só tirar estas frases do conjunto, sem conferir (ex.: --tirar 0079 0088)",
+    )
     kokoro_cmd = comandos.add_parser(
         "servidor-kokoro", help="inicia o servidor de voz local Kokoro (fica rodando)"
     )
@@ -163,9 +644,31 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.comando == "conversar":
+        if args.voz:
+            from nora.conversa_voz import conversar_por_voz
+
+            return conversar_por_voz(config, medir=args.medir, so_teclado=True)
         from nora.conversa import conversar
 
         return conversar(config, medir=args.medir)
+
+    if args.comando == "memoria":
+        return comando_memoria(config, args)
+
+    if args.comando == "voz" and args.acao == "comparar":
+        return comparar_realces(config, " ".join(args.frase), ouvir=args.ouvir)
+
+    if args.comando == "voz" and args.acao == "gerar-dataset":
+        return comando_gerar_dataset(config, args)
+
+    if args.comando == "voz" and args.acao == "conferir-dataset":
+        return comando_conferir_dataset(config, args)
+
+    if args.comando == "voz" and args.acao == "salvar":
+        return salvar_fala(config, " ".join(args.texto), args.pasta, args.nome, ouvir=args.ouvir)
+
+    if args.comando == "voz":
+        return laboratorio_de_voz(config, args)
 
     if args.comando == "servidor-kokoro":
         from pathlib import Path
@@ -177,7 +680,7 @@ def main(argv: list[str] | None = None) -> int:
         pasta = Path(args.pasta) if args.pasta else RAIZ / PASTA_PADRAO
         try:
             return servir(kokoro.url, pasta, kokoro.voz, kokoro.velocidade)
-        except (RuntimeError, FileNotFoundError) as erro:
+        except (RuntimeError, FileNotFoundError, ValueError) as erro:
             print(f"[erro] {erro}", file=sys.stderr)
             return 1
 

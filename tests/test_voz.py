@@ -7,12 +7,12 @@ from fake_servico import ServicoFalso
 
 from nora.audio import duracao_wav, ler_wav, para_wav
 from nora.cli import verificar
-from nora.config import carregar
+from nora.config import ConfigError, carregar
 from nora.conversa_voz import conversar_por_voz
 from nora.frases import SeparadorDeFrases
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel, responde
-from nora.voz import VozElevenLabs, VozHTTP, criar_voz
+from nora.voz import VozElevenLabs, VozHTTP, _criar_motor_puro, criar_voz
 
 UM_SEGUNDO = para_wav(b"\x00\x00" * 16_000)
 
@@ -126,7 +126,32 @@ def test_voz_pede_o_audio_da_frase(criar_raiz):
         assert voz.sintetizar("Olá, tudo bem?") == UM_SEGUNDO
     caminho, _, corpo = piper.pedidos[0]
     assert caminho == "/synthesize"
-    assert json.loads(corpo) == {"text": "Olá, tudo bem?"}
+    assert json.loads(corpo) == {"text": "Olá, tudo bem?", "length_scale": 1.0}
+
+
+def test_velocidade_do_piper(criar_raiz):
+    local = '[voz]\nmotor = "piper"\n[voz.piper]\nvelocidade = 0.8\n'
+    config = carregar(criar_raiz(local=local), ambiente={})
+    assert _criar_motor_puro(config, "piper").extras == {"length_scale": 1.25}
+    natural = local + "variacao = 0.75\nvariacao_ritmo = 1.0\n"
+    config = carregar(criar_raiz(local=natural), ambiente={})
+    assert _criar_motor_puro(config, "piper").extras == {
+        "length_scale": 1.25,
+        "noise_scale": 0.75,
+        "noise_w_scale": 1.0,
+    }
+    with pytest.raises(ConfigError, match="velocidade deve ficar entre 0.5 e 2.0"):
+        carregar(criar_raiz(local=local.replace("0.8", "3.0")), ambiente={})
+
+
+def test_silencio_antes_da_fala():
+    from nora.audio import com_silencio_inicial, ler_wav, para_wav
+
+    wav = para_wav(b"\x01\x00" * 1000, taxa=10_000)
+    amostras, taxa, canais = ler_wav(com_silencio_inicial(wav, 100))
+    assert (taxa, canais) == (10_000, 1)
+    assert amostras == b"\x00\x00" * 1000 + b"\x01\x00" * 1000
+    assert com_silencio_inicial(wav, 0) == wav
 
 
 def test_voz_repassa_erro_do_piper(criar_raiz):
@@ -279,13 +304,9 @@ def test_conversa_por_voz_de_ponta_a_ponta(criar_raiz):
     assert "Você: Qual é a capital do Brasil?" in texto
     assert f"Nora: {resposta}" in texto
     assert "começou a falar em" in texto
-    falado = [json.loads(audio)["text"] for audio in tocados]
-    assert falado == [
-        "A capital do Brasil é Brasília.",
-        "Fica no Distrito Federal.",
-        "A capital do Brasil é Brasília.",
-        "Fica no Distrito Federal.",
-    ]
+    # as frases saem em ordem; as que já esperavam podem ir juntas num pedido só à voz
+    falado = " ".join(json.loads(audio)["text"] for audio in tocados)
+    assert falado == f"{resposta} {resposta}"
     assert len(whisper.pedidos) == 1  # a segunda pergunta foi digitada
 
 
@@ -318,3 +339,84 @@ def test_gravacao_vazia_e_ignorada(criar_raiz):
         tocar=lambda wav: None,
     )
     assert "(não ouvi nada)" in saida.getvalue()
+
+
+def test_so_teclado_responde_falando_sem_microfone(criar_raiz):
+    def nao_grave(_):
+        raise AssertionError("não deveria usar o microfone")
+
+    tocados = []
+    with (
+        OllamaFalso(["Oi! Tudo bem?"]) as ollama,
+        ServicoFalso(lambda c, cab, corpo: (200, "audio/wav", corpo)) as piper,
+    ):
+        config = config_com(criar_raiz, ollama.host, piper=piper.url)
+        comandos = iter(["", "oi", "sair"])
+        saida = io.StringIO()
+        conversar_por_voz(
+            config,
+            entrada=lambda _: next(comandos),
+            saida=saida,
+            gravar=nao_grave,
+            tocar=tocados.append,
+            so_teclado=True,
+        )
+    assert "digite e ela responde falando" in saida.getvalue()
+    # "Oi!" é curto demais para ir sozinho e segue junto com a frase seguinte
+    assert [json.loads(a)["text"] for a in tocados] == ["Oi! Tudo bem?"]
+
+
+def test_pronuncias_do_config_valem_para_a_voz(criar_raiz):
+    extra = '[voz.pronuncias]\n"amanhã" = "amanhãn"\n'
+    with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as piper:
+        voz = criar_voz(config_com(criar_raiz, piper=piper.url, extra=extra))
+        voz.sintetizar("Até amanhã, Nora!")
+    assert json.loads(piper.pedidos[0][2])["text"] == "Até amanhãn, Nora!"
+
+
+def test_pronuncias_invalidas(criar_raiz):
+    from nora.config import ConfigError
+
+    with pytest.raises(ConfigError, match="pronuncias"):
+        config_com(criar_raiz, extra='[voz.pronuncias]\n"amanhã" = 3\n')
+
+
+@pytest.mark.parametrize(
+    ("modo", "esperado"),
+    [
+        ("", "Oi. Tudo bem? Ok."),
+        ("duplo", "Oi. Tudo bem?? Ok."),
+        ("invertido", "Oi. ¿Tudo bem? Ok."),
+        ("exclamado", "Oi. Tudo bem?! Ok."),
+    ],
+)
+def test_realce_de_pergunta(modo, esperado):
+    from nora.voz import realcar_perguntas
+
+    assert realcar_perguntas("Oi. Tudo bem? Ok.", modo) == esperado
+
+
+def test_realce_vale_para_a_voz_e_o_comando_compara(criar_raiz):
+    from nora.cli import comparar_realces
+
+    with ServicoFalso(lambda *_: (200, "audio/wav", UM_SEGUNDO)) as piper:
+        local = (
+            '[voz]\nmotor = "piper"\nreserva = ""\nrealce_pergunta = "invertido"\n'
+            f'[voz.piper]\nurl = "{piper.url}"\n'
+        )
+        config = carregar(criar_raiz(local=local), ambiente={})
+        criar_voz(config).sintetizar("Tudo bem?")
+        assert json.loads(piper.pedidos[-1][2])["text"] == "¿Tudo bem?"
+        tocados = []
+        assert comparar_realces(config, "Tudo bem?", ouvir=True, tocar=tocados.append) == 0
+    falados = [json.loads(p[2])["text"] for p in piper.pedidos[1:]]
+    assert falados == ["Tudo bem?", "Tudo bem??", "¿Tudo bem?", "Tudo bem?!"]
+    assert len(tocados) == 4
+    assert (config.pasta_dados / "vozes" / "pergunta_invertido.wav").is_file()
+
+
+def test_realce_invalido(criar_raiz):
+    from nora.config import ConfigError
+
+    with pytest.raises(ConfigError, match="realce_pergunta"):
+        carregar(criar_raiz(local='[voz]\nrealce_pergunta = "gritado"\n'), ambiente={})

@@ -36,6 +36,13 @@ class Persona:
 
 
 @dataclass(frozen=True)
+class Emocao:
+    ativa: bool = True
+    intensidade: float = 0.5
+    reacoes_por_resposta: int = 1
+
+
+@dataclass(frozen=True)
 class Ouvido:
     motor: str
     url: str
@@ -53,6 +60,9 @@ class VozKokoro:
 class VozPiper:
     url: str
     voz: str
+    velocidade: float = 1.0
+    variacao: float = 0.0  # noise_scale do Piper; 0 = o padrão do modelo
+    variacao_ritmo: float = 0.0  # noise_w_scale do Piper; 0 = o padrão do modelo
 
 
 @dataclass(frozen=True)
@@ -61,16 +71,28 @@ class VozElevenLabs:
     modelo: str
 
 
-MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs")
+@dataclass(frozen=True)
+class VozComfyUI:
+    url: str
+    fluxo: Path
+    espera_s: float
+    campo: str
+
+
+REALCES_DE_PERGUNTA = ("", "duplo", "invertido", "exclamado")
+MOTORES_DE_VOZ = ("kokoro", "piper", "elevenlabs", "comfyui")
 
 
 @dataclass(frozen=True)
 class Voz:
     motor: str
     reserva: str
+    realce_pergunta: str
+    pronuncias: dict[str, str]
     kokoro: VozKokoro
     piper: VozPiper
     elevenlabs: VozElevenLabs
+    comfyui: VozComfyUI
 
 
 @dataclass(frozen=True)
@@ -82,9 +104,23 @@ class Escuta:
 
 
 @dataclass(frozen=True)
+class Memoria:
+    ativa: bool
+    modelo_embeddings: str
+    curadoria: bool
+    fatos_por_pergunta: int
+    similaridade_minima: float
+    trocas_por_pergunta: int
+    agenda_dias: int = 7
+
+
+@dataclass(frozen=True)
 class Audio:
     microfone: str
     alto_falante: str
+    prioridade: bool
+    volume_outros: float
+    silencio_inicial_ms: int = 0
 
 
 @dataclass(frozen=True)
@@ -112,6 +148,8 @@ class Config:
     voz: Voz
     audio: Audio
     escuta: Escuta
+    memoria: Memoria
+    emocao: Emocao
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
     pasta_dados: Path
@@ -168,6 +206,27 @@ def _campo(dados: dict[str, Any], secao: str, chave: str, tipo: type) -> Any:
     return valor
 
 
+def _velocidade(dados: dict[str, Any], secao: str) -> float:
+    velocidade = _campo(dados, secao, "velocidade", float)
+    if not 0.5 <= velocidade <= 2.0:
+        raise ConfigError(f"[{secao}] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
+    return velocidade
+
+
+def _variacao(dados: dict[str, Any], chave: str) -> float:
+    valor = _campo(dados, "voz.piper", chave, float)
+    if not 0.0 <= valor <= 2.0:
+        raise ConfigError(f"[voz.piper] {chave} deve ficar entre 0 e 2 (0 = padrão), veio {valor}.")
+    return valor
+
+
+def _silencio(dados: dict[str, Any]) -> int:
+    ms = _campo(dados, "audio", "silencio_inicial_ms", int)
+    if not 0 <= ms <= 2000:
+        raise ConfigError(f"[audio] silencio_inicial_ms deve ficar entre 0 e 2000, veio {ms}.")
+    return ms
+
+
 def _entre_0_e_1(secao: str, chave: str, valor: float) -> float:
     if not 0.0 <= valor <= 1.0:
         raise ConfigError(f"[{secao}] {chave} deve ficar entre 0.0 e 1.0, veio {valor}.")
@@ -180,7 +239,7 @@ def _temperatura(valor: float) -> float:
     return valor
 
 
-def _ler_voz(dados: dict[str, Any]) -> Voz:
+def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
     motor = _campo(dados, "voz", "motor", str)
     if motor not in MOTORES_DE_VOZ:
         raise ConfigError(
@@ -191,11 +250,20 @@ def _ler_voz(dados: dict[str, Any]) -> Voz:
         raise ConfigError(
             f"[voz] reserva deve ser vazia ou um de {', '.join(MOTORES_DE_VOZ)}; veio {reserva!r}."
         )
-    velocidade = _campo(dados, "voz.kokoro", "velocidade", float)
-    if not 0.5 <= velocidade <= 2.0:
-        raise ConfigError(f"[voz.kokoro] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
+    velocidade = _velocidade(dados, "voz.kokoro")
+    realce = _campo(dados, "voz", "realce_pergunta", str).strip()
+    if realce not in REALCES_DE_PERGUNTA:
+        opcoes = ", ".join(repr(r) for r in REALCES_DE_PERGUNTA)
+        raise ConfigError(f"[voz] realce_pergunta deve ser um de {opcoes}; veio {realce!r}.")
+    pronuncias = dados.get("voz", {}).get("pronuncias", {})
+    if not isinstance(pronuncias, dict) or not all(
+        isinstance(chave, str) and isinstance(valor, str) for chave, valor in pronuncias.items()
+    ):
+        raise ConfigError('[voz.pronuncias] deve ter linhas como "palavra" = "como falar".')
     return Voz(
         motor=motor,
+        realce_pergunta=realce,
+        pronuncias={chave.strip(): valor for chave, valor in pronuncias.items() if chave.strip()},
         reserva=reserva if reserva != motor else "",
         kokoro=VozKokoro(
             url=_campo(dados, "voz.kokoro", "url", str),
@@ -205,12 +273,26 @@ def _ler_voz(dados: dict[str, Any]) -> Voz:
         piper=VozPiper(
             url=_campo(dados, "voz.piper", "url", str),
             voz=_campo(dados, "voz.piper", "voz", str),
+            velocidade=_velocidade(dados, "voz.piper"),
+            variacao=_variacao(dados, "variacao"),
+            variacao_ritmo=_variacao(dados, "variacao_ritmo"),
         ),
         elevenlabs=VozElevenLabs(
             voz_id=_campo(dados, "voz.elevenlabs", "voz_id", str).strip(),
             modelo=_campo(dados, "voz.elevenlabs", "modelo", str),
         ),
+        comfyui=VozComfyUI(
+            url=_campo(dados, "voz.comfyui", "url", str),
+            fluxo=_caminho(_campo(dados, "voz.comfyui", "fluxo", str), raiz),
+            espera_s=_campo(dados, "voz.comfyui", "espera_s", float),
+            campo=_campo(dados, "voz.comfyui", "campo", str).strip(),
+        ),
     )
+
+
+def _caminho(texto: str, raiz: Path) -> Path:
+    caminho = Path(texto)
+    return caminho if caminho.is_absolute() else raiz / caminho
 
 
 def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Config:
@@ -257,16 +339,41 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             url=_campo(dados, "ouvido", "url", str),
             idioma=_campo(dados, "ouvido", "idioma", str),
         ),
-        voz=_ler_voz(dados),
+        voz=_ler_voz(dados, raiz),
         escuta=Escuta(
             limiar=_entre_0_e_1("escuta", "limiar", _campo(dados, "escuta", "limiar", float)),
             silencio_ms=_campo(dados, "escuta", "silencio_ms", int),
             janela_s=_campo(dados, "escuta", "janela_s", float),
             pausar_microfone=_campo(dados, "escuta", "pausar_microfone", bool),
         ),
+        memoria=Memoria(
+            ativa=_campo(dados, "memoria", "ativa", bool),
+            modelo_embeddings=_campo(dados, "memoria", "modelo_embeddings", str),
+            curadoria=_campo(dados, "memoria", "curadoria", bool),
+            fatos_por_pergunta=_campo(dados, "memoria", "fatos_por_pergunta", int),
+            similaridade_minima=_entre_0_e_1(
+                "memoria",
+                "similaridade_minima",
+                _campo(dados, "memoria", "similaridade_minima", float),
+            ),
+            trocas_por_pergunta=_campo(dados, "memoria", "trocas_por_pergunta", int),
+            agenda_dias=_campo(dados, "memoria", "agenda_dias", int),
+        ),
+        emocao=Emocao(
+            ativa=_campo(dados, "emocao", "ativa", bool),
+            intensidade=_entre_0_e_1(
+                "emocao", "intensidade", _campo(dados, "emocao", "intensidade", float)
+            ),
+            reacoes_por_resposta=_campo(dados, "emocao", "reacoes_por_resposta", int),
+        ),
         audio=Audio(
             microfone=_campo(dados, "audio", "microfone", str),
             alto_falante=_campo(dados, "audio", "alto_falante", str),
+            prioridade=_campo(dados, "audio", "prioridade", bool),
+            volume_outros=_entre_0_e_1(
+                "audio", "volume_outros", _campo(dados, "audio", "volume_outros", float)
+            ),
+            silencio_inicial_ms=_silencio(dados),
         ),
         modelo_local=ModeloLocal(
             provedor=_campo(dados, "modelos.local", "provedor", str),

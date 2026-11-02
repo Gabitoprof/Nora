@@ -6,6 +6,7 @@ import io
 import re
 import wave
 from array import array
+from collections.abc import Callable
 
 TAXA = 16_000  # Hz, o que o Whisper espera
 
@@ -33,6 +34,27 @@ def ler_wav(dados: bytes) -> tuple[bytes, int, int]:
         )
 
 
+def como_wav_16bits(dados: bytes) -> bytes:
+    """Qualquer áudio (WAV de 16 ou 32 bits, FLAC, MP3...) como WAV PCM 16 bits mono, que é o
+    que a Nora toca. WAV de 16 bits passa direto; o resto precisa do pacote soundfile."""
+    try:
+        amostras, taxa, canais = ler_wav(dados)
+        return para_wav(_para_mono(amostras, canais), taxa)
+    except (ValueError, EOFError, wave.Error):
+        pass
+    try:
+        import numpy
+        import soundfile
+    except ImportError as erro:
+        raise RuntimeError(
+            'Para tocar este formato de áudio, instale: pip install -e ".[voz]"'
+        ) from erro
+    sinal, taxa = soundfile.read(io.BytesIO(dados), dtype="float32", always_2d=True)
+    mono = sinal.mean(axis=1)
+    pcm = (numpy.clip(mono, -1.0, 1.0) * 32767).astype("<i2").tobytes()
+    return para_wav(pcm, int(taxa))
+
+
 def duracao_wav(dados: bytes) -> float:
     amostras, taxa, canais = ler_wav(dados)
     return len(amostras) / (2 * canais * taxa)
@@ -55,6 +77,29 @@ def reamostrar(amostras: bytes, de: int, para: int = TAXA) -> bytes:
         fracao = posicao - base
         destino[i] = int(origem[base] + (origem[proximo] - origem[base]) * fracao)
     return destino.tobytes()
+
+
+def reamostrar_qualidade(amostras: bytes, de: int, para: int) -> bytes:
+    """Como reamostrar, mas com corte de frequências (pela FFT, com numpy): não abafa nem cria
+    chiado ao baixar a taxa. Para preparar áudio de treino; sem numpy, usa a versão simples."""
+    if de == para or not amostras:
+        return amostras
+    try:
+        import numpy
+    except ImportError:
+        return reamostrar(amostras, de, para)
+    sinal = numpy.frombuffer(amostras, dtype="<i2").astype(numpy.float64)
+    folga = de // 10  # silêncio nas pontas: a FFT trata o sinal como cíclico
+    sinal = numpy.pad(sinal, folga)
+    total = max(1, round(len(sinal) * para / de))
+    espectro = numpy.fft.rfft(sinal)
+    novo = numpy.zeros(total // 2 + 1, dtype=complex)
+    bins = min(len(novo), len(espectro))
+    novo[:bins] = espectro[:bins]
+    saida = numpy.fft.irfft(novo, total) * (total / len(sinal))
+    corte = round(folga * para / de)
+    saida = saida[corte : len(saida) - corte] if corte else saida
+    return numpy.clip(numpy.round(saida), -32768, 32767).astype("<i2").tobytes()
 
 
 def dispositivo(valor: str) -> int | str | None:
@@ -246,6 +291,7 @@ class Microfone:
                 # Espera em pedaços curtos: no Windows, uma espera sem prazo ignora o Ctrl+C.
                 bloco = self._fila.get(timeout=0.2)
             except queue.Empty:
+                yield b""  # sinal de vida: quem consome pode olhar outras coisas (o teclado)
                 continue
             yield reamostrar(_para_mono(bloco, self._canais), self._taxa)
 
@@ -284,10 +330,18 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
         terminou.wait(timeout=segundos + 5)
 
 
-def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
-    """Toca um WAV e espera terminar; se a saída recusar a taxa do áudio, converte."""
-    sd = _sounddevice()
-    amostras, taxa, canais = ler_wav(dados)
+_avisos_de_saida: list[str] = []
+
+
+def avisos_de_saida() -> list[str]:
+    """Avisos da saída de som ainda não mostrados (e os esquece)."""
+    avisos = list(dict.fromkeys(_avisos_de_saida))
+    _avisos_de_saida.clear()
+    return avisos
+
+
+def _tocar_em(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
+    """Toca numa saída; se ela recusar a taxa do áudio, converte para a taxa dela."""
     try:
         _tocar(sd, amostras, taxa, canais, alto_falante)
         return
@@ -296,6 +350,43 @@ def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
             raise
     padrao = int(sd.query_devices(alto_falante, "output")["default_samplerate"])
     _tocar(sd, reamostrar(amostras, taxa, padrao), padrao, 1, alto_falante)
+
+
+def com_silencio_inicial(dados: bytes, ms: int) -> bytes:
+    """Põe um pouco de silêncio antes do som. Fones Bluetooth e algumas placas de som "acordam"
+    depois que o som começou e engolem o início ("Oi" sai cortado)."""
+    if ms <= 0:
+        return dados
+    amostras, taxa, canais = ler_wav(dados)
+    silencio = b"\x00\x00" * canais * (taxa * ms // 1000)
+    return para_wav(silencio + amostras, taxa, canais)
+
+
+def tocador(config_audio) -> Callable[[bytes], None]:
+    """Função que toca um WAV na saída da config ([audio] alto_falante e silencio_inicial_ms)."""
+    alto_falante = dispositivo(config_audio.alto_falante)
+    ms = config_audio.silencio_inicial_ms
+    return lambda wav: tocar_wav(com_silencio_inicial(wav, ms), alto_falante)
+
+
+def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
+    """Toca um WAV e espera terminar.
+
+    Se a saída escolhida em [audio] alto_falante não abrir (sumiu, mudou de número, ou está
+    ocupada por outro programa, como acontece no WDM-KS), toca na saída padrão do Windows."""
+    sd = _sounddevice()
+    amostras, taxa, canais = ler_wav(dados)
+    try:
+        _tocar_em(sd, amostras, taxa, canais, alto_falante)
+        return
+    except (sd.PortAudioError, ValueError) as erro:
+        if alto_falante is None:
+            raise
+        _avisos_de_saida.append(
+            f"A saída '{alto_falante}' não abriu ({erro}); usei a saída padrão. "
+            "Confira [audio] alto_falante com 'nora audio'."
+        )
+    _tocar_em(sd, amostras, taxa, canais, None)
 
 
 def listar_dispositivos() -> list[str]:
