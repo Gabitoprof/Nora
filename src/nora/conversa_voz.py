@@ -25,7 +25,14 @@ from nora.frases import SeparadorDeFrases
 from nora.ouvido import OuvidoWhisper
 from nora.prioridade import abafar_outros
 from nora.servico import ServicoIndisponivel
-from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, com_pronuncias_aprendidas, criar_voz
+from nora.troca_voz import atender_pedido, pedido_de_voz
+from nora.voz import (
+    VozComReserva,
+    VozElevenLabs,
+    VozHTTP,
+    VozTrocavel,
+    com_pronuncias_aprendidas,
+)
 
 _FIM = object()
 
@@ -139,7 +146,11 @@ def responder_falando(
     escrever: Callable[..., None],
     medir: bool,
 ) -> Tempos:
-    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve."""
+    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve.
+    Um pedido de troca de voz ("usa a voz do Piper") é atendido aqui, sem passar pelo cérebro."""
+    pedido = pedido_de_voz(texto)
+    if pedido:
+        return trocar_de_voz(conversa, voz, tocar, texto, pedido, escrever)
     locutor = Locutor(voz, tocar, inicio, abafador(conversa.config))
     locutor.tempos.transcricao = transcricao
     separador = SeparadorDeFrases()
@@ -188,6 +199,20 @@ def responder_falando(
     return tempos
 
 
+def trocar_de_voz(conversa: Conversa, voz, tocar, texto, pedido, escrever) -> Tempos:
+    resposta, wav = atender_pedido(voz, pedido, conversa.config.voz.motor)
+    escrever(f"{conversa.config.assistente.nome}: {resposta}")
+    conversa.historico.registrar("usuario", texto)
+    conversa.historico.registrar("assistente", resposta, modelo="comando de voz")
+    tempos = Tempos()
+    try:
+        tocar(wav if wav is not None else voz.sintetizar(resposta))
+    except Exception as erro:  # a conversa segue mesmo sem voz
+        tempos.erros.append(str(erro))
+        escrever(f"[erro na voz] {erro}")
+    return tempos
+
+
 def conversar_por_voz(
     config: Config,
     entrada: Callable[[str], str] = input,
@@ -205,7 +230,7 @@ def conversar_por_voz(
     saida = saida or sys.stdout
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
-    voz = com_pronuncias_aprendidas(voz or criar_voz(config), conversa.memoria)
+    voz = com_pronuncias_aprendidas(voz or VozTrocavel(config), conversa.memoria)
     microfone = audio.dispositivo(config.audio.microfone)
     gravar = gravar or (lambda entrada: audio.gravar_ate_enter(entrada, microfone))
     tocar = tocar or audio.tocador(config.audio)

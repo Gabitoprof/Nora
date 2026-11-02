@@ -363,3 +363,58 @@ def criar_voz(config: Config) -> VozHTTP | VozElevenLabs | VozComReserva:
     if not config.voz.reserva:
         return principal
     return VozComReserva(principal, _criar_motor(config, config.voz.reserva))
+
+
+NOMES_DAS_VOZES = {
+    "elevenlabs": "ElevenLabs",
+    "piper": "Piper",
+    "kokoro": "Kokoro",
+    "comfyui": "ComfyUI",
+}
+
+
+class VozTrocavel:
+    """A voz da conversa, que dá para trocar falando ("usa a voz do Piper"). A troca vale até
+    fechar a Nora; ao abrir de novo, volta o que está em [voz] motor."""
+
+    def __init__(self, config: Config) -> None:
+        self.config = config
+        self.motor = config.voz.motor
+        self.voz = self._montar(self.motor)
+
+    def _montar(self, motor: str):
+        """O motor pedido, com a reserva da config (ou a voz principal da config, se a reserva
+        for o próprio motor pedido)."""
+        principal = _criar_motor(self.config, motor)
+        reserva = self.config.voz.reserva
+        if reserva == motor:
+            reserva = self.config.voz.motor if self.config.voz.motor != motor else ""
+        return (
+            VozComReserva(principal, _criar_motor(self.config, reserva)) if reserva else principal
+        )
+
+    def sintetizar(self, texto: str) -> bytes:
+        return self.voz.sintetizar(texto)
+
+    @property
+    def aviso(self) -> str:
+        return getattr(self.voz, "aviso", "")
+
+    @aviso.setter
+    def aviso(self, valor: str) -> None:
+        if isinstance(self.voz, VozComReserva):
+            self.voz.aviso = valor
+
+    def trocar(self, motor: str, frase: str) -> bytes:
+        """Passa a falar com `motor`, já dizendo `frase` com ele. Se a voz nova não responder,
+        levanta ServicoIndisponivel e continua a de antes (a reserva não entra no teste)."""
+        nova = self._montar(motor)
+        teste = nova.principal if isinstance(nova, VozComReserva) else nova
+        try:
+            wav = teste.sintetizar(frase)
+        except ServicoIndisponivel:
+            raise
+        except Exception as erro:  # config incompleta, fluxo do ComfyUI ausente...
+            raise ServicoIndisponivel(str(erro)) from erro
+        self.voz, self.motor = nova, motor
+        return wav

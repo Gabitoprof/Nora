@@ -306,6 +306,14 @@ def conversar(
             conversa.limpar()
             escrever("(conversa reiniciada)")
             continue
+        from nora.troca_voz import pedido_de_voz
+
+        if pedido_de_voz(texto):  # sem isso, o cérebro diria que trocou sem trocar nada
+            escrever(
+                f"{nome}: Aqui eu só escrevo, sem voz. Para trocar a voz, converse comigo por "
+                "voz (nora ouvir ou nora conversar --voz) e peça lá."
+            )
+            continue
 
         escrever(f"{nome}: ", fim="")
         tela = FiltroDeTela()  # as etiquetas de emoção ({alegre}...) não aparecem

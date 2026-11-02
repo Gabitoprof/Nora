@@ -8,7 +8,7 @@ Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principa
 
 - **Conversa por voz, mãos livres:** comece a frase com "Nora" e ela responde falando, frase por frase, enquanto ainda pensa. Também dá para digitar e ouvir a resposta.
 - **Pensa no seu PC, e chama a nuvem quando precisa:** o modelo local pelo [Ollama](https://ollama.com) (Qwen 3.5 9B numa GPU de 16 GB) conversa sem custo; as perguntas difíceis sobem para o ChatGPT, com o Claude de reserva (os dois opcionais, com chave própria), com a mesma voz. "Modo jogo" libera a placa de vídeo.
-- **Várias vozes:** Kokoro (local, grátis, padrão), Piper (local; dá para treinar a sua), ElevenLabs (nuvem, a mais natural) e ComfyUI (vozes que você cria). Uma voz de reserva entra sozinha se a principal falhar.
+- **Várias vozes:** Kokoro (local, grátis, padrão), Piper (local; dá para treinar a sua), ElevenLabs (nuvem, a mais natural) e ComfyUI (vozes que você cria). Uma voz de reserva entra sozinha se a principal falhar, e dá para trocar de voz falando ("troque para a voz do Piper").
 - **Emoção na voz:** ela escolhe sozinha o tom de cada frase (alegre, carinhosa, calma, risada, sussurro...) pelo contexto; no ElevenLabs v3, ri, suspira e sussurra de verdade.
 - **Memória:** anota fatos sobre você por área (saúde, estudos, trabalho...), guarda cada conversa inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias, jeito de responder, o tom que funciona com você).
 - **Respeita o resto do PC:** abaixa o som dos outros programas enquanto fala.

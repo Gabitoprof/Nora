@@ -21,7 +21,7 @@ from nora.conversa_voz import responder_falando
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel
 from nora.vad import DetectorDeFala, SileroVAD, baixar_modelo, em_quadros, falas
-from nora.voz import com_pronuncias_aprendidas, criar_voz
+from nora.voz import VozTrocavel, com_pronuncias_aprendidas
 
 MODELO_VAD = "models/silero_vad.onnx"
 
@@ -70,7 +70,7 @@ def conversar_maos_livres(
     saida = saida or sys.stdout
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
-    voz = com_pronuncias_aprendidas(voz or criar_voz(config), conversa.memoria)
+    voz = com_pronuncias_aprendidas(voz or VozTrocavel(config), conversa.memoria)
     tocar = tocar or audio.tocador(config.audio)
     nome = config.assistente.nome
     palavra = config.assistente.palavra_de_ativacao

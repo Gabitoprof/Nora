@@ -195,6 +195,25 @@ velocidade = 0.95
 
 Dicas: mantenha a `pf_dora` (português do Brasil) com o **maior peso**, para o sotaque e a pronúncia; misture pequenas porções de outras vozes para mudar o timbre (mais grave, mais suave, mais brilhante). Os pesos não precisam somar 1; a Nora ajusta.
 
+## Trocar a voz falando
+
+Nos modos com voz (`nora ouvir`, `nora falar`, `nora conversar --voz`), dá para trocar a voz no meio da conversa, sem mexer na config:
+
+| Diga | O que acontece |
+|---|---|
+| "troque para a voz do Piper" / "usa o Piper" | passa a falar com o Piper (a voz que estiver aberta no servidor, como a sua treinada) |
+| "volta pro ElevenLabs" | volta para o ElevenLabs |
+| "usa a voz do Kokoro" | troca para o Kokoro |
+| "volta para a voz normal" | volta para a voz de `[voz] motor` |
+| "qual voz você está usando?" | ela diz qual está falando |
+
+- A confirmação ("Pronto, agora falo com a voz do Piper.") já sai com a voz nova, então você ouve na hora como ela ficou.
+- Se a voz pedida não responder (janela do Piper fechada, falta a chave do ElevenLabs), ela diz o motivo e **continua com a voz de antes**.
+- A reserva continua valendo: se a voz escolhida falhar no meio da conversa, entra a `[voz] reserva`. Se você escolheu justamente a voz que era a reserva, a principal da config passa a ser a reserva.
+- A troca vale até fechar a Nora. Para mudar de vez, use `[voz] motor` no `config/local.toml`.
+- O servidor da voz precisa estar aberto (o `iniciar_voz_windows.ps1` abre o Kokoro ou o Piper; o ElevenLabs é na nuvem). O script abre uma voz local por vez: com o ElevenLabs de principal, abra com `-Voz piper` para poder trocar para o Piper.
+- No `nora conversar` (só texto) não há voz: ela avisa em vez de fingir que trocou.
+
 ## Salvar uma fala da Nora em .wav
 
 A Nora fala um texto com a voz configurada (ElevenLabs, Kokoro, mistura...) e salva o áudio:
