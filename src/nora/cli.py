@@ -53,12 +53,9 @@ def verificar(config: Config) -> list[str]:
         if config.tem_chave_anthropic
         else "não definida (sem ela, o Claude não entra: só o cérebro local)"
     )
-    try:
-        import anthropic  # noqa: F401
+    from nora.cerebro_nuvem import problema_do_pacote
 
-        sdk = "instalado"
-    except ImportError:
-        sdk = 'não instalado (pip install -e ".[nuvem]")'
+    sdk = problema_do_pacote() or "instalado"
     nuvem = config.modelo_nuvem
     modelo = config.modelo_local.modelo
     linhas = [

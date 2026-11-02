@@ -120,15 +120,28 @@ class CerebroNuvem:
             self.medidas.tokens_por_segundo = self.medidas.tokens / self.medidas.total
 
 
+def problema_do_pacote() -> str:
+    """ "" se o SDK do Claude carrega; senão, o que falta ou o erro ao carregar."""
+    try:
+        import anthropic  # noqa: F401
+    except ModuleNotFoundError as erro:
+        if erro.name == "anthropic":
+            return 'falta o pacote do Claude: python -m pip install -e ".[nuvem]"'
+        return f"o pacote do Claude não carregou (falta {erro.name}): {erro}"
+    except ImportError as erro:
+        return f"o pacote do Claude não carregou: {erro}"
+    return ""
+
+
 def testar_conexao(config: Config) -> str:
     """Confere a chave e o modelo pesado com a API de modelos (não gera texto, não gasta
     créditos). Devolve "" se deu certo, ou o motivo da falha."""
     if not config.chave_anthropic:
         return "falta ANTHROPIC_API_KEY no .env"
-    try:
-        import anthropic
-    except ImportError:
-        return 'falta o pacote do Claude: pip install -e ".[nuvem]"'
+    if problema := problema_do_pacote():
+        return problema
+    import anthropic
+
     try:
         cliente = anthropic.Anthropic(api_key=config.chave_anthropic, timeout=10.0, max_retries=0)
         cliente.models.retrieve(config.modelo_nuvem.pesado)

@@ -18,7 +18,7 @@ import unicodedata
 from collections.abc import Iterator
 
 from nora.cerebro import CerebroIndisponivel, CerebroLocal, Medidas
-from nora.cerebro_nuvem import CerebroNuvem, nome_do_modelo
+from nora.cerebro_nuvem import CerebroNuvem, nome_do_modelo, problema_do_pacote
 from nora.config import Config
 
 ESCALAR = "{pensar}"
@@ -214,7 +214,7 @@ class Roteador:
         if not self.config.chave_anthropic:
             falta = "falta a ANTHROPIC_API_KEY no .env"
         else:
-            falta = 'falta o pacote do Claude (pip install -e ".[nuvem]")'
+            falta = problema_do_pacote() or "o Claude não respondeu"
         self.avisos.append(
             f"Essa pergunta era para o Claude, mas ele não está disponível ({falta}). "
             "Respondi pelo cérebro local."
