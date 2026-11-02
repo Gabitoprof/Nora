@@ -48,7 +48,18 @@ def _instalado(modelo: str, instalados: list[str]) -> bool:
 
 def verificar(config: Config) -> list[str]:
     persona = config.persona
-    chave = "definida" if config.tem_chave_anthropic else "não definida (só precisa na v0.3.0)"
+    chave = (
+        "definida"
+        if config.tem_chave_anthropic
+        else "não definida (sem ela, o Claude não entra: só o cérebro local)"
+    )
+    try:
+        import anthropic  # noqa: F401
+
+        sdk = "instalado"
+    except ImportError:
+        sdk = 'não instalado (pip install -e ".[nuvem]")'
+    nuvem = config.modelo_nuvem
     modelo = config.modelo_local.modelo
     linhas = [
         "Config:",
@@ -60,11 +71,15 @@ def verificar(config: Config) -> list[str]:
         f"  voz         {descrever_voz(config)}",
         f"  modelo      {config.modelo_local.provedor} {modelo}"
         f" (modo pensando {'ligado' if config.modelo_local.pensar else 'desligado'})",
-        f"  nuvem       {config.modelo_nuvem.rapido} / {config.modelo_nuvem.pesado}",
+        f"  nuvem       rápido {nuvem.rapido} ({nuvem.esforco_rapido}), "
+        f"pesado {nuvem.pesado} ({nuvem.esforco_pesado})",
+        f"  roteador    {config.roteador.modo}"
+        f"{', o local passa as difíceis para o Claude' if config.roteador.escalar else ''}",
         f"  dados       {config.pasta_dados}",
         "",
         "Ambiente:",
         f"  chave da API Anthropic  {chave}",
+        f"  pacote do Claude        {sdk}",
     ]
     instalados = modelos_ollama(config.ollama_host)
     if instalados is None:

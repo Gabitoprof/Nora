@@ -65,6 +65,21 @@ class CerebroLocal:
             ) from erro
         return time.perf_counter() - inicio
 
+    def descarregar(self) -> None:
+        """Tira o modelo da memória da placa de vídeo agora (modo jogo)."""
+        pedido = urllib.request.Request(
+            f"{self.config.ollama_host.rstrip('/')}/api/generate",
+            data=json.dumps({"model": self.config.modelo_local.modelo, "keep_alive": 0}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(pedido, timeout=self.timeout) as resposta:
+                resposta.read()
+        except (urllib.error.URLError, OSError) as erro:
+            raise CerebroIndisponivel(
+                f"Não consegui falar com o Ollama em {self.config.ollama_host}."
+            ) from erro
+
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
         """Envia a conversa ao Ollama e devolve a resposta aos pedaços, conforme é gerada."""
         modelo = self.config.modelo_local

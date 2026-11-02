@@ -9,6 +9,8 @@ Versão em desenvolvimento: `0.3.0.dev0`.
 
 ### Adicionado
 
+- **Roteador de modelos** (v0.3.0): o cérebro local (Ollama) conversa e, quando acha a pergunta difícil demais, passa para o **Claude** (API da Anthropic), com uma frase de espera na mesma voz; "pensa com calma" ou "usa o Claude" na pergunta vão direto. Comandos falados: "use o cérebro local", "use o Claude", "modo automático", "modo jogo" (libera a placa de vídeo e responde pela nuvem), "sair do modo jogo". Reserva nos dois sentidos (sem Ollama responde o Claude; sem Claude, o local), com aviso `[cérebro]`. O Claude recebe a mesma persona, memória, agenda, preferências e emoção. Config `[modelos.nuvem]` (modelos e esforço) e `[roteador]`; extra `.[nuvem]` (SDK `anthropic`); `--medir` e o histórico mostram quem respondeu. Guia em `docs/CEREBRO.md`.
+
 - **Emoção na voz** (`[emocao]`): a Nora escolhe sozinha a emoção de cada frase (alegre, empolgada, carinhosa, calma, séria, triste, curiosa, sussurro, risada, suspiro) pelo contexto: o que você disse, o que ela lembra, a agenda e a hora. No ElevenLabs v3 vira audio tag (ela ri, suspira, sussurra); no Flash, ajuste de tom por frase (estabilidade, estilo, velocidade); nas vozes locais e na reserva, a marca só é tirada. A tela, o histórico e a memória nunca mostram as marcas. `intensidade` (0 a 1) e `reacoes_por_resposta` controlam o exagero.
 - **Aprende com as suas reações:** a curadoria vê o tom da resposta anterior e, quando você reage ("kkkk", "calma, menos", se abre depois de um tom carinhoso), guarda como preferência de tom, sem você precisar pedir.
 

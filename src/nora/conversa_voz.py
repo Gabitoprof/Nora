@@ -174,11 +174,13 @@ def responder_falando(
     if getattr(voz, "aviso", ""):
         escrever(f"[voz reserva] {voz.aviso}")
         voz.aviso = ""
+    for aviso in conversa.avisos_do_cerebro():
+        escrever(f"[cérebro] {aviso}")
     for aviso in conversa.avisos_pendentes():
         escrever(f"[memória] {aviso}")
     if medir:
         escrever(
-            f"  [transcrição {tempos.transcricao:.2f} s, "
+            f"  [{conversa.origem}: transcrição {tempos.transcricao:.2f} s, "
             f"primeira frase {tempos.primeira_frase:.2f} s, "
             f"começou a falar em {tempos.comeco_da_voz:.2f} s, "
             f"lembrou {len(conversa.lembrancas)} fatos e {len(conversa.trechos)} trechos]"

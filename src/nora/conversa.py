@@ -15,6 +15,7 @@ from nora.emocao import FiltroDeTela, sem_emocoes
 from nora.historico import Historico
 from nora.memoria import Fato, Memoria, Troca, abrir_memoria
 from nora.persona import prompt_de_sistema
+from nora.roteador import Roteador
 
 
 def _data(quando: str) -> str:
@@ -192,6 +193,16 @@ class Conversa:
         except Exception as erro:
             self._avisar(f"Não consegui atualizar a memória ({erro}).")
 
+    def avisos_do_cerebro(self) -> list[str]:
+        """Avisos do roteador (quem respondeu na falta de quem) ainda não mostrados."""
+        pegar = getattr(self.cerebro, "avisos_pendentes", None)
+        return pegar() if pegar else []
+
+    @property
+    def origem(self) -> str:
+        """Quem respondeu por último: o cérebro local ou um modelo do Claude."""
+        return getattr(self.cerebro, "origem", "") or self.config.modelo_local.modelo
+
     def avisos_pendentes(self) -> list[str]:
         """Avisos da memória ainda não mostrados (e os esquece)."""
         avisos, self.avisos = self.avisos, []
@@ -235,7 +246,7 @@ class Conversa:
         self.historico.registrar(
             "assistente",
             resposta,
-            modelo=self.config.modelo_local.modelo,
+            modelo=self.origem,
             primeiro_pedaco_s=round(medidas.primeiro_pedaco, 3),
             total_s=round(medidas.total, 3),
             lembrancas=[fato.id for fato in self.lembrancas],
@@ -252,7 +263,7 @@ def nova_conversa(config: Config, cerebro: CerebroLocal | None = None, memoria=A
     """Conversa com o cérebro local, o histórico e (se ligada na config) a memória."""
     if memoria is AUTOMATICA:
         memoria = abrir_memoria(config)
-    return Conversa(config, cerebro or CerebroLocal(config), Historico(config.pasta_dados), memoria)
+    return Conversa(config, cerebro or Roteador(config), Historico(config.pasta_dados), memoria)
 
 
 def conversar(
@@ -306,12 +317,15 @@ def conversar(
             escrever("\n(interrompido)")
             continue
         escrever()
+        for aviso in conversa.avisos_do_cerebro():
+            escrever(f"[cérebro] {aviso}")
         for aviso in conversa.avisos_pendentes():
             escrever(f"[memória] {aviso}")
         if medir:
             m = conversa.cerebro.medidas
             escrever(
-                f"  [primeira palavra em {m.primeiro_pedaco:.2f} s, total {m.total:.2f} s, "
+                f"  [{conversa.origem}: primeira palavra em {m.primeiro_pedaco:.2f} s, "
+                f"total {m.total:.2f} s, "
                 f"{m.tokens_por_segundo:.1f} tokens/s, "
                 f"lembrou {len(conversa.lembrancas)} fatos e {len(conversa.trechos)} trechos]"
             )

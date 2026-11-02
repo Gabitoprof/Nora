@@ -137,6 +137,18 @@ class ModeloNuvem:
     provedor: str
     rapido: str
     pesado: str
+    esforco_rapido: str = "low"
+    esforco_pesado: str = "medium"
+
+
+MODOS_DO_ROTEADOR = ("automatico", "local", "nuvem")
+ESFORCOS = ("low", "medium", "high", "xhigh", "max")
+
+
+@dataclass(frozen=True)
+class Roteador:
+    modo: str = "automatico"
+    escalar: bool = True
 
 
 @dataclass(frozen=True)
@@ -152,11 +164,13 @@ class Config:
     emocao: Emocao
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
+    roteador: Roteador
     pasta_dados: Path
     ollama_host: str
     tem_chave_anthropic: bool
     arquivos: tuple[Path, ...]
     chave_elevenlabs: str = field(default="", repr=False)
+    chave_anthropic: str = field(default="", repr=False)
 
 
 def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
@@ -211,6 +225,20 @@ def _velocidade(dados: dict[str, Any], secao: str) -> float:
     if not 0.5 <= velocidade <= 2.0:
         raise ConfigError(f"[{secao}] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
     return velocidade
+
+
+def _esforco(dados: dict[str, Any], chave: str) -> str:
+    valor = _campo(dados, "modelos.nuvem", chave, str)
+    if valor not in ESFORCOS:
+        raise ConfigError(f"[modelos.nuvem] {chave} deve ser um de {ESFORCOS}, veio {valor!r}.")
+    return valor
+
+
+def _roteador(dados: dict[str, Any]) -> Roteador:
+    modo = _campo(dados, "roteador", "modo", str)
+    if modo not in MODOS_DO_ROTEADOR:
+        raise ConfigError(f"[roteador] modo deve ser um de {MODOS_DO_ROTEADOR}, veio {modo!r}.")
+    return Roteador(modo=modo, escalar=_campo(dados, "roteador", "escalar", bool))
 
 
 def _variacao(dados: dict[str, Any], chave: str) -> float:
@@ -386,10 +414,14 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             provedor=_campo(dados, "modelos.nuvem", "provedor", str),
             rapido=_campo(dados, "modelos.nuvem", "rapido", str),
             pesado=_campo(dados, "modelos.nuvem", "pesado", str),
+            esforco_rapido=_esforco(dados, "esforco_rapido"),
+            esforco_pesado=_esforco(dados, "esforco_pesado"),
         ),
+        roteador=_roteador(dados),
         pasta_dados=pasta_dados,
         ollama_host=ambiente.get("OLLAMA_HOST") or "http://127.0.0.1:11434",
         tem_chave_anthropic=bool(ambiente.get("ANTHROPIC_API_KEY")),
         chave_elevenlabs=ambiente.get("ELEVENLABS_API_KEY", ""),
+        chave_anthropic=ambiente.get("ANTHROPIC_API_KEY", ""),
         arquivos=tuple(arquivos),
     )

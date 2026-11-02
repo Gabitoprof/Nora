@@ -93,9 +93,23 @@ pensar = false
 
 [modelos.nuvem]
 provedor = "anthropic"
-# Conversa rápida e tarefas pesadas (usados a partir da v0.3.0).
+# Claude pela API (chave ANTHROPIC_API_KEY no .env; pip install -e ".[nuvem]").
+# "rapido": conversa quando a nuvem responde tudo (modo nuvem, modo jogo, Ollama fora do ar).
+# "pesado": as perguntas difíceis que o cérebro local passa adiante.
 rapido = "claude-haiku-5-5"
 pesado = "claude-sonnet-5-5"
+# Quanto o modelo pensa antes de responder: low, medium, high, xhigh, max.
+# Mais alto = respostas melhores, mas mais lentas e mais caras.
+esforco_rapido = "low"
+esforco_pesado = "medium"
+
+[roteador]
+# Quem responde: "automatico" (o local conversa e passa as perguntas difíceis para o Claude),
+# "local" (só o Ollama) ou "nuvem" (só o Claude). Dá para trocar falando: "use o Claude",
+# "use o cérebro local", "modo automático", "modo jogo".
+modo = "automatico"
+# No automático, o cérebro local pode passar adiante as perguntas que acha difíceis demais.
+escalar = true
 
 [escuta]
 # Modo mãos livres ("nora ouvir"): detecção de fala (Silero VAD) e palavra de ativação.
