@@ -93,8 +93,11 @@ def test_conversa_esconde_as_etiquetas_e_aprende_com_a_reacao(criar_raiz):
     texto = saida.getvalue()
     assert "Nora: Que bom te ver! Essa foi ótima." in texto and "{" not in texto
     assert "{alegre}" not in guardado and "Que bom te ver!" in guardado
-    curadorias = [json.loads(c) for caminho, _, c in ollama.pedidos if caminho == "/api/chat"]
-    curadorias = [c for c in curadorias if c.get("format") == "json"]
-    # na segunda troca, a curadoria vê o tom da resposta anterior (com as etiquetas)
-    assert "Resposta anterior da assistente: {alegre}" in curadorias[1]["messages"][1]["content"]
-    assert "kkkk essa foi boa" in curadorias[1]["messages"][1]["content"]
+    pedidos = [json.loads(c) for caminho, _, c in ollama.pedidos if caminho == "/api/chat"]
+    # as curadorias rodam em segundo plano e podem chegar em qualquer ordem: acha pelo conteúdo
+    trocas = [p["messages"][1]["content"] for p in pedidos if p.get("format") == "json"]
+    reacao = next(t for t in trocas if "kkkk essa foi boa" in t)
+    # na troca da reação, a curadoria vê o tom da resposta anterior (com as etiquetas)
+    assert reacao.startswith("Resposta anterior da assistente: {alegre} Que bom te ver!")
+    primeira = next(t for t in trocas if "me conta uma piada" in t)
+    assert "Resposta anterior" not in primeira
