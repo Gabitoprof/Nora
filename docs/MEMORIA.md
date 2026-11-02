@@ -44,6 +44,13 @@ Você ensina conversando, e ela guarda:
 
 Pedidos só para aquela resposta ("resume isso") não viram preferência.
 
+## Apagar e corrigir pela conversa
+
+- **Apagar:** "apaga isso", "esquece que eu falei da viagem". A Nora tira o fato da memória e da agenda, e aparece `[memória] esqueci: ...`.
+- **Corrigir:** "não é cálculo 1, a prova é de outra matéria". Sai o fato errado e entra o certo.
+
+Ela apaga o fato anotado mais parecido com o que você pediu. Confira com `nora memoria listar`; se sobrar algo, `nora memoria esquecer 12` apaga pelo número.
+
 ## Ver e editar
 
 | Comando | O que faz |

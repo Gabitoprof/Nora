@@ -310,6 +310,17 @@ class Memoria:
         with self._trava:
             return self._db.execute("SELECT COUNT(*) FROM fatos" + filtro, parametros).fetchone()[0]
 
+    def esquecer_parecido(self, texto: str, minimo: float = 0.75) -> list[Fato]:
+        """Apaga o fato mais parecido com o texto (e outros quase iguais a ele), se forem
+        parecidos o bastante. Devolve os fatos apagados."""
+        achados = self.buscar(texto, k=3, minimo=minimo)
+        if not achados:
+            return []
+        apagados = [achados[0]] + [f for f in achados[1:] if f.similaridade >= MESMO_FATO]
+        for fato in apagados:
+            self.esquecer(fato.id)
+        return apagados
+
     def esquecer(self, fato_id: int) -> bool:
         with self._trava, self._db:
             apagados = self._db.execute("DELETE FROM fatos WHERE id = ?", (fato_id,)).rowcount

@@ -180,6 +180,9 @@ class Conversa:
                 _, nova = self.memoria.preferir(preferencia)
                 if nova:
                     self._avisar(f"vou lembrar de: {preferencia}")
+            for texto in curadoria.esquecer:  # antes dos fatos novos: numa correção, sai o errado
+                for apagado in self.memoria.esquecer_parecido(texto):
+                    self._avisar(f"esqueci: {apagado.texto}")
             for fato in curadoria.fatos:
                 fato_id, novo = self.memoria.lembrar(
                     fato.texto, origem=self.historico.sessao, area=fato.area

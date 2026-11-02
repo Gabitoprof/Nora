@@ -37,7 +37,8 @@ FRASES_DE_ESPERA = (
 
 _PEDE_PESADO = re.compile(
     r"\b(pensa|pense|pensar) (com calma|bem|direito)\b|\bpergunta dificil\b|"
-    r"\b(usa|use|usando|pergunta pro|pergunte ao|pede pro) (o )?claude\b"
+    r"\b(usa|use|usando|utilize|utiliza|utilizar|chama|chame|consulta|consulte|pergunta pro|"
+    r"pergunte ao|pede pro|pede para o|pede ao) (o )?claude\b"
 )
 _COMANDOS = (
     (
@@ -53,7 +54,8 @@ _COMANDOS = (
     ("local", r"\b(cerebro|modelo) local\b|\bmodo local\b|\bso (o )?local\b"),
     (
         "nuvem",
-        r"\b(use|usa|usar|troca|troque|mude|muda|passa|passe)\b.{0,20}\b(claude|nuvem)\b"
+        r"\b(use|usa|usar|utilize|utiliza|troca|troque|mude|muda|passa|passe)\b.{0,20}"
+        r"\b(claude|nuvem)\b"
         r"|\bmodo nuvem\b|\bcerebro da nuvem\b",
     ),
 )
