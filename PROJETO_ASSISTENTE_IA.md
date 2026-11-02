@@ -110,18 +110,18 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
 
 ## 5. Roadmap por etapas (cada etapa = uma versão)
 
-| Versão | Etapa | Entregas | Critério de pronto |
-|---|---|---|---|
-| **v0.0.0** | Fundação | Repositório, licença, README, estrutura, `.gitignore`, `.env.example`, config de **nome, persona, voz e modelos** | Projeto roda o "hello world" e a config carrega |
-| **v0.1.0** | Conversa por voz | Wake word, VAD, whisper.cpp (Vulkan), Ollama, Piper | Falar o nome, perguntar e ouvir a resposta em < 2 s |
-| **v0.2.0** | Memória | SQLite + sqlite-vec: histórico, memória curada, conhecimento | Lembra de fatos entre sessões |
-| **v0.3.0** | Roteador de modelos | Escalonamento para Claude e outros, frase de espera, modo jogo, fallback | Pergunta difícil vai para a API e volta com a mesma voz |
-| **v0.4.0** | HUD | Orbe reativo, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
-| **v0.5.0** | Ferramentas MCP | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
-| **v0.6.0** | Rotinas e iniciativa | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
-| **v0.7.0** | Agentes e subagentes | Especialistas chamados pelo orquestrador | Tarefas complexas delegadas |
-| **v0.8.0** | Modo distribuído | Separação "corpo 24h" × "cérebro" | Funciona com o PC desligado (via API) |
-| **v1.0.0** | Lançamento | Instalador, docs completas, backends AMD/NVIDIA/CPU | Terceiros instalam e usam |
+| Versão | Etapa | Status | Entregas | Critério de pronto |
+|---|---|---|---|---|
+| **v0.0.0** | Fundação | ✅ | Repositório, licença, README, estrutura, `.gitignore`, `.env.example`, config de **nome, persona, voz e modelos** | Projeto roda o "hello world" e a config carrega |
+| **v0.1.0** | Conversa por voz | ✅ | Ativação pelo nome (transcrição), Silero VAD, whisper.cpp, Ollama (Qwen 3.5 9B), vozes Kokoro, Piper e ElevenLabs com reserva, mãos livres | Falar o nome, perguntar e ouvir a resposta em < 2 s |
+| **v0.2.0** | Memória | ✅ | SQLite + sqlite-vec: fatos por áreas, memória total (todas as trocas), agenda de datas, aprender pronúncia e jeito de falar; voz própria (dataset, verificador, treino do Piper) | Lembra de fatos entre sessões |
+| **v0.3.0** | Roteador de modelos | 🔄 | Escalonamento para Claude e outros, frase de espera, modo jogo, fallback, troca de cérebro e de voz por comando, índice das notas do Obsidian, **emoção na voz** (já entregue) | Pergunta difícil vai para a API e volta com a mesma voz |
+| **v0.4.0** | HUD | ⬜ | Orbe reativo, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
+| **v0.5.0** | Ferramentas MCP | ⬜ | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
+| **v0.6.0** | Rotinas e iniciativa | ⬜ | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
+| **v0.7.0** | Agentes e subagentes | ⬜ | Especialistas chamados pelo orquestrador | Tarefas complexas delegadas |
+| **v0.8.0** | Modo distribuído | ⬜ | Separação "corpo 24h" × "cérebro" | Funciona com o PC desligado (via API) |
+| **v1.0.0** | Lançamento | ⬜ | Instalador, docs completas, backends AMD/NVIDIA/CPU | Terceiros instalam e usam |
 
 ### Versionamento semântico (`vMAIOR.MENOR.CORREÇÃO`)
 
@@ -207,6 +207,7 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 - A voz criada sai como arquivo/modelo e entra na Nora por um motor de voz (`[voz] motor`), como o Kokoro e o Piper.
 - Cuidados: só vozes próprias ou de quem autorizar; nada de áudio do ElevenLabs como material de treino; instalar o ComfyUI num ambiente separado da Nora, com **Python 3.12 ou 3.13**; conferir o suporte à GPU AMD (RX 9060 XT) no Windows.
 - Relacionado: laboratório de voz (`nora voz testar`, mistura de vozes do Kokoro) e treino de voz própria com o Piper.
+- **Status (v0.2.0):** feito o motor `comfyui`, o `nora voz gerar-dataset`, o `nora voz conferir-dataset` e os notebooks de treino do Piper (Kaggle e Colab). **Aprendizado:** a voz treinada nunca fica mais natural do que a de origem; o Qwen3-TTS fala português com sotaque, e o Piper herdou o sotaque. Para uma voz natural, a origem precisa ser pt-BR de verdade (gravar uma voz real, com autorização, ou um modelo que fale bem português e permita treinar).
 
 *(Adicionar novas ideias aqui.)*
 

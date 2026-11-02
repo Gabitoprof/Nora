@@ -11,6 +11,7 @@ ComfyUI (sua voz)  ──►  500 a 1.000 frases faladas  ──►  treino do P
 
 - **Confira a licença do modelo de voz usado no ComfyUI** (na página do modelo): ela precisa permitir usar o áudio gerado para treinar outro modelo. Modelos só para uso não comercial limitam o uso da voz final do mesmo jeito.
 - A voz tem que ser **criada** (design de voz) ou de alguém que **autorizou**. Não use áudio do ElevenLabs para treinar: os termos deles não permitem.
+- **A voz treinada nunca fica mais natural do que a de origem.** O Piper copia o que recebe, inclusive o sotaque. Modelos de clonagem treinados sobretudo em chinês e inglês (ex.: Qwen3-TTS) falam português com sotaque estrangeiro, e a voz final herda isso. Antes de gerar centenas de frases, ouça umas 10 da origem com atenção; para o resultado mais natural, grave uma voz real (com autorização).
 
 ## 1. Deixar a voz pronta no ComfyUI
 

@@ -37,5 +37,6 @@ Assistente de IA pessoal por voz em tempo real, local primeiro, com memória que
 
 - Versões `vMAIOR.MENOR.CORREÇÃO`: cada etapa sobe o MENOR, ajustes sobem a CORREÇÃO. Tag no Git e entrada no `CHANGELOG.md` por versão.
 - Ao concluir uma etapa: atualizar o status em `docs/MAPA_MENTAL.md` **e** `docs/MAPA_MENTAL.canvas` (⬜ → 🔄 → ✅).
+- Ao concluir uma etapa, **revisar e reescrever toda a documentação** para o estado novo, não só o CHANGELOG: `README.md` (status, o que ela faz, começando, comandos), roadmap da seção 5 do `PROJETO_ASSISTENTE_IA.md` (status e entregas reais), `docs/OBJETIVO.md`, o mapa mental (nós novos e status), os guias em `docs/` e o banco de ideias (o que virou realidade). Nada de texto que descreva uma versão antiga como atual.
 - Links em Markdown padrão (não `[[wikilinks]]`), para funcionar no GitHub e no Obsidian.
 - Antes de commitar: `ruff format .`, `ruff check .` e `pytest`.

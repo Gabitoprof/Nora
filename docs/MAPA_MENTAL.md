@@ -19,14 +19,22 @@ mindmap
   root((Nora))
     Voz em tempo real
       Wake word
-        openWakeWord ou Porcupine
+        Nome dito no começo da frase
+        Digitar também vale
       VAD
         Silero VAD
       STT
         whisper.cpp com Vulkan
       TTS
-        Piper local
-        ElevenLabs ou Cartesia
+        Kokoro local
+        Piper com voz treinada
+        ElevenLabs
+        ComfyUI
+        Voz de reserva
+      Emoção na voz
+        Escolhida pelo contexto
+        Audio tags no ElevenLabs v3
+        Aprende com as reações
       Barge-in
         Cancelamento de eco
       Latência
@@ -34,8 +42,8 @@ mindmap
         MVP menos de 2 s
     Cérebro híbrido
       Local
-        Ollama ou LM Studio
-        Modelo 12 a 14B quantizado
+        Ollama
+        Qwen 3.5 9B
         keep_alive libera VRAM
       API
         Claude e outros
@@ -103,7 +111,7 @@ mindmap
 flowchart LR
   v00["v0.0.0 Fundação"]:::done --> v01["v0.1.0 Conversa por voz"]:::done
   v01 --> v02["v0.2.0 Memória"]:::done
-  v02 --> v03["v0.3.0 Roteador de modelos"]:::pend
+  v02 --> v03["v0.3.0 Roteador de modelos"]:::doing
   v03 --> v04["v0.4.0 HUD"]:::pend
   v04 --> v05["v0.5.0 Ferramentas MCP"]:::pend
   v05 --> v06["v0.6.0 Rotinas e iniciativa"]:::pend
@@ -121,7 +129,7 @@ flowchart LR
 | v0.0.0 | Fundação | ✅ | Projeto roda o "hello world" e a config carrega |
 | v0.1.0 | Conversa por voz | ✅ | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
 | v0.2.0 | Memória | ✅ | Lembra de fatos entre sessões |
-| v0.3.0 | Roteador de modelos | ⬜ | Pergunta difícil vai para a API e volta com a mesma voz |
+| v0.3.0 | Roteador de modelos | 🔄 | Pergunta difícil vai para a API e volta com a mesma voz |
 | v0.4.0 | HUD | ⬜ | Interface reage à voz em tempo real |
 | v0.5.0 | Ferramentas MCP | ⬜ | Executa ações por voz |
 | v0.6.0 | Rotinas e iniciativa | ⬜ | IA fala primeiro no horário e por presença |

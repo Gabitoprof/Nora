@@ -1,4 +1,4 @@
-# Conversa por voz (v0.1.0)
+# Voz da Nora
 
 A Nora conversa por voz usando programas locais, cada um no seu processo, e fala com eles pela rede local:
 
@@ -19,8 +19,8 @@ Escolha em `[voz] motor` (no `config/local.toml`, para valer só na sua máquina
 | Motor | Voz | Onde roda | Custo | Para quem |
 |---|---|---|---|---|
 | **`kokoro`** (padrão) | `pf_dora` (feminina pt-BR); também `pm_alex`, `pm_santa` | seu PC (processador) | grátis | quem baixa o projeto e quer testar |
-| `piper` | `pt_BR-faber-medium` (masculina) | seu PC | grátis | alternativa; uso pessoal (a base da voz é não comercial) |
-| `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz definitiva, com mais qualidade |
+| `piper` | `pt_BR-faber-medium` (masculina) ou uma voz treinada por você ([TREINAR_VOZ.md](TREINAR_VOZ.md)) | seu PC | grátis | voz própria, leve; uso pessoal (bases não comerciais) |
+| `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz mais natural; com `eleven_v3`, emoção de verdade ([Emoção na voz](#emoção-na-voz)) |
 | `comfyui` | a que você montar num fluxo do ComfyUI | seu PC | grátis | vozes próprias, criadas ou clonadas com autorização |
 
 ## Instalar (uma vez)
