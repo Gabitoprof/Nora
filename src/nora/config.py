@@ -190,7 +190,8 @@ def ler_env(caminho: Path) -> dict[str, str]:
     if not caminho.is_file():
         return {}
     valores = {}
-    for linha in caminho.read_text(encoding="utf-8").splitlines():
+    # utf-8-sig: o Bloco de Notas pode salvar com BOM, que grudaria no nome da primeira chave
+    for linha in caminho.read_text(encoding="utf-8-sig").splitlines():
         linha = linha.strip()
         if not linha or linha.startswith("#") or "=" not in linha:
             continue

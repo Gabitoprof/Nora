@@ -120,6 +120,23 @@ class CerebroNuvem:
             self.medidas.tokens_por_segundo = self.medidas.tokens / self.medidas.total
 
 
+def testar_conexao(config: Config) -> str:
+    """Confere a chave e o modelo pesado com a API de modelos (não gera texto, não gasta
+    créditos). Devolve "" se deu certo, ou o motivo da falha."""
+    if not config.chave_anthropic:
+        return "falta ANTHROPIC_API_KEY no .env"
+    try:
+        import anthropic
+    except ImportError:
+        return 'falta o pacote do Claude: pip install -e ".[nuvem]"'
+    try:
+        cliente = anthropic.Anthropic(api_key=config.chave_anthropic, timeout=10.0, max_retries=0)
+        cliente.models.retrieve(config.modelo_nuvem.pesado)
+    except Exception as erro:
+        return _explicar(erro)
+    return ""
+
+
 def _explicar(erro: Exception) -> str:
     """Uma frase clara para cada tipo de falha da API (o resto do texto fica no histórico)."""
     try:

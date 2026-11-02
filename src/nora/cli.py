@@ -81,6 +81,12 @@ def verificar(config: Config) -> list[str]:
         f"  chave da API Anthropic  {chave}",
         f"  pacote do Claude        {sdk}",
     ]
+    if config.tem_chave_anthropic and sdk == "instalado":
+        from nora.cerebro_nuvem import testar_conexao
+
+        falha = testar_conexao(config)
+        situacao = f"ok, chave aceita e {nuvem.pesado} disponível" if not falha else falha
+        linhas.append(f"  Claude                  {situacao}")
     instalados = modelos_ollama(config.ollama_host)
     if instalados is None:
         linhas.append(f"  Ollama                  não respondeu em {config.ollama_host}")

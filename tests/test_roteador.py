@@ -245,3 +245,14 @@ def test_triagem_desligada_e_aviso_quando_falta_o_claude(criar_raiz):
     falar(sem_claude, "escreve um script python")
     avisos = sem_claude.avisos_pendentes()
     assert len(avisos) == 1 and "falta a ANTHROPIC_API_KEY" in avisos[0]  # avisa uma vez só
+
+
+def test_testar_conexao_diz_o_que_falta(criar_raiz, monkeypatch):
+    import sys
+
+    from nora.cerebro_nuvem import testar_conexao
+
+    assert "ANTHROPIC_API_KEY" in testar_conexao(carregar(criar_raiz(), ambiente={}))
+    monkeypatch.setitem(sys.modules, "anthropic", None)  # pacote não instalado
+    config = carregar(criar_raiz(), ambiente={"ANTHROPIC_API_KEY": "x"})
+    assert "pip install" in testar_conexao(config)

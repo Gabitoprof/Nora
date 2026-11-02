@@ -86,3 +86,10 @@ def test_hello_world(criar_raiz, capsys):
     assert saudacao(com_nome).startswith("Olá, Gabriel! Eu sou a Nora")
     assert main([]) == 0
     assert "Eu sou a" in capsys.readouterr().out
+
+
+def test_env_salvo_com_bom_pelo_bloco_de_notas(criar_raiz):
+    raiz = criar_raiz()
+    (raiz / ".env").write_bytes("ANTHROPIC_API_KEY=abc\n".encode("utf-8-sig"))
+    config = carregar(raiz, ambiente={})
+    assert config.chave_anthropic == "abc" and config.tem_chave_anthropic
