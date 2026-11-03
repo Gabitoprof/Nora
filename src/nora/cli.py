@@ -516,6 +516,27 @@ def comando_memoria(config: Config, args) -> int:
                 print(f"Não existe fato nº {args.id}.", file=sys.stderr)
                 return 1
             print(f"Esquecido (nº {args.id}).")
+        elif args.acao == "apagar":
+            from nora.historico import apagar_do_historico
+
+            texto = " ".join(args.texto)
+            resultado = memoria.apagar_de_vez(texto, confirmar=args.confirmar)
+            if not resultado.fatos and not resultado.trocas:
+                print(f'Nada parecido com "{texto}" na memória.')
+                return 0
+            print(f"{'Apagado' if args.confirmar else 'Seria apagado'}:")
+            for fato in resultado.fatos:
+                print(f"  fato nº {fato.id}: {fato.texto}")
+            for troca in resultado.trocas:
+                print(f"  conversa de {troca.quando[:10]}: {troca.pergunta[:80]}")
+            if not args.confirmar:
+                print("Nada foi apagado ainda. Para apagar de vez, rode de novo com --confirmar.")
+                return 0
+            falas = apagar_do_historico(config.pasta_dados, resultado.textos)
+            print(
+                f"Também tirei {falas} fala(s) do histórico (data/historico). Notas do Obsidian "
+                "não são mexidas: edite a nota se o assunto estiver lá."
+            )
         elif args.acao == "importar":
             from nora.importar import importar_historico
 
@@ -659,6 +680,11 @@ def main(argv: list[str] | None = None) -> int:
     lembrar_cmd.add_argument("--area", default="", help="área do fato (ex.: trabalho)")
     esquecer_cmd = acoes.add_parser("esquecer", help="apagar um fato pelo número")
     esquecer_cmd.add_argument("id", type=int)
+    apagar_cmd = acoes.add_parser(
+        "apagar", help="apagar de vez um assunto: fatos, conversas guardadas e histórico"
+    )
+    apagar_cmd.add_argument("texto", nargs="+")
+    apagar_cmd.add_argument("--confirmar", action="store_true", help="apaga (sem isso, só mostra)")
     acoes.add_parser("importar", help="tirar fatos das conversas antigas (data/historico)")
     agenda_cmd = acoes.add_parser("agenda", help="os compromissos e datas anotados")
     agenda_cmd.add_argument("--dias", type=int, default=30, help="quantos dias à frente (30)")

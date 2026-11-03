@@ -64,6 +64,9 @@ def prompt_de_sistema(config: Config, agora: datetime | None = None) -> str:
                 "não se lembra disso, em vez de dizer que não tem memória.",
                 "Se a pessoa corrigir sua pronúncia ou pedir outro jeito de falar, confirme em "
                 "poucas palavras: isso fica guardado e vale para as próximas conversas.",
+                "Se a pessoa pedir para esquecer algo, confirme que não vai mais usar isso. Não "
+                "diga que apagou o registro das conversas: para isso existe o comando nora "
+                "memoria apagar.",
             ]
             if config.memoria.ativa
             else []

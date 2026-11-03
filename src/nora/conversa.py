@@ -209,8 +209,16 @@ class Conversa:
                 if nova:
                     self._avisar(f"vou lembrar de: {preferencia}")
             for texto in curadoria.esquecer:  # antes dos fatos novos: numa correção, sai o errado
-                for apagado in self.memoria.esquecer_parecido(texto):
+                apagados = self.memoria.esquecer_parecido(texto)
+                for apagado in apagados:
                     self._avisar(f"esqueci: {apagado.texto}")
+                if not apagados:
+                    self._avisar(f"não vou mais usar: {texto}")
+                alvo = apagados[0].texto if apagados else texto
+                self._avisar(
+                    "a conversa continua guardada no histórico; para apagar de lá também: "
+                    f'nora memoria apagar "{alvo}"'
+                )
             for fato in curadoria.fatos:
                 fato_id, novo = self.memoria.lembrar(
                     fato.texto, origem=self.historico.sessao, area=fato.area

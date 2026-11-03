@@ -376,3 +376,91 @@ def test_comando_areas(criar_raiz, capsys, monkeypatch):
     assert "saúde" in texto and "(sem área)" in texto
     assert "1 fatos na área saúde" in texto
     assert "[saúde] Gabriel corre às 6h" in texto
+
+
+# --- esquecer e apagar de vez (relatório de fechamento da v0.3.0, A2) ---------------------------
+
+PROVA = "Ana tem prova de cálculo no dia 21"
+PERGUNTA = "Ana tem prova de cálculo no dia 21, me ajuda?"
+RESPOSTA = "Claro! A prova de cálculo do dia 21 vai dar certo."
+PIZZA = ("Gosto de pizza de calabresa", "Pizza de calabresa é ótima!")
+
+
+def _com_prova(m):
+    m.lembrar(PROVA)
+    m.guardar_troca(PERGUNTA, RESPOSTA, "2026-11-01T10:00:00", "antiga")
+    m.guardar_troca(*PIZZA, "2026-11-01T10:05:00", "antiga")
+
+
+def test_esquecido_nao_volta_pelas_conversas_nem_depois_de_reiniciar(memoria):
+    _com_prova(memoria)
+    assert memoria.buscar_trocas("prova de cálculo dia 21", minimo=0.3)  # antes: o trecho volta
+    assert memoria.esquecer_parecido(PROVA)
+    assert memoria.buscar("prova de cálculo dia 21", minimo=0.3) == []
+    assert (
+        memoria.buscar_trocas("prova de cálculo dia 21", minimo=0.3) == []
+    )  # o trecho antigo não volta
+    assert memoria.buscar_trocas("pizza de calabresa", minimo=0.3)  # o resto continua
+
+    caminho, vetorial = memoria.caminho, memoria.vetorial
+    memoria.fechar()
+    reaberta = Memoria(caminho, EmbeddingsFalsos())
+    reaberta.vetorial = reaberta.vetorial and vetorial
+    assert reaberta.buscar_trocas("prova de cálculo dia 21", minimo=0.3) == []
+    # importar conversas antigas não traz o fato de volta
+    assert reaberta.lembrar(PROVA, origem="historico 2026-11-01") == (0, False)
+    assert reaberta.contar() == 0
+    # mas se a pessoa contar de novo, numa conversa nova, ela volta a lembrar
+    _, novo = reaberta.lembrar(PROVA, origem="2026-11-05_10-00-00")
+    assert novo and reaberta.contar() == 1
+    reaberta.fechar()
+
+
+def test_apagar_de_vez_mostra_antes_e_apaga_tambem_o_historico(tmp_path):
+    from nora.historico import Historico, apagar_do_historico
+    from nora.importar import trocas
+
+    historico = Historico(tmp_path, sessao="2026-11-01_10-00-00")
+    for pergunta, resposta in [(PERGUNTA, RESPOSTA), PIZZA]:
+        historico.registrar("usuario", pergunta)
+        historico.registrar("assistente", resposta)
+    m = Memoria(tmp_path / "memoria.db", EmbeddingsFalsos())
+    _com_prova(m)
+
+    previa = m.apagar_de_vez(PROVA, confirmar=False)  # só mostra o que sairia
+    assert [f.texto for f in previa.fatos] == [PROVA]
+    assert [t.pergunta for t in previa.trocas] == [PERGUNTA]
+    assert m.contar() == 1 and m.contar_trocas() == 2
+
+    feito = m.apagar_de_vez(PROVA, confirmar=True)
+    assert m.contar() == 0 and m.contar_trocas() == 1
+    assert apagar_do_historico(tmp_path, feito.textos) == 2
+    conteudo = historico.arquivo.read_text("utf-8")
+    assert "cálculo" not in conteudo and "calabresa" in conteudo
+    assert [t[2] for t in trocas(historico.arquivo)] == [PIZZA[0]]  # o importar pula o apagado
+    m.fechar()
+
+
+def test_comando_apagar_mostra_e_so_apaga_com_confirmar(criar_raiz, capsys, monkeypatch):
+    from nora import cli
+    from nora.historico import Historico
+
+    raiz = criar_raiz(local="[memoria]\nativa = true\ncuradoria = false\n")
+    config = cli.carregar(raiz, ambiente={})
+    historico = Historico(config.pasta_dados, sessao="2026-11-01_10-00-00")
+    historico.registrar("usuario", PERGUNTA)
+    historico.registrar("assistente", RESPOSTA)
+    m = Memoria(config.pasta_dados / "memoria.db", EmbeddingsFalsos())
+    _com_prova(m)
+    m.fechar()
+    monkeypatch.setattr("nora.embeddings.EmbeddingsOllama.vetor", lambda self, t: vetor_de(t))
+    monkeypatch.setattr(cli, "carregar", lambda *a, **k: config)
+
+    assert cli.main(["memoria", "apagar", PROVA]) == 0
+    saida = capsys.readouterr().out
+    assert "Seria apagado" in saida and "--confirmar" in saida
+    assert "cálculo" in historico.arquivo.read_text("utf-8")
+
+    assert cli.main(["memoria", "apagar", PROVA, "--confirmar"]) == 0
+    assert "Também tirei 2 fala(s)" in capsys.readouterr().out
+    assert "cálculo" not in historico.arquivo.read_text("utf-8")

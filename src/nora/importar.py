@@ -18,6 +18,9 @@ def trocas(arquivo: Path) -> list[tuple[str, str, str, str]]:
             registro = json.loads(linha)
         except json.JSONDecodeError:
             continue
+        if registro.get("apagado"):  # apagado a pedido: não volta pela importação
+            pergunta = None
+            continue
         if registro.get("papel") == "usuario":
             pergunta = registro
         elif registro.get("papel") == "assistente" and pergunta is not None:
@@ -49,6 +52,8 @@ def importar_historico(config: Config, memoria: Memoria, saida=print) -> int:
             fato_id, novo = memoria.lembrar(
                 fato.texto, origem=f"historico {quando[:10]}", area=fato.area
             )
+            if not fato_id:  # a pessoa pediu para esquecer isso
+                continue
             novos += novo
             area = memoria.normalizar_area(fato.area)
             if fato.data:

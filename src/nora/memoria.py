@@ -27,6 +27,19 @@ from nora.agenda import Evento, datas_no_texto, ocorrencia
 
 # Acima disso, dois fatos são considerados o mesmo; o mais novo substitui o antigo.
 MESMO_FATO = 0.9
+# Depois de um "esquece isso": um trecho de conversa tão parecido assim com o que foi esquecido
+# não volta nas buscas, e um fato tão parecido assim não volta pelo importar.
+TROCA_ESQUECIDA = 0.6
+FATO_ESQUECIDO = 0.85
+
+
+@dataclass(frozen=True)
+class Apagamento:
+    """O que "apagar de vez" tira (ou tiraria, na prévia) da memória."""
+
+    fatos: list
+    trocas: list
+    textos: set[str]  # perguntas e respostas apagadas, para tirar também do histórico
 
 
 @dataclass(frozen=True)
@@ -111,6 +124,12 @@ class Memoria:
                 id INTEGER PRIMARY KEY,
                 texto TEXT NOT NULL UNIQUE,
                 criado TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS esquecidos (
+                id INTEGER PRIMARY KEY,
+                texto TEXT NOT NULL,
+                vetor BLOB NOT NULL,
+                quando TEXT NOT NULL
             );
             """
         )
@@ -234,6 +253,11 @@ class Memoria:
         vetor = self.embeddings.vetor(texto)
         area = self.normalizar_area(area)
         with self._trava, self._db:
+            esquecidos = self._esquecidos_parecidos(vetor, FATO_ESQUECIDO)
+            if esquecidos and origem.startswith("historico"):
+                return 0, False  # a pessoa pediu para esquecer: conversa antiga não traz de volta
+            for esquecido_id in esquecidos:  # contou de novo numa conversa nova: volta a valer
+                self._db.execute("DELETE FROM esquecidos WHERE id = ?", (esquecido_id,))
             self._garantir_indice(len(vetor))
             agora = _agora()
             parecido = self._parecidos(vetor, 1)
@@ -311,15 +335,67 @@ class Memoria:
             return self._db.execute("SELECT COUNT(*) FROM fatos" + filtro, parametros).fetchone()[0]
 
     def esquecer_parecido(self, texto: str, minimo: float = 0.75) -> list[Fato]:
-        """Apaga o fato mais parecido com o texto (e outros quase iguais a ele), se forem
-        parecidos o bastante. Devolve os fatos apagados."""
+        """Deixa de usar o que foi pedido para esquecer: apaga o fato mais parecido com o texto
+        (e outros quase iguais a ele) e anota o pedido, para que trechos de conversas antigas
+        sobre isso não voltem nas buscas nem pelo importar. As conversas guardadas continuam no
+        histórico; para tirar de lá também, use apagar_de_vez. Devolve os fatos apagados."""
+        apagados = self._fatos_para_esquecer(texto, minimo)
+        for fato in apagados:
+            self.esquecer(fato.id)
+        for item in [texto, *(f.texto for f in apagados)]:
+            self._anotar_esquecido(item)
+        return apagados
+
+    def _fatos_para_esquecer(self, texto: str, minimo: float) -> list[Fato]:
         achados = self.buscar(texto, k=3, minimo=minimo)
         if not achados:
             return []
-        apagados = [achados[0]] + [f for f in achados[1:] if f.similaridade >= MESMO_FATO]
-        for fato in apagados:
-            self.esquecer(fato.id)
-        return apagados
+        return [achados[0]] + [f for f in achados[1:] if f.similaridade >= MESMO_FATO]
+
+    def apagar_de_vez(
+        self, texto: str, confirmar: bool = False, minimo: float = 0.75
+    ) -> Apagamento:
+        """Tira da memória os fatos e os trechos de conversa sobre o texto. Sem `confirmar`, só
+        mostra o que sairia. O histórico em arquivo é limpo à parte, com os `textos` devolvidos
+        (historico.apagar_do_historico)."""
+        fatos = self._fatos_para_esquecer(texto, minimo)
+        vetor = self.embeddings.vetor(texto)
+        with self._trava:
+            trocas = [
+                Troca(troca_id, quando, sessao, pergunta, resposta, similaridade)
+                for troca_id, quando, sessao, pergunta, resposta, dados in self._db.execute(
+                    "SELECT id, quando, sessao, pergunta, resposta, vetor FROM trocas"
+                )
+                if len(dados) // 4 == len(vetor)
+                and (similaridade := _cosseno(vetor, _desempacotar(dados))) >= TROCA_ESQUECIDA
+            ]
+        textos = {t.pergunta for t in trocas} | {t.resposta for t in trocas}
+        if confirmar:
+            for fato in fatos:
+                self.esquecer(fato.id)
+            with self._trava, self._db:
+                for troca in trocas:
+                    self._db.execute("DELETE FROM trocas WHERE id = ?", (troca.id,))
+                    if self.vetorial and self.meta("dimensao"):
+                        self._db.execute("DELETE FROM vec_trocas WHERE rowid = ?", (troca.id,))
+            self._anotar_esquecido(texto)
+        return Apagamento(fatos, trocas, textos)
+
+    def _anotar_esquecido(self, texto: str) -> None:
+        vetor = self.embeddings.vetor(texto)
+        with self._trava, self._db:
+            self._db.execute(
+                "INSERT INTO esquecidos(texto, vetor, quando) VALUES (?, ?, ?)",
+                (texto, _empacotar(vetor), _agora()),
+            )
+
+    def _esquecidos_parecidos(self, vetor: list[float], minimo: float) -> list[int]:
+        """Os pedidos de esquecer parecidos com o vetor (ids)."""
+        return [
+            esquecido_id
+            for esquecido_id, dados in self._db.execute("SELECT id, vetor FROM esquecidos")
+            if len(dados) // 4 == len(vetor) and _cosseno(vetor, _desempacotar(dados)) >= minimo
+        ]
 
     def esquecer(self, fato_id: int) -> bool:
         with self._trava, self._db:
@@ -510,16 +586,27 @@ class Memoria:
         vetor = self.embeddings.vetor(texto)
         with self._trava:
             achados = self._parecidos(vetor, k * 4 + 10, "trocas")
+            esquecidos = [
+                _desempacotar(dados)
+                for (dados,) in self._db.execute("SELECT vetor FROM esquecidos")
+            ]
             trocas = []
             for troca_id, similaridade in achados:
                 if similaridade < minimo:
                     continue
                 linha = self._db.execute(
-                    "SELECT id, quando, sessao, pergunta, resposta FROM trocas WHERE id = ?",
+                    "SELECT id, quando, sessao, pergunta, resposta, vetor FROM trocas WHERE id = ?",
                     (troca_id,),
                 ).fetchone()
-                if linha and linha[2] != exceto_sessao:
-                    trocas.append(Troca(*linha, similaridade=similaridade))
+                if not linha or linha[2] == exceto_sessao:
+                    continue
+                vetor_troca = _desempacotar(linha[5])
+                if any(  # a pessoa pediu para esquecer isso
+                    len(e) == len(vetor_troca) and _cosseno(e, vetor_troca) >= TROCA_ESQUECIDA
+                    for e in esquecidos
+                ):
+                    continue
+                trocas.append(Troca(*linha[:5], similaridade=similaridade))
                 if len(trocas) == k:
                     break
             return trocas
