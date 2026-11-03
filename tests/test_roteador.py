@@ -62,8 +62,8 @@ class ClienteFalso:
 
 
 class LocalFalso:
-    def __init__(self, resposta="Resposta local.", falhar=False):
-        self.resposta, self.falhar = resposta, falhar
+    def __init__(self, resposta="Resposta local.", falhar=False, cair_depois=0):
+        self.resposta, self.falhar, self.cair_depois = resposta, falhar, cair_depois
         self.pedidos, self.descarregou = [], False
         self.medidas = Medidas()
         self.fechado = False
@@ -79,7 +79,9 @@ class LocalFalso:
         if self.falhar:
             raise CerebroIndisponivel("Ollama fora do ar")
         try:
-            for i in range(0, len(self.resposta), 3):
+            for numero, i in enumerate(range(0, len(self.resposta), 3)):
+                if self.cair_depois and numero == self.cair_depois:
+                    raise CerebroIndisponivel("Ollama caiu no meio")
                 yield self.resposta[i : i + 3]
         except GeneratorExit:
             self.fechado = True
@@ -378,3 +380,96 @@ def test_cerebro_openai_sem_chave_e_testar_conexao(criar_raiz, monkeypatch):
     monkeypatch.setitem(sys.modules, "openai", None)
     config = carregar(criar_raiz(), ambiente={"OPENAI_API_KEY": "x"})
     assert "pip install" in testar_conexao(config)
+
+
+# --- regressões do relatório de fechamento da v0.3.0 -------------------------------------------
+
+
+def test_modo_jogo_sem_nuvem_nao_reacende_o_cerebro_local(criar_raiz):
+    """A1: no modo jogo, se a nuvem falhar, o local não é chamado (a placa de vídeo fica livre)."""
+    sem_rede = ClienteFalso(erro=ConnectionError("rede caiu"))
+    roteador, _ = montar(criar_raiz, cliente=sem_rede)
+    falar(roteador, "modo jogo")
+    roteador.local.pedidos.clear()
+    resposta = falar(roteador, "oi, tudo bem?")
+    assert roteador.local.pedidos == []
+    assert "modo jogo" in resposta and "sair do modo jogo" in resposta
+    assert roteador.situacao == "sem resposta"
+    assert any("cérebro local" in aviso for aviso in roteador.avisos_pendentes())
+
+    config = carregar(criar_raiz(), ambiente={})  # nenhuma nuvem configurada
+    sozinho = Roteador(config, LocalFalso())
+    falar(sozinho, "modo jogo")
+    sozinho.local.pedidos.clear()
+    assert "modo jogo" in falar(sozinho, "oi") and sozinho.local.pedidos == []
+    falar(sozinho, "sai do modo jogo")
+    assert falar(sozinho, "oi") == "Resposta local."  # fora do modo jogo, volta ao normal
+
+
+def test_comando_com_pergunta_responde_a_pergunta(criar_raiz):
+    """A3: "use o Claude para explicar X" responde X pelo Claude, sem só trocar o modo."""
+    assert comando_em("use o Claude para explicar fotossíntese") is None
+    assert comando_em("usa o Claude agora") == "nuvem"
+    assert comando_em("Nora, use o cérebro local, por favor") == "local"
+    gpt = OpenAIFalso()
+    roteador, claude = montar(criar_raiz, openai=gpt)
+    resposta = falar(roteador, "use o Claude para explicar fotossíntese")
+    assert resposta.endswith("Resposta do Claude.") and gpt.pedidos == []
+    assert roteador.modo == "automatico"  # não trocou o modo da conversa
+    assert "fotossíntese" in claude.pedidos[-1]["messages"][-1]["content"]
+
+    pedidos = len(claude.pedidos)
+    resposta = falar(roteador, "use o cérebro local pra calcular 17 x 23")
+    assert resposta == "Resposta local." and len(claude.pedidos) == pedidos  # só esta, no local
+    assert roteador.modo == "automatico"
+
+    resposta = falar(roteador, "modo jogo, quanto falta pro meu aniversário?")
+    assert resposta.startswith("Modo jogo ligado") and resposta.endswith("Resposta do ChatGPT.")
+    assert roteador.jogo
+
+
+def test_falha_do_local_no_meio_nao_emenda_outra_resposta(criar_raiz):
+    """A4 e A5: o local caiu depois de falar: nada de resposta da nuvem colada no fim."""
+    local = LocalFalso(resposta="Uma resposta comprida do local.", cair_depois=2)
+    roteador, claude = montar(criar_raiz, local=local, toml="[roteador]\nescalar = false\n")
+    resposta = falar(roteador, "oi, tudo bem?")
+    assert resposta == "Uma re" and claude.pedidos == []
+    assert roteador.situacao == "interrompida"
+    assert "pela metade" in roteador.avisos_pendentes()[0]
+
+    # com o {pensar} ligado, o mesmo vale depois do começo já ter sido falado
+    local = LocalFalso(resposta="Uma resposta comprida do local.", cair_depois=4)
+    roteador, claude = montar(criar_raiz, local=local)
+    assert falar(roteador, "oi") == "Uma resposta" and claude.pedidos == []
+    assert roteador.situacao == "interrompida"
+
+    # antes de falar qualquer coisa, a reserva continua valendo
+    roteador, _ = montar(criar_raiz, local=LocalFalso(falhar=True))
+    assert falar(roteador, "oi") == "Resposta do Claude." and roteador.situacao == "completa"
+
+
+def test_falha_da_nuvem_no_meio_fica_marcada(criar_raiz):
+    roteador, _ = montar(criar_raiz, openai=OpenAIFalso("Começo da resposta.", quebra=True))
+    falar(roteador, "escreve um script python")
+    assert roteador.situacao == "interrompida"
+
+
+def test_resposta_interrompida_fica_marcada_no_historico_e_nao_vai_para_a_memoria(
+    criar_raiz, monkeypatch
+):
+    """A5: o histórico guarda a situação real e a curadoria não recebe a resposta parcial."""
+    from nora.conversa import Conversa
+
+    curadas = []
+    monkeypatch.setattr(Conversa, "_memorizar", lambda self, *a: curadas.append(a))
+    monkeypatch.setattr(Conversa, "_lembrar", lambda self, texto: [])
+    local = LocalFalso(resposta="Uma resposta comprida do local.", cair_depois=2)
+    roteador, _ = montar(criar_raiz, local=local, toml="[roteador]\nescalar = false\n")
+    conversa = nova_conversa(roteador.config, roteador, memoria=object(), notas=None)
+    "".join(conversa.perguntar("oi, tudo bem?"))
+    historico = conversa.historico.arquivo.read_text("utf-8")
+    assert '"situacao": "interrompida"' in historico and curadas == []
+
+    roteador.local = LocalFalso()
+    "".join(conversa.perguntar("e agora?"))
+    assert len(curadas) == 1  # resposta completa: segue para a memória

@@ -40,6 +40,10 @@ FRASES_DE_ESPERA = (
     "Vou caprichar nessa, só um momento.",
     "Hum, deixa eu ver isso direito.",
 )
+FRASE_JOGO_SEM_NUVEM = (
+    "Agora não consegui falar com a nuvem, e no modo jogo eu não uso o cérebro daqui para não "
+    'pesar na placa de vídeo. Se quiser que eu responda mesmo assim, diga "sair do modo jogo".'
+)
 NOMES = {"openai": "ChatGPT", "anthropic": "Claude"}
 CHAVES = {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
 
@@ -129,15 +133,37 @@ def _texto(texto: str) -> str:
     return " ".join("".join(c for c in sem_acento if not unicodedata.combining(c)).split())
 
 
-def comando_em(texto: str) -> str | None:
-    """O comando de troca de cérebro na fala, se ela for só um comando (frase curta)."""
+# Palavras que podem sobrar num comando puro ("Nora, usa o Claude agora, por favor").
+_SOBRAS_DE_COMANDO = set(
+    (
+        "nora agora por favor pf pfv entao ai ok beleza bem a o e de da do partir daqui pra "
+        "frente em diante sempre so somente apenas pode voce vc tudo nessa nisso mesmo isso ta "
+        "certo vamos vai la modo quero que com no na pro pelo pela para usa use usar utilize "
+        "utiliza troca troque mude muda passa passe volta volte liga ligue ativa ative entra "
+        "entre fica fique responda responde responder seu"
+    ).split()
+)
+
+
+def achar_comando(texto: str) -> tuple[str | None, bool]:
+    """(comando, se é puro). Puro é só o comando ("use o Claude"); com conteúdo, a frase também
+    pede alguma coisa ("use o Claude para explicar fotossíntese") e essa coisa deve ser feita."""
     limpo = _texto(texto)
     if len(limpo.split()) > 10:  # frase longa é pergunta, não comando
-        return None
+        return None, False
     for nome, padrao in _COMANDOS:
-        if re.search(padrao, limpo):
-            return nome
-    return None
+        achado = re.search(padrao, limpo)
+        if achado:
+            resto = re.sub(r"[^\w\s]", " ", limpo[: achado.start()] + " " + limpo[achado.end() :])
+            resto = resto.split()
+            return nome, all(palavra in _SOBRAS_DE_COMANDO for palavra in resto)
+    return None, False
+
+
+def comando_em(texto: str) -> str | None:
+    """O comando de troca de cérebro na fala, se ela for só um comando."""
+    nome, puro = achar_comando(texto)
+    return nome if puro else None
 
 
 def pede_pesado(texto: str) -> bool:
@@ -182,6 +208,9 @@ class Roteador:
         self.ativo = self.local  # quem respondeu por último (para as medidas)
         self.origem = ""
         self.avisos: list[str] = []
+        # Como terminou a última resposta: "completa", "interrompida" (parou no meio) ou
+        # "sem resposta" (ninguém pôde responder). A conversa só aprende com as completas.
+        self.situacao = "completa"
         self._avisou_sem_nuvem = False
         self._avisou_sem: set[str] = set()
 
@@ -220,10 +249,20 @@ class Roteador:
 
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
         pergunta = next((m["content"] for m in reversed(mensagens) if m["role"] == "user"), "")
-        comando = comando_em(pergunta)
-        if comando:
+        self.situacao = "completa"
+        comando, puro = achar_comando(pergunta)
+        if comando and puro:
             yield self._trocar(comando, pergunta)
             return
+        if comando == "local":  # "use o cérebro local para ...": só esta pergunta, no local
+            yield from self._local(mensagens, escalar=False)
+            return
+        if comando == "nuvem":  # "use o Claude para ...": só esta pergunta, na nuvem pedida
+            chamado = provedor_em(pergunta)
+            yield from self._nuvem(mensagens, pesada=True, espera=True, chamado=chamado)
+            return
+        if comando:  # "modo jogo, e ...": troca e responde o resto
+            yield self._trocar(comando, pergunta) + " "
         chamado = quem_foi_chamado(pergunta)
         anterior_local = self.origem.startswith("local")
         if self.jogo or self.modo == "nuvem":
@@ -271,30 +310,44 @@ class Roteador:
         envio = (
             mensagens + [{"role": "system", "content": INSTRUCAO_ESCALAR}] if escalar else mensagens
         )
+        escreveu = False  # depois de falar algo, trocar de cérebro emendaria duas respostas
+        subir = False
         try:
             fluxo = self.local.responder(envio)
-            if not escalar:
-                yield from fluxo
-                return
             inicio = ""
             for pedaco in fluxo:
+                if not escalar or escreveu:
+                    escreveu = escreveu or bool(pedaco)
+                    yield pedaco
+                    continue
                 inicio += pedaco
                 if ESCALAR in inicio:
                     fluxo.close()  # a pergunta sobe para a nuvem
-                    yield from self._nuvem(mensagens, pesada=True, espera=True)
-                    return
+                    subir = True
+                    break
                 comeco = inicio.lstrip()
                 if len(comeco) >= len(ESCALAR) or not ESCALAR.startswith(comeco):
+                    escreveu = True
                     yield inicio
-                    yield from fluxo
-                    return
-            if inicio:
-                yield inicio
+            else:
+                if inicio and not escreveu:
+                    escreveu = True
+                    yield inicio
         except CerebroIndisponivel as erro:
+            if escreveu:
+                self.situacao = "interrompida"
+                self.avisos.append(
+                    f"O cérebro local parou no meio ({erro}). A resposta ficou pela metade; "
+                    "pergunte de novo se quiser a resposta inteira."
+                )
+                return
             if not self.nuvem_disponivel():
                 raise
             self.avisos.append(f"O cérebro local não respondeu ({erro}); respondi pela nuvem.")
             yield from self._nuvem(mensagens, pesada=False, espera=False, reserva=False)
+            return
+        if subir:
+            yield from self._nuvem(mensagens, pesada=True, espera=True)
 
     def _ordem(self, chamado: str) -> list[str]:
         """As nuvens a tentar, na ordem: a chamada (ou a preferida), depois a outra."""
@@ -324,14 +377,26 @@ class Roteador:
             except CerebroIndisponivel as falha:
                 erro = falha
                 if escreveu:  # já falou metade: trocar de cérebro agora repetiria o começo
+                    self.situacao = "interrompida"
                     self.avisos.append(f"{falha} A resposta ficou pela metade.")
                     return
                 if posicao + 1 < len(ordem):
                     self.avisos.append(f"{falha} Pedi ao {NOMES[ordem[posicao + 1]]}.")
         if not reserva:
             raise erro or CerebroIndisponivel("Nenhuma nuvem disponível.")
+        if self.jogo:  # o local ocuparia de novo a placa de vídeo que o modo jogo liberou
+            self.situacao = "sem resposta"
+            motivo = str(erro) if erro else self._sem_acesso(self.provedor).strip()
+            self.avisos.append(
+                f"No modo jogo não uso o cérebro local, para não ocupar a placa de vídeo. {motivo}"
+            )
+            self._usar(self.local, "modo jogo")
+            yield FRASE_JOGO_SEM_NUVEM
+            return
         if erro:
             self.avisos.append(f"{erro} Respondi pelo cérebro local.")
+        elif not ordem:
+            self._avisar_sem_nuvem()
         yield from self._local(mensagens, escalar=False)
 
     # --- comandos ---------------------------------------------------------------------------

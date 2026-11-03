@@ -287,6 +287,9 @@ class Conversa:
         resposta = sem_emocoes(crua)
         self.mensagens.append({"role": "assistant", "content": crua})
         medidas = self.cerebro.medidas
+        # interrompida (parou no meio) ou sem resposta: fica marcada no histórico e não vai para
+        # a memória, para uma resposta pela metade não virar fato
+        situacao = getattr(self.cerebro, "situacao", "completa")
         self.historico.registrar(
             "assistente",
             resposta,
@@ -294,8 +297,9 @@ class Conversa:
             primeiro_pedaco_s=round(medidas.primeiro_pedaco, 3),
             total_s=round(medidas.total, 3),
             lembrancas=[fato.id for fato in self.lembrancas],
+            **({} if situacao == "completa" else {"situacao": situacao}),
         )
-        if self.memoria is not None and resposta:
+        if self.memoria is not None and resposta and situacao == "completa":
             linha = threading.Thread(
                 target=self._memorizar, args=(texto, resposta, anterior), daemon=True
             )
