@@ -464,3 +464,79 @@ def test_comando_apagar_mostra_e_so_apaga_com_confirmar(criar_raiz, capsys, monk
     assert cli.main(["memoria", "apagar", PROVA, "--confirmar"]) == 0
     assert "Também tirei 2 fala(s)" in capsys.readouterr().out
     assert "cálculo" not in historico.arquivo.read_text("utf-8")
+
+
+# --- apagar de vez pela conversa (com confirmação) -----------------------------------------------
+
+
+class CerebroAnotador:
+    """Cérebro falso que só responde perguntas normais (o pedido de apagar não chega nele)."""
+
+    def __init__(self):
+        from nora.cerebro import Medidas
+
+        self.medidas, self.pedidos = Medidas(), []
+
+    def aquecer(self):
+        return 0.0
+
+    def responder(self, mensagens):
+        self.pedidos.append(mensagens[-1]["content"])
+        yield "Paris."
+
+
+def _conversa_com_prova(criar_raiz):
+    from nora.conversa import nova_conversa
+    from nora.historico import Historico
+
+    config = carregar(criar_raiz(local="[memoria]\nativa = true\ncuradoria = false\n"), ambiente={})
+    antiga = Historico(config.pasta_dados, sessao="2026-11-01_10-00-00")
+    antiga.registrar("usuario", PERGUNTA)
+    antiga.registrar("assistente", RESPOSTA)
+    m = Memoria(config.pasta_dados / "memoria.db", EmbeddingsFalsos())
+    _com_prova(m)
+    cerebro = CerebroAnotador()
+    conversa = nova_conversa(config, cerebro, memoria=m, notas=None)
+    return conversa, m, cerebro, antiga
+
+
+def test_apagar_de_vez_pela_conversa_pede_confirmacao(criar_raiz):
+    from nora.conversa import confirmacao, pedido_de_apagar
+
+    assert pedido_de_apagar("Nora, apaga de vez a prova de cálculo") == "a prova de cálculo"
+    assert pedido_de_apagar("apaga a prova de cálculo para sempre") == "a prova de cálculo"
+    assert pedido_de_apagar("apaga tudo sobre a viagem") == "a viagem"
+    assert pedido_de_apagar("apaga isso de vez") == ""  # sem assunto: ela pergunta qual
+    assert pedido_de_apagar("esquece que eu falei da viagem") is None  # isso é só esquecer
+    assert pedido_de_apagar("apaga a luz") is None
+    assert confirmacao("sim, pode apagar para sempre") == "sim"
+    assert confirmacao("Nora, não!") == "nao" and confirmacao("qual a capital?") is None
+
+    conversa, m, cerebro, antiga = _conversa_com_prova(criar_raiz)
+    resposta = "".join(conversa.perguntar("Nora, apaga de vez a prova de cálculo do dia 21"))
+    assert "1 fato e 1 trecho de conversa" in resposta and "sim, pode apagar" in resposta
+    assert m.contar() == 1 and cerebro.pedidos == []  # nada apagado ainda; cérebro não chamado
+    assert any("apagaria" in aviso for aviso in conversa.avisos_pendentes())
+
+    resposta = "".join(conversa.perguntar("sim, pode apagar"))
+    assert "apaguei de vez" in resposta.lower()
+    assert m.contar() == 0 and m.contar_trocas() == 1
+    assert "cálculo" not in antiga.arquivo.read_text("utf-8")
+    assert "cálculo" not in conversa.historico.arquivo.read_text("utf-8")  # nem o próprio pedido
+    assert cerebro.pedidos == []
+
+
+def test_apagar_de_vez_pela_conversa_cancela_e_expira(criar_raiz):
+    conversa, m, cerebro, _ = _conversa_com_prova(criar_raiz)
+    "".join(conversa.perguntar("apaga de vez a prova de cálculo do dia 21"))
+    assert "não apaguei" in "".join(conversa.perguntar("não, deixa")).lower()
+    assert m.contar() == 1
+
+    "".join(conversa.perguntar("apaga de vez a prova de cálculo do dia 21"))
+    assert "".join(conversa.perguntar("qual a capital da França?")) == "Paris."  # mudou de assunto
+    assert "".join(conversa.perguntar("sim")) == "Paris."  # o pedido já expirou
+    assert m.contar() == 1
+
+    resposta = "".join(conversa.perguntar("apaga isso de vez"))
+    assert "o quê" in resposta.lower() and m.contar() == 1
+    assert "Não achei" in "".join(conversa.perguntar("apaga de vez o cachorro do vizinho"))

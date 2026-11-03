@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 import threading
+import unicodedata
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from typing import TextIO
@@ -12,7 +14,7 @@ from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
 from nora.curadoria import curar
 from nora.emocao import FiltroDeTela, sem_emocoes
-from nora.historico import Historico
+from nora.historico import Historico, apagar_do_historico
 from nora.memoria import Fato, Memoria, Troca, abrir_memoria
 from nora.notas import IndiceDeNotas, Trecho, abrir_notas
 from nora.persona import prompt_de_sistema
@@ -30,6 +32,67 @@ def _resumir(texto: str, limite: int = 300) -> str:
 
 
 COMANDOS_SAIR = {"sair", "tchau", "/sair", "exit", "quit"}
+
+# "Apaga de vez X": apaga da memória e do histórico, mas só depois de a pessoa confirmar.
+_APAGAR = r"\b(apaga|apague|apagar|exclui|exclua|excluir|deleta|delete|deletar|remove|remova)\b"
+_DE_VEZ = r"\b(de vez|para sempre|pra sempre|definitivamente|completamente)\b"
+_TUDO_SOBRE = r"\btudo (sobre|de|do|da|dos|das)\b"
+_SEM_ASSUNTO = {
+    "",
+    "isso",
+    "isto",
+    "isso ai",
+    "isso tudo",
+    "tudo",
+    "essa informacao",
+    "esse assunto",
+}
+
+
+def _sem_acento(texto: str) -> str:
+    sem = unicodedata.normalize("NFKD", texto.lower())
+    return "".join(c for c in sem if not unicodedata.combining(c))
+
+
+def pedido_de_apagar(texto: str) -> str | None:
+    """O assunto de um "apaga de vez ...", "" se não disse qual, ou None se não é esse pedido.
+    "Esquece isso" (sem "de vez") é só esquecer: quem cuida é a curadoria."""
+    if not re.search(_APAGAR, texto, re.I):
+        return None
+    if not (re.search(_DE_VEZ, texto, re.I) or re.search(_TUDO_SOBRE, texto, re.I)):
+        return None
+    assunto = texto
+    for padrao in (_APAGAR, _DE_VEZ, _TUDO_SOBRE, r"\bda (sua )?mem[oó]ria\b", r"\bnora\b"):
+        assunto = re.sub(padrao, " ", assunto, flags=re.I)
+    assunto = re.sub(r"\bpor favor\b", " ", assunto, flags=re.I)
+    assunto = " ".join(re.sub(r"[,.!?;:]", " ", assunto).split())
+    return "" if _sem_acento(assunto) in _SEM_ASSUNTO else assunto
+
+
+def confirmacao(texto: str) -> str | None:
+    """ "sim", "nao" ou None (a pessoa falou de outra coisa)."""
+    limpo = " ".join(re.sub(r"[^\w\s]", " ", _sem_acento(texto)).split())
+    limpo = re.sub(r"^nora\b ?", "", limpo)
+    if re.search(r"\b(nao|cancela|cancelar|deixa|deixa pra la|pare|esquece)\b", limpo):
+        return "nao"
+    if len(limpo.split()) <= 6 and re.match(
+        r"(sim|pode|confirmo|confirma|confirmado|claro|com certeza|isso|apaga|manda ver|ok|"
+        r"beleza|quero)\b",
+        limpo,
+    ):
+        return "sim"
+    return None
+
+
+def _contagem(fatos: int, trechos: int) -> str:
+    partes = []
+    if fatos:
+        partes.append(f"{fatos} fato{'s' if fatos > 1 else ''}")
+    if trechos:
+        partes.append(f"{trechos} trecho{'s' if trechos > 1 else ''} de conversa")
+    return " e ".join(partes)
+
+
 AUTOMATICA = object()
 
 
@@ -54,6 +117,7 @@ class Conversa:
         self.trechos: list[Troca] = []  # trechos de conversas antigas usados na última resposta
         self.avisos: list[str] = []
         self._curadorias: list[threading.Thread] = []
+        self._apagar_pendente: tuple[str, set[str]] | None = None  # esperando o "sim"
         self.limpar()
 
     def limpar(self) -> None:
@@ -272,8 +336,70 @@ class Conversa:
             linha.join(timeout)
         self._curadorias = [linha for linha in self._curadorias if linha.is_alive()]
 
+    def _responder_comando(self, texto: str, resposta: str) -> str:
+        """Guarda na conversa e no histórico uma resposta que não passou pelo cérebro."""
+        self.mensagens += [
+            {"role": "user", "content": texto},
+            {"role": "assistant", "content": resposta},
+        ]
+        self.historico.registrar("usuario", texto)
+        self.historico.registrar("assistente", resposta, modelo="comando de memória")
+        return resposta
+
+    def _apagar_pela_conversa(self, texto: str) -> str | None:
+        """ "Apaga de vez X": mostra o que sairia e espera o "sim". A resposta, ou None se a fala
+        não tem nada a ver com isso."""
+        pendente, self._apagar_pendente = self._apagar_pendente, None
+        if pendente:
+            resposta = confirmacao(texto)
+            if resposta == "sim":
+                return self._apagar_confirmado(texto, *pendente)
+            if resposta == "nao":
+                return self._responder_comando(texto, "Tudo bem, não apaguei nada.")
+            self._avisar("o pedido de apagar de vez foi cancelado (você mudou de assunto).")
+        assunto = pedido_de_apagar(texto)
+        if assunto is None:
+            return None
+        if self.memoria is None:
+            return self._responder_comando(
+                texto, "A memória está desligada, então não tenho nada guardado para apagar."
+            )
+        if not assunto:
+            return self._responder_comando(
+                texto,
+                'Apagar de vez o quê? Diga o assunto, por exemplo: "apaga de vez a prova '
+                'de cálculo".',
+            )
+        previa = self.memoria.apagar_de_vez(assunto, confirmar=False)
+        if not previa.fatos and not previa.trocas:
+            return self._responder_comando(texto, f"Não achei nada sobre {assunto} na memória.")
+        for fato in previa.fatos:
+            self._avisar(f"apagaria o fato: {fato.texto}")
+        for troca in previa.trocas:
+            self._avisar(
+                f"apagaria a conversa de {_data(troca.quando)}: {_resumir(troca.pergunta, 80)}"
+            )
+        resposta = (
+            f"Isso apagaria {_contagem(len(previa.fatos), len(previa.trocas))} sobre {assunto}, "
+            "também do histórico das conversas, e não tem volta. Confirma? Diga "
+            '"sim, pode apagar".'
+        )
+        self._apagar_pendente = (assunto, {texto, resposta})
+        return self._responder_comando(texto, resposta)
+
+    def _apagar_confirmado(self, texto: str, assunto: str, falas_do_pedido: set[str]) -> str:
+        feito = self.memoria.apagar_de_vez(assunto, confirmar=True)
+        # o próprio pedido também cita o assunto: sai do histórico junto
+        apagar_do_historico(self.config.pasta_dados, feito.textos | falas_do_pedido)
+        quanto = _contagem(len(feito.fatos), len(feito.trocas)) or "o que restava"
+        return self._responder_comando(texto, f"Pronto, apaguei de vez {quanto}.")
+
     def perguntar(self, texto: str):
         """Devolve a resposta aos pedaços e guarda pergunta e resposta no histórico."""
+        comando = self._apagar_pela_conversa(texto)
+        if comando is not None:
+            yield comando
+            return
         # a resposta anterior (com as etiquetas de emoção) mostra a que tom a pessoa reage agora
         anterior = next(
             (m["content"] for m in reversed(self.mensagens) if m["role"] == "assistant"), ""

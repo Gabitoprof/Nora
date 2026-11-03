@@ -55,6 +55,16 @@ Ela esquece o fato anotado mais parecido com o que você pediu. Confira com `nor
 
 ## Apagar de vez
 
+**Pela conversa (falando ou digitando):**
+
+1. "Nora, apaga de vez a prova de cálculo" (ou "apaga tudo sobre a viagem", "apaga ... para sempre").
+2. Ela diz quanto sairia ("Isso apagaria 1 fato e 2 trechos de conversa sobre a prova de cálculo... Confirma?") e mostra a lista na tela, em `[memória] apagaria: ...`. **Nada é apagado ainda.**
+3. "Sim, pode apagar" apaga. "Não" cancela. Se você falar de outra coisa, o pedido expira.
+
+O próprio pedido também sai do histórico, porque cita o assunto. Sem "de vez", "apaga isso" e "esquece que eu disse X" só fazem a Nora parar de usar o assunto (acima).
+
+**Pelo terminal:**
+
 ```bash
 nora memoria apagar "prova de cálculo"
 ```

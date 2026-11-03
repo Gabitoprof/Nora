@@ -53,6 +53,7 @@ Os seis foram reproduzidos por teste antes da correção (A1: local chamado no m
   - [ ] "modo jogo" libera a VRAM (Gerenciador de Tarefas); sem internet, ela avisa e a VRAM continua livre.
   - [ ] "use o Claude para explicar fotossíntese" responde pelo Claude; o modo continua automático.
   - [ ] "esquece que eu ..." e depois `nora memoria apagar "..."` (prévia e `--confirmar`).
+  - [ ] Por voz: "apaga de vez ..." → ela diz o que sairia → "sim, pode apagar"; e um "não" cancela.
   - [ ] `nora notas ler` e uma pergunta sobre uma nota.
 - Depois da validação: revisão completa da documentação (`CLAUDE.md`), versão `0.3.0` em `src/nora/__init__.py` e tag `v0.3.0`.
 - Próximo (proposta, ainda não decidida): classificador com confiança no roteador, primeiro com bge-m3 e exemplos por rota; testar o `Mapika/decider-2b` (Apache-2.0, GGUF) como alternativa.
