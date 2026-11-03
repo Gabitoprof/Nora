@@ -20,8 +20,15 @@ _VERBOS = (
     r"\b(usa|use|usar|utiliza|utilize|troca|troque|trocar|muda|mude|mudar|passa|passe|passar|"
     r"volta|volte|voltar|liga|ligue|coloca|coloque|bota|bote)\b"
 )
+_FALA_COM = r"\b(fala|fale|falar)\b (com|usando|na|pela) (a )?voz\b"
 _PADRAO = r"\bvoz (normal|padrao|principal|de sempre|original)\b"
-_QUAL = r"\b(qual|que) (e a )?(sua )?voz\b.{0,30}\b(usando|essa|agora|atual|e)\b"
+_QUAL = r"\b(qual|que) (e a )?(sua )?voz\b.{0,30}\b(usando|essa|agora|atual)\b"
+# Pergunta ou comparação sobre as vozes: não é pedido de troca.
+_PERGUNTA = (
+    r"\b(melhor|pior|diferenca|compara|comparar|comparando|como|por que|porque|o que|quem|"
+    r"quando|onde|qual|quais|acha|ou o|ou a)\b"
+)
+_DESTINO = r"\b(para|pra|pro|pela|pelo)\b"
 
 
 @dataclass(frozen=True)
@@ -36,19 +43,35 @@ def _texto(texto: str) -> str:
     return " ".join(re.sub(r"[^\w\s]", " ", limpo).split())
 
 
+def _motores(texto: str) -> list[str]:
+    """Os motores citados no texto, na ordem em que aparecem (sem repetir)."""
+    achados = sorted(
+        (achado.start(), motor)
+        for motor, nomes in _MOTORES
+        for achado in re.finditer(rf"\b({nomes})\b", texto)
+    )
+    return list(dict.fromkeys(motor for _, motor in achados))
+
+
 def pedido_de_voz(texto: str) -> PedidoDeVoz | None:
-    """O pedido de troca de voz na fala, se ela for só isso (frase curta)."""
+    """O pedido de troca de voz na fala, se ela for só isso (frase curta e intenção clara).
+    Perguntar sobre um motor ("o Piper é melhor que o Kokoro?") não troca nada."""
     limpo = _texto(texto)
     if not limpo or len(limpo.split()) > 12:
         return None
     if re.search(_QUAL, limpo):
         return PedidoDeVoz("qual")
-    # "fala com a voz do Piper" é pedido; "fale sobre o Kokoro" é pergunta
-    if not re.search(_VERBOS, limpo) and not re.search(r"\bvoz\b", limpo):
+    if not (re.search(_VERBOS, limpo) or re.search(_FALA_COM, limpo)):
         return None
-    for motor, nomes in _MOTORES:
-        if re.search(rf"\b({nomes})\b", limpo):
-            return PedidoDeVoz("trocar", motor)
+    if re.search(_PERGUNTA, limpo):
+        return None
+    motores = _motores(limpo)
+    if len(motores) > 1:  # "troca do Kokoro para o Piper": vale o que vem depois do "para"
+        destinos = list(re.finditer(_DESTINO, limpo))
+        depois = _motores(limpo[destinos[-1].end() :]) if destinos else []
+        return PedidoDeVoz("trocar", depois[0]) if len(depois) == 1 else None
+    if motores:
+        return PedidoDeVoz("trocar", motores[0])
     if re.search(_PADRAO, limpo):
         return PedidoDeVoz("trocar")
     return None

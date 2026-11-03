@@ -105,3 +105,23 @@ def test_no_modo_texto_avisa_que_nao_tem_voz(criar_raiz):
 
     conversar(config, entrada=lambda _: next(respostas), saida=saida, cerebro=CerebroCalado())
     assert "só escrevo, sem voz" in saida.getvalue()
+
+
+def test_perguntas_sobre_vozes_nao_trocam_a_voz():
+    """A6: só troca com pedido claro; perguntar sobre um motor não muda nada."""
+    for frase in [
+        "qual voz é melhor, a do Piper ou a do Kokoro?",
+        "o Piper é melhor que o Kokoro?",
+        "compara a voz do Piper com a do ElevenLabs",
+        "usa o Kokoro ou o Piper?",
+        "como funciona a voz do Piper?",
+        "por que a voz do Kokoro é mais rápida?",
+        "o que você acha da voz do ElevenLabs?",
+        "fale sobre o Kokoro",
+        "a voz do piper ficou boa",
+    ]:
+        assert pedido_de_voz(frase) is None, frase
+    # pedidos claros continuam valendo
+    assert pedido_de_voz("pode usar a voz do Piper?") == PedidoDeVoz("trocar", "piper")
+    assert pedido_de_voz("troca do Kokoro para o Piper") == PedidoDeVoz("trocar", "piper")
+    assert pedido_de_voz("muda pra voz do ElevenLabs") == PedidoDeVoz("trocar", "elevenlabs")
