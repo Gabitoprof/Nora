@@ -46,10 +46,26 @@ Pedidos só para aquela resposta ("resume isso") não viram preferência.
 
 ## Apagar e corrigir pela conversa
 
-- **Apagar:** "apaga isso", "esquece que eu falei da viagem". A Nora tira o fato da memória e da agenda, e aparece `[memória] esqueci: ...`.
+- **Esquecer:** "apaga isso", "esquece que eu falei da viagem". A Nora tira o fato da memória e da agenda e **deixa de usar o assunto**: trechos de conversas antigas sobre ele não voltam mais nas respostas, e o `nora memoria importar` não traz o fato de volta. Aparece `[memória] esqueci: ...`.
 - **Corrigir:** "não é cálculo 1, a prova é de outra matéria". Sai o fato errado e entra o certo.
 
-Ela apaga o fato anotado mais parecido com o que você pediu. Confira com `nora memoria listar`; se sobrar algo, `nora memoria esquecer 12` apaga pelo número.
+Esquecer **não apaga o registro da conversa** em `data/historico`: o aviso diz isso e mostra o comando para apagar de vez. Se você contar a mesma coisa de novo numa conversa nova, ela volta a lembrar.
+
+Ela esquece o fato anotado mais parecido com o que você pediu. Confira com `nora memoria listar`; se sobrar algo, `nora memoria esquecer 12` apaga pelo número.
+
+## Apagar de vez
+
+```bash
+nora memoria apagar "prova de cálculo"
+```
+
+Mostra o que sairia (fatos e conversas guardadas sobre o assunto) e **não apaga nada**. Para apagar:
+
+```bash
+nora memoria apagar "prova de cálculo" --confirmar
+```
+
+Sai da memória (fatos, agenda, trechos de conversa e os índices de busca) e do histórico em `data/historico`: só as falas sobre o assunto viram `[apagado a pedido]`, o resto da conversa fica. As notas do Obsidian não são mexidas; se o assunto estiver numa nota, edite a nota.
 
 ## Ver e editar
 
@@ -61,6 +77,7 @@ Ela apaga o fato anotado mais parecido com o que você pediu. Confira com `nora 
 | `nora memoria buscar prova de cálculo` | Os fatos mais parecidos com o texto, com a nota de parecença (0 a 1) |
 | `nora memoria lembrar Ana prefere chá` | Guarda um fato à mão |
 | `nora memoria esquecer 12` | Apaga o fato nº 12 |
+| `nora memoria apagar "assunto"` | Mostra o que sairia; com `--confirmar`, apaga de vez da memória e do histórico |
 | `nora memoria agenda` | Os compromissos e datas dos próximos 30 dias (`--dias 90` para mais, `--passados 7` para ver também a semana que passou) |
 | `nora memoria marcar 21/11/2026 prova de cálculo` | Põe um compromisso na agenda à mão (e guarda como fato). `--anual` para o que repete todo ano |
 | `nora memoria pronuncias` | As pronúncias que ela aprendeu. `nora memoria pronuncias hoje ôje` ensina uma à mão; `--esquecer hoje` apaga |
@@ -85,5 +102,7 @@ agenda_dias = 7              # quantos dias à frente da agenda ela lê antes de
 ## Limites desta versão
 
 - A curadoria usa o mesmo modelo da conversa (Qwen 9B): às vezes anota algo inútil ou deixa passar um fato. Use `listar` e `esquecer` para limpar.
-- Ainda não dá para pedir por voz "esquece isso" ou "o que você sabe sobre mim?": use os comandos acima.
+- "Esquece isso" funciona pela conversa; "o que você sabe sobre mim?" ainda não lista a memória: use `nora memoria listar`.
+- O esquecer acha o assunto por significado: um trecho de conversa muito diferente das palavras do pedido pode escapar. `nora memoria apagar` mostra antes o que vai sair.
+- Dentro da mesma conversa, o que já foi dito continua no contexto até ela acabar (ou até `/limpar`).
 - A memória guarda fatos, não ainda a camada de **conhecimento** (boas respostas da API reaproveitadas), que depende do roteador da v0.3.0.

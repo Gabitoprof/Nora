@@ -213,6 +213,7 @@ Nos modos com voz (`nora ouvir`, `nora falar`, `nora conversar --voz`), dá para
 - A troca vale até fechar a Nora. Para mudar de vez, use `[voz] motor` no `config/local.toml`.
 - O servidor da voz precisa estar aberto (o `iniciar_voz_windows.ps1` abre o Kokoro ou o Piper; o ElevenLabs é na nuvem). O script abre uma voz local por vez: com o ElevenLabs de principal, abra com `-Voz piper` para poder trocar para o Piper.
 - No `nora conversar` (só texto) não há voz: ela avisa em vez de fingir que trocou.
+- Só troca com pedido claro (um verbo como usar, trocar, mudar, voltar, ou "fala com a voz do..."). Perguntas e comparações ("o Piper é melhor que o Kokoro?", "usa o Kokoro ou o Piper?") vão para o cérebro, sem mudar a voz. Com dois motores na frase, vale o que vem depois do "para": "troca do Kokoro para o Piper".
 
 ## Salvar uma fala da Nora em .wav
 

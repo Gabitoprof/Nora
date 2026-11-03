@@ -23,6 +23,11 @@ Versão em desenvolvimento: `0.3.0.dev0`.
 
 ### Corrigido
 
+- **Modo jogo:** se nenhuma nuvem responder, a Nora não volta a usar o cérebro local (que ocuparia a placa de vídeo liberada); ela avisa e sugere "sair do modo jogo".
+- **Comando com pedido:** "use o Claude para explicar fotossíntese" agora responde a pergunta pelo Claude, sem só trocar o modo; "use o cérebro local para ..." responde aquela pergunta no PC. Comandos sozinhos continuam trocando o modo.
+- **Resposta que cai no meio:** se o cérebro local parar depois de começar a falar, a Nora não emenda outra resposta da nuvem; avisa que ficou pela metade. Respostas interrompidas ficam marcadas no histórico (`"situacao"`) e não vão para a memória.
+- **Esquecer:** "esquece isso" também tira das buscas os trechos de conversas antigas sobre o assunto e impede o `importar` de trazê-lo de volta; o aviso diz que o registro da conversa continua no histórico. Novo `nora memoria apagar "assunto"` (com `--confirmar`) apaga de vez da memória e do histórico, falando antes o que vai sair.
+- **Troca de voz:** perguntas e comparações sobre vozes ("o Piper é melhor que o Kokoro?") não trocam mais a voz.
 - No `nora ouvir`, o texto digitado só era lido depois que o microfone detectava alguém falando (com o microfone captando sem parar, o laço nunca olhava o teclado). Agora é lido em até ~0,3 s.
 
 ## [0.2.0] - 2026-11-02
