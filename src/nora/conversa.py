@@ -446,6 +446,49 @@ class Conversa:
         return self._responder_comando(texto, f"Pronto, apaguei de vez {quanto}.")
 
     def perguntar(self, texto: str):
+        """Mantém a lógica da conversa única e expõe apenas sua apresentação opcional."""
+        from nora.emocao import emocoes_em
+        from nora.hud import atualizar_notas, emitir
+
+        emitir("pensando")
+        emitir("texto_visivel", texto="", acumular=False)
+        filtro = FiltroDeTela()
+        recente, ultima_emocao = "", ""
+        resposta = self._perguntar(texto)
+        falhou = False
+        try:
+            for pedaco in resposta:
+                recente = (recente + pedaco)[-500:]
+                emocoes = emocoes_em(recente)
+                if emocoes and emocoes[-1].nome != ultima_emocao:
+                    ultima_emocao = emocoes[-1].nome
+                    emitir("emocao", nome=ultima_emocao)
+                emitir("origem_resposta", origem=self.origem)
+                modelo = getattr(self.cerebro, "origem", "")
+                if modelo:
+                    emitir("modelo_ativo", modelo=modelo)
+                visivel = filtro.alimentar(pedaco)
+                if visivel:
+                    emitir("texto_visivel", texto=visivel, acumular=True)
+                yield pedaco
+            resto = filtro.finalizar()
+            if resto:
+                emitir("texto_visivel", texto=resto, acumular=True)
+        except Exception:
+            falhou = True
+            emitir("erro")
+            raise
+        finally:
+            resposta.close()
+            medidas = getattr(self.cerebro, "medidas", None)
+            latencia = getattr(medidas, "primeiro_pedaco", 0)
+            if latencia > 0:
+                emitir("latencia", ms=max(1, int(latencia * 1000)))
+            atualizar_notas()
+            if not falhou:
+                emitir("modo_jogo" if getattr(self.cerebro, "jogo", False) else "ociosa")
+
+    def _perguntar(self, texto: str):
         """Devolve a resposta aos pedaços e guarda pergunta e resposta no histórico."""
         comando = self._apagar_pela_conversa(texto)
         if comando is not None:
@@ -745,6 +788,9 @@ def nova_conversa(
             pass
     if notas is not None and config.notas.atualizar_ao_abrir:
         threading.Thread(target=conversa.atualizar_notas, daemon=True).start()
+    from nora.hud import anexar
+
+    anexar(conversa)
     return conversa
 
 

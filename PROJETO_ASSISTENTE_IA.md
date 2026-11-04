@@ -61,9 +61,14 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
 - **Especialistas:** agenda e rotina, pesquisa, controle do PC e da casa, memória (resume e guarda o que importa).
 
 ### 2.6 HUD (interface visual)
-- Página web em tela cheia (Electron ou Tauri) no monitor ultrawide.
-- **Orbe** em Three.js/WebGL pulsando conforme o volume da voz (Web Audio API).
-- **Cartões** surgindo com o conteúdo das respostas, relógio e status.
+- Página web TypeScript em tela cheia no monitor ultrawide ou janela responsiva.
+- Identidade oficial: coroa orgânica de ondas prateadas e partículas digitais sobre preto,
+  conforme PNG aprovado; sem substituir por orbe genérico. Three.js/WebGL com fallback Canvas.
+- Níveis de áudio reais enviados pelo pipeline Python existente; o navegador não captura
+  outro microfone nem reproduz outro TTS. Ponte local SSE, opcional, sem bloquear a conversa.
+- Cartões, relógio, estado, modelo/origem e voz ativos; conteúdo privado oculto por padrão.
+- Implementação v0.4.0 em andamento, sem release; [guia da HUD](docs/HUD.md) e
+  [homologação cumulativa](docs/HOMOLOGACAO.md).
 
 ### 2.7 Modo distribuído (futuro)
 - **Máquina pequena sempre ligada** (mini PC, notebook velho ou Raspberry Pi 5), o "corpo": wake word, agendador, banco de memória, automações. Consumo de cerca de 10–15 W.
@@ -116,7 +121,7 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
 | **v0.1.0** | Conversa por voz | ✅ | Ativação pelo nome (transcrição), Silero VAD, whisper.cpp, Ollama (Qwen 3.5 9B), vozes Kokoro, Piper e ElevenLabs com reserva, mãos livres | Falar o nome, perguntar e ouvir a resposta em < 2 s |
 | **v0.2.0** | Memória | ✅ | SQLite + sqlite-vec: fatos por áreas, memória total (todas as trocas), agenda de datas, aprender pronúncia e jeito de falar; voz própria (dataset, verificador, treino do Piper) | Lembra de fatos entre sessões |
 | **v0.3.0** | Roteador de modelos | 🔄 | Escalonamento para Claude e outros, frase de espera, modo jogo, fallback, troca de cérebro e de voz por comando, índice das notas do Obsidian, **emoção na voz** (já entregue) | Pergunta difícil vai para a API e volta com a mesma voz |
-| **v0.4.0** | HUD | ⬜ | Orbe reativo, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
+| **v0.4.0** | HUD | 🔄 | Ondas e partículas reativas, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
 | **v0.5.0** | Ferramentas MCP | ⬜ | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
 | **v0.6.0** | Rotinas e iniciativa | ⬜ | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
 | **v0.7.0** | Agentes e subagentes | ⬜ | Especialistas chamados pelo orquestrador | Tarefas complexas delegadas |
@@ -196,8 +201,8 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 
 - Enquanto a Nora fala, **cada palavra aparece formada por partículas** no centro do HUD, em sincronia com a voz; palavras importantes ganham outra cor (ex.: vermelho).
 - Técnica: desenhar a palavra num canvas invisível, sortear pontos dentro das letras e animar milhares de partículas (Three.js) até esses pontos; na palavra seguinte, as partículas voam para as novas posições.
-- Sincronia: a voz já sai frase por frase; para palavra por palavra, usar os tempos de palavra do motor de voz (ElevenLabs e Kokoro dão o alinhamento) ou estimar pela duração do áudio.
-- Encaixe: **Etapa 4 (HUD)**, junto com o orbe e os cartões.
+- Usar alinhamento real apenas quando houver metadados temporais. Sem eles, a animação de palavras é uma estimativa visual explicitamente indicada, desativável; não prometer sincronismo fonético.
+- Encaixe: **Etapa 4 (HUD)**, junto com as ondas e os cartões.
 
 ### 8.5 Criação de voz pelo ComfyUI
 *Origem: ideia do Gabriel (31/10/2026).*

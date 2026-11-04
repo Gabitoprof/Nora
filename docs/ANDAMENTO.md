@@ -118,3 +118,11 @@ ruff check . && pytest
 ```
 
 Na máquina real: `nora --verificar` (confere chaves, pacotes, Ollama, notas e vozes), `nora conversar --medir` e `nora ouvir`.
+
+## HUD v0.4.0 — implementação incremental
+
+Branch `feat/v0.4.0-hud`, baseada em `Pull_code` (`70d39b7`, já inclui AJ-01–AJ-03).
+Ondas/partículas conforme PNG oficial, cliente TypeScript e ponte de eventos local do núcleo.
+Fonte única da voz, memória e decisões permanece no Python.
+Guia e evidências serão mantidos em [HUD](HUD.md) e [homologação cumulativa](HOMOLOGACAO.md).
+A etapa permanece em andamento até a validação integrada no Windows/AMD; sem tag ou release.

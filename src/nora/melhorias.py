@@ -886,6 +886,13 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
         """O dia fechou com a Nora desocupada: notifica sem escrever na interface."""
         if fechamento.caminho is None:
             return
+        from nora.hud import emitir
+
+        emitir(
+            "relatorio_pronto",
+            data=fechamento.data,
+            propostas=len(fechamento.novas) + len(fechamento.esperando),
+        )
         texto = f"Relatório de melhorias pronto: {fechamento.resumo}."
         if cfg.notificar and sys.platform == "win32":
             if not notificar(

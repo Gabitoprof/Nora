@@ -79,7 +79,9 @@ apresentar = "abrir"          # "abrir" o .md ou "terminal" (texto inteiro na co
 
 - **P3, pesquisa técnica:** o diagnóstico de hoje é por regras, sem modelo e **sem internet**. A pesquisa em documentação oficial, com fontes citadas e sem mandar nada pessoal, vai ser opcional e desligada por padrão.
 - **P4, desenvolvimento supervisionado:** hoje aprovar só gera a especificação. Levar a tarefa ao Codex numa branch isolada e incorporar depois de nova autorização ainda é um passo manual.
-- **Painel na HUD (v0.4.0):** "Melhorias da Nora", usando o mesmo banco e os mesmos números.
+- **Painel na HUD (v0.4.0 em desenvolvimento):** consulta propostas e confirma decisões
+  pelo mesmo domínio/banco, sem mudar código ou publicar. Ver [HUD](HUD.md).
+  Homologação integrada Windows/AMD pendente.
 - **Agendamento com a Nora fechada:** hoje o relatório só sai com a Nora aberta (ou na próxima vez que abrir). O agendador do sistema chega com as rotinas, na v0.6.0.
 
 ## Limites

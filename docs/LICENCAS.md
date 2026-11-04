@@ -27,6 +27,25 @@
 
 **Sobre o GPL do espeak-ng:** o Kokoro roda num processo separado (`nora servidor-kokoro`), e a Nora só fala com ele por HTTP. O código da Nora não importa nada GPL, por isso continua MIT. Quem redistribuir um pacote com o extra `kokoro` instalado precisa cumprir a GPL-3.0 dessa parte.
 
+## HUD web (`hud/package-lock.json`)
+
+Licenças conferidas nos metadados e arquivos de licença dos pacotes instalados, sem copiar
+código de terceiros para o núcleo. O lockfile fixa as versões efetivamente utilizadas.
+
+| Pacote | Versão instalada | Licença | Uso |
+|---|---|---|---|
+| [three](https://github.com/mrdoob/three.js) | 0.173.0 | MIT | Ondas e partículas WebGL; fallback Canvas próprio |
+| [@types/three](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/three) | 0.173.0 | MIT | Tipos de desenvolvimento |
+| [vite](https://github.com/vitejs/vite) | 6.4.5 | MIT | Servidor local de desenvolvimento e build |
+| [typescript](https://github.com/microsoft/TypeScript) | 5.9.3 | Apache-2.0 | Verificação de tipos |
+| [vitest](https://github.com/vitest-dev/vitest) | 3.2.7 | MIT | Testes automatizados da interface |
+| [eslint](https://github.com/eslint/eslint) | 9.39.5 | MIT | Análise estática |
+| [typescript-eslint](https://github.com/typescript-eslint/typescript-eslint) | 8.72.1 | MIT | Análise estática TypeScript |
+
+O desenho procedural segue o PNG de referência fornecido pelo proprietário. Nenhum modelo,
+fonte remota, imagem de terceiros ou serviço externo é necessário para renderizar a HUD.
+A ponte SSE usa a biblioteca padrão do Python e não acrescenta dependência Python.
+
 ## Programas separados
 
 | Programa | Licença | Como a Nora usa |

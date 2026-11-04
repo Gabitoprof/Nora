@@ -22,6 +22,7 @@ from nora.config import Config
 from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
 from nora.emocao import FiltroDeTela
 from nora.frases import SeparadorDeFrases
+from nora.hud import emitir
 from nora.melhorias import iniciar as iniciar_melhorias
 from nora.melhorias import ler_entrada
 from nora.ouvido import OuvidoWhisper
@@ -206,10 +207,10 @@ def responder_falando(
 def _observar_voz(conversa: Conversa, voz, tempos: Tempos, usou_reserva: bool) -> None:
     """Tempos do ouvido e da voz e falhas da voz, para a auto-melhoria (sem texto)."""
     observador = getattr(conversa, "observador", None)
+    motor = getattr(voz, "motor", "") or conversa.config.voz.motor
     if observador is None:
         return
     interacao = conversa.ultima_interacao
-    motor = getattr(voz, "motor", "") or conversa.config.voz.motor
     if tempos.transcricao:
         observador.registrar(
             "stt",
@@ -229,6 +230,7 @@ def _observar_voz(conversa: Conversa, voz, tempos: Tempos, usou_reserva: bool) -
 
 def trocar_de_voz(conversa: Conversa, voz, tocar, texto, pedido, escrever) -> Tempos:
     resposta, wav = atender_pedido(voz, pedido, conversa.config.voz.motor)
+    emitir("voz_ativa", motor=getattr(voz, "motor", "") or conversa.config.voz.motor)
     escrever(f"{conversa.config.assistente.nome}: {resposta}")
     conversa.historico.registrar("usuario", texto)
     conversa.historico.registrar("assistente", resposta, modelo="comando de voz")

@@ -293,7 +293,11 @@ class Microfone:
             except queue.Empty:
                 yield b""  # sinal de vida: quem consome pode olhar outras coisas (o teclado)
                 continue
-            yield reamostrar(_para_mono(bloco, self._canais), self._taxa)
+            convertido = reamostrar(_para_mono(bloco, self._canais), self._taxa)
+            from nora.hud import nivel_pcm
+
+            nivel_pcm(convertido, "microfone")
+            yield convertido
 
 
 def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
@@ -306,12 +310,19 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
 
     terminou = threading.Event()
     posicao = 0
+    iniciou = False
     bytes_por_quadro = 2 * canais
 
     def entregar(saida, quadros, tempo, status) -> None:
-        nonlocal posicao
+        nonlocal posicao, iniciou
+        from nora.hud import nivel_pcm, reproducao
+
+        if not iniciou:
+            reproducao(True)  # primeiro callback real da saída, não início da síntese
+            iniciou = True
         pedaco = amostras[posicao : posicao + quadros * bytes_por_quadro]
         posicao += len(pedaco)
+        nivel_pcm(pedaco, "voz")
         saida[: len(pedaco)] = pedaco
         if len(pedaco) < len(saida):
             saida[len(pedaco) :] = bytes(len(saida) - len(pedaco))
@@ -325,9 +336,14 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
         callback=entregar,
         finished_callback=terminou.set,
     )
-    with fluxo:
-        segundos = len(amostras) / (bytes_por_quadro * taxa)
-        terminou.wait(timeout=segundos + 5)
+    try:
+        with fluxo:
+            segundos = len(amostras) / (bytes_por_quadro * taxa)
+            terminou.wait(timeout=segundos + 5)
+    finally:
+        from nora.hud import reproducao
+
+        reproducao(False)
 
 
 _avisos_de_saida: list[str] = []

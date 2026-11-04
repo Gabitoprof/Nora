@@ -41,3 +41,14 @@ Assistente de IA pessoal por voz em tempo real, local primeiro, com memória que
 - Ao concluir uma etapa, **revisar e reescrever toda a documentação** para o estado novo, não só o CHANGELOG: `README.md` (status, o que ela faz, começando, comandos), roadmap da seção 5 do `PROJETO_ASSISTENTE_IA.md` (status e entregas reais), `docs/OBJETIVO.md`, o mapa mental (nós novos e status), os guias em `docs/` e o banco de ideias (o que virou realidade). Nada de texto que descreva uma versão antiga como atual.
 - Links em Markdown padrão (não `[[wikilinks]]`), para funcionar no GitHub e no Obsidian.
 - Antes de commitar: `ruff format .`, `ruff check .` e `pytest`.
+
+## Homologação integrada
+
+Seguir a estratégia e manter o [checklist cumulativo por módulo](docs/HOMOLOGACAO.md).
+Criar e executar testes de unidade, integração e regressão para as alterações, preservando
+os existentes. PR pronto exige CI verde em Windows e Linux no commit avaliado; isso não
+significa homologação funcional completa. A homologação final integrada será no Windows
+com GPU AMD ao fim da implementação planejada. Durante o desenvolvimento, testes manuais
+pontuais só quando indispensáveis para hardware ou integração externa. Não pedir repetição
+de testes manuais aprovados salvo impacto direto no componente; preservar suas evidências.
+Integração à `main`, merge, tags e publicação continuam sujeitos à autorização explícita.

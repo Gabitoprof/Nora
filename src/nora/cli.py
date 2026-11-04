@@ -757,6 +757,12 @@ def main(argv: list[str] | None = None) -> int:
     ouvir_cmd = comandos.add_parser(
         "ouvir", help="conversa mãos livres: comece a frase com o nome dela"
     )
+    hud_cmd = comandos.add_parser("hud", help="serve a interface local sem abrir outro microfone")
+    hud_cmd.add_argument("--porta", type=int, default=8765)
+    ouvir_cmd.add_argument(
+        "--hud", action="store_true", help="mostra os eventos reais na HUD local"
+    )
+    ouvir_cmd.add_argument("--hud-porta", type=int, default=8765)
     ouvir_cmd.add_argument("--medir", action="store_true", help="mostra o tempo de cada etapa")
     ouvir_cmd.add_argument(
         "--mostrar-ignoradas",
@@ -965,6 +971,23 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.comando == "audio":
         return testar_audio(config, args.segundos)
+
+    if args.comando == "hud":
+        from nora.hud import executar
+
+        return executar(config, porta=args.porta)
+
+    if args.comando == "ouvir" and args.hud:
+        from nora.hud import executar
+
+        return executar(
+            config,
+            ouvir=True,
+            porta=args.hud_porta,
+            medir=args.medir,
+            mostrar_ignoradas=args.mostrar_ignoradas,
+            gravar_falas=args.gravar_falas,
+        )
 
     if args.comando == "ouvir":
         from nora.maos_livres import conversar_maos_livres

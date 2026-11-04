@@ -2,7 +2,7 @@
 
 Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principalmente no seu computador**, lembra do que vocês conversaram e evolui com o uso. Inspirado nos assistentes da ficção, com nome, voz e personalidade próprios e configuráveis.
 
-> **Status:** `v0.2.0` lançada (**memória**): a Nora acorda com o nome, ouve, pensa no modelo local, responde falando e lembra de você entre conversas. Em desenvolvimento: `v0.3.0` (roteador de modelos), que já traz o **ChatGPT e o Claude para as perguntas difíceis** e a **emoção automática na voz**. Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
+> **Status:** `v0.2.0` lançada (**memória**): a Nora acorda com o nome, ouve, pensa no modelo local, responde falando e lembra de você entre conversas. Em desenvolvimento: `v0.3.0` (roteador de modelos), que já traz o **ChatGPT e o Claude para as perguntas difíceis** e a **emoção automática na voz**. A HUD v0.4.0 está em implementação incremental, com [guia próprio](docs/HUD.md) e homologação integrada pendente. Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
 
 ## O que ela já faz
 

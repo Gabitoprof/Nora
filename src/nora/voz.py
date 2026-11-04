@@ -14,6 +14,7 @@ from pathlib import Path
 from nora.audio import para_wav
 from nora.config import Config
 from nora.emocao import ajustes_de_voz, para_v3, sem_emocoes
+from nora.hud import emitir
 from nora.servico import ServicoIndisponivel, enviar
 
 ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
@@ -80,6 +81,7 @@ class VozHTTP:
         )
         inicio = time.perf_counter()
         wav = enviar(self.nome, pedido, self.timeout)
+        emitir("voz_ativa", motor=self.nome)
         self.ultima_duracao = time.perf_counter() - inicio
         return wav
 
@@ -126,6 +128,7 @@ class VozElevenLabs:
         )
         inicio = time.perf_counter()
         pcm = enviar("o ElevenLabs", pedido, self.timeout)
+        emitir("voz_ativa", motor="ElevenLabs")
         self.ultima_duracao = time.perf_counter() - inicio
         return para_wav(pcm, taxa=ELEVENLABS_TAXA)
 

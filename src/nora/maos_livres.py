@@ -18,6 +18,7 @@ from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import RAIZ, Config
 from nora.conversa import COMANDOS_SAIR, nova_conversa
 from nora.conversa_voz import responder_falando
+from nora.hud import emitir
 from nora.melhorias import iniciar as iniciar_melhorias
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel
@@ -103,6 +104,7 @@ def conversar_maos_livres(
             microfone = audio.Microfone(audio.dispositivo(config.audio.microfone)).__enter__()
             fontes = preparar_falas(config, microfone)
         falas_detectadas, recomecar, pausar = fontes
+        emitir("ouvindo")
         escrever(
             f'Ouvindo. Comece a frase com "{palavra}" (ex.: "{palavra}, que horas são?"). '
             "Ctrl+C encerra."
@@ -138,6 +140,7 @@ def conversar_maos_livres(
                 )
                 janela_ate = relogio() + config.escuta.janela_s
             recomecar()
+            emitir("modo_jogo" if getattr(conversa.cerebro, "jogo", False) else "ouvindo")
 
         numero = 0
         sair = False
@@ -166,19 +169,24 @@ def conversar_maos_livres(
                 pasta_falas.mkdir(parents=True, exist_ok=True)
                 arquivo = pasta_falas / f"{time.strftime('%Y-%m-%d_%H-%M-%S')}_{numero:03}.wav"
                 arquivo.write_bytes(audio.para_wav(fala))
+            emitir("fala_detectada")
+            emitir("transcrevendo")
             try:
                 texto = ouvido.transcrever(audio.para_wav(fala), dica=dica)
             except ServicoIndisponivel as erro:
+                emitir("erro")
                 escrever(f"[erro] {erro}")
                 continue
             transcricao = time.perf_counter() - inicio
             if not texto:
+                emitir("ouvindo")
                 continue
 
             pedido = extrair_pedido(texto, palavra)
             if pedido is None and relogio() < janela_ate:
                 pedido = texto  # continuação da conversa, sem precisar do nome
             if pedido is None:
+                emitir("ouvindo")
                 if mostrar_ignoradas:
                     escrever(f"  (ignorado: {texto})")
                 continue
@@ -191,6 +199,7 @@ def conversar_maos_livres(
         escrever(f"[erro] {erro}")
         return 1
     finally:
+        emitir("desconectado")
         if agendador is not None:
             agendador.parar()
         if microfone is not None:

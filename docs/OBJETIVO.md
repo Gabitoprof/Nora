@@ -36,3 +36,10 @@ Construir um **assistente de IA pessoal que conversa por voz em tempo real**, co
 - Ele lembra de mim entre uma sessão e outra e toma iniciativa nos momentos certos.
 - Executa tarefas reais por voz.
 - Outra pessoa consegue instalar a partir do GitHub e usar com o seu próprio assistente.
+
+## HUD v0.4.0 em desenvolvimento
+
+A interface visual preserva a referência aprovada de ondas fluidas e partículas prateadas.
+Ela representa o núcleo existente, sem segundo cérebro, microfone ou memória. A comunicação
+é local e o conteúdo pessoal fica oculto por padrão. Ver [HUD](HUD.md) e
+[homologação cumulativa](HOMOLOGACAO.md); CI verde não substitui a validação integrada Windows/AMD.

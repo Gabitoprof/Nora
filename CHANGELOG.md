@@ -9,6 +9,11 @@ Versão em desenvolvimento: `0.3.0.dev0`.
 
 ### Adicionado
 
+- **HUD v0.4.0 em desenvolvimento:** cliente web TypeScript com ondas e partículas conforme
+  referência visual aprovada e ponte local opcional de eventos do núcleo. Não cria outro
+  microfone ou TTS; conteúdo privado oculto por padrão. Guia: `docs/HUD.md`.
+  Homologação integrada Windows/AMD pendente; sem lançamento v0.4.0.
+
 - **Auto-melhoria supervisionada** (`[auto_melhoria]`, guia em `docs/AUTO_MELHORIA.md`):
   - um observador anota, sem o texto das conversas, as tentativas de cada cérebro, as falhas por categoria, os tempos de ouvido, cérebro e voz, as reclamações e os comandos;
   - uma vez por dia (`hora_relatorio`, padrão 20:00), as regras agrupam o que se repetiu em propostas com evidência, causa provável, solução, impacto, risco e testes, num relatório em `data/auto_melhoria/relatorios`;

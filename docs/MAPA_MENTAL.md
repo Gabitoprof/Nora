@@ -69,8 +69,10 @@ mindmap
         Controle do PC e casa
         Memória
     HUD
-      Electron ou Tauri
-      Orbe Three.js
+      Web TypeScript e ponte SSE local
+      Ondas Three.js e fallback Canvas
+      Partículas e áudio do núcleo
+      Privacidade por padrão
       Cartões e relógio
     Modo distribuído
       Corpo 24h mini PC
@@ -112,7 +114,7 @@ flowchart LR
   v00["v0.0.0 Fundação"]:::done --> v01["v0.1.0 Conversa por voz"]:::done
   v01 --> v02["v0.2.0 Memória"]:::done
   v02 --> v03["v0.3.0 Roteador de modelos"]:::doing
-  v03 --> v04["v0.4.0 HUD"]:::pend
+  v03 --> v04["v0.4.0 HUD"]:::doing
   v04 --> v05["v0.5.0 Ferramentas MCP"]:::pend
   v05 --> v06["v0.6.0 Rotinas e iniciativa"]:::pend
   v06 --> v07["v0.7.0 Agentes"]:::pend
@@ -130,7 +132,7 @@ flowchart LR
 | v0.1.0 | Conversa por voz | ✅ | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
 | v0.2.0 | Memória | ✅ | Lembra de fatos entre sessões |
 | v0.3.0 | Roteador de modelos | 🔄 | Pergunta difícil vai para a API e volta com a mesma voz |
-| v0.4.0 | HUD | ⬜ | Interface reage à voz em tempo real |
+| v0.4.0 | HUD | 🔄 | Interface reage à voz em tempo real |
 | v0.5.0 | Ferramentas MCP | ⬜ | Executa ações por voz |
 | v0.6.0 | Rotinas e iniciativa | ⬜ | IA fala primeiro no horário e por presença |
 | v0.7.0 | Agentes e subagentes | ⬜ | Tarefas complexas delegadas |
@@ -153,7 +155,7 @@ flowchart LR
   api --> tts
   mcp --> orq
   tts --> spk(["Alto-falante"])
-  tts --> hud["HUD orbe e cartões"]
+  tts --> hud["HUD ondas e cartões"]
 ```
 
 ---

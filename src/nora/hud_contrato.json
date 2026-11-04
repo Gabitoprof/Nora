@@ -1,0 +1,68 @@
+{
+  "versao": 1,
+  "limite_evento": 65536,
+  "limite_texto": 6000,
+  "estados": [
+    "desconectado",
+    "erro",
+    "fala_detectada",
+    "falando",
+    "modo_jogo",
+    "ociosa",
+    "ouvindo",
+    "pensando",
+    "recuperando",
+    "transcrevendo"
+  ],
+  "campos": {
+    "nivel_audio": [
+      "fonte",
+      "nivel"
+    ],
+    "emocao": [
+      "nome"
+    ],
+    "modelo_ativo": [
+      "modelo"
+    ],
+    "origem_resposta": [
+      "origem"
+    ],
+    "voz_ativa": [
+      "motor"
+    ],
+    "texto_visivel": [
+      "acumular",
+      "texto"
+    ],
+    "proposta_melhoria": [
+      "id",
+      "status",
+      "titulo"
+    ],
+    "relatorio_pronto": [
+      "data",
+      "propostas"
+    ],
+    "conectado": [],
+    "pensando": [],
+    "fala_detectada": [],
+    "desconectado": [],
+    "ociosa": [],
+    "erro": [],
+    "transcrevendo": [],
+    "ouvindo": [],
+    "recuperando": [],
+    "falando": [],
+    "modo_jogo": [],
+    "privacidade": [
+      "privacidade"
+    ],
+    "latencia": [
+      "ms"
+    ],
+    "notas": [
+      "notas"
+    ]
+  }
+}
