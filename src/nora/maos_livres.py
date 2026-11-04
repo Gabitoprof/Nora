@@ -18,6 +18,7 @@ from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import RAIZ, Config
 from nora.conversa import COMANDOS_SAIR, nova_conversa
 from nora.conversa_voz import responder_falando
+from nora.melhorias import iniciar as iniciar_melhorias
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel
 from nora.vad import DetectorDeFala, SileroVAD, baixar_modelo, em_quadros, falas
@@ -96,6 +97,7 @@ def conversar_maos_livres(
         escrever(f"\n[erro] {erro}")
 
     microfone = None
+    agendador = None
     try:
         if fontes is None:
             microfone = audio.Microfone(audio.dispositivo(config.audio.microfone)).__enter__()
@@ -112,6 +114,7 @@ def conversar_maos_livres(
             escrever("Também dá para digitar: escreva e aperte Enter ('sair' encerra).")
         for aviso in conversa.avisos_pendentes():
             escrever(f"[memória] {aviso}")
+        agendador = iniciar_melhorias(conversa, escrever)
         digitados: queue.Queue[str | None] = queue.Queue()
         if teclado:
             threading.Thread(target=_ler_teclado, args=(entrada, digitados), daemon=True).start()
@@ -186,6 +189,8 @@ def conversar_maos_livres(
         escrever(f"[erro] {erro}")
         return 1
     finally:
+        if agendador is not None:
+            agendador.parar()
         if microfone is not None:
             microfone.__exit__(None, None, None)
     if conversa.memoria is not None:

@@ -17,6 +17,8 @@ from nora.confirmacao import confirmacao
 from nora.curadoria import curar
 from nora.emocao import FiltroDeTela, sem_emocoes
 from nora.historico import Historico, apagar_do_historico
+from nora.melhorias import Melhorias, abrir_melhorias
+from nora.melhorias import iniciar as iniciar_melhorias
 from nora.memoria import MAX_TENTATIVAS, Fato, Memoria, Pendente, Troca, abrir_memoria
 from nora.notas import IndiceDeNotas, Trecho, abrir_notas
 from nora.observador import Observador, abrir_observador
@@ -72,6 +74,43 @@ def pedido_de_apagar(texto: str) -> str | None:
     return "" if _sem_acento(assunto) in _SEM_ASSUNTO else assunto
 
 
+_NUMEROS = {
+    "um": 1,
+    "uma": 1,
+    "dois": 2,
+    "duas": 2,
+    "tres": 3,
+    "quatro": 4,
+    "cinco": 5,
+    "seis": 6,
+    "sete": 7,
+    "oito": 8,
+    "nove": 9,
+    "dez": 10,
+}
+
+
+def pedido_de_melhoria(texto: str) -> tuple[str, int] | None:
+    """("listar", 0) ou ("aprovar" | "recusar" | "adiar", nº). Só com a palavra "melhoria" e,
+    para decidir, um número claro: nada de adivinhar qual proposta."""
+    limpo = " ".join(re.sub(r"[^\w\s]", " ", _sem_acento(texto)).split())
+    if not re.search(r"\bmelhorias?\b", limpo):
+        return None
+    acao = re.search(r"\b(aprov|recus|adi)(a|e|ar|o)\b", limpo)
+    if acao:
+        nome = {"aprov": "aprovar", "recus": "recusar", "adi": "adiar"}[acao.group(1)]
+        numero = re.search(r"\bmelhorias? (?:numero |n |no )?(\d+|\w+)\b", limpo)
+        if not numero:
+            return nome, 0
+        valor = numero.group(1)
+        return nome, int(valor) if valor.isdigit() else _NUMEROS.get(valor, 0)
+    if re.search(
+        r"\b(quais|que|tem|lista|listar|fala|diz|le|relatorio|sugeriu|sugestoes)\b", limpo
+    ):
+        return "listar", 0
+    return None
+
+
 def pede_retomada(texto: str) -> bool:
     """ "Termina a resposta que ficou pela metade", "continua aquela resposta"..."""
     limpo = _sem_acento(texto)
@@ -111,6 +150,7 @@ class Conversa:
         memoria: Memoria | None = None,
         notas: IndiceDeNotas | None = None,
         observador: Observador | None = None,
+        melhorias: Melhorias | None = None,
     ) -> None:
         self.config = config
         self.cerebro = cerebro
@@ -118,6 +158,9 @@ class Conversa:
         self.memoria = memoria
         self.notas = notas
         self.observador = observador
+        self.melhorias = melhorias
+        self.ocupada = False  # respondendo agora: a auto-melhoria espera
+        self._melhoria_pendente: tuple[str, int] | None = None  # (ação, nº) esperando o "sim"
         self.ultima_interacao = ""  # para a voz anotar os tempos dela na mesma interação
         self._anterior: tuple[str, str] = ("", "")  # (interação, quem respondeu), p/ reclamações
         self.trechos_de_notas: list[Trecho] = []  # trechos das notas usados na última resposta
@@ -408,10 +451,72 @@ class Conversa:
         if comando is not None:
             yield comando
             return
+        comando = self._melhorias_pela_conversa(texto)
+        if comando is not None:
+            yield comando
+            return
         if pede_retomada(texto):
             yield from self._retomar(texto)
             return
-        yield from self._responder(texto)
+        self.ocupada = True
+        try:
+            yield from self._responder(texto)
+        finally:
+            self.ocupada = False
+
+    def _melhorias_pela_conversa(self, texto: str) -> str | None:
+        """ "Quais melhorias você sugeriu?" e "aprova/recusa/adia a melhoria 3" (com "sim")."""
+        if self.melhorias is None:
+            return None
+        pendente, self._melhoria_pendente = self._melhoria_pendente, None
+        if pendente:
+            resposta = confirmacao(texto)
+            if resposta == "sim":
+                acao, numero = pendente
+                feita = self.melhorias.decidir(numero, acao, "usuário (pela conversa)")
+                frase = {"aprovar": "aprovada", "recusar": "recusada", "adiar": "adiada"}[acao]
+                fim = (
+                    " Gerei a tarefa para desenvolver; nada muda no código sem você."
+                    if acao == "aprovar"
+                    else ""
+                )
+                return self._responder_comando(
+                    texto,
+                    f"Pronto, a melhoria {numero} foi {frase}.{fim}"
+                    if feita
+                    else f"A melhoria {numero} não está mais esperando decisão.",
+                )
+            if resposta == "nao":
+                return self._responder_comando(texto, "Tudo bem, não mudei nada.")
+        pedido = pedido_de_melhoria(texto)
+        if pedido is None:
+            return None
+        acao, numero = pedido
+        if acao == "listar":
+            abertas = self.melhorias.propostas(("proposta",))
+            if not abertas:
+                return self._responder_comando(
+                    texto, "Não tenho sugestões de melhoria esperando decisão."
+                )
+            itens = "; ".join(f"número {p.id}, {p.titulo}" for p in abertas[:5])
+            return self._responder_comando(
+                texto,
+                f"Tenho {len(abertas)} sugestão(ões): {itens}. Para decidir, diga por exemplo "
+                f'"aprova a melhoria {abertas[0].id}". O relatório completo: nora melhorias '
+                "relatorio.",
+            )
+        proposta = self.melhorias.proposta(numero) if numero else None
+        if proposta is None or proposta.status != "proposta":
+            return self._responder_comando(
+                texto,
+                f'Não achei a melhoria {numero} esperando decisão. Diga "quais melhorias você '
+                'sugeriu?" para ouvir os números.',
+            )
+        self._melhoria_pendente = (acao, numero)
+        verbo = {"aprovar": "Aprovar", "recusar": "Recusar", "adiar": "Adiar por uma semana"}[acao]
+        return self._responder_comando(
+            texto, f'{verbo} a melhoria {numero}, "{proposta.titulo}"? Diga "sim" para confirmar.'
+        )
 
     def _retomar(self, texto: str):
         """Responde de novo, inteira, a última pergunta que ficou pela metade."""
@@ -596,6 +701,7 @@ def nova_conversa(
         notas = abrir_notas(config)
     if observador is AUTOMATICA:
         observador = abrir_observador(config)
+    melhorias = abrir_melhorias(config, observador) if observador is not None else None
     conversa = Conversa(
         config,
         cerebro or Roteador(config),
@@ -603,6 +709,7 @@ def nova_conversa(
         memoria,
         notas,
         observador,
+        melhorias,
     )
     if memoria is not None:
         try:  # respostas que caíram com o programa da última vez viram pendências
@@ -645,6 +752,7 @@ def conversar(
     escrever(f"Conversa com {nome}. Digite 'sair' para encerrar e '/limpar' para começar do zero.")
     for aviso in conversa.avisos_pendentes():  # ao abrir: respostas pela metade, por exemplo
         escrever(f"[memória] {aviso}")
+    agendador = iniciar_melhorias(conversa, escrever)
     while True:
         try:
             texto = entrada("\nVocê: ").strip()
@@ -698,5 +806,7 @@ def conversar(
         escrever("(guardando o que aprendi nesta conversa...)")
     for aviso in conversa.encerrar():
         escrever(f"[memória] {aviso}")
+    if agendador is not None:
+        agendador.parar()
     escrever(f"Até mais! (conversa salva em {conversa.historico.arquivo})")
     return 0

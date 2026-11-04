@@ -22,6 +22,7 @@ from nora.config import Config
 from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
 from nora.emocao import FiltroDeTela
 from nora.frases import SeparadorDeFrases
+from nora.melhorias import iniciar as iniciar_melhorias
 from nora.ouvido import OuvidoWhisper
 from nora.prioridade import abafar_outros
 from nora.servico import ServicoIndisponivel
@@ -280,6 +281,7 @@ def conversar_por_voz(
         )
     for aviso in conversa.avisos_pendentes():
         escrever(f"[memória] {aviso}")
+    agendador = iniciar_melhorias(conversa, escrever)
 
     while True:
         try:
@@ -325,5 +327,7 @@ def conversar_por_voz(
         escrever("(guardando o que aprendi nesta conversa...)")
     for aviso in conversa.encerrar():
         escrever(f"[memória] {aviso}")
+    if agendador is not None:
+        agendador.parar()
     escrever(f"Até mais! (conversa salva em {conversa.historico.arquivo})")
     return 0

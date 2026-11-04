@@ -118,6 +118,16 @@ def verificar(config: Config) -> list[str]:
         else:
             estado = f"falta o modelo: ollama pull {embeddings}"
         linhas.append(f"  {'Memória':<24}{estado}")
+    melhoria = config.auto_melhoria
+    linhas.append(
+        f"  {'Auto-melhoria':<24}"
+        + (
+            f"ligada: relatório às {melhoria.hora_relatorio} em "
+            f"{config.pasta_dados / 'auto_melhoria'} (nora melhorias)"
+            if melhoria.ativa
+            else "desligada ([auto_melhoria] ativa = false)"
+        )
+    )
     if config.notas.pasta is None:
         linhas.append(f"  {'Notas (Obsidian)':<24}sem pasta ([notas] pasta no config/local.toml)")
     elif not config.notas.pasta.is_dir():
@@ -415,6 +425,75 @@ def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> i
     return 0
 
 
+def comando_melhorias(config: Config, args) -> int:
+    from datetime import date, datetime
+
+    from nora.melhorias import abrir_arquivo, abrir_melhorias
+
+    melhorias = abrir_melhorias(config)
+    if melhorias is None:
+        print("A auto-melhoria está desligada ([auto_melhoria] ativa = false).", file=sys.stderr)
+        return 1
+    try:
+        if args.acao == "relatorio":
+            caminho = melhorias.relatorio(args.data)
+            if caminho is None or not caminho.is_file():
+                print(
+                    "Ainda não há relatório. Ele sai uma vez por dia "
+                    "(ou: nora melhorias fechar-dia)."
+                )
+                return 0
+            if args.abrir and abrir_arquivo(caminho):
+                print(f"Abrindo {caminho}")
+            else:
+                print(caminho.read_text(encoding="utf-8"))
+        elif args.acao == "listar":
+            status = () if args.todas else ("proposta",)
+            propostas = melhorias.propostas(status)
+            if not propostas:
+                print("Nenhuma proposta esperando decisão.")
+            for p in propostas:
+                d = p.dados
+                print(
+                    f"  nº {p.id} [{p.status}] {p.titulo} (prioridade {d['prioridade']}, "
+                    f"confiança {d['confianca']})"
+                )
+        elif args.acao in ("aprovar", "recusar", "adiar"):
+            feita = melhorias.decidir(
+                args.id, args.acao, "usuário (terminal)", args.motivo, getattr(args, "dias", 7)
+            )
+            if feita is None:
+                print(f"A melhoria nº {args.id} não existe ou já foi decidida.", file=sys.stderr)
+                return 1
+            print(f"Melhoria nº {args.id}: {feita.status}.")
+            if args.acao == "aprovar":
+                tarefa = melhorias.pasta / "tarefas" / f"melhoria-{args.id}.md"
+                print(f"Tarefa para desenvolver: {tarefa}. Nada foi mudado no código.")
+        elif args.acao == "estado":
+            feita = melhorias.avancar(
+                args.id, args.estado, "usuário (terminal)", args.autorizo_publicar
+            )
+            if feita is None:
+                print(
+                    "Não dá para ir para esse estado agora. A ordem é: aprovada → preparacao → "
+                    "em_teste → pronta_para_revisao → publicada (publicar pede "
+                    "--autorizo-publicar).",
+                    file=sys.stderr,
+                )
+                return 1
+            print(f"Melhoria nº {args.id}: {feita.status}.")
+        else:  # fechar-dia
+            from nora.memoria import abrir_memoria
+
+            memoria = abrir_memoria(config)
+            pendentes = memoria.pendentes() if memoria is not None else []
+            fechamento = melhorias.fechar(date.today(), datetime.now(), pendentes)
+            print(f"Relatório de hoje: {fechamento.resumo}. Em {fechamento.caminho}")
+    finally:
+        melhorias.fechar_banco()
+    return 0
+
+
 def comando_pendencias(config: Config, args) -> int:
     from nora.memoria import abrir_memoria
 
@@ -689,6 +768,32 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="salva cada fala ouvida em data/falas (para diagnóstico)",
     )
+    melhorias_cmd = comandos.add_parser(
+        "melhorias", help="propostas de melhoria do relatório diário (auto-melhoria)"
+    )
+    acoes_melhorias = melhorias_cmd.add_subparsers(dest="acao", required=True)
+    rel_cmd = acoes_melhorias.add_parser("relatorio", help="mostra o relatório mais recente")
+    rel_cmd.add_argument("--data", default="", help="AAAA-MM-DD (padrão: o mais recente)")
+    rel_cmd.add_argument("--abrir", action="store_true", help="abre no programa padrão do .md")
+    lst_cmd = acoes_melhorias.add_parser("listar", help="propostas esperando decisão")
+    lst_cmd.add_argument("--todas", action="store_true", help="inclui as já decididas")
+    for nome, ajuda in [
+        ("aprovar", "aprova para desenvolver (gera a tarefa; não muda o código)"),
+        ("recusar", "recusa (só volta com evidência nova)"),
+        ("adiar", "adia (volta depois de alguns dias)"),
+    ]:
+        dec = acoes_melhorias.add_parser(nome, help=ajuda)
+        dec.add_argument("id", type=int)
+        dec.add_argument("--motivo", default="")
+        if nome == "adiar":
+            dec.add_argument("--dias", type=int, default=7)
+    est_cmd = acoes_melhorias.add_parser(
+        "estado", help="avança uma aprovada: preparacao, em_teste, pronta_para_revisao, publicada"
+    )
+    est_cmd.add_argument("id", type=int)
+    est_cmd.add_argument("estado")
+    est_cmd.add_argument("--autorizo-publicar", action="store_true")
+    acoes_melhorias.add_parser("fechar-dia", help="faz o relatório de hoje agora")
     pend_cmd = comandos.add_parser("pendencias", help="respostas que ficaram pela metade")
     pend_cmd.add_argument("--cancelar", type=int, default=0, metavar="ID", help="não retomar esta")
     notas_cmd = comandos.add_parser("notas", help="notas do Obsidian que a Nora lê")
@@ -826,6 +931,8 @@ def main(argv: list[str] | None = None) -> int:
         return comando_notas(config, args)
     if args.comando == "pendencias":
         return comando_pendencias(config, args)
+    if args.comando == "melhorias":
+        return comando_melhorias(config, args)
 
     if args.comando == "voz" and args.acao == "comparar":
         return comparar_realces(config, " ".join(args.frase), ouvir=args.ouvir)
