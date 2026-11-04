@@ -503,3 +503,33 @@ def test_sair_do_modo_jogo_pede_confirmacao_e_pergunta_nao_muda_nada(criar_raiz)
     assert roteador.local.pedidos == []  # nada disso usou o cérebro local
     assert len(claude.pedidos) == pedidos + 2  # só a pergunta e o "sim" expirado foram à nuvem
     assert "não estou no modo jogo" in falar(roteador, "sai do modo jogo").lower()
+
+
+def test_tentativas_ficam_anotadas_com_a_categoria_da_falha(criar_raiz):
+    """A4: cada cérebro tentado fica anotado (motor, resultado, tempo) para o diagnóstico."""
+
+    def resultados(roteador):
+        return [(t["motor"], t["resultado"]) for t in roteador.tentativas]
+
+    for falho, categoria in [
+        (OpenAIFalso(erro=ConnectionError("rede")), "erro_provedor"),
+        (OpenAIFalso(erro=TimeoutError("demorou")), "timeout"),
+        (OpenAIFalso(recusa=True), "resposta_vazia"),
+    ]:
+        roteador, _ = montar(criar_raiz, openai=falho)
+        falar(roteador, "escreve um script python")
+        assert resultados(roteador) == [
+            ("ChatGPT (gpt-5.5)", categoria),
+            ("Claude Sonnet 5.5", "resposta"),
+        ]
+        assert all(t["duracao_ms"] >= 0 for t in roteador.tentativas)
+
+    roteador, _ = montar(criar_raiz, openai=OpenAIFalso("Começo.", quebra=True))
+    falar(roteador, "escreve um script python")
+    assert resultados(roteador) == [("ChatGPT (gpt-5.5)", "stream_interrompido")]
+
+    roteador, _ = montar(criar_raiz, local=LocalFalso(resposta=f" {ESCALAR}"))
+    falar(roteador, "me fala das formigas")
+    assert [r for _, r in resultados(roteador)] == ["escalou", "resposta"]
+    falar(roteador, "oi")
+    assert len(roteador.tentativas) == 2  # a lista recomeça a cada resposta

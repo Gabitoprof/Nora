@@ -100,7 +100,7 @@ class CerebroOpenAI:
             self.medidas.tokens_por_segundo = self.medidas.tokens / self.medidas.total
         if not self.escreveu:
             motivo = "recusou a pergunta" if recusou else "não devolveu resposta"
-            raise CerebroIndisponivel(f"O ChatGPT {motivo}.")
+            raise CerebroIndisponivel(f"O ChatGPT {motivo}.", categoria="resposta_vazia")
 
 
 def _mensagem_do_evento(evento) -> str:

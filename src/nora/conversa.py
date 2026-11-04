@@ -19,8 +19,9 @@ from nora.emocao import FiltroDeTela, sem_emocoes
 from nora.historico import Historico, apagar_do_historico
 from nora.memoria import MAX_TENTATIVAS, Fato, Memoria, Pendente, Troca, abrir_memoria
 from nora.notas import IndiceDeNotas, Trecho, abrir_notas
+from nora.observador import Observador, abrir_observador
 from nora.persona import prompt_de_sistema
-from nora.roteador import Roteador
+from nora.roteador import Roteador, insatisfeito
 
 
 def _data(quando: str) -> str:
@@ -109,12 +110,16 @@ class Conversa:
         historico: Historico,
         memoria: Memoria | None = None,
         notas: IndiceDeNotas | None = None,
+        observador: Observador | None = None,
     ) -> None:
         self.config = config
         self.cerebro = cerebro
         self.historico = historico
         self.memoria = memoria
         self.notas = notas
+        self.observador = observador
+        self.ultima_interacao = ""  # para a voz anotar os tempos dela na mesma interação
+        self._anterior: tuple[str, str] = ("", "")  # (interação, quem respondeu), p/ reclamações
         self.trechos_de_notas: list[Trecho] = []  # trechos das notas usados na última resposta
         self.lembrancas: list[Fato] = []  # fatos usados na última resposta
         self.trechos: list[Troca] = []  # trechos de conversas antigas usados na última resposta
@@ -447,6 +452,63 @@ class Conversa:
         except Exception as erro:
             self._avisar(f"Não consegui guardar a resposta pela metade ({erro}).")
 
+    def _observar(self, interacao: str, texto: str, situacao: str) -> None:
+        """Anota para a auto-melhoria como foi a resposta: cada cérebro tentado, comandos e
+        reclamações (só categorias e tempos; o texto da conversa não vai para lá)."""
+        self.ultima_interacao = interacao
+        anterior, quem_antes = self._anterior
+        self._anterior = (interacao, self.origem)
+        if self.observador is None:
+            return
+        registrar = self.observador.registrar
+        jogo = bool(getattr(self.cerebro, "jogo", False))
+        tentativas = getattr(self.cerebro, "tentativas", None)
+        if tentativas is None:  # um cérebro só (sem roteador)
+            medidas = self.cerebro.medidas
+            tentativas = [
+                {
+                    "motor": self.origem,
+                    "resultado": "resposta" if situacao == "completa" else situacao,
+                    "duracao_ms": int(medidas.primeiro_pedaco * 1000),
+                }
+            ]
+        for numero, tentativa in enumerate(tentativas, start=1):
+            registrar(
+                "llm",
+                tentativa["resultado"],
+                tentativa["motor"],
+                interacao,
+                tentativa["duracao_ms"],
+                situacao,
+                numero,
+                jogo,
+            )
+        if situacao in ("sem resposta", "sem_resposta", "cancelada"):
+            tipo = situacao.replace(" ", "_")
+            registrar("llm", tipo, self.origem, interacao, status=situacao, modo_jogo=jogo)
+        if situacao == "comando":
+            registrar("roteador", "comando", interacao=interacao, modo_jogo=jogo)
+        if anterior and insatisfeito(texto):  # "tá errado", "não entendi": sobre a anterior
+            registrar(
+                "llm",
+                "feedback_negativo",
+                quem_antes,
+                interacao,
+                correlacao=anterior,
+                gravidade="aviso",
+                modo_jogo=jogo,
+            )
+            if quem_antes.startswith("local"):  # o local respondeu algo que precisava de mais
+                registrar(
+                    "roteador",
+                    "rota_suspeita",
+                    quem_antes,
+                    interacao,
+                    correlacao=anterior,
+                    gravidade="aviso",
+                    modo_jogo=jogo,
+                )
+
     def _responder(self, texto: str, retomada: tuple[Pendente, int] | None = None):
         # a resposta anterior (com as etiquetas de emoção) mostra a que tom a pessoa reage agora
         anterior = next(
@@ -472,8 +534,10 @@ class Conversa:
             self.mensagens.pop()
             motivo = "erro_provedor" if partes else "sem_resposta"
             self._pendencia(interacao, texto, "".join(partes), motivo, retomada)
+            self._observar(interacao, texto, "sem_resposta")
             raise
         except GeneratorExit:  # a pessoa interrompeu (Ctrl+C) ou o programa está fechando
+            self._observar(interacao, texto, "cancelada")
             parcial = sem_emocoes("".join(partes).strip())
             self.historico.registrar(
                 "assistente", parcial, modelo=self.origem, situacao="cancelada"
@@ -498,6 +562,7 @@ class Conversa:
             lembrancas=[fato.id for fato in self.lembrancas],
             **({} if situacao == "completa" else {"situacao": situacao}),
         )
+        self._observar(interacao, texto, situacao)
         if self.memoria is not None:
             try:
                 if situacao in _MOTIVOS:
@@ -517,7 +582,11 @@ class Conversa:
 
 
 def nova_conversa(
-    config: Config, cerebro: CerebroLocal | None = None, memoria=AUTOMATICA, notas=AUTOMATICA
+    config: Config,
+    cerebro: CerebroLocal | None = None,
+    memoria=AUTOMATICA,
+    notas=AUTOMATICA,
+    observador=AUTOMATICA,
 ):
     """Conversa com o cérebro local, o histórico e (se ligadas na config) a memória e as notas.
     As notas novas ou alteradas são lidas em segundo plano, sem atrasar o começo."""
@@ -525,8 +594,15 @@ def nova_conversa(
         memoria = abrir_memoria(config)
     if notas is AUTOMATICA:
         notas = abrir_notas(config)
+    if observador is AUTOMATICA:
+        observador = abrir_observador(config)
     conversa = Conversa(
-        config, cerebro or Roteador(config), Historico(config.pasta_dados), memoria, notas
+        config,
+        cerebro or Roteador(config),
+        Historico(config.pasta_dados),
+        memoria,
+        notas,
+        observador,
     )
     if memoria is not None:
         try:  # respostas que caíram com o programa da última vez viram pendências

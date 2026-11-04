@@ -7,6 +7,7 @@ Ordem: config/nora.toml (padrão) -> config/local.toml (pessoal, fora do Git)
 from __future__ import annotations
 
 import os
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -115,6 +116,18 @@ class Memoria:
 
 
 @dataclass(frozen=True)
+class AutoMelhoria:
+    ativa: bool = True
+    hora_relatorio: str = "20:00"  # HH:MM, hora local do relatório diário
+    min_ocorrencias: int = 3  # menos que isso num dia não vira proposta
+    latencia_resposta_ms: int = 2500  # até o primeiro pedaço da resposta
+    latencia_ouvido_ms: int = 1500  # transcrição
+    latencia_voz_ms: int = 2000  # da primeira frase pronta até começar a falar
+    dias_de_eventos: int = 30  # eventos mais velhos são apagados no fechamento
+    notificar: bool = True  # notificação do Windows quando o relatório fica pronto
+
+
+@dataclass(frozen=True)
 class Notas:
     pasta: Path | None = None  # o vault do Obsidian; None = sem notas
     trechos_por_pergunta: int = 3
@@ -195,6 +208,33 @@ class Config:
     chave_anthropic: str = field(default="", repr=False)
     chave_openai: str = field(default="", repr=False)
     notas: Notas = field(default_factory=Notas)
+    auto_melhoria: AutoMelhoria = field(default_factory=AutoMelhoria)
+
+
+def _auto_melhoria(dados: dict[str, Any]) -> AutoMelhoria:
+    secao = "auto_melhoria"
+    hora = _campo(dados, secao, "hora_relatorio", str).strip()
+    if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", hora):
+        raise ConfigError(
+            f'[{secao}] hora_relatorio deve ser "HH:MM" (ex.: "20:00"), veio {hora!r}.'
+        )
+    inteiros = {}
+    for chave in (
+        "min_ocorrencias",
+        "latencia_resposta_ms",
+        "latencia_ouvido_ms",
+        "latencia_voz_ms",
+        "dias_de_eventos",
+    ):
+        inteiros[chave] = _campo(dados, secao, chave, int)
+        if inteiros[chave] < 1:
+            raise ConfigError(f"[{secao}] {chave} deve ser 1 ou mais.")
+    return AutoMelhoria(
+        ativa=_campo(dados, secao, "ativa", bool),
+        hora_relatorio=hora,
+        notificar=_campo(dados, secao, "notificar", bool),
+        **inteiros,
+    )
 
 
 def _notas(dados: dict[str, Any], raiz: Path) -> Notas:
@@ -484,6 +524,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
         ),
         roteador=_roteador(dados),
         notas=_notas(dados, raiz),
+        auto_melhoria=_auto_melhoria(dados),
         pasta_dados=pasta_dados,
         ollama_host=ambiente.get("OLLAMA_HOST") or "http://127.0.0.1:11434",
         tem_chave_anthropic=bool(ambiente.get("ANTHROPIC_API_KEY")),

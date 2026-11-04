@@ -18,11 +18,12 @@ from __future__ import annotations
 
 import random
 import re
+import time
 import unicodedata
 from collections.abc import Iterator
 
 from nora import cerebro_nuvem, cerebro_openai
-from nora.cerebro import CerebroIndisponivel, CerebroLocal, Medidas
+from nora.cerebro import CerebroIndisponivel, CerebroLocal, Medidas, categoria_do_erro
 from nora.cerebro_nuvem import CerebroNuvem
 from nora.cerebro_openai import CerebroOpenAI
 from nora.config import Config
@@ -223,6 +224,9 @@ class Roteador:
         self.situacao = "completa"
         self._avisou_sem_nuvem = False
         self._aguardando: str | None = None  # comando esperando um "sim" (sair do modo jogo)
+        # Cada cérebro tentado na última resposta, para o diagnóstico (auto-melhoria):
+        # {"motor", "resultado" (resposta, escalou ou a categoria da falha), "duracao_ms"}.
+        self.tentativas: list[dict] = []
         self._avisou_sem: set[str] = set()
 
     # --- o que a conversa usa ---------------------------------------------------------------
@@ -261,6 +265,7 @@ class Roteador:
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
         pergunta = next((m["content"] for m in reversed(mensagens) if m["role"] == "user"), "")
         self.situacao = "completa"
+        self.tentativas = []
         aguardando, self._aguardando = self._aguardando, None
         if aguardando:  # resolvido por regra: sem modelo, sem tocar na placa de vídeo
             resposta = confirmacao(pergunta)
@@ -341,6 +346,13 @@ class Roteador:
     def _usar(self, cerebro, origem: str) -> None:
         self.ativo, self.origem = cerebro, origem
 
+    def _anotar(self, resultado: str, inicio: float, primeiro: float | None) -> None:
+        """Guarda como foi a tentativa com o cérebro em uso (tempo até o primeiro pedaço)."""
+        fim = primeiro if primeiro is not None else time.perf_counter()
+        self.tentativas.append(
+            {"motor": self.origem, "resultado": resultado, "duracao_ms": int((fim - inicio) * 1000)}
+        )
+
     def _local(self, mensagens, escalar: bool) -> Iterator[str]:
         self._usar(self.local, f"local ({self.config.modelo_local.modelo})")
         envio = (
@@ -348,10 +360,13 @@ class Roteador:
         )
         escreveu = False  # depois de falar algo, trocar de cérebro emendaria duas respostas
         subir = False
+        comeco_tentativa, primeiro = time.perf_counter(), None
         try:
             fluxo = self.local.responder(envio)
             inicio = ""
             for pedaco in fluxo:
+                if primeiro is None and pedaco:
+                    primeiro = time.perf_counter()
                 if not escalar or escreveu:
                     escreveu = escreveu or bool(pedaco)
                     yield pedaco
@@ -370,6 +385,11 @@ class Roteador:
                     escreveu = True
                     yield inicio
         except CerebroIndisponivel as erro:
+            self._anotar(
+                "stream_interrompido" if escreveu else categoria_do_erro(erro),
+                comeco_tentativa,
+                primeiro,
+            )
             if escreveu:
                 self.situacao = "interrompida"
                 self.avisos.append(
@@ -382,6 +402,7 @@ class Roteador:
             self.avisos.append(f"O cérebro local não respondeu ({erro}); respondi pela nuvem.")
             yield from self._nuvem(mensagens, pesada=False, espera=False, reserva=False)
             return
+        self._anotar("escalou" if subir else "resposta", comeco_tentativa, primeiro)
         if subir:
             yield from self._nuvem(mensagens, pesada=True, espera=True)
 
@@ -405,13 +426,22 @@ class Roteador:
             cerebro = pesado if pesada else rapido
             self._usar(cerebro, cerebro.nome)
             escreveu = False
+            comeco_tentativa, primeiro = time.perf_counter(), None
             try:
                 for pedaco in cerebro.responder(mensagens):
+                    if primeiro is None:
+                        primeiro = time.perf_counter()
                     escreveu = True
                     yield pedaco
+                self._anotar("resposta", comeco_tentativa, primeiro)
                 return
             except CerebroIndisponivel as falha:
                 erro = falha
+                self._anotar(
+                    "stream_interrompido" if escreveu else categoria_do_erro(falha),
+                    comeco_tentativa,
+                    primeiro,
+                )
                 if escreveu:  # já falou metade: trocar de cérebro agora repetiria o começo
                     self.situacao = "interrompida"
                     self.avisos.append(f"{falha} A resposta ficou pela metade.")

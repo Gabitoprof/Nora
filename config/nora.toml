@@ -196,6 +196,24 @@ ignorar = []
 # Ao abrir uma conversa, lê em segundo plano as notas novas ou alteradas.
 atualizar_ao_abrir = true
 
+[auto_melhoria]
+# A Nora observa como foi cada conversa (só tempos, falhas e categorias, sem o texto do que foi
+# dito) e, uma vez por dia, junta o que se repetiu num relatório de propostas de melhoria, em
+# <dados>/auto_melhoria. Ela só propõe: nada muda no código sem você aprovar (nora melhorias).
+ativa = true
+# Hora local do relatório do dia. Se a Nora estiver fechada nessa hora, ele sai na próxima vez.
+hora_relatorio = "20:00"
+# Quantas vezes algo precisa acontecer no dia para virar proposta (uma vez só não basta).
+min_ocorrencias = 3
+# Acima disso conta como lento: resposta (até o primeiro pedaço), ouvido e voz, em milissegundos.
+latencia_resposta_ms = 2500
+latencia_ouvido_ms = 1500
+latencia_voz_ms = 2000
+# Eventos mais velhos que isso são apagados.
+dias_de_eventos = 30
+# Notificação do Windows quando o relatório fica pronto (clicar abre o relatório).
+notificar = true
+
 [caminhos]
 # Banco de memória, histórico e outros dados pessoais. Fora do Git.
 dados = "data"

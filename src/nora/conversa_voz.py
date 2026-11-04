@@ -178,6 +178,7 @@ def responder_falando(
     locutor.terminar()
 
     tempos = locutor.tempos
+    _observar_voz(conversa, voz, tempos, bool(getattr(voz, "aviso", "")))
     for erro in dict.fromkeys(tempos.erros):
         escrever(f"[erro na voz] {erro}")
     for aviso in audio.avisos_de_saida():
@@ -198,6 +199,30 @@ def responder_falando(
             f"e {len(conversa.trechos_de_notas)} notas]"
         )
     return tempos
+
+
+def _observar_voz(conversa: Conversa, voz, tempos: Tempos, usou_reserva: bool) -> None:
+    """Tempos do ouvido e da voz e falhas da voz, para a auto-melhoria (sem texto)."""
+    observador = getattr(conversa, "observador", None)
+    if observador is None:
+        return
+    interacao = conversa.ultima_interacao
+    motor = getattr(voz, "motor", "") or conversa.config.voz.motor
+    if tempos.transcricao:
+        observador.registrar(
+            "stt",
+            "transcricao",
+            conversa.config.ouvido.motor,
+            interacao,
+            int(tempos.transcricao * 1000),
+        )
+    if tempos.comeco_da_voz and tempos.primeira_frase:
+        espera = max(0.0, tempos.comeco_da_voz - tempos.primeira_frase)
+        observador.registrar("tts", "voz", motor, interacao, int(espera * 1000))
+    for _ in dict.fromkeys(tempos.erros):
+        observador.registrar("tts", "erro_provedor", motor, interacao, status="sem voz")
+    if usou_reserva:
+        observador.registrar("tts", "erro_provedor", motor, interacao, status="reserva usada")
 
 
 def trocar_de_voz(conversa: Conversa, voz, tocar, texto, pedido, escrever) -> Tempos:
