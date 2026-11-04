@@ -125,3 +125,18 @@ anteriores sem impacto direto; nenhuma aprovação física foi registrada nesta 
 - Desenho usa Three.js/WebGL, Canvas automático se WebGL não existir ou perder contexto.
   Capturas de QA verificam responsividade e identidade; aprovação estética final pertence
   ao proprietário e a medição de GPU/latência integrada permanece pendente.
+
+### CI e revisão final da entrega
+
+- Commit de implementação `a81065f`: seis jobs aprovados na
+  [execução 41911978525](https://github.com/Gabitoprof/Nora/actions/runs/41911978525):
+  núcleo Windows/Ubuntu com Python 3.11/3.13 e frontend Windows/Ubuntu com Node 22.
+- QA final reaprovou 13 verificações ponta a ponta, a corrida HTTP/SSE determinística e
+  5 verificações de notas autorizadas/latência. Sem erros de página ou storage pessoal.
+- Último ajuste visual: painel móvel ampliado para não cortar “Conteúdo protegido” após
+  incluir a linha de latência; verificação de geometria no browser e captura atualizadas.
+- Proxy Vite: configuração implementada; smoke final específico não confirmado nesta rodada.
+  O caminho principal homologado automaticamente usa build servida pelo Python na mesma origem.
+- Criação de PR ainda bloqueada externamente: API GraphQL retornou `Forbidden`.
+  [Formulário com branches preenchidas](https://github.com/Gabitoprof/Nora/compare/Pull_code...feat/v0.4.0-hud?expand=1).
+- Isso não aprova merge, tag, release nem homologação física Windows/AMD.
