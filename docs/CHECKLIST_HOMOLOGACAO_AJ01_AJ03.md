@@ -15,8 +15,8 @@ P3, P4, HUD e integração pessoal Claude Code ficaram fora do escopo.
 
 # Nora — Checklist de testes e homologação da branch `Pull_code`
 
-**Documento de apoio ao Codex e à homologação local.**  
-**Base:** `REVISAO_NORA_PULL_CODE_POS_CORRECOES.md`, auditoria sobre o commit `ee5a82e` de `Gabitoprof/Nora`.  
+**Documento de apoio ao Codex e à homologação local.**
+**Base:** `REVISAO_NORA_PULL_CODE_POS_CORRECOES.md`, auditoria sobre o commit `ee5a82e` de `Gabitoprof/Nora`.
 **Objetivo:** corrigir apenas AJ-01, AJ-02 e AJ-03, preservar o restante, comprovar os testes e preparar um PR para `Pull_code` **sem merge automático**.
 
 ## 1. Antes de alterar
@@ -126,8 +126,8 @@ Esses testes **não são substituídos por CI**. Fazer após aprovação técnic
 - Teste de Kokoro real ignorado por ausência de `ELLA_KOKORO_PASTA`/modelo local.
 - Windows/Ubuntu com Python 3.11 e 3.13: matriz existente preservada, execução remota
   desta branch ainda não confirmada. Ambiente local: Linux, Python 3.12.
-- API GitHub (`api.github.com`) respondeu `Forbidden`: PR não criado nesta execução.
+- API GitHub (`api.github.com`) respondeu `Forbidden`: `gh pr create` também falhou com `Forbidden` no GraphQL; PR não criado nesta execução.
+  A branch foi enviada ao GitHub com sucesso.
   Domínio adicional salvo no rascunho de rede para revisão, sem publicação automática.
 - Merge, tags e releases não executados. O aceite final permanece pendente da CI remota,
   revisão do PR e homologação Windows/AMD.
-
