@@ -37,9 +37,13 @@ Cada proposta tem número, evidência (quantas vezes, quando, mediana e maior te
 - **PC desligado na hora:** o relatório sai na próxima vez que você abrir a Nora, cobrindo o período que faltou, sem repetir.
 - **O mesmo problema em outro dia:** atualiza a mesma proposta, sem duplicar.
 
-**Como você fica sabendo:**
-- uma notificação do Windows ("Nora: melhorias do dia"), e clicar nela abre o relatório;
-- na próxima conversa, a linha `[melhorias] Relatório de 03/11: 2 proposta(s) para decidir`.
+**Como você fica sabendo, sem digitar nada:**
+- se a Nora estiver aberta quando o dia fecha: uma notificação do Windows ("Nora: melhorias do dia"; clicar abre o relatório), e o relatório se abre no programa padrão do `.md`;
+- se não abrir, ou se o dia fechou com a Nora fechada: na próxima conversa ela abre o relatório (ou, se não conseguir, mostra o **texto inteiro** na conversa).
+
+Ela nunca faz isso no meio de uma resposta nem no modo jogo: espera ficar livre. O relatório só conta como mostrado depois de aparecer de fato. Se a notificação ou a abertura falharem, o motivo fica registrado e ela tenta de novo na próxima sessão. Com `apresentar = "terminal"`, o texto sempre aparece na conversa, em vez de abrir o arquivo.
+
+**O relatório não traz o texto das suas perguntas.** Das respostas pela metade, mostra só o número, o motivo e a data; as perguntas, só pedindo: `nora pendencias`. Relatórios antigos que traziam o começo das perguntas são limpos sozinhos.
 
 ## Decidir
 
@@ -67,6 +71,7 @@ latencia_ouvido_ms = 1500
 latencia_voz_ms = 2000
 dias_de_eventos = 30
 notificar = true              # notificação do Windows
+apresentar = "abrir"          # "abrir" o .md ou "terminal" (texto inteiro na conversa)
 ```
 
 ## O que ainda não existe (próximas etapas)

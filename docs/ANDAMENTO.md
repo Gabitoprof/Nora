@@ -1,6 +1,6 @@
 # Andamento da Nora (para revisão)
 
-Resumo do estado do projeto para uma revisão de código. Atualizado em 04/11/2026 (depois da revisão consolidada: P1 e P2), branch `Pull_code`.
+Resumo do estado do projeto para uma revisão de código. Atualizado em 04/11/2026 (depois da revisão consolidada P1/P2 e da auditoria), branch `Pull_code`.
 
 ## O que é
 
@@ -55,6 +55,18 @@ Os seis foram reproduzidos por teste antes da correção (A1: local chamado no m
 | P1 · A4 | `CerebroIndisponivel.categoria` e `categoria_do_erro`; `Roteador.tentativas` (motor, resultado, tempo até o 1º pedaço); reserva só antes do conteúdo | `test_tentativas_ficam_anotadas_...` |
 | P2 | `observador.py` (sem texto) e `melhorias.py`: diagnóstico por regras, propostas com evidência, relatório diário, um por dia, recuperação do dia perdido, agendador que espera a Nora desocupada, notificação do Windows, decisões (aprovar gera tarefa; publicar exige `--autorizo-publicar`), `nora melhorias` e pela voz com "sim" | `tests/test_auto_melhoria.py` (12 testes) |
 
+### Auditoria de 04/11/2026 (`AUDITORIA_NORA_PULL_CODE_2026-11-03.md`)
+
+Os cinco pontos foram conferidos no código e reproduzidos por teste antes da correção.
+
+| Ponto | Correção | Teste |
+|---|---|---|
+| P0 Ctrl+C | `conversa.py::_responder` trata `KeyboardInterrupt` junto com `GeneratorExit`: pendência gravada na hora, uma vez só | `test_ctrl_c_no_meio_vira_pendencia_na_hora` |
+| P1 retomada ocupada | `perguntar` marca `ocupada` também durante `_retomar` (`try/finally`) | `test_retomada_marca_a_nora_ocupada_e_o_relatorio_espera` |
+| P1 privacidade | `_relatorio` não escreve a pergunta; `_limpar_perguntas_dos_relatorios` limpa os antigos | `test_relatorio_nao_mostra_perguntas_e_limpa_os_antigos` |
+| P1 apresentação | `apresentar()` abre o .md ou mostra o texto inteiro; `marcar_mostrado` só depois; `falha_aviso` registrada; espera o modo jogo; `[auto_melhoria] apresentar` | `test_inicio_da_sessao_abre_...`, `test_se_nao_abrir_...`, `test_relatorio_do_meio_da_sessao_...`, `test_no_modo_jogo_o_relatorio_espera` |
+| P2 modo jogo | Regra `sem_resposta` reescrita; `_oferecer_retomada_do_jogo` ao sair do modo jogo (só oferece) | `test_sem_resposta_no_modo_jogo_nao_sugere_usar_o_local` |
+
 **Não implementado (decisão pendente):** P3, a pesquisa técnica na web (opcional, desligada por padrão), e P4, levar a tarefa aprovada ao Codex numa branch isolada (hoje é manual). A auto-melhoria é escopo novo: a tag `v0.3.0` não depende dela.
 
 ## Pendente
@@ -70,6 +82,9 @@ Os seis foram reproduzidos por teste antes da correção (A1: local chamado no m
   - [ ] "sai do modo jogo" pergunta antes; "como sair do modo jogo?" só explica.
   - [ ] Ctrl+C no meio de uma resposta → na próxima conversa aparece o aviso → "termina a resposta que ficou pela metade".
   - [ ] `nora melhorias fechar-dia` gera o relatório; a notificação do Windows aparece e abre o arquivo (o PowerShell da notificação ainda não foi testado num Windows real).
+  - [ ] Com a Nora aberta depois das 20:00 (ou mudando `hora_relatorio`), o relatório abre sozinho no programa do .md; com a Nora fechada, abre na próxima sessão.
+  - [ ] Ctrl+C enquanto ela ainda está pensando (antes de falar) → `nora pendencias` já mostra a pergunta, na mesma hora.
+  - [ ] Modo jogo sem internet → uma pergunta → "sai do modo jogo" → "sim" → aparece a oferta de retomar.
   - [ ] Conferir com o bge-m3 real os limites `TROCA_ESQUECIDA` e os de latência em `[auto_melhoria]`.
 - Depois da validação: revisão completa da documentação (`CLAUDE.md`), versão `0.3.0` em `src/nora/__init__.py` e tag `v0.3.0`.
 - Próximo (proposta, ainda não decidida): classificador com confiança no roteador, primeiro com bge-m3 e exemplos por rota; testar o `Mapika/decider-2b` (Apache-2.0, GGUF) como alternativa.

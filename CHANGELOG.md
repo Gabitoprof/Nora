@@ -32,6 +32,11 @@ Versão em desenvolvimento: `0.3.0.dev0`.
 
 ### Corrigido
 
+- **Ctrl+C no meio de uma resposta** guarda a pendência na hora; antes, se a Nora estava esperando o cérebro, ela só aparecia na sessão seguinte.
+- **Retomar uma resposta** também conta como "ocupada": o relatório diário não fecha no meio da retomada.
+- **Privacidade do relatório diário:** ele não traz mais o texto das perguntas pendentes (só número, motivo e data); relatórios antigos são limpos ao abrir a Nora.
+- **Relatório diário aparece inteiro, sozinho:** abre o `.md` (ou mostra o texto na conversa, `[auto_melhoria] apresentar`), sem interromper uma resposta nem o modo jogo; só conta como mostrado depois de aparecer, e falhas da notificação ou da abertura ficam registradas para tentar de novo.
+- A proposta para "pedidos sem resposta" não sugere mais usar o cérebro local no modo jogo; ao sair do modo jogo, a Nora oferece retomar o que ficou sem resposta.
 - **Modo jogo:** se nenhuma nuvem responder, a Nora não volta a usar o cérebro local (que ocuparia a placa de vídeo liberada); ela avisa e sugere "sair do modo jogo".
 - **Comando com pedido:** "use o Claude para explicar fotossíntese" agora responde a pergunta pelo Claude, sem só trocar o modo; "use o cérebro local para ..." responde aquela pergunta no PC. Comandos sozinhos continuam trocando o modo.
 - **Resposta que cai no meio:** se o cérebro local parar depois de começar a falar, a Nora não emenda outra resposta da nuvem; avisa que ficou pela metade. Respostas interrompidas ficam marcadas no histórico (`"situacao"`) e não vão para a memória.

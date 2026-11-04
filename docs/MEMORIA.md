@@ -85,6 +85,8 @@ Quando uma resposta não termina, a Nora guarda a pergunta e o pedaço que saiu,
 - você interrompeu com Ctrl+C;
 - o programa fechou no meio da resposta.
 
+- O Ctrl+C no meio de uma resposta guarda a pendência na hora, na mesma conversa.
+- **Ao sair do modo jogo** (com "sim"), se alguma pergunta ficou sem resposta lá, ela avisa e oferece retomar; nada é respondido sozinho.
 - **Ao abrir a conversa,** ela avisa: `[memória] 1 resposta(s) ficaram pela metade...`.
 - **"Termina a resposta que ficou pela metade"** (ou "continua aquela resposta") faz ela responder de novo a última, **inteira e identificada** ("Retomando a pergunta ..."). Se der certo, a pendência fecha e a resposta segue o caminho normal da memória. Depois de 3 tentativas sem sucesso, ela desiste dessa.
 - `nora pendencias` lista todas; `nora pendencias --cancelar 4` tira uma da lista.
