@@ -27,7 +27,7 @@ Usar o checkout existente; não é preciso worktree ou outro clone. Requisitos: 
 Na raiz do repositório, em PowerShell:
 
 ```powershell
-python -m venv .venv
+py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev,voz,memoria]"
 cd hud
@@ -43,6 +43,33 @@ nora --verificar
 O extra `nuvem` continua opcional para ChatGPT/Claude, assim como suas credenciais. Não
 colocar segredos no frontend, no Git ou no comando. Instalação de Ollama, Whisper e TTS
 continua descrita em [VOZ](VOZ.md), sem reconfigurar o PC automaticamente.
+
+## PowerShell não executa o script da nuvem Linux
+
+`/workspace/Nora`, `.venv/bin/python`, `#!/usr/bin/env bash` e `set -euo pipefail`
+pertencem ao ambiente Linux do Codex. Não copiar o `install_script` da nuvem para o
+PowerShell. No Windows usar o caminho real do checkout e `Scripts\python.exe`.
+
+Se `python3` estiver apontando para Python 3.15, não reutilizar esse ambiente para voz.
+Listar versões com `py -0p`; usar Python 3.13 (ou 3.11/3.12 suportado) explicitamente.
+O exemplo abaixo é para o checkout `B:\Nora`, com um novo ambiente fora dele, preservando
+qualquer `.venv` anterior e todos os dados/configurações:
+
+```powershell
+Set-Location 'B:\Nora' -ErrorAction Stop
+py -0p
+# Executar as linhas seguintes quando Python 3.13 estiver listado:
+py -3.13 -m venv 'B:\Nora-venv313'
+& 'B:\Nora-venv313\Scripts\python.exe' -m pip install -e ".[dev,voz,memoria]"
+& 'B:\Nora-venv313\Scripts\python.exe' -m pip check
+& 'B:\Nora-venv313\Scripts\nora.exe' --verificar
+```
+
+Não é preciso ativar o ambiente ou alterar a política de execução do PowerShell. Se 3.13
+não estiver instalado, instalar essa versão primeiro, por exemplo com
+`winget install --exact --id Python.Python.3.13`, e confirmar com `py -0p` em novo terminal.
+Avisos de um `.pth` antigo para `B:\ELLA\src` indicam uma instalação editável anterior;
+o ambiente separado não herda os pacotes da instalação global por padrão.
 
 ## Executar
 

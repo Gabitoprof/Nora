@@ -83,3 +83,6 @@ no runtime. CI deve passar em Windows e Ubuntu antes de o PR ser considerado pro
 
 A v0.4.0 não é uma release publicada. A homologação integrada Windows/AMD depende do aceite
 do proprietário; P3/P4, MCP completo e operação distribuída permanecem fora deste escopo.
+
+No Windows, não executar o script Bash da nuvem. Para corrigir caminhos Linux no PowerShell
+ou um ambiente criado com Python 3.15, usar o [procedimento Windows](../docs/HUD.md#powershell-não-executa-o-script-da-nuvem-linux).
