@@ -39,9 +39,10 @@ Cada proposta tem número, evidência (quantas vezes, quando, mediana e maior te
 
 **Como você fica sabendo, sem digitar nada:**
 - se a Nora estiver aberta quando o dia fecha: uma notificação do Windows ("Nora: melhorias do dia"; clicar abre o relatório), e o relatório se abre no programa padrão do `.md`;
-- se não abrir, ou se o dia fechou com a Nora fechada: na próxima conversa ela abre o relatório (ou, se não conseguir, mostra o **texto inteiro** na conversa).
+- se não abrir, mostra o **texto inteiro** na sessão atual, quando a interface estiver livre, mesmo sem uma nova pergunta;
+- se o dia fechou com a Nora fechada: na próxima conversa ela abre o relatório ou mostra o texto inteiro.
 
-Ela nunca faz isso no meio de uma resposta nem no modo jogo: espera ficar livre. O relatório só conta como mostrado depois de aparecer de fato. Se a notificação ou a abertura falharem, o motivo fica registrado e ela tenta de novo na próxima sessão. Com `apresentar = "terminal"`, o texto sempre aparece na conversa, em vez de abrir o arquivo.
+Ela nunca faz isso no meio de uma resposta nem no modo jogo: espera ficar livre. O relatório só conta como mostrado depois de aparecer de fato. Se a notificação ou a abertura falharem, o motivo fica registrado. A falha de abertura tenta o texto na mesma sessão. Arquivo ausente ou ilegível continua pendente, com uma tentativa de apresentação por sessão para evitar avisos repetidos. Restaure uma cópia UTF-8 no caminho informado (ou corrija as permissões) e reinicie a sessão para tentar novamente. Sem uma cópia, não há recuperação automática do conteúdo original; não feche o mesmo dia novamente para tentar recuperá-lo. Com `apresentar = "terminal"`, o texto sempre aparece na conversa, em vez de abrir o arquivo.
 
 **O relatório não traz o texto das suas perguntas.** Das respostas pela metade, mostra só o número, o motivo e a data; as perguntas, só pedindo: `nora pendencias`. Relatórios antigos que traziam o começo das perguntas são limpos sozinhos.
 

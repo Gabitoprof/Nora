@@ -17,7 +17,7 @@ from nora.confirmacao import confirmacao
 from nora.curadoria import curar
 from nora.emocao import FiltroDeTela, sem_emocoes
 from nora.historico import Historico, apagar_do_historico
-from nora.melhorias import Melhorias, abrir_melhorias
+from nora.melhorias import Melhorias, abrir_melhorias, ler_entrada
 from nora.melhorias import iniciar as iniciar_melhorias
 from nora.memoria import MAX_TENTATIVAS, Fato, Memoria, Pendente, Troca, abrir_memoria
 from nora.notas import IndiceDeNotas, Trecho, abrir_notas
@@ -776,7 +776,7 @@ def conversar(
     agendador = iniciar_melhorias(conversa, escrever)
     while True:
         try:
-            texto = entrada("\nVocê: ").strip()
+            texto = ler_entrada(entrada, "\nVocê: ", agendador).strip()
         except (EOFError, KeyboardInterrupt):
             escrever()
             break
