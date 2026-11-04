@@ -140,3 +140,16 @@ anteriores sem impacto direto; nenhuma aprovação física foi registrada nesta 
 - Criação de PR ainda bloqueada externamente: API GraphQL retornou `Forbidden`.
   [Formulário com branches preenchidas](https://github.com/Gabitoprof/Nora/compare/Pull_code...feat/v0.4.0-hud?expand=1).
 - Isso não aprova merge, tag, release nem homologação física Windows/AMD.
+
+### Evidência manual informada pelo proprietário — instalação Windows
+
+- Capturas do proprietário confirmam criação do ambiente Python 3.13 e instalação
+  editável dos extras `dev,voz,memoria` concluída com sucesso.
+- `pip check`: **aprovado**, com `No broken requirements found`. Não pedir repetição
+  dessa verificação sem alteração direta no ambiente/dependências.
+- `nora.exe --verificar`: **bloqueado pelo Controle de Aplicativos do Windows**;
+  não classificar como erro da Nora nem como diagnóstico funcional aprovado.
+- Orientada a entrada oficial `python -m nora --verificar`, sem alterar políticas;
+  resultado no computador do proprietário ainda pendente. A forma como módulo foi
+  executada no ambiente Linux, código 0; isso não substitui a confirmação local.
+- Instalação aprovada não homologa microfone, STT/TTS, GPU ou integração completa.

@@ -62,7 +62,7 @@ py -0p
 py -3.13 -m venv 'B:\Nora-venv313'
 & 'B:\Nora-venv313\Scripts\python.exe' -m pip install -e ".[dev,voz,memoria]"
 & 'B:\Nora-venv313\Scripts\python.exe' -m pip check
-& 'B:\Nora-venv313\Scripts\nora.exe' --verificar
+& 'B:\Nora-venv313\Scripts\python.exe' -m nora --verificar
 ```
 
 Não é preciso ativar o ambiente ou alterar a política de execução do PowerShell. Se 3.13
@@ -159,3 +159,12 @@ Pendente no computador real: silêncio prolongado e digitação durante escuta, 
 relatórios com auto-melhoria ativa, transições em modo jogo sem reativar Ollama, saída de
 voz real e reserva, latência, fullscreen/ultrawide, uso de CPU/GPU com os modelos carregados.
 A versão permanece em desenvolvimento, sem merge automático, tags ou release.
+
+## Executável de entrada bloqueado pelo Windows
+
+Se a instalação concluir e `pip check` disser `No broken requirements found`, mas o
+Controle de Aplicativos bloquear `nora.exe`, isso não indica falha nas dependências.
+A entrada oficial `python -m nora` usa o mesmo `nora.cli.main` do launcher instalado.
+O diagnóstico da aplicação continua sendo `--verificar`. Não desativar políticas de
+segurança; se a política também impedir a execução pelo Python, solicitar a análise e
+liberação da aplicação ao responsável pela política do computador.
