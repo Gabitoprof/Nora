@@ -11,7 +11,9 @@ vídeo e não manda nada para fora do PC. A pesquisa na web (etapa P3) ainda nã
 from __future__ import annotations
 
 import json
+import logging
 import os
+import queue
 import re
 import sqlite3
 import statistics
@@ -786,6 +788,7 @@ class Agendador(threading.Thread):
         self.melhorias, self.ocupado, self.ao_fechar = melhorias, ocupado, ao_fechar
         self.pendentes, self.intervalo, self.relogio = pendentes, intervalo, relogio
         self._parar = threading.Event()
+        self.apresentar_pendentes: Callable[[], None] = lambda: None
 
     def conferir(self) -> Fechamento | None:
         if self.ocupado():
@@ -796,7 +799,8 @@ class Agendador(threading.Thread):
             return None
         try:
             pendentes = self.pendentes()
-        except Exception:
+        except Exception as erro:
+            logging.getLogger(__name__).error("Falha ao listar pendências: %s", type(erro).__name__)
             pendentes = []
         fechamento = self.melhorias.fechar(dia, agora, pendentes)
         self.ao_fechar(fechamento)
@@ -806,8 +810,9 @@ class Agendador(threading.Thread):
         while not self._parar.is_set():
             try:
                 self.conferir()
-            except Exception:
-                pass  # a auto-melhoria nunca derruba a conversa
+            except Exception as erro:
+                # Não registrar a mensagem/traceback: provedores podem incluir texto pessoal.
+                logging.getLogger(__name__).error("Falha no agendador: %s", type(erro).__name__)
             self._parar.wait(self.intervalo)
 
     def parar(self) -> None:
@@ -828,8 +833,11 @@ def apresentar(
     dia = f"{data[8:10]}/{data[5:7]}"
     if not caminho.is_file():
         melhorias.registrar_falha_do_aviso(data, f"arquivo não encontrado: {caminho}")
-        melhorias.marcar_mostrado(data)  # sem arquivo, não adianta tentar de novo
-        escrever(f"[melhorias] O relatório de {dia} sumiu ({caminho}).")
+        escrever(
+            f"[melhorias] O relatório de {dia} sumiu ({caminho}). "
+            "Restaure o arquivo de uma cópia de segurança e reinicie a sessão para exibi-lo. "
+            "Sem uma cópia, não é possível recuperar o conteúdo original automaticamente."
+        )
         return False
     resumo = f"{quantas} proposta(s) para decidir" if quantas else "sem novas melhorias relevantes"
     if modo == "abrir":
@@ -837,9 +845,22 @@ def apresentar(
             melhorias.marcar_mostrado(data)
             escrever(f"[melhorias] Abri o relatório de {dia} ({resumo}): {caminho}")
             return True
-        melhorias.registrar_falha_do_aviso(data, "não consegui abrir o .md; mostrei na conversa")
+        melhorias.registrar_falha_do_aviso(
+            data, "não consegui abrir o .md; tentando mostrar na conversa"
+        )
+    try:
+        texto = caminho.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as erro:
+        motivo = f"falha ao ler o .md: {type(erro).__name__}"
+        melhorias.registrar_falha_do_aviso(data, motivo)
+        escrever(
+            f"[melhorias] Não consegui ler o relatório de {dia} ({motivo}). "
+            "Corrija as permissões ou restaure uma cópia UTF-8 do arquivo e reinicie a sessão. "
+            "O relatório continua pendente."
+        )
+        return False
     escrever(f"[melhorias] Relatório de {dia} ({resumo}):")
-    escrever(caminho.read_text(encoding="utf-8"))
+    escrever(texto)
     melhorias.marcar_mostrado(data)
     return True
 
@@ -860,12 +881,9 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
     if melhorias is None:
         return None
     cfg = conversa.config.auto_melhoria
-    if not getattr(conversa.cerebro, "jogo", False):  # no modo jogo, fica para depois
-        for data, caminho, quantas in melhorias.nao_mostrados():
-            apresentar(melhorias, data, Path(caminho), quantas, cfg.apresentar, escrever)
 
     def ao_fechar(fechamento: Fechamento) -> None:
-        """O dia fechou com a Nora desocupada: avisa e apresenta o relatório inteiro."""
+        """O dia fechou com a Nora desocupada: notifica sem escrever na interface."""
         if fechamento.caminho is None:
             return
         texto = f"Relatório de melhorias pronto: {fechamento.resumo}."
@@ -874,13 +892,7 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
                 "Nora: melhorias do dia", texto + " Clique para abrir.", fechamento.caminho
             ):
                 melhorias.registrar_falha_do_aviso(fechamento.data, "a notificação falhou")
-        if cfg.apresentar == "abrir" and abrir_arquivo(fechamento.caminho):
-            melhorias.marcar_mostrado(fechamento.data)
-            conversa._avisar(f"{texto} Abri o relatório: {fechamento.caminho}")
-        else:  # mostra inteiro na próxima vez que a sessão abrir
-            if cfg.apresentar == "abrir":
-                melhorias.registrar_falha_do_aviso(fechamento.data, "não consegui abrir o .md")
-            conversa._avisar(f"{texto} Ele aparece inteiro quando você abrir a Nora de novo.")
+        # A apresentação pertence ao loop da interface; esta thread só fecha e notifica.
 
     def ocupado() -> bool:
         return bool(getattr(conversa, "ocupada", False) or getattr(conversa.cerebro, "jogo", False))
@@ -889,5 +901,46 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
         return conversa.memoria.pendentes() if conversa.memoria is not None else []
 
     agendador = Agendador(melhorias, ocupado, ao_fechar, pendentes)
+    tentados: set[str] = set()
+
+    def apresentar_pendentes() -> None:
+        if ocupado():
+            return
+        for data, caminho, quantas in melhorias.nao_mostrados():
+            if data in tentados:
+                continue  # uma tentativa por sessão; falhas continuam pendentes no banco
+            tentados.add(data)
+            apresentar(melhorias, data, Path(caminho), quantas, cfg.apresentar, escrever)
+
+    agendador.apresentar_pendentes = apresentar_pendentes
+    apresentar_pendentes()
     agendador.start()
     return agendador
+
+
+def ler_entrada(entrada: Callable[[str], str], prompt: str, agendador: Agendador | None) -> str:
+    """Mantém a interface atendendo relatórios enquanto o teclado espera uma linha.
+
+    Só o loop chamador escreve relatórios; a thread de entrada apenas lê o teclado.
+    Não antecipa a próxima leitura (a gravação por Enter usa a mesma entrada).
+    """
+    if agendador is None:
+        return entrada(prompt)
+    resultado: queue.Queue = queue.Queue()
+
+    def ler() -> None:
+        try:
+            resultado.put((True, entrada(prompt)))
+        except BaseException as erro:
+            resultado.put((False, erro))
+
+    threading.Thread(target=ler, daemon=True, name="nora-entrada").start()
+    while True:
+        agendador.apresentar_pendentes()
+        try:
+            sucesso, valor = resultado.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        if sucesso:
+            return valor
+        raise valor

@@ -142,6 +142,8 @@ def conversar_maos_livres(
         numero = 0
         sair = False
         for fala in falas_detectadas:
+            if agendador is not None:
+                agendador.apresentar_pendentes()
             # O que foi digitado: não precisa do nome dela.
             while not digitados.empty():
                 linha = digitados.get_nowait()

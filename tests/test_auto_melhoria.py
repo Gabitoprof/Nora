@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, timedelta
 
+import pytest
 from test_roteador import ClienteFalso, OpenAIFalso, montar
 
 from nora.config import carregar
@@ -270,25 +271,47 @@ def test_se_nao_abrir_mostra_o_texto_inteiro_e_registra_a_falha(criar_raiz, monk
     assert conversa.melhorias.nao_mostrados() == []
 
 
-def test_relatorio_do_meio_da_sessao_que_nao_abriu_aparece_na_proxima(criar_raiz, monkeypatch):
+@pytest.mark.parametrize("modo,abre", [("terminal", False), ("abrir", False), ("abrir", True)])
+def test_relatorio_na_sessao_atual_sem_nova_entrada(criar_raiz, monkeypatch, modo, abre):
+    import threading
+
     from nora import melhorias as modulo
 
-    monkeypatch.setattr(modulo, "abrir_arquivo", lambda c: False)
-    monkeypatch.setattr(modulo.Agendador, "start", lambda self: None)  # sem thread: determinístico
-    toml = '[auto_melhoria]\napresentar = "abrir"\n'
-    conversa, _ = _conversa(criar_raiz, toml=toml)
+    monkeypatch.setattr(modulo.Agendador, "start", lambda self: None)
+    abertos, linhas, threads = [], [], []
+    exibido = threading.Event()
+    principal = threading.get_ident()
+
+    def abrir(caminho):
+        abertos.append(caminho)
+        return abre
+
+    def escrever(linha):
+        linhas.append(linha)
+        threads.append(threading.get_ident())
+        exibido.set()
+
+    monkeypatch.setattr(modulo, "abrir_arquivo", abrir)
+    conversa, _ = _conversa(criar_raiz, toml=f'[auto_melhoria]\napresentar = "{modo}"\n')
     _eventos(conversa.melhorias, n=3)
-    agendador = modulo.iniciar(conversa, lambda linha: None)
-    agendador.parar()
+    agendador = modulo.iniciar(conversa, escrever)
     agendador.relogio = lambda: DIA.replace(hour=21)
-    fechamento = agendador.conferir()
-    assert fechamento is not None
-    assert [d for d, _, _ in conversa.melhorias.nao_mostrados()] == ["2026-11-03"]  # ainda não
-    assert any("quando você abrir a Nora de novo" in a for a in conversa.avisos_pendentes())
-    linhas = []
-    modulo.iniciar(conversa, linhas.append).parar()  # próxima sessão
-    assert fechamento.caminho.read_text("utf-8") in linhas
+
+    def entrada(prompt):
+        agendador.conferir()  # o dia fecha enquanto o teclado está esperando
+        assert exibido.wait(3), "o relatório exigiu uma nova entrada"
+        return "sair"
+
+    assert modulo.ler_entrada(entrada, "", agendador) == "sair"
+    caminho = conversa.melhorias.relatorio()
+    if not abre:
+        assert caminho.read_text("utf-8") in linhas
+    assert bool(abertos) == (modo == "abrir")
+    assert set(threads) == {principal}  # nunca escreve a partir do agendador
     assert conversa.melhorias.nao_mostrados() == []
+    agendador.apresentar_pendentes()
+    assert conversa.melhorias.dia_a_fechar(DIA.replace(hour=22)) is None
+    agendador.parar()
 
 
 def test_no_modo_jogo_o_relatorio_espera(criar_raiz, monkeypatch):
@@ -405,3 +428,173 @@ def test_sem_resposta_no_modo_jogo_nao_sugere_usar_o_local(criar_raiz):
     oferta = [a for a in conversa.avisos_pendentes() if "sem resposta no modo jogo" in a]
     assert oferta and "termina a resposta" in oferta[0]
     assert len(conversa.memoria.pendentes()) == 1  # só oferece; não responde sozinha
+
+
+@pytest.mark.parametrize("bloqueio", ["ocupada", "jogo"])
+def test_relatorio_pendente_aparece_apos_desbloquear(criar_raiz, monkeypatch, bloqueio):
+    from nora import melhorias as modulo
+
+    monkeypatch.setattr(modulo.Agendador, "start", lambda self: None)
+    conversa, roteador = _conversa(criar_raiz, toml='[auto_melhoria]\napresentar = "terminal"\n')
+    fechamento = conversa.melhorias.fechar(DIA.date(), DIA.replace(hour=21))
+    alvo = conversa if bloqueio == "ocupada" else roteador
+    setattr(alvo, bloqueio, True)
+    linhas = []
+    agendador = modulo.iniciar(conversa, linhas.append)
+    agendador.apresentar_pendentes()
+    assert linhas == []
+    setattr(alvo, bloqueio, False)
+    agendador.apresentar_pendentes()
+    assert fechamento.caminho.read_text("utf-8") in linhas
+    assert conversa.melhorias.nao_mostrados() == []
+    assert roteador.local.pedidos == []
+
+
+@pytest.mark.parametrize("quebra", ["\n", "\r\n"], ids=["LF", "CRLF"])
+def test_arquivo_ausente_continua_pendente_e_pode_ser_restaurado(criar_raiz, monkeypatch, quebra):
+    from nora import melhorias as modulo
+
+    monkeypatch.setattr(modulo.Agendador, "start", lambda self: None)
+    conversa, _ = _conversa(criar_raiz, toml='[auto_melhoria]\napresentar = "terminal"\n')
+    m = conversa.melhorias
+    caminho = m.fechar(DIA.date(), DIA.replace(hour=21)).caminho
+    texto = caminho.read_text(encoding="utf-8")
+    caminho.write_bytes(texto.replace("\n", quebra).encode("utf-8"))
+    copia = caminho.read_bytes()
+    caminho.unlink()
+    linhas = []
+    agendador = modulo.iniciar(conversa, linhas.append)
+    assert len(m.nao_mostrados()) == 1
+    assert "arquivo não encontrado" in m.falha_do_aviso("2026-11-03")
+    assert "Restaure" in linhas[0]
+    for _ in range(5):
+        agendador.apresentar_pendentes()
+    assert len(linhas) == 1  # sem avisos repetidos
+    caminho.write_bytes(copia)
+    modulo.iniciar(conversa, linhas.append)
+    assert caminho.read_bytes() == copia  # a restauração preserva os bytes originais
+    assert caminho.read_text(encoding="utf-8") == texto
+    assert texto in linhas  # apresentação em modo texto normaliza CRLF/LF
+    assert m.nao_mostrados() == []
+
+
+@pytest.mark.parametrize("falha", [PermissionError, UnicodeError, OSError, FileNotFoundError])
+def test_falha_de_leitura_nao_derruba_conversa(criar_raiz, monkeypatch, falha):
+    from pathlib import Path
+
+    from nora import melhorias as modulo
+
+    conversa, _ = _conversa(criar_raiz)
+    m = conversa.melhorias
+    caminho = m.fechar(DIA.date(), DIA.replace(hour=21)).caminho
+    original = Path.read_text
+
+    def ler(self, *args, **kwargs):
+        if self == caminho:
+            if falha is UnicodeError:
+                return b"\xff".decode("utf-8")
+            raise falha("texto pessoal que não deve ir ao diagnóstico")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", ler)
+    linhas = []
+    assert not modulo.apresentar(m, "2026-11-03", caminho, 0, "terminal", linhas.append)
+    assert len(m.nao_mostrados()) == 1
+    diagnostico = m.falha_do_aviso("2026-11-03")
+    assert ("UnicodeDecodeError" if falha is UnicodeError else falha.__name__) in diagnostico
+    assert "texto pessoal" not in diagnostico
+    assert "continua pendente" in linhas[0]
+    assert "".join(conversa.perguntar("oi"))  # conversa segue funcionando
+    monkeypatch.setattr(Path, "read_text", original)
+    assert modulo.apresentar(m, "2026-11-03", caminho, 0, "terminal", linhas.append)
+    assert m.nao_mostrados() == []
+
+
+def test_agendador_registra_falha_e_continua_sem_texto_pessoal(criar_raiz, caplog):
+    m = _melhorias(criar_raiz)
+    agendador = Agendador(m, lambda: False, lambda f: None, intervalo=0)
+    chamadas = []
+
+    def conferir():
+        chamadas.append(1)
+        if len(chamadas) == 1:
+            raise OSError("pergunta pessoal")
+        agendador.parar()
+
+    agendador.conferir = conferir
+    agendador.run()
+    assert len(chamadas) == 2
+    assert "Falha no agendador: OSError" in caplog.text
+    assert "pergunta pessoal" not in caplog.text
+
+
+@pytest.mark.parametrize("interface", ["texto", "voz", "ouvir"])
+def test_loops_entregam_relatorio_sem_pergunta(criar_raiz, monkeypatch, interface):
+    import io
+    import threading
+
+    from nora import conversa as texto
+    from nora import conversa_voz as voz
+    from nora import maos_livres as ouvir
+    from nora import melhorias
+
+    conversa, _ = _conversa(criar_raiz, toml='[auto_melhoria]\napresentar = "terminal"\n')
+    _eventos(conversa.melhorias, n=3)
+    exibido = threading.Event()
+
+    class Saida(io.StringIO):
+        def write(self, texto):
+            resultado = super().write(texto)
+            if "## " in texto:
+                exibido.set()
+            return resultado
+
+    saida = Saida()
+    iniciou = threading.Event()
+    agendadores = []
+    monkeypatch.setattr(melhorias.Agendador, "start", lambda self: None)
+
+    def iniciar(c, escrever):
+        agendador = melhorias.iniciar(c, escrever)
+        agendador.relogio = lambda: DIA.replace(hour=21)
+        agendadores.append(agendador)
+        iniciou.set()
+        return agendador
+
+    modulo = {"texto": texto, "voz": voz, "ouvir": ouvir}[interface]
+    monkeypatch.setattr(modulo, "nova_conversa", lambda *a: conversa)
+    monkeypatch.setattr(modulo, "iniciar_melhorias", iniciar)
+
+    def entrada(prompt):
+        assert iniciou.is_set()
+        agendadores[0].conferir()
+        assert exibido.wait(3), "o loop não entregou o relatório enquanto esperava entrada"
+        return "sair"
+
+    if interface == "texto":
+        assert texto.conversar(conversa.config, entrada=entrada, saida=saida) == 0
+    elif interface == "voz":
+        assert (
+            voz.conversar_por_voz(
+                conversa.config, entrada=entrada, saida=saida, so_teclado=True, tocar=lambda _: None
+            )
+            == 0
+        )
+    else:
+
+        def falas():
+            agendadores[0].conferir()
+            yield None  # folga do VAD, sem nenhuma fala ou digitação
+
+        assert (
+            ouvir.conversar_maos_livres(
+                conversa.config,
+                saida=saida,
+                teclado=False,
+                tocar=lambda _: None,
+                fontes=(falas(), lambda: None, lambda: None),
+            )
+            == 0
+        )
+    assert conversa.melhorias.relatorio().read_text("utf-8") in saida.getvalue()
+    assert conversa.melhorias.nao_mostrados() == []

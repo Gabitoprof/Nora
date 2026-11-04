@@ -23,6 +23,7 @@ from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
 from nora.emocao import FiltroDeTela
 from nora.frases import SeparadorDeFrases
 from nora.melhorias import iniciar as iniciar_melhorias
+from nora.melhorias import ler_entrada
 from nora.ouvido import OuvidoWhisper
 from nora.prioridade import abafar_outros
 from nora.servico import ServicoIndisponivel
@@ -285,7 +286,9 @@ def conversar_por_voz(
 
     while True:
         try:
-            comando = entrada("\nVocê: " if so_teclado else "\n[Enter para falar] ").strip()
+            comando = ler_entrada(
+                entrada, "\nVocê: " if so_teclado else "\n[Enter para falar] ", agendador
+            ).strip()
         except (EOFError, KeyboardInterrupt):
             escrever()
             break
