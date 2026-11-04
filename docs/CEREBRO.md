@@ -47,7 +47,8 @@ Você não precisa de comando nenhum: no automático, ela decide sozinha, por tr
 Na nuvem, a ordem é: **ChatGPT → Claude → local**. Enquanto a nuvem pensa, a Nora diz uma frase de espera ("Deixa eu pensar com calma.").
 
 - **ChatGPT sem resposta, Claude responde:** se o ChatGPT der erro (sem internet, chave recusada, sem créditos), recusar a pergunta ou não devolver nada, a mesma pergunta vai para o Claude, e aparece `[cérebro] ... Pedi ao Claude.`. Se os dois falharem, o local responde.
-- **Caiu no meio:** se a resposta começou a sair e o cérebro caiu (nuvem ou local), a Nora não emenda outra resposta inteira de outro cérebro (você ouviria o começo duas vezes): avisa que a resposta ficou pela metade. No histórico, ela fica marcada como `"situacao": "interrompida"` e não vai para a memória.
+- **Caiu no meio:** se a resposta começou a sair e o cérebro caiu (nuvem ou local), a Nora não emenda outra resposta inteira de outro cérebro (você ouviria o começo duas vezes): avisa que a resposta ficou pela metade. No histórico, ela fica marcada como `"situacao": "interrompida"` e não vai para a memória. A pergunta fica guardada como **pendência**: diga "termina a resposta que ficou pela metade" para ela responder de novo, inteira (veja [MEMORIA.md](MEMORIA.md#respostas-pela-metade)).
+- **Cada tentativa é anotada** (qual cérebro, se respondeu ou o tipo de falha, e o tempo até começar), para a [auto-melhoria](AUTO_MELHORIA.md) achar o que se repete. A troca para a reserva só acontece antes de a resposta começar; a frase de espera não conta como começo.
 - **Chamar pelo nome:** "pergunta pro ChatGPT ...", "usa o Claude e me diz ...", "use o Claude para explicar fotossíntese" mandam **só aquela pergunta** para quem você chamou (o outro fica de reserva); o modo da conversa não muda. Sozinho ("use o Claude"), é comando e troca o modo. "use o cérebro local para ..." responde aquela pergunta no PC. Se o chamado não estiver configurado, aparece uma vez `[cérebro] O ChatGPT não está disponível (falta ...)` e o outro responde.
 - **Atalho:** "pensa com calma" ou "pergunta difícil" dentro da pergunta vão direto para a nuvem.
 - **Reserva do local:** se o Ollama não responder, a nuvem responde, com aviso `[cérebro] ...`.
@@ -64,7 +65,9 @@ Com `--medir`, cada resposta mostra quem respondeu (`[local (qwen3.5:9b): ...]`,
 | "use o Claude" | a conversa toda vai para o Claude; o ChatGPT fica de reserva |
 | "modo automático" | volta ao padrão (local conversa, ChatGPT nas difíceis) |
 | "modo jogo" | **libera a placa de vídeo** (tira o modelo local da memória) e responde tudo pela nuvem (pela última escolhida: ChatGPT, ou o Claude depois de "use o Claude"); bom para jogar com a Nora ligada |
-| "sair do modo jogo" | volta a pensar no PC |
+| "sair do modo jogo" | pergunta antes ("Quer sair do modo jogo? ... Confirma?"); com "sim", volta a pensar no PC. "Não" cancela, e mudar de assunto também |
+
+Perguntar **sobre** um comando não o executa: "como sair do modo jogo?" é respondida, e o modo continua. A confirmação é por regra, sem chamar nenhum cérebro (a placa de vídeo continua livre). As trocas de modo ficam no histórico como `"situacao": "comando"` e não viram fato na memória.
 
 No modo jogo, se a nuvem não responder (sem internet, sem chave, limite de uso), a Nora **não** usa o cérebro local, para não ocupar de novo a placa de vídeo: ela avisa e sugere dizer "sair do modo jogo".
 

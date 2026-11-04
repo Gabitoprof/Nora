@@ -81,7 +81,7 @@ Já vem ligada. Ela anota sozinha o que vale lembrar e mostra `[memória] anotei
 | `nora memoria preferencias` | Como você pediu que ela fale |
 | `nora memoria esquecer 12` | Apaga um fato |
 
-Tudo em [docs/MEMORIA.md](docs/MEMORIA.md). Para a Nora ler as suas notas do Obsidian: `[notas] pasta` no `config/local.toml` e `nora notas ler` (veja [docs/OBSIDIAN.md](docs/OBSIDIAN.md)).
+Se uma resposta ficar pela metade, diga "termina a resposta que ficou pela metade" (`nora pendencias` lista as que faltam). Tudo em [docs/MEMORIA.md](docs/MEMORIA.md). Para a Nora ler as suas notas do Obsidian: `[notas] pasta` no `config/local.toml` e `nora notas ler` (veja [docs/OBSIDIAN.md](docs/OBSIDIAN.md)).
 
 ## Personalizando
 
@@ -127,6 +127,7 @@ Tudo em [docs/MEMORIA.md](docs/MEMORIA.md). Para a Nora ler as suas notas do Obs
 - [Cérebro: local, ChatGPT, Claude e roteador](docs/CEREBRO.md)
 - [Voz: instalar, motores, emoção, pronúncia](docs/VOZ.md)
 - [Memória: fatos, agenda, aprender pela conversa](docs/MEMORIA.md)
+- [Auto-melhoria: relatório diário de propostas, com a sua aprovação](docs/AUTO_MELHORIA.md)
 - [Treinar uma voz própria (Piper)](docs/TREINAR_VOZ.md)
 - [Teste de GPU](docs/TESTE_GPU.md)
 - [Obsidian: o projeto como vault e a Nora lendo as suas notas](docs/OBSIDIAN.md)

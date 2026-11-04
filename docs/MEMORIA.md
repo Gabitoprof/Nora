@@ -77,6 +77,22 @@ nora memoria apagar "prova de cálculo" --confirmar
 
 Sai da memória (fatos, agenda, trechos de conversa e os índices de busca) e do histórico em `data/historico`: só as falas sobre o assunto viram `[apagado a pedido]`, o resto da conversa fica. As notas do Obsidian não são mexidas; se o assunto estiver numa nota, edite a nota.
 
+## Respostas pela metade
+
+Quando uma resposta não termina, a Nora guarda a pergunta e o pedaço que saiu, numa lista própria (nunca como fato). Isso acontece quando:
+- o cérebro caiu no meio;
+- nenhum cérebro respondeu;
+- você interrompeu com Ctrl+C;
+- o programa fechou no meio da resposta.
+
+- **Ao abrir a conversa,** ela avisa: `[memória] 1 resposta(s) ficaram pela metade...`.
+- **"Termina a resposta que ficou pela metade"** (ou "continua aquela resposta") faz ela responder de novo a última, **inteira e identificada** ("Retomando a pergunta ..."). Se der certo, a pendência fecha e a resposta segue o caminho normal da memória. Depois de 3 tentativas sem sucesso, ela desiste dessa.
+- `nora pendencias` lista todas; `nora pendencias --cancelar 4` tira uma da lista.
+- Esquecer ou apagar de vez um assunto tira também as pendências sobre ele.
+- O relatório diário da [auto-melhoria](AUTO_MELHORIA.md) lista as que continuam abertas.
+
+Erro só na voz (a resposta em texto saiu inteira) não vira pendência.
+
 ## Ver e editar
 
 | Comando | O que faz |
@@ -87,6 +103,7 @@ Sai da memória (fatos, agenda, trechos de conversa e os índices de busca) e do
 | `nora memoria buscar prova de cálculo` | Os fatos mais parecidos com o texto, com a nota de parecença (0 a 1) |
 | `nora memoria lembrar Ana prefere chá` | Guarda um fato à mão |
 | `nora memoria esquecer 12` | Apaga o fato nº 12 |
+| `nora pendencias` | As respostas que ficaram pela metade (`--cancelar 4` tira uma) |
 | `nora memoria apagar "assunto"` | Mostra o que sairia; com `--confirmar`, apaga de vez da memória e do histórico |
 | `nora memoria agenda` | Os compromissos e datas dos próximos 30 dias (`--dias 90` para mais, `--passados 7` para ver também a semana que passou) |
 | `nora memoria marcar 21/11/2026 prova de cálculo` | Põe um compromisso na agenda à mão (e guarda como fato). `--anual` para o que repete todo ano |

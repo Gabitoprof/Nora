@@ -1,6 +1,6 @@
 # Andamento da Nora (para revisão)
 
-Resumo do estado do projeto para uma revisão de código. Atualizado em 03/11/2026 (depois das correções A1 a A6), branch `Pull_code`.
+Resumo do estado do projeto para uma revisão de código. Atualizado em 04/11/2026 (depois da revisão consolidada: P1 e P2), branch `Pull_code`.
 
 ## O que é
 
@@ -18,7 +18,8 @@ Assistente de voz pessoal em pt-BR, local primeiro, MIT. Python 3.11–3.13. Reg
 3. **Classificar:** `roteador.py`. Comandos (cérebro, modo jogo), triagem por palavras-chave, `{pensar}` do modelo local e segunda chance quando a pessoa reclama.
 4. **Executar:** local Ollama (`cerebro.py`); nuvem ChatGPT (`cerebro_openai.py`, API Responses) → Claude (`cerebro_nuvem.py`) → local. Sem trocar de cérebro se a resposta já começou a sair.
 5. **Falar:** marcas de emoção (`emocao.py`) → voz (`voz.py`: ElevenLabs, Kokoro, Piper, ComfyUI, com reserva). Troca de voz por comando em `troca_voz.py`.
-6. **Registrar:** histórico JSONL (`historico.py`) e curadoria em segundo plano (`curadoria.py`), que anota, corrige e esquece fatos.
+6. **Registrar:** histórico JSONL (`historico.py`) e curadoria em segundo plano (`curadoria.py`), que anota, corrige e esquece fatos. Respostas que não terminaram vão para `respostas_pendentes` (`memoria.py`).
+7. **Observar e propor:** `observador.py` anota métricas e categorias (sem texto); `melhorias.py` fecha o dia, gera propostas e o relatório e guarda as decisões.
 
 ## Feito na v0.3.0 (commits desde a v0.2.0)
 
@@ -45,6 +46,17 @@ Assistente de voz pessoal em pt-BR, local primeiro, MIT. Python 3.11–3.13. Reg
 
 Os seis foram reproduzidos por teste antes da correção (A1: local chamado no modo jogo; A3: `comando_em` devolvia "nuvem" e a pergunta se perdia; A4: saída "Uma reResposta do Claude."; A2: trecho esquecido voltava com similaridade 0,79; A6: "qual voz é melhor..." virava pedido).
 
+## Revisão consolidada de 04/11/2026 (plano de auto-melhoria supervisionada)
+
+| Etapa | Entregue | Testes |
+|---|---|---|
+| P1 · A1 | Sair do modo jogo pede "sim" (regra em `confirmacao.py`, sem modelo); "como sair do modo jogo?" não muda nada; trocas de modo ficam como `situacao: "comando"` e não vão para a curadoria | `test_sair_do_modo_jogo_pede_confirmacao_...` |
+| P1 · A5 | Tabela `respostas_pendentes`: uma linha "aberta" por resposta vira pendência se o programa cair; também stream interrompido, sem resposta, Ctrl+C; retomada identificada ("termina a resposta que ficou pela metade"), 3 tentativas; `nora pendencias`; esquecer/apagar tiram as pendências do assunto | `test_resposta_interrompida_vira_pendencia_...`, `test_pendencia_de_cancelamento_...`, `test_respostas_completas_e_comandos_...`, `test_comando_pendencias_...` |
+| P1 · A4 | `CerebroIndisponivel.categoria` e `categoria_do_erro`; `Roteador.tentativas` (motor, resultado, tempo até o 1º pedaço); reserva só antes do conteúdo | `test_tentativas_ficam_anotadas_...` |
+| P2 | `observador.py` (sem texto) e `melhorias.py`: diagnóstico por regras, propostas com evidência, relatório diário, um por dia, recuperação do dia perdido, agendador que espera a Nora desocupada, notificação do Windows, decisões (aprovar gera tarefa; publicar exige `--autorizo-publicar`), `nora melhorias` e pela voz com "sim" | `tests/test_auto_melhoria.py` (12 testes) |
+
+**Não implementado (decisão pendente):** P3, a pesquisa técnica na web (opcional, desligada por padrão), e P4, levar a tarefa aprovada ao Codex numa branch isolada (hoje é manual). A auto-melhoria é escopo novo: a tag `v0.3.0` não depende dela.
+
 ## Pendente
 
 - **Validação no PC real** (Windows, AMD), que a CI não cobre:
@@ -55,6 +67,10 @@ Os seis foram reproduzidos por teste antes da correção (A1: local chamado no m
   - [ ] "esquece que eu ..." e depois `nora memoria apagar "..."` (prévia e `--confirmar`).
   - [ ] Por voz: "apaga de vez ..." → ela diz o que sairia → "sim, pode apagar"; e um "não" cancela.
   - [ ] `nora notas ler` e uma pergunta sobre uma nota.
+  - [ ] "sai do modo jogo" pergunta antes; "como sair do modo jogo?" só explica.
+  - [ ] Ctrl+C no meio de uma resposta → na próxima conversa aparece o aviso → "termina a resposta que ficou pela metade".
+  - [ ] `nora melhorias fechar-dia` gera o relatório; a notificação do Windows aparece e abre o arquivo (o PowerShell da notificação ainda não foi testado num Windows real).
+  - [ ] Conferir com o bge-m3 real os limites `TROCA_ESQUECIDA` e os de latência em `[auto_melhoria]`.
 - Depois da validação: revisão completa da documentação (`CLAUDE.md`), versão `0.3.0` em `src/nora/__init__.py` e tag `v0.3.0`.
 - Próximo (proposta, ainda não decidida): classificador com confiança no roteador, primeiro com bge-m3 e exemplos por rota; testar o `Mapika/decider-2b` (Apache-2.0, GGUF) como alternativa.
 - Roadmap: v0.4.0 HUD, v0.5.0 ferramentas MCP (com permissões), v0.6.0 rotinas, v0.7.0 agentes, v0.8.0 modo distribuído.
@@ -74,7 +90,9 @@ Os seis foram reproduzidos por teste antes da correção (A1: local chamado no m
 - `notas.py`: atualização incremental (data de modificação e tamanho), índice vetorial opcional e a linha em segundo plano que lê as notas ao abrir a conversa (`conversa.py::nova_conversa`).
 - `troca_voz.py`: a lista de palavras de pergunta (`_PERGUNTA`) pode barrar algum pedido legítimo pouco comum.
 - `memoria.py`: os limites `TROCA_ESQUECIDA` (0,6) e `FATO_ESQUECIDO` (0,85) foram calibrados com vetores de teste; vale conferir com o bge-m3 real.
-- Concorrência: curadoria e notas rodam em linhas separadas, cada uma com sua conexão SQLite e trava (`check_same_thread=False`).
+- Concorrência: curadoria, notas e o agendador da auto-melhoria rodam em linhas separadas, cada um com sua conexão SQLite e trava (`check_same_thread=False`); observador e melhorias dividem o mesmo arquivo `auto_melhoria.db`.
+- `melhorias.py::notificar`: o script do PowerShell (notificação com `activationType="protocol"` e o caminho do .md) só foi testado com `subprocess.run` simulado.
+- `melhorias.py::diagnosticar`: as regras e os limites são um ponto de partida; os textos das propostas são genéricos por categoria.
 - A triagem por palavras-chave é frágil por natureza; a substituição está na seção Pendente.
 
 ## Como testar

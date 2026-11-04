@@ -9,6 +9,15 @@ Versão em desenvolvimento: `0.3.0.dev0`.
 
 ### Adicionado
 
+- **Auto-melhoria supervisionada** (`[auto_melhoria]`, guia em `docs/AUTO_MELHORIA.md`):
+  - um observador anota, sem o texto das conversas, as tentativas de cada cérebro, as falhas por categoria, os tempos de ouvido, cérebro e voz, as reclamações e os comandos;
+  - uma vez por dia (`hora_relatorio`, padrão 20:00), as regras agrupam o que se repetiu em propostas com evidência, causa provável, solução, impacto, risco e testes, num relatório em `data/auto_melhoria/relatorios`;
+  - o relatório aparece na próxima conversa e numa notificação do Windows que abre o arquivo;
+  - você aprova, recusa ou adia por número (`nora melhorias`, ou pela voz com confirmação). Aprovar gera a especificação para desenvolver; nada muda no código nem é publicado sem você.
+  - Sem internet e sem modelo nesta versão; com o PC desligado na hora, o relatório sai na próxima vez.
+- **Respostas pela metade viram pendências:** resposta que caiu, ficou sem resposta, foi cancelada (Ctrl+C) ou foi cortada pelo programa fechar fica guardada (nunca como fato). "Termina a resposta que ficou pela metade" responde de novo, inteira e identificada; `nora pendencias` lista e cancela.
+- **Sair do modo jogo pede confirmação** ("sim"); perguntar "como sair do modo jogo?" não muda nada.
+- O roteador anota cada tentativa (cérebro, resultado e tempo) e as falhas por categoria (`erro_provedor`, `timeout`, `resposta_vazia`, `stream_interrompido`).
 - **Roteador de modelos** (v0.3.0): o cérebro local (Ollama) conversa e, quando acha a pergunta difícil demais, passa para o **Claude** (API da Anthropic), com uma frase de espera na mesma voz; "pensa com calma" ou "usa o Claude" na pergunta vão direto. Comandos falados: "use o cérebro local", "use o Claude", "modo automático", "modo jogo" (libera a placa de vídeo e responde pela nuvem), "sair do modo jogo". Reserva nos dois sentidos (sem Ollama responde o Claude; sem Claude, o local), com aviso `[cérebro]`. O Claude recebe a mesma persona, memória, agenda, preferências e emoção. Config `[modelos.nuvem]` (modelos e esforço) e `[roteador]`; extra `.[nuvem]` (SDK `anthropic`); `--medir` e o histórico mostram quem respondeu. Guia em `docs/CEREBRO.md`.
 - **Apagar e corrigir pela conversa:** "apaga isso", "esquece que eu disse X" ou "não é X, é Y" agora tiram o fato errado da memória e da agenda (`[memória] esqueci: ...`) e, numa correção, guardam o certo; antes, a Nora dizia que tinha apagado, mas a memória regravava o fato e até anotava o pedido de apagar.
 - **Notas do Obsidian:** com `[notas] pasta` apontando para o seu vault, a Nora lê as notas (só leitura), divide em trechos por título e parágrafo e, antes de responder, usa os trechos parecidos com a pergunta, dizendo de qual nota veio. `nora notas ler | buscar | status`; ao abrir a conversa, lê em segundo plano só as notas novas ou alteradas e esquece as apagadas. Pastas ocultas (`.obsidian`, `.trash`) e as de `ignorar` ficam de fora. Índice em `data/notas.db` (sqlite-vec quando instalado). Guia em `docs/OBSIDIAN.md`.
