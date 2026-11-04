@@ -450,13 +450,16 @@ def test_relatorio_pendente_aparece_apos_desbloquear(criar_raiz, monkeypatch, bl
     assert roteador.local.pedidos == []
 
 
-def test_arquivo_ausente_continua_pendente_e_pode_ser_restaurado(criar_raiz, monkeypatch):
+@pytest.mark.parametrize("quebra", ["\n", "\r\n"], ids=["LF", "CRLF"])
+def test_arquivo_ausente_continua_pendente_e_pode_ser_restaurado(criar_raiz, monkeypatch, quebra):
     from nora import melhorias as modulo
 
     monkeypatch.setattr(modulo.Agendador, "start", lambda self: None)
     conversa, _ = _conversa(criar_raiz, toml='[auto_melhoria]\napresentar = "terminal"\n')
     m = conversa.melhorias
     caminho = m.fechar(DIA.date(), DIA.replace(hour=21)).caminho
+    texto = caminho.read_text(encoding="utf-8")
+    caminho.write_bytes(texto.replace("\n", quebra).encode("utf-8"))
     copia = caminho.read_bytes()
     caminho.unlink()
     linhas = []
@@ -469,7 +472,10 @@ def test_arquivo_ausente_continua_pendente_e_pode_ser_restaurado(criar_raiz, mon
     assert len(linhas) == 1  # sem avisos repetidos
     caminho.write_bytes(copia)
     modulo.iniciar(conversa, linhas.append)
-    assert copia.decode("utf-8") in linhas and m.nao_mostrados() == []
+    assert caminho.read_bytes() == copia  # a restauração preserva os bytes originais
+    assert caminho.read_text(encoding="utf-8") == texto
+    assert texto in linhas  # apresentação em modo texto normaliza CRLF/LF
+    assert m.nao_mostrados() == []
 
 
 @pytest.mark.parametrize("falha", [PermissionError, UnicodeError, OSError, FileNotFoundError])
