@@ -644,3 +644,43 @@ def test_comando_pendencias_lista_e_cancela(criar_raiz, capsys, monkeypatch):
     assert cli.main(["pendencias", "--cancelar", "1"]) == 0
     assert cli.main(["pendencias"]) == 0
     assert "Nenhuma resposta pela metade" in capsys.readouterr().out
+
+
+class CerebroQueEhInterrompido:
+    """Solta um pedaço e então chega o Ctrl+C enquanto ela ainda espera o resto (o
+    KeyboardInterrupt nasce dentro do gerador, não fora dele)."""
+
+    def __init__(self):
+        from nora.cerebro import Medidas
+
+        self.medidas, self.origem = Medidas(), "local (qwen3.5:9b)"
+
+    def aquecer(self):
+        return 0.0
+
+    def responder(self, mensagens):
+        yield "Começo da "
+        raise KeyboardInterrupt
+
+
+def test_ctrl_c_no_meio_vira_pendencia_na_hora(criar_raiz):
+    """Auditoria P0: Ctrl+C real (KeyboardInterrupt dentro do fluxo) já deixa a pendência
+    gravada, sem esperar abrir outra sessão, e nada vai para a curadoria."""
+    from nora.conversa import nova_conversa
+
+    config = carregar(criar_raiz(local="[memoria]\nativa = true\ncuradoria = false\n"), ambiente={})
+    m = Memoria(config.pasta_dados / "memoria.db", EmbeddingsFalsos())
+    conversa = nova_conversa(config, CerebroQueEhInterrompido(), memoria=m, notas=None)
+    partes = []
+    with pytest.raises(KeyboardInterrupt):
+        for pedaco in conversa.perguntar("conta a história do Brasil"):
+            partes.append(pedaco)
+    assert partes == ["Começo da "]
+    pendentes = m.pendentes()  # já, na mesma sessão
+    assert [(p.pergunta, p.parcial, p.motivo) for p in pendentes] == [
+        ("conta a história do Brasil", "Começo da", "cancelada")
+    ]
+    conversa.esperar_memoria()
+    assert m.contar_trocas() == 0 and not conversa.ocupada
+    historico = conversa.historico.arquivo.read_text("utf-8")
+    assert historico.count('"situacao": "cancelada"') == 1  # uma vez só, sem duplicar

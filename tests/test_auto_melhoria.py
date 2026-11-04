@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta
 
-from test_roteador import OpenAIFalso, montar
+from test_roteador import ClienteFalso, OpenAIFalso, montar
 
 from nora.config import carregar
 from nora.conversa import nova_conversa
@@ -122,7 +122,10 @@ def test_um_relatorio_por_dia_na_hora_marcada_e_recupera_o_dia_perdido(criar_rai
     assert perdido.eventos == 3  # só os eventos depois do fechamento anterior
     assert m.dia_a_fechar(manha_dia_5) is None
     assert [d for d, _, _ in m.nao_mostrados()] == ["2026-11-03", "2026-11-04"]
-    assert m.nao_mostrados() == []  # mostrados só uma vez
+    assert len(m.nao_mostrados()) == 2  # só deixam a lista quando aparecem de fato
+    for data, _, _ in m.nao_mostrados():
+        m.marcar_mostrado(data)
+    assert m.nao_mostrados() == []
 
 
 def test_agendador_espera_a_nora_desocupada_e_avisa(criar_raiz):
@@ -227,13 +230,178 @@ def test_decidir_pela_conversa_pede_numero_claro_e_confirmacao(criar_raiz):
     assert roteador.local.pedidos == []  # nada disso passou pelo cérebro
 
 
-def test_inicio_da_sessao_mostra_o_relatorio_novo(criar_raiz):
-    from nora.melhorias import iniciar
+def test_inicio_da_sessao_abre_o_relatorio_novo(criar_raiz, monkeypatch):
+    """Auditoria P1: o relatório novo aparece inteiro sem a pessoa digitar nada."""
+    from nora import melhorias as modulo
 
+    monkeypatch.setattr(
+        modulo.Agendador, "start", lambda self: None
+    )  # sem thread: não depende da hora
+
+    abertos = []
+    monkeypatch.setattr(modulo, "abrir_arquivo", lambda c: abertos.append(c) or True)
     conversa, _ = _conversa(criar_raiz)
     _eventos(conversa.melhorias, n=3)
-    conversa.melhorias.fechar(DIA.date(), DIA + timedelta(hours=10))
+    caminho = conversa.melhorias.fechar(DIA.date(), DIA + timedelta(hours=10)).caminho
     linhas = []
-    agendador = iniciar(conversa, linhas.append)
+    modulo.iniciar(conversa, linhas.append).parar()
+    assert abertos == [caminho] and any("Abri o relatório de 03/11" in x for x in linhas)
+    assert conversa.melhorias.nao_mostrados() == []
+    linhas.clear()
+    modulo.iniciar(conversa, linhas.append).parar()
+    assert abertos == [caminho] and linhas == []  # uma vez só
+
+
+def test_se_nao_abrir_mostra_o_texto_inteiro_e_registra_a_falha(criar_raiz, monkeypatch):
+    from nora import melhorias as modulo
+
+    monkeypatch.setattr(
+        modulo.Agendador, "start", lambda self: None
+    )  # sem thread: não depende da hora
+
+    monkeypatch.setattr(modulo, "abrir_arquivo", lambda c: False)
+    conversa, _ = _conversa(criar_raiz)
+    _eventos(conversa.melhorias, n=3)
+    caminho = conversa.melhorias.fechar(DIA.date(), DIA + timedelta(hours=10)).caminho
+    linhas = []
+    modulo.iniciar(conversa, linhas.append).parar()
+    assert caminho.read_text("utf-8") in linhas  # o relatório inteiro, não um resumo
+    assert "não consegui abrir" in conversa.melhorias.falha_do_aviso("2026-11-03")
+    assert conversa.melhorias.nao_mostrados() == []
+
+
+def test_relatorio_do_meio_da_sessao_que_nao_abriu_aparece_na_proxima(criar_raiz, monkeypatch):
+    from nora import melhorias as modulo
+
+    monkeypatch.setattr(modulo, "abrir_arquivo", lambda c: False)
+    monkeypatch.setattr(modulo.Agendador, "start", lambda self: None)  # sem thread: determinístico
+    toml = '[auto_melhoria]\napresentar = "abrir"\n'
+    conversa, _ = _conversa(criar_raiz, toml=toml)
+    _eventos(conversa.melhorias, n=3)
+    agendador = modulo.iniciar(conversa, lambda linha: None)
     agendador.parar()
-    assert any("Relatório de 03/11: 1 proposta(s)" in linha for linha in linhas)
+    agendador.relogio = lambda: DIA.replace(hour=21)
+    fechamento = agendador.conferir()
+    assert fechamento is not None
+    assert [d for d, _, _ in conversa.melhorias.nao_mostrados()] == ["2026-11-03"]  # ainda não
+    assert any("quando você abrir a Nora de novo" in a for a in conversa.avisos_pendentes())
+    linhas = []
+    modulo.iniciar(conversa, linhas.append).parar()  # próxima sessão
+    assert fechamento.caminho.read_text("utf-8") in linhas
+    assert conversa.melhorias.nao_mostrados() == []
+
+
+def test_no_modo_jogo_o_relatorio_espera(criar_raiz, monkeypatch):
+    from nora import melhorias as modulo
+
+    monkeypatch.setattr(
+        modulo.Agendador, "start", lambda self: None
+    )  # sem thread: não depende da hora
+
+    abertos = []
+    monkeypatch.setattr(modulo, "abrir_arquivo", lambda c: abertos.append(c) or True)
+    conversa, roteador = _conversa(criar_raiz)
+    _eventos(conversa.melhorias, n=3)
+    conversa.melhorias.fechar(DIA.date(), DIA + timedelta(hours=10))
+    roteador.jogo = True
+    modulo.iniciar(conversa, lambda linha: None).parar()
+    assert abertos == [] and len(conversa.melhorias.nao_mostrados()) == 1
+
+
+def test_retomada_marca_a_nora_ocupada_e_o_relatorio_espera(criar_raiz):
+    """Auditoria P1: durante a retomada de uma resposta, o agendador não fecha o dia."""
+    from test_memoria import EmbeddingsFalsos
+
+    from nora.cerebro import Medidas
+    from nora.melhorias import Agendador
+    from nora.memoria import Memoria
+
+    config = carregar(criar_raiz(local="[memoria]\nativa = true\ncuradoria = false\n"), ambiente={})
+    m = Memoria(config.pasta_dados / "memoria.db", EmbeddingsFalsos())
+    m.marcar_pendente("x1", "s1", "qual a distância da Lua?", "São", "cancelada", "local")
+    vistos = {}
+
+    class CerebroLento:
+        medidas, origem = Medidas(), "local (qwen3.5:9b)"
+
+        def responder(self, mensagens):
+            vistos["ocupada"] = conversa.ocupada
+            vistos["fechou"] = agendador.conferir()
+            yield "Uns 384 mil quilômetros."
+
+    conversa = nova_conversa(config, CerebroLento(), memoria=m, notas=None)
+    _eventos(conversa.melhorias, n=3)
+    noite = DIA.replace(hour=21)
+    agendador = Agendador(
+        conversa.melhorias, lambda: conversa.ocupada, lambda f: None, relogio=lambda: noite
+    )
+    resposta = "".join(conversa.perguntar("termina a resposta que ficou pela metade"))
+    assert resposta.endswith("quilômetros.")
+    assert vistos == {"ocupada": True, "fechou": None}  # esperou a retomada acabar
+    assert not conversa.ocupada and agendador.conferir() is not None  # depois, fecha
+
+
+def test_relatorio_nao_mostra_perguntas_e_limpa_os_antigos(criar_raiz):
+    """Auditoria P1: o relatório não reproduz o texto das perguntas (nem os já gravados)."""
+    from nora.memoria import Pendente
+
+    m = _melhorias(criar_raiz)
+    pendente = Pendente(
+        7,
+        "i7",
+        "s1",
+        "qual o segredo do cofre (aquele)?",
+        "É",
+        "cancelada",
+        "local",
+        "2026-11-03T10:00:00",
+        "pendente",
+        1,
+    )
+    texto = m.fechar(DIA.date(), DIA + timedelta(hours=10), [pendente]).caminho.read_text("utf-8")
+    assert "segredo" not in texto and "cofre" not in texto
+    assert "nº 7" in texto and "cancelada" in texto and "nora pendencias" in texto
+
+    # relatório gravado antes desta correção, com o texto da pergunta
+    antigo = m.pasta / "relatorios" / "2026-11-01.md"
+    antigo.write_text(
+        "## Respostas que ficaram pela metade\n\n"
+        "- nº 3: meu segredo (o do cofre) (cancelada, 0 tentativa(s))\n- outra linha\n",
+        encoding="utf-8",
+    )
+    m.fechar_banco()
+    _melhorias(criar_raiz)  # ao abrir, limpa
+    limpo = antigo.read_text("utf-8")
+    assert "segredo" not in limpo and "- nº 3 (cancelada, 0 tentativa(s))" in limpo
+    assert "- outra linha" in limpo
+
+
+def test_sem_resposta_no_modo_jogo_nao_sugere_usar_o_local(criar_raiz):
+    """Auditoria P2: a proposta não sugere quebrar o modo jogo; ao sair dele (com "sim"),
+    a Nora oferece retomar as perguntas que ficaram sem resposta."""
+    from test_memoria import EmbeddingsFalsos
+
+    from nora.melhorias import REGRAS
+    from nora.memoria import Memoria
+
+    regra = REGRAS[("llm", "sem_resposta")]
+    texto = " ".join([regra.solucao, regra.impacto, regra.risco]).lower()
+    assert "permitir o local" not in texto and "pendência" in texto
+
+    toml = "[memoria]\nativa = true\ncuradoria = false\n"
+    conversa, roteador = _conversa(
+        criar_raiz, cliente=ClienteFalso(erro=ConnectionError("rede caiu")), toml=toml
+    )
+    conversa.memoria = Memoria(roteador.config.pasta_dados / "memoria.db", EmbeddingsFalsos())
+    "".join(conversa.perguntar("modo jogo"))
+    "".join(conversa.perguntar("qual a capital da Austrália?"))
+    assert [p.motivo for p in conversa.memoria.pendentes()] == ["sem_resposta"]
+    conversa.avisos_pendentes()
+    "".join(conversa.perguntar("sai do modo jogo"))
+    assert roteador.jogo  # ainda não: falta o "sim"
+    assert not any("modo jogo" in a for a in conversa.avisos_pendentes())
+    "".join(conversa.perguntar("sim"))
+    assert not roteador.jogo
+    oferta = [a for a in conversa.avisos_pendentes() if "sem resposta no modo jogo" in a]
+    assert oferta and "termina a resposta" in oferta[0]
+    assert len(conversa.memoria.pendentes()) == 1  # só oferece; não responde sozinha

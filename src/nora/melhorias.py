@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import statistics
 import subprocess
@@ -55,9 +56,14 @@ CREATE TABLE IF NOT EXISTS fechamentos (
     criado TEXT NOT NULL,
     caminho TEXT NOT NULL,
     propostas INTEGER NOT NULL DEFAULT 0,
-    mostrado INTEGER NOT NULL DEFAULT 0
+    mostrado INTEGER NOT NULL DEFAULT 0,
+    falha_aviso TEXT NOT NULL DEFAULT ''
 );
 """
+# Linha de pendência dos relatórios antigos: "- nº 3: <pergunta> (cancelada, 0 tentativa(s))".
+_PERGUNTA_NO_RELATORIO = re.compile(
+    r"^- nº (\d+): .* \(([a-z_]+), (\d+) tentativa\(s\)\)$", re.MULTILINE
+)
 # Estados de uma proposta. "publicada" só com autorização explícita.
 ABERTAS = ("proposta",)
 DECIDIDAS = ("aprovada", "recusada", "adiada")
@@ -133,9 +139,12 @@ REGRAS = {
     ("llm", "sem_resposta"): Regra(
         "Pedidos sem nenhuma resposta ({n} vezes)",
         "Nenhum cérebro disponível na hora (ex.: modo jogo sem internet).",
-        "Conferir as chaves e a rede; no modo jogo, decidir se vale permitir o local com aviso.",
-        "Menos perguntas sem resposta.",
-        "Permitir o local no modo jogo voltaria a ocupar a placa de vídeo.",
+        "Conferir a internet e as chaves (nora --verificar) e a ordem das nuvens. No modo jogo "
+        "o cérebro local fica de fora de propósito: a pergunta vira pendência e, ao sair do "
+        "modo jogo (com confirmação), a Nora oferece retomá-la.",
+        "Menos perguntas sem resposta, sem ocupar a placa de vídeo durante o jogo.",
+        "Nenhum para a GPU: o modo jogo continua sem o cérebro local; a pendência só é "
+        "retomada quando você pedir.",
         "Médio.",
         "Teste do modo jogo sem nuvem.",
         "src/nora/roteador.py",
@@ -363,6 +372,24 @@ class Melhorias:
         )
         with self._db:
             self._db.executescript(ESQUEMA)
+            colunas = {c[1] for c in self._db.execute("PRAGMA table_info(fechamentos)")}
+            if "falha_aviso" not in colunas:  # bancos de antes do registro de falhas
+                self._db.execute(
+                    "ALTER TABLE fechamentos ADD COLUMN falha_aviso TEXT NOT NULL DEFAULT ''"
+                )
+        self._limpar_perguntas_dos_relatorios()
+
+    def _limpar_perguntas_dos_relatorios(self) -> None:
+        """Relatórios feitos antes desta correção traziam o começo das perguntas pendentes:
+        tira o texto e deixa só número, motivo e tentativas."""
+        for relatorio in (self.pasta / "relatorios").glob("*.md"):
+            try:
+                texto = relatorio.read_text(encoding="utf-8")
+                limpo = _PERGUNTA_NO_RELATORIO.sub(r"- nº \1 (\2, \3 tentativa(s))", texto)
+                if limpo != texto:
+                    relatorio.write_text(limpo, encoding="utf-8")
+            except OSError:
+                pass
 
     # propostas ------------------------------------------------------------------------------
 
@@ -579,14 +606,32 @@ class Melhorias:
         return fechamento
 
     def nao_mostrados(self) -> list[tuple[str, str, int]]:
-        """Relatórios ainda não mostrados: (data, caminho, propostas). Marca como mostrados."""
-        with self._trava, self._db:
-            linhas = self._db.execute(
+        """Relatórios ainda não apresentados: (data, caminho, propostas). Só viram "mostrados"
+        com marcar_mostrado, depois de aparecerem de fato."""
+        with self._trava:
+            return self._db.execute(
                 "SELECT data, caminho, propostas FROM fechamentos "
                 "WHERE mostrado = 0 AND caminho != '' ORDER BY data"
             ).fetchall()
-            self._db.execute("UPDATE fechamentos SET mostrado = 1 WHERE mostrado = 0")
-        return linhas
+
+    def marcar_mostrado(self, data: str) -> None:
+        with self._trava, self._db:
+            self._db.execute("UPDATE fechamentos SET mostrado = 1 WHERE data = ?", (data,))
+
+    def registrar_falha_do_aviso(self, data: str, motivo: str) -> None:
+        """Guarda por que o relatório não apareceu (ele tenta de novo na próxima sessão)."""
+        with self._trava, self._db:
+            self._db.execute(
+                "UPDATE fechamentos SET falha_aviso = ? WHERE data = ?",
+                (f"{_agora()}: {motivo}", data),
+            )
+
+    def falha_do_aviso(self, data: str) -> str:
+        with self._trava:
+            linha = self._db.execute(
+                "SELECT falha_aviso FROM fechamentos WHERE data = ?", (data,)
+            ).fetchone()
+        return linha[0] if linha else ""
 
     def relatorio(self, dia: str = "") -> Path | None:
         with self._trava:
@@ -656,12 +701,19 @@ def _relatorio(f: Fechamento, pendentes: list) -> str:
         linhas += ["## Em acompanhamento (já decididas)", ""]
         linhas += [f"- Nº {p.id} — {p.titulo} ({p.status})" for p in f.acompanhamento] + [""]
     if pendentes:
+        # Só número, motivo e data: o texto da pergunta é pessoal e não vai para o relatório
+        # (ele aparece só com um pedido explícito: nora pendencias).
         linhas += ["## Respostas que ficaram pela metade", ""]
         linhas += [
-            f"- nº {p.id}: {p.pergunta[:60]} ({p.motivo}, {p.tentativas} tentativa(s))"
+            f"- nº {p.id} ({p.motivo}, {p.tentativas} tentativa(s)), de {p.criada[:10]}"
             for p in pendentes
         ]
-        linhas += ["", 'Para terminar a última: "termina a resposta que ficou pela metade".', ""]
+        linhas += [
+            "",
+            'Para ver as perguntas: nora pendencias. Para terminar a última: "termina a resposta '
+            'que ficou pela metade".',
+            "",
+        ]
     return "\n".join(linhas)
 
 
@@ -762,6 +814,36 @@ class Agendador(threading.Thread):
         self._parar.set()
 
 
+def apresentar(
+    melhorias: Melhorias,
+    data: str,
+    caminho: Path,
+    quantas: int,
+    modo: str,
+    escrever: Callable[[str], None],
+) -> bool:
+    """Mostra um relatório novo sem a pessoa pedir: abre o .md (modo "abrir") ou escreve o
+    texto inteiro na conversa (modo "terminal", ou se abrir falhar). Só então marca como
+    mostrado. Devolve se apareceu."""
+    dia = f"{data[8:10]}/{data[5:7]}"
+    if not caminho.is_file():
+        melhorias.registrar_falha_do_aviso(data, f"arquivo não encontrado: {caminho}")
+        melhorias.marcar_mostrado(data)  # sem arquivo, não adianta tentar de novo
+        escrever(f"[melhorias] O relatório de {dia} sumiu ({caminho}).")
+        return False
+    resumo = f"{quantas} proposta(s) para decidir" if quantas else "sem novas melhorias relevantes"
+    if modo == "abrir":
+        if abrir_arquivo(caminho):
+            melhorias.marcar_mostrado(data)
+            escrever(f"[melhorias] Abri o relatório de {dia} ({resumo}): {caminho}")
+            return True
+        melhorias.registrar_falha_do_aviso(data, "não consegui abrir o .md; mostrei na conversa")
+    escrever(f"[melhorias] Relatório de {dia} ({resumo}):")
+    escrever(caminho.read_text(encoding="utf-8"))
+    melhorias.marcar_mostrado(data)
+    return True
+
+
 def abrir_melhorias(config, observador: Observador | None = None) -> Melhorias | None:
     if not config.auto_melhoria.ativa:
         return None
@@ -777,20 +859,28 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
     melhorias = getattr(conversa, "melhorias", None)
     if melhorias is None:
         return None
-    for data, caminho, quantas in melhorias.nao_mostrados():
-        dia = f"{data[8:10]}/{data[5:7]}"
-        escrever(
-            f"[melhorias] Relatório de {dia}: {quantas} proposta(s) para decidir. "
-            f"Veja com: nora melhorias relatorio --abrir ({caminho})"
-            if quantas
-            else f"[melhorias] Relatório de {dia}: sem novas melhorias relevantes."
-        )
+    cfg = conversa.config.auto_melhoria
+    if not getattr(conversa.cerebro, "jogo", False):  # no modo jogo, fica para depois
+        for data, caminho, quantas in melhorias.nao_mostrados():
+            apresentar(melhorias, data, Path(caminho), quantas, cfg.apresentar, escrever)
 
     def ao_fechar(fechamento: Fechamento) -> None:
+        """O dia fechou com a Nora desocupada: avisa e apresenta o relatório inteiro."""
+        if fechamento.caminho is None:
+            return
         texto = f"Relatório de melhorias pronto: {fechamento.resumo}."
-        conversa._avisar(f"{texto} Veja com: nora melhorias relatorio --abrir")
-        if conversa.config.auto_melhoria.notificar and fechamento.caminho:
-            notificar("Nora: melhorias do dia", texto + " Clique para abrir.", fechamento.caminho)
+        if cfg.notificar and sys.platform == "win32":
+            if not notificar(
+                "Nora: melhorias do dia", texto + " Clique para abrir.", fechamento.caminho
+            ):
+                melhorias.registrar_falha_do_aviso(fechamento.data, "a notificação falhou")
+        if cfg.apresentar == "abrir" and abrir_arquivo(fechamento.caminho):
+            melhorias.marcar_mostrado(fechamento.data)
+            conversa._avisar(f"{texto} Abri o relatório: {fechamento.caminho}")
+        else:  # mostra inteiro na próxima vez que a sessão abrir
+            if cfg.apresentar == "abrir":
+                melhorias.registrar_falha_do_aviso(fechamento.data, "não consegui abrir o .md")
+            conversa._avisar(f"{texto} Ele aparece inteiro quando você abrir a Nora de novo.")
 
     def ocupado() -> bool:
         return bool(getattr(conversa, "ocupada", False) or getattr(conversa.cerebro, "jogo", False))

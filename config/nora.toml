@@ -213,6 +213,10 @@ latencia_voz_ms = 2000
 dias_de_eventos = 30
 # Notificação do Windows quando o relatório fica pronto (clicar abre o relatório).
 notificar = true
+# Como o relatório novo aparece, sem você digitar nada (nunca no meio de uma resposta ou do modo
+# jogo): "abrir" abre o .md no programa padrão (se não abrir, mostra o texto na conversa);
+# "terminal" mostra o texto inteiro na conversa.
+apresentar = "abrir"
 
 [caminhos]
 # Banco de memória, histórico e outros dados pessoais. Fora do Git.

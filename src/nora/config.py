@@ -125,6 +125,7 @@ class AutoMelhoria:
     latencia_voz_ms: int = 2000  # da primeira frase pronta até começar a falar
     dias_de_eventos: int = 30  # eventos mais velhos são apagados no fechamento
     notificar: bool = True  # notificação do Windows quando o relatório fica pronto
+    apresentar: str = "abrir"  # abrir: abre o .md; terminal: mostra o texto inteiro na conversa
 
 
 @dataclass(frozen=True)
@@ -211,6 +212,15 @@ class Config:
     auto_melhoria: AutoMelhoria = field(default_factory=AutoMelhoria)
 
 
+def _apresentar(valor: str) -> str:
+    valor = valor.strip().lower()
+    if valor not in ("abrir", "terminal"):
+        raise ConfigError(
+            f'[auto_melhoria] apresentar deve ser "abrir" ou "terminal", veio {valor!r}.'
+        )
+    return valor
+
+
 def _auto_melhoria(dados: dict[str, Any]) -> AutoMelhoria:
     secao = "auto_melhoria"
     hora = _campo(dados, secao, "hora_relatorio", str).strip()
@@ -233,6 +243,7 @@ def _auto_melhoria(dados: dict[str, Any]) -> AutoMelhoria:
         ativa=_campo(dados, secao, "ativa", bool),
         hora_relatorio=hora,
         notificar=_campo(dados, secao, "notificar", bool),
+        apresentar=_apresentar(_campo(dados, secao, "apresentar", str)),
         **inteiros,
     )
 

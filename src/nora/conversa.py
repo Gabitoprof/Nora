@@ -455,12 +455,12 @@ class Conversa:
         if comando is not None:
             yield comando
             return
-        if pede_retomada(texto):
-            yield from self._retomar(texto)
-            return
-        self.ocupada = True
+        self.ocupada = True  # respondendo ou retomando: a auto-melhoria espera
         try:
-            yield from self._responder(texto)
+            if pede_retomada(texto):
+                yield from self._retomar(texto)
+            else:
+                yield from self._responder(texto)
         finally:
             self.ocupada = False
 
@@ -557,6 +557,21 @@ class Conversa:
         except Exception as erro:
             self._avisar(f"Não consegui guardar a resposta pela metade ({erro}).")
 
+    def _oferecer_retomada_do_jogo(self) -> None:
+        """Saiu do modo jogo: se alguma pergunta ficou sem resposta lá, oferece retomar (só
+        oferece; nada roda sozinho)."""
+        if self.memoria is None:
+            return
+        try:
+            sem_resposta = [p for p in self.memoria.pendentes() if p.motivo == "sem_resposta"]
+        except Exception:
+            return
+        if sem_resposta:
+            self._avisar(
+                f"{len(sem_resposta)} pergunta(s) ficaram sem resposta no modo jogo. Para "
+                'responder a última agora: "termina a resposta que ficou pela metade".'
+            )
+
     def _observar(self, interacao: str, texto: str, situacao: str) -> None:
         """Anota para a auto-melhoria como foi a resposta: cada cérebro tentado, comandos e
         reclamações (só categorias e tempos; o texto da conversa não vai para lá)."""
@@ -620,6 +635,7 @@ class Conversa:
             (m["content"] for m in reversed(self.mensagens) if m["role"] == "assistant"), ""
         )
         interacao = retomada[0].interacao if retomada else uuid.uuid4().hex
+        jogo_antes = bool(getattr(self.cerebro, "jogo", False))
         self.mensagens.append({"role": "user", "content": texto})
         self.historico.registrar(
             "usuario", texto, **({"retomada": retomada[0].id} if retomada else {})
@@ -641,7 +657,10 @@ class Conversa:
             self._pendencia(interacao, texto, "".join(partes), motivo, retomada)
             self._observar(interacao, texto, "sem_resposta")
             raise
-        except GeneratorExit:  # a pessoa interrompeu (Ctrl+C) ou o programa está fechando
+        except (GeneratorExit, KeyboardInterrupt):
+            # Ctrl+C: chega aqui como KeyboardInterrupt se ela estava esperando o cérebro, ou
+            # como GeneratorExit se estava falando (quem lê o gerador o fecha). Depois disto o
+            # gerador acabou, então a pendência é gravada uma vez só.
             self._observar(interacao, texto, "cancelada")
             parcial = sem_emocoes("".join(partes).strip())
             self.historico.registrar(
@@ -668,6 +687,8 @@ class Conversa:
             **({} if situacao == "completa" else {"situacao": situacao}),
         )
         self._observar(interacao, texto, situacao)
+        if jogo_antes and not getattr(self.cerebro, "jogo", False):
+            self._oferecer_retomada_do_jogo()
         if self.memoria is not None:
             try:
                 if situacao in _MOTIVOS:
