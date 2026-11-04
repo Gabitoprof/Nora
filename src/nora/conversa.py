@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import threading
 import unicodedata
+import uuid
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from typing import TextIO
@@ -16,7 +17,7 @@ from nora.confirmacao import confirmacao
 from nora.curadoria import curar
 from nora.emocao import FiltroDeTela, sem_emocoes
 from nora.historico import Historico, apagar_do_historico
-from nora.memoria import Fato, Memoria, Troca, abrir_memoria
+from nora.memoria import MAX_TENTATIVAS, Fato, Memoria, Pendente, Troca, abrir_memoria
 from nora.notas import IndiceDeNotas, Trecho, abrir_notas
 from nora.persona import prompt_de_sistema
 from nora.roteador import Roteador
@@ -68,6 +69,22 @@ def pedido_de_apagar(texto: str) -> str | None:
     assunto = re.sub(r"\bpor favor\b", " ", assunto, flags=re.I)
     assunto = " ".join(re.sub(r"[,.!?;:]", " ", assunto).split())
     return "" if _sem_acento(assunto) in _SEM_ASSUNTO else assunto
+
+
+def pede_retomada(texto: str) -> bool:
+    """ "Termina a resposta que ficou pela metade", "continua aquela resposta"..."""
+    limpo = _sem_acento(texto)
+    return bool(
+        re.search(
+            r"\b(termin|continu|retom|complet|refa|repet)\w*\b.{0,40}\b(resposta|pergunta)", limpo
+        )
+        and re.search(
+            r"metade|interromp|anterior|aquela|pendente|ficou|parou|caiu|cortou|incomplet", limpo
+        )
+    )
+
+
+_MOTIVOS = {"interrompida": "stream_interrompido", "sem resposta": "sem_resposta"}
 
 
 def _contagem(fatos: int, trechos: int) -> str:
@@ -386,12 +403,65 @@ class Conversa:
         if comando is not None:
             yield comando
             return
+        if pede_retomada(texto):
+            yield from self._retomar(texto)
+            return
+        yield from self._responder(texto)
+
+    def _retomar(self, texto: str):
+        """Responde de novo, inteira, a última pergunta que ficou pela metade."""
+        try:
+            pendentes = self.memoria.pendentes() if self.memoria is not None else []
+        except Exception:
+            pendentes = []
+        if not pendentes:
+            yield self._responder_comando(
+                texto, "Não tenho nenhuma resposta pela metade para terminar."
+            )
+            return
+        pendente = pendentes[0]
+        tentativas = self.memoria.tentar_pendencia(pendente.id)
+        # uma resposta nova e identificada, não um complemento do pedaço que já saiu
+        yield f'Retomando a pergunta "{_resumir(pendente.pergunta, 80)}": '
+        yield from self._responder(pendente.pergunta, retomada=(pendente, tentativas))
+
+    def _pendencia(self, interacao, pergunta, parcial, motivo, retomada) -> None:
+        """Guarda a resposta que não terminou, para retomar depois (nunca como fato)."""
+        if self.memoria is None:
+            return
+        try:
+            if retomada and retomada[1] >= MAX_TENTATIVAS:
+                self._avisar(
+                    f"tentei {retomada[1]} vezes e a resposta não saiu inteira; desisti dessa "
+                    "pendência (pergunte de novo quando quiser)."
+                )
+                return
+            sessao = retomada[0].sessao if retomada else self.historico.sessao
+            self.memoria.marcar_pendente(
+                interacao, sessao, pergunta, sem_emocoes(parcial), motivo, self.origem
+            )
+            self._avisar(
+                'a resposta ficou pela metade; para terminar: "termina a resposta que ficou '
+                'pela metade".'
+            )
+        except Exception as erro:
+            self._avisar(f"Não consegui guardar a resposta pela metade ({erro}).")
+
+    def _responder(self, texto: str, retomada: tuple[Pendente, int] | None = None):
         # a resposta anterior (com as etiquetas de emoção) mostra a que tom a pessoa reage agora
         anterior = next(
             (m["content"] for m in reversed(self.mensagens) if m["role"] == "assistant"), ""
         )
+        interacao = retomada[0].interacao if retomada else uuid.uuid4().hex
         self.mensagens.append({"role": "user", "content": texto})
-        self.historico.registrar("usuario", texto)
+        self.historico.registrar(
+            "usuario", texto, **({"retomada": retomada[0].id} if retomada else {})
+        )
+        if self.memoria is not None and not retomada:
+            try:  # se o programa cair no meio, ela vira pendência na próxima vez
+                self.memoria.abrir_resposta(interacao, self.historico.sessao, texto)
+            except Exception:
+                pass
         envio = self.mensagens[:-1] + self._lembrar(texto) + self.mensagens[-1:]
         partes: list[str] = []
         try:
@@ -400,6 +470,15 @@ class Conversa:
                 yield pedaco
         except CerebroIndisponivel:
             self.mensagens.pop()
+            motivo = "erro_provedor" if partes else "sem_resposta"
+            self._pendencia(interacao, texto, "".join(partes), motivo, retomada)
+            raise
+        except GeneratorExit:  # a pessoa interrompeu (Ctrl+C) ou o programa está fechando
+            parcial = sem_emocoes("".join(partes).strip())
+            self.historico.registrar(
+                "assistente", parcial, modelo=self.origem, situacao="cancelada"
+            )
+            self._pendencia(interacao, texto, parcial, "cancelada", retomada)
             raise
         # A resposta crua tem as etiquetas de emoção ({alegre}...), que só a voz usa: a conversa
         # guarda a crua (o modelo segue o próprio jeito), o histórico e a memória, a limpa.
@@ -419,6 +498,16 @@ class Conversa:
             lembrancas=[fato.id for fato in self.lembrancas],
             **({} if situacao == "completa" else {"situacao": situacao}),
         )
+        if self.memoria is not None:
+            try:
+                if situacao in _MOTIVOS:
+                    self._pendencia(interacao, texto, resposta, _MOTIVOS[situacao], retomada)
+                elif retomada:
+                    self.memoria.resolver_pendencia(retomada[0].id, interacao)
+                else:
+                    self.memoria.concluir_resposta(interacao)
+            except Exception as erro:
+                self._avisar(f"Não consegui atualizar as respostas pendentes ({erro}).")
         if self.memoria is not None and resposta and situacao == "completa":
             linha = threading.Thread(
                 target=self._memorizar, args=(texto, resposta, anterior), daemon=True
@@ -439,6 +528,17 @@ def nova_conversa(
     conversa = Conversa(
         config, cerebro or Roteador(config), Historico(config.pasta_dados), memoria, notas
     )
+    if memoria is not None:
+        try:  # respostas que caíram com o programa da última vez viram pendências
+            memoria.recuperar_abertas(exceto_sessao=conversa.historico.sessao)
+            quantas = len(memoria.pendentes())
+            if quantas:
+                conversa._avisar(
+                    f"{quantas} resposta(s) ficaram pela metade. Para terminar a última, diga "
+                    '"termina a resposta que ficou pela metade"; para ver todas: nora pendencias.'
+                )
+        except Exception:
+            pass
     if notas is not None and config.notas.atualizar_ao_abrir:
         threading.Thread(target=conversa.atualizar_notas, daemon=True).start()
     return conversa
@@ -467,6 +567,8 @@ def conversar(
     except CerebroIndisponivel as erro:
         escrever(f"\n[erro] {erro}")
     escrever(f"Conversa com {nome}. Digite 'sair' para encerrar e '/limpar' para começar do zero.")
+    for aviso in conversa.avisos_pendentes():  # ao abrir: respostas pela metade, por exemplo
+        escrever(f"[memória] {aviso}")
     while True:
         try:
             texto = entrada("\nVocê: ").strip()

@@ -253,6 +253,8 @@ def conversar_por_voz(
             f"Conversa por voz com {nome}. Aperte Enter, fale e aperte Enter de novo. "
             "Também dá para digitar. 'sair' encerra."
         )
+    for aviso in conversa.avisos_pendentes():
+        escrever(f"[memória] {aviso}")
 
     while True:
         try:

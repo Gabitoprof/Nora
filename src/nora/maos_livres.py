@@ -110,6 +110,8 @@ def conversar_maos_livres(
 
         if teclado:
             escrever("Também dá para digitar: escreva e aperte Enter ('sair' encerra).")
+        for aviso in conversa.avisos_pendentes():
+            escrever(f"[memória] {aviso}")
         digitados: queue.Queue[str | None] = queue.Queue()
         if teclado:
             threading.Thread(target=_ler_teclado, args=(entrada, digitados), daemon=True).start()

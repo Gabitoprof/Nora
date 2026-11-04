@@ -415,6 +415,37 @@ def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> i
     return 0
 
 
+def comando_pendencias(config: Config, args) -> int:
+    from nora.memoria import abrir_memoria
+
+    memoria = abrir_memoria(config)
+    if memoria is None:
+        print("A memória está desligada ([memoria] ativa = false).", file=sys.stderr)
+        return 1
+    try:
+        if args.cancelar:
+            if not memoria.cancelar_pendencia(args.cancelar):
+                print(f"Não há pendência nº {args.cancelar} para cancelar.", file=sys.stderr)
+                return 1
+            print(f"Cancelada (nº {args.cancelar}): não vou retomar essa resposta.")
+            return 0
+        pendentes = memoria.pendentes()
+        if not pendentes:
+            print("Nenhuma resposta pela metade.")
+            return 0
+        print(f"{len(pendentes)} resposta(s) pela metade (a primeira é a que ela retoma):")
+        for p in pendentes:
+            parcial = f' — saiu: "{" ".join(p.parcial.split())[:60]}"' if p.parcial else ""
+            print(
+                f"  nº {p.id} [{p.criada[:16].replace('T', ' ')}] {p.motivo}, {p.provedor or '?'}"
+                f", {p.tentativas} tentativa(s): {p.pergunta[:80]}{parcial}"
+            )
+        print('Para retomar, diga ou digite: "termina a resposta que ficou pela metade".')
+    finally:
+        memoria.fechar()
+    return 0
+
+
 def comando_notas(config: Config, args) -> int:
     from nora.notas import abrir_notas
 
@@ -658,6 +689,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="salva cada fala ouvida em data/falas (para diagnóstico)",
     )
+    pend_cmd = comandos.add_parser("pendencias", help="respostas que ficaram pela metade")
+    pend_cmd.add_argument("--cancelar", type=int, default=0, metavar="ID", help="não retomar esta")
     notas_cmd = comandos.add_parser("notas", help="notas do Obsidian que a Nora lê")
     acoes_notas = notas_cmd.add_subparsers(dest="acao", required=True)
     acoes_notas.add_parser("ler", help="lê as notas novas ou alteradas do vault")
@@ -791,6 +824,8 @@ def main(argv: list[str] | None = None) -> int:
         return comando_memoria(config, args)
     if args.comando == "notas":
         return comando_notas(config, args)
+    if args.comando == "pendencias":
+        return comando_pendencias(config, args)
 
     if args.comando == "voz" and args.acao == "comparar":
         return comparar_realces(config, " ".join(args.frase), ouvir=args.ouvir)

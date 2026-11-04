@@ -540,3 +540,107 @@ def test_apagar_de_vez_pela_conversa_cancela_e_expira(criar_raiz):
     resposta = "".join(conversa.perguntar("apaga isso de vez"))
     assert "o quê" in resposta.lower() and m.contar() == 1
     assert "Não achei" in "".join(conversa.perguntar("apaga de vez o cachorro do vizinho"))
+
+
+# --- respostas pendentes (A5 da revisão consolidada) ---------------------------------------------
+
+
+def _conversa_com_roteador(criar_raiz, local, cliente=None):
+    from test_roteador import montar
+
+    from nora.conversa import nova_conversa
+
+    toml = "[memoria]\nativa = true\ncuradoria = false\n[roteador]\nescalar = false\n"
+    roteador, _ = montar(criar_raiz, local=local, cliente=cliente, toml=toml)
+    m = Memoria(roteador.config.pasta_dados / "memoria.db", EmbeddingsFalsos())
+    return nova_conversa(roteador.config, roteador, memoria=m, notas=None), m, roteador
+
+
+def test_resposta_interrompida_vira_pendencia_que_sobrevive_e_e_retomada(criar_raiz):
+    from test_roteador import LocalFalso
+
+    local = LocalFalso(resposta="Uma resposta comprida do local.", cair_depois=2)
+    conversa, m, roteador = _conversa_com_roteador(criar_raiz, local)
+    assert "".join(conversa.perguntar("me explica a fotossíntese")) == "Uma re"
+    conversa.esperar_memoria()
+    pendentes = m.pendentes()
+    assert len(pendentes) == 1 and m.contar_trocas() == 0  # o pedaço não vira troca nem fato
+    p = pendentes[0]
+    assert (p.pergunta, p.parcial, p.motivo) == (
+        "me explica a fotossíntese",
+        "Uma re",
+        "stream_interrompido",
+    )
+    assert p.provedor.startswith("local")
+
+    # sobrevive a reiniciar
+    caminho = m.caminho
+    m.fechar()
+    m = Memoria(caminho, EmbeddingsFalsos())
+    assert [x.pergunta for x in m.pendentes()] == ["me explica a fotossíntese"]
+
+    # retomada: nova resposta inteira, identificada, que fecha a pendência
+    conversa.memoria = m
+    roteador.local = LocalFalso(resposta="A fotossíntese transforma luz em energia.")
+    resposta = "".join(conversa.perguntar("termina a resposta que ficou pela metade"))
+    assert resposta.startswith("Retomando") and resposta.endswith("energia.")
+    conversa.esperar_memoria()
+    assert m.pendentes() == [] and m.contar_trocas() == 1
+    assert "".join(conversa.perguntar("termina a resposta que ficou pela metade")).startswith(
+        "Não tenho"
+    )
+
+
+def test_respostas_completas_e_comandos_nao_geram_pendencia(criar_raiz):
+    """E curadoria = false continua guardando a troca completa."""
+    from test_roteador import LocalFalso
+
+    conversa, m, _ = _conversa_com_roteador(criar_raiz, LocalFalso())
+    "".join(conversa.perguntar("oi, tudo bem?"))
+    "".join(conversa.perguntar("modo jogo"))
+    conversa.esperar_memoria()
+    assert m.pendentes() == [] and m.contar_trocas() == 1  # o comando também não é troca
+    assert '"situacao": "comando"' in conversa.historico.arquivo.read_text("utf-8")
+
+
+def test_pendencia_de_cancelamento_e_de_queda_do_programa(criar_raiz):
+    from test_roteador import LocalFalso
+
+    conversa, m, _ = _conversa_com_roteador(criar_raiz, LocalFalso(resposta="Resposta bem longa."))
+    fluxo = conversa.perguntar("conta uma história")
+    next(fluxo)
+    fluxo.close()  # a pessoa interrompeu (Ctrl+C) enquanto ela falava
+    assert [p.motivo for p in m.pendentes()] == ["cancelada"]
+
+    # o programa caiu no meio de uma resposta: na próxima vez, ela vira pendência
+    m.abrir_resposta("caiu-123", "sessao-antiga", "qual a distância da Lua?")
+    assert len(m.pendentes()) == 1  # aberta ainda não é pendência
+    assert m.recuperar_abertas(exceto_sessao="sessao-nova") == 1
+    assert m.recuperar_abertas(exceto_sessao="sessao-nova") == 0  # sem duplicar
+    assert sorted(p.motivo for p in m.pendentes()) == ["cancelada", "encerramento"]
+
+    # cancelar e apagar de vez
+    historia = next(p for p in m.pendentes() if p.pergunta == "conta uma história")
+    assert m.cancelar_pendencia(historia.id) and not m.cancelar_pendencia(historia.id)
+    assert len(m.pendentes()) == 1
+    m.apagar_de_vez("qual a distância da Lua?", confirmar=True)
+    assert m.pendentes() == []
+
+
+def test_comando_pendencias_lista_e_cancela(criar_raiz, capsys, monkeypatch):
+    from nora import cli
+
+    raiz = criar_raiz(local="[memoria]\nativa = true\ncuradoria = false\n")
+    config = cli.carregar(raiz, ambiente={})
+    m = Memoria(config.pasta_dados / "memoria.db", EmbeddingsFalsos())
+    m.marcar_pendente(
+        "x1", "s1", "qual a distância da Lua?", "São uns", "stream_interrompido", "local"
+    )
+    m.fechar()
+    monkeypatch.setattr(cli, "carregar", lambda *a, **k: config)
+    assert cli.main(["pendencias"]) == 0
+    saida = capsys.readouterr().out
+    assert "qual a distância da Lua?" in saida and 'saiu: "São uns"' in saida
+    assert cli.main(["pendencias", "--cancelar", "1"]) == 0
+    assert cli.main(["pendencias"]) == 0
+    assert "Nenhuma resposta pela metade" in capsys.readouterr().out

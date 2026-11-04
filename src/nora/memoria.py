@@ -33,6 +33,26 @@ TROCA_ESQUECIDA = 0.6
 FATO_ESQUECIDO = 0.85
 
 
+# Depois disso, uma resposta pendente deixa de ser retomada (não fica gastando API à toa).
+MAX_TENTATIVAS = 3
+
+
+@dataclass(frozen=True)
+class Pendente:
+    """Uma resposta que ficou pela metade (ou nem começou) e pode ser retomada."""
+
+    id: int
+    interacao: str
+    sessao: str
+    pergunta: str
+    parcial: str
+    motivo: str  # stream_interrompido, sem_resposta, erro_provedor, cancelada, encerramento
+    provedor: str
+    criada: str
+    status: str  # aberta, pendente, em_recuperacao, resolvida, cancelada
+    tentativas: int
+
+
 @dataclass(frozen=True)
 class Apagamento:
     """O que "apagar de vez" tira (ou tiraria, na prévia) da memória."""
@@ -124,6 +144,20 @@ class Memoria:
                 id INTEGER PRIMARY KEY,
                 texto TEXT NOT NULL UNIQUE,
                 criado TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS respostas_pendentes (
+                id INTEGER PRIMARY KEY,
+                interacao TEXT NOT NULL UNIQUE,
+                sessao TEXT NOT NULL,
+                pergunta TEXT NOT NULL,
+                parcial TEXT NOT NULL DEFAULT '',
+                motivo TEXT NOT NULL DEFAULT '',
+                provedor TEXT NOT NULL DEFAULT '',
+                criada TEXT NOT NULL,
+                atualizada TEXT NOT NULL,
+                status TEXT NOT NULL,
+                tentativas INTEGER NOT NULL DEFAULT 0,
+                resultado TEXT NOT NULL DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS esquecidos (
                 id INTEGER PRIMARY KEY,
@@ -344,6 +378,7 @@ class Memoria:
             self.esquecer(fato.id)
         for item in [texto, *(f.texto for f in apagados)]:
             self._anotar_esquecido(item)
+        self._apagar_pendencias_sobre(texto)
         return apagados
 
     def _fatos_para_esquecer(self, texto: str, minimo: float) -> list[Fato]:
@@ -379,7 +414,113 @@ class Memoria:
                     if self.vetorial and self.meta("dimensao"):
                         self._db.execute("DELETE FROM vec_trocas WHERE rowid = ?", (troca.id,))
             self._anotar_esquecido(texto)
+            self._apagar_pendencias_sobre(texto)
         return Apagamento(fatos, trocas, textos)
+
+    # --- respostas pendentes (pela metade, canceladas, ou que caíram com o programa) ----------
+
+    _CAMPOS_PENDENTE = (
+        "id, interacao, sessao, pergunta, parcial, motivo, provedor, criada, status, tentativas"
+    )
+
+    def abrir_resposta(self, interacao: str, sessao: str, pergunta: str) -> None:
+        """Marca que uma resposta começou. Se o programa cair antes de terminar, ela vira pendência
+        na próxima vez (recuperar_abertas). Terminada, some (concluir_resposta)."""
+        agora = _agora()
+        with self._trava, self._db:
+            self._db.execute(
+                "INSERT OR IGNORE INTO respostas_pendentes"
+                "(interacao, sessao, pergunta, criada, atualizada, status) "
+                "VALUES (?, ?, ?, ?, ?, 'aberta')",
+                (interacao, sessao, pergunta, agora, agora),
+            )
+
+    def concluir_resposta(self, interacao: str) -> None:
+        with self._trava, self._db:
+            self._db.execute(
+                "DELETE FROM respostas_pendentes WHERE interacao = ? AND status = 'aberta'",
+                (interacao,),
+            )
+
+    def marcar_pendente(
+        self, interacao: str, sessao: str, pergunta: str, parcial: str, motivo: str, provedor: str
+    ) -> None:
+        """A resposta não terminou: guarda a pergunta e o pedaço que saiu (nunca como fato)."""
+        agora = _agora()
+        with self._trava, self._db:
+            self._db.execute(
+                "INSERT INTO respostas_pendentes(interacao, sessao, pergunta, parcial, motivo, "
+                "provedor, criada, atualizada, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente') "
+                "ON CONFLICT(interacao) DO UPDATE SET parcial = excluded.parcial, "
+                "motivo = excluded.motivo, provedor = excluded.provedor, "
+                "atualizada = excluded.atualizada, status = 'pendente'",
+                (interacao, sessao, pergunta, parcial, motivo, provedor, agora, agora),
+            )
+
+    def recuperar_abertas(self, exceto_sessao: str) -> int:
+        """Respostas abertas de outras sessões: o programa caiu no meio. Viram pendências."""
+        with self._trava, self._db:
+            return self._db.execute(
+                "UPDATE respostas_pendentes SET status = 'pendente', motivo = 'encerramento', "
+                "atualizada = ? WHERE status = 'aberta' AND sessao != ?",
+                (_agora(), exceto_sessao),
+            ).rowcount
+
+    def pendentes(self) -> list[Pendente]:
+        """As que ainda podem ser retomadas, da mais nova para a mais antiga."""
+        with self._trava:
+            linhas = self._db.execute(
+                f"SELECT {self._CAMPOS_PENDENTE} FROM respostas_pendentes "
+                "WHERE status IN ('pendente', 'em_recuperacao') ORDER BY id DESC"
+            ).fetchall()
+        return [Pendente(*linha) for linha in linhas]
+
+    def tentar_pendencia(self, pendente_id: int) -> int:
+        """Conta uma nova tentativa; depois de MAX_TENTATIVAS ela é cancelada. Devolve o total."""
+        with self._trava, self._db:
+            self._db.execute(
+                "UPDATE respostas_pendentes SET tentativas = tentativas + 1, "
+                "status = CASE WHEN tentativas + 1 >= ? THEN 'cancelada' ELSE 'em_recuperacao' END,"
+                " atualizada = ? WHERE id = ?",
+                (MAX_TENTATIVAS, _agora(), pendente_id),
+            )
+            linha = self._db.execute(
+                "SELECT tentativas FROM respostas_pendentes WHERE id = ?", (pendente_id,)
+            ).fetchone()
+        return linha[0] if linha else 0
+
+    def resolver_pendencia(self, pendente_id: int, resultado: str = "") -> None:
+        with self._trava, self._db:
+            self._db.execute(
+                "UPDATE respostas_pendentes SET status = 'resolvida', resultado = ?, "
+                "atualizada = ? WHERE id = ?",
+                (resultado, _agora(), pendente_id),
+            )
+
+    def cancelar_pendencia(self, pendente_id: int) -> bool:
+        with self._trava, self._db:
+            return (
+                self._db.execute(
+                    "UPDATE respostas_pendentes SET status = 'cancelada', atualizada = ? "
+                    "WHERE id = ? AND status IN ('pendente', 'em_recuperacao')",
+                    (_agora(), pendente_id),
+                ).rowcount
+                > 0
+            )
+
+    def _apagar_pendencias_sobre(self, texto: str) -> None:
+        """Esquecer ou apagar um assunto tira também as pendências sobre ele."""
+        vetor = self.embeddings.vetor(texto)
+        with self._trava:
+            linhas = self._db.execute("SELECT id, pergunta FROM respostas_pendentes").fetchall()
+        apagar = [
+            pendente_id
+            for pendente_id, pergunta in linhas
+            if _cosseno(vetor, self.embeddings.vetor(pergunta)) >= TROCA_ESQUECIDA
+        ]
+        with self._trava, self._db:
+            for pendente_id in apagar:
+                self._db.execute("DELETE FROM respostas_pendentes WHERE id = ?", (pendente_id,))
 
     def _anotar_esquecido(self, texto: str) -> None:
         vetor = self.embeddings.vetor(texto)
