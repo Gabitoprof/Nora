@@ -200,7 +200,8 @@ def test_comandos_trocam_o_cerebro(criar_raiz):
     assert not cliente.pedidos[-1]["beta"]  # o Haiku não tem recusa no servidor
     assert "Modo jogo ligado" in falar(roteador, "modo jogo") and roteador.local.descarregou
     assert roteador.aquecer() == 0.0
-    assert "desligado" in falar(roteador, "sai do modo jogo")
+    assert "Confirma" in falar(roteador, "sai do modo jogo") and roteador.jogo
+    assert "desligado" in falar(roteador, "sim")
     assert "automático" in falar(roteador, "modo automático")
 
 
@@ -403,6 +404,7 @@ def test_modo_jogo_sem_nuvem_nao_reacende_o_cerebro_local(criar_raiz):
     sozinho.local.pedidos.clear()
     assert "modo jogo" in falar(sozinho, "oi") and sozinho.local.pedidos == []
     falar(sozinho, "sai do modo jogo")
+    falar(sozinho, "sim")
     assert falar(sozinho, "oi") == "Resposta local."  # fora do modo jogo, volta ao normal
 
 
@@ -473,3 +475,31 @@ def test_resposta_interrompida_fica_marcada_no_historico_e_nao_vai_para_a_memori
     roteador.local = LocalFalso()
     "".join(conversa.perguntar("e agora?"))
     assert len(curadas) == 1  # resposta completa: segue para a memória
+
+
+def test_sair_do_modo_jogo_pede_confirmacao_e_pergunta_nao_muda_nada(criar_raiz):
+    """A1 (revisão consolidada): pergunta sobre o modo jogo não o desliga; o pedido de sair
+    espera um "sim", resolvido por regra, sem chamar nenhum cérebro."""
+    roteador, claude = montar(criar_raiz)
+    falar(roteador, "modo jogo")
+    assert comando_em("como sair do modo jogo?") is None
+    falar(roteador, "como sair do modo jogo?")
+    assert roteador.jogo  # foi respondida como pergunta, pela nuvem
+
+    roteador.local.pedidos.clear()
+    pedidos = len(claude.pedidos)
+    resposta = falar(roteador, "Nora, saia do modo jogo")
+    assert "Confirma" in resposta and roteador.jogo and roteador.situacao == "comando"
+    assert "Tudo bem" in falar(roteador, "não") and roteador.jogo
+
+    falar(roteador, "sai do modo jogo")
+    assert falar(roteador, "qual a capital da França?") == "Resposta do Claude."  # outro assunto
+    assert roteador.jogo
+    assert "Confirma" not in falar(roteador, "sim")  # a confirmação já tinha expirado
+    assert roteador.jogo
+
+    falar(roteador, "sai do modo jogo")
+    assert "desligado" in falar(roteador, "sim, pode sair") and not roteador.jogo
+    assert roteador.local.pedidos == []  # nada disso usou o cérebro local
+    assert len(claude.pedidos) == pedidos + 2  # só a pergunta e o "sim" expirado foram à nuvem
+    assert "não estou no modo jogo" in falar(roteador, "sai do modo jogo").lower()

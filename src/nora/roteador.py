@@ -26,6 +26,7 @@ from nora.cerebro import CerebroIndisponivel, CerebroLocal, Medidas
 from nora.cerebro_nuvem import CerebroNuvem
 from nora.cerebro_openai import CerebroOpenAI
 from nora.config import Config
+from nora.confirmacao import confirmacao
 
 ESCALAR = "{pensar}"
 INSTRUCAO_ESCALAR = (
@@ -145,6 +146,13 @@ _SOBRAS_DE_COMANDO = set(
 )
 
 
+# Antes do comando, uma destas faz da frase uma pergunta sobre ele ("como sair do modo jogo?").
+_PERGUNTA_SOBRE = (
+    r"\b(como|o que|por que|porque|quando|qual|quais|onde|quanto|explica|explique|significa|"
+    r"funciona|serve)\b"
+)
+
+
 def achar_comando(texto: str) -> tuple[str | None, bool]:
     """(comando, se é puro). Puro é só o comando ("use o Claude"); com conteúdo, a frase também
     pede alguma coisa ("use o Claude para explicar fotossíntese") e essa coisa deve ser feita."""
@@ -153,6 +161,8 @@ def achar_comando(texto: str) -> tuple[str | None, bool]:
         return None, False
     for nome, padrao in _COMANDOS:
         achado = re.search(padrao, limpo)
+        if achado and re.search(_PERGUNTA_SOBRE, limpo[: achado.start()]):
+            return None, False  # "como sair do modo jogo?": pergunta sobre o comando
         if achado:
             resto = re.sub(r"[^\w\s]", " ", limpo[: achado.start()] + " " + limpo[achado.end() :])
             resto = resto.split()
@@ -212,6 +222,7 @@ class Roteador:
         # "sem resposta" (ninguém pôde responder). A conversa só aprende com as completas.
         self.situacao = "completa"
         self._avisou_sem_nuvem = False
+        self._aguardando: str | None = None  # comando esperando um "sim" (sair do modo jogo)
         self._avisou_sem: set[str] = set()
 
     # --- o que a conversa usa ---------------------------------------------------------------
@@ -250,8 +261,33 @@ class Roteador:
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
         pergunta = next((m["content"] for m in reversed(mensagens) if m["role"] == "user"), "")
         self.situacao = "completa"
+        aguardando, self._aguardando = self._aguardando, None
+        if aguardando:  # resolvido por regra: sem modelo, sem tocar na placa de vídeo
+            resposta = confirmacao(pergunta)
+            if resposta == "sim":
+                self.situacao = "comando"
+                yield self._trocar(aguardando, pergunta)
+                return
+            if resposta == "nao":
+                self.situacao = "comando"
+                self._usar(self.local, "comando")
+                yield "Tudo bem, continuo no modo jogo."
+                return
         comando, puro = achar_comando(pergunta)
+        if comando == "jogo_fim":
+            self.situacao = "comando"
+            self._usar(self.local, "comando")
+            if not self.jogo:
+                yield "Não estou no modo jogo."
+                return
+            self._aguardando = "jogo_fim"
+            yield (
+                "Quer sair do modo jogo? Eu volto a pensar aqui no PC, usando a placa de vídeo. "
+                'Confirma? Diga "sim".'
+            )
+            return
         if comando and puro:
+            self.situacao = "comando"  # troca de estado: não é fato para a memória
             yield self._trocar(comando, pergunta)
             return
         if comando == "local":  # "use o cérebro local para ...": só esta pergunta, no local

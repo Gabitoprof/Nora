@@ -12,6 +12,7 @@ from typing import TextIO
 from nora.agenda import intervalo_da_pergunta, quando
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
+from nora.confirmacao import confirmacao
 from nora.curadoria import curar
 from nora.emocao import FiltroDeTela, sem_emocoes
 from nora.historico import Historico, apagar_do_historico
@@ -67,21 +68,6 @@ def pedido_de_apagar(texto: str) -> str | None:
     assunto = re.sub(r"\bpor favor\b", " ", assunto, flags=re.I)
     assunto = " ".join(re.sub(r"[,.!?;:]", " ", assunto).split())
     return "" if _sem_acento(assunto) in _SEM_ASSUNTO else assunto
-
-
-def confirmacao(texto: str) -> str | None:
-    """ "sim", "nao" ou None (a pessoa falou de outra coisa)."""
-    limpo = " ".join(re.sub(r"[^\w\s]", " ", _sem_acento(texto)).split())
-    limpo = re.sub(r"^nora\b ?", "", limpo)
-    if re.search(r"\b(nao|cancela|cancelar|deixa|deixa pra la|pare|esquece)\b", limpo):
-        return "nao"
-    if len(limpo.split()) <= 6 and re.match(
-        r"(sim|pode|confirmo|confirma|confirmado|claro|com certeza|isso|apaga|manda ver|ok|"
-        r"beleza|quero)\b",
-        limpo,
-    ):
-        return "sim"
-    return None
 
 
 def _contagem(fatos: int, trechos: int) -> str:
