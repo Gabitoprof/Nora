@@ -9,7 +9,7 @@ Legenda: `[x]` = verificado no código/testes automatizados deste ambiente;
 não comprova a integração real com o Windows.
 
 Validação: `ruff format --check .`, `ruff check .`, `pytest -q -ra` e
-`nora --verificar`. Resultado: Ruff aprovado; **265 testes passaram e 1 foi ignorado** (Kokoro real).
+`nora --verificar`. Resultado: Ruff aprovado; **266 testes passaram e 1 foi ignorado** (Kokoro real).
 `nora --verificar` terminou com código 0, com os serviços externos ausentes listados abaixo.
 P3, P4, HUD e integração pessoal Claude Code ficaram fora do escopo.
 
@@ -77,7 +77,8 @@ pytest
 
 - [x] Os três comandos de qualidade passam localmente no ambiente do Codex.
 - [x] Criar testes determinísticos para AJ-01/AJ-02/AJ-03 sem depender de relógio real ou notificação real do Windows.
-- [ ] **EXTERNO:** CI do GitHub Actions aprovada em **Windows e Ubuntu**, Python **3.11 e 3.13**.
+- [x] CI do GitHub Actions aprovada em **Windows e Ubuntu**, Python **3.11 e 3.13**,
+  no commit de correção `71cf727` (execução 41757775366; quatro jobs `succeeded`).
 - [ ] **EXTERNO:** Criar PR contra `Pull_code`, com arquivos alterados, descrição dos testes e riscos residuais.
 - [x] Não fazer merge, não criar tag `v0.3.0` e não publicar release automaticamente.
 
@@ -124,10 +125,40 @@ Esses testes **não são substituídos por CI**. Fazer após aprovação técnic
 - `nora --verificar`: executado; não comprova inferência/voz. Ollama, Whisper e Kokoro
   ausentes; SDKs/chaves opcionais de nuvem e pasta pessoal de notas não configurados.
 - Teste de Kokoro real ignorado por ausência de `ELLA_KOKORO_PASTA`/modelo local.
-- Windows/Ubuntu com Python 3.11 e 3.13: matriz existente preservada, execução remota
-  desta branch ainda não confirmada. Ambiente local: Linux, Python 3.12.
+- Histórico anterior à correção de portabilidade: a revisão anexada identificou falha
+  no Windows 3.11/3.13 e sucesso no Ubuntu em 41756602954 e 41756693905.
+  A falha CRLF foi reproduzida localmente antes da correção.
+- Correção `71cf727`: teste parametrizado LF/CRLF; bytes restaurados preservados e
+  conteúdo apresentado comparado como texto. Nenhum arquivo de produção foi alterado
+  nesta rodada. Ambiente local: Linux, Python 3.12.14; 266 aprovados, 1 ignorado.
+- Nova CI: [execução 41757775366](https://github.com/Gabitoprof/Nora/actions/runs/41757775366).
+  Quatro jobs confirmados como `This job succeeded` na página pública de checks do commit:
+
+  | Ambiente | Python | Resultado | Job |
+  |---|---|---|---|
+  | Ubuntu | 3.11 | Aprovado | [126337864642](https://github.com/Gabitoprof/Nora/actions/runs/41757775366/job/126337864642) |
+  | Ubuntu | 3.13 | Aprovado | [126337864198](https://github.com/Gabitoprof/Nora/actions/runs/41757775366/job/126337864198) |
+  | Windows | 3.11 | Aprovado | [126337864527](https://github.com/Gabitoprof/Nora/actions/runs/41757775366/job/126337864527) |
+  | Windows | 3.13 | Aprovado | [126337864436](https://github.com/Gabitoprof/Nora/actions/runs/41757775366/job/126337864436) |
+
+  A matriz executa Ruff, pytest e `nora --verificar`; não comprova áudio/GPU físicos.
 - API GitHub (`api.github.com`) respondeu `Forbidden`: `gh pr create` também falhou com `Forbidden` no GraphQL; PR não criado nesta execução.
   A branch foi enviada ao GitHub com sucesso.
-  Domínio adicional salvo no rascunho de rede para revisão, sem publicação automática.
-- Merge, tags e releases não executados. O aceite final permanece pendente da CI remota,
-  revisão do PR e homologação Windows/AMD.
+  API REST/GraphQL e `gh pr create` continuam bloqueados por `Forbidden` nesta rodada.
+  `GH_TOKEN` está presente, mas a validação da autenticação pela API também falha;
+  não é possível concluir que um token novo resolveria a política de rede.
+  A página pública de comparação informa sessão não autenticada (`logged_in=false`).
+  Git pelo proxy permite leitura e envio; não fornece sessão web nem prova acesso à API.
+  A CI é consultável pela página pública do GitHub, sem contornar o bloqueio da API.
+  [Formulário manual de PR para Pull_code](https://github.com/Gabitoprof/Nora/compare/Pull_code...fix/relatorios-aj01-aj03?expand=1).
+- Merge, tags e releases não executados. O código corrigido passou na CI remota. O aceite de integração
+  permanece pendente da criação/revisão do PR e homologação Windows/AMD.
+
+## Homologação adicional da entrada — pendente no Windows real
+
+- [ ] **WINDOWS:** teclado durante o alerta, Ctrl+C, caracteres acentuados, restauração do
+  prompt e duas entradas seguidas, verificando interferência ou threads de entrada bloqueadas.
+- [ ] **WINDOWS:** escuta em silêncio prolongado entrega o relatório sem nova fala.
+
+Essas ressalvas da reavaliação não foram tratadas como defeitos sem reprodução.
+A recuperação continua manual por backup; o teste preserva esse comportamento.
