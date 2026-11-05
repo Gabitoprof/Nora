@@ -127,3 +127,27 @@ def test_comandos_de_pronuncias_e_preferencias(criar_raiz, capsys, monkeypatch):
     assert "1 pronúncias aprendidas" in texto and "  hoje → ôje" in texto
     assert "Guardada (nº 1)." in texto
     assert "     1  Seja mais direta." in texto
+
+
+def test_apagar_e_corrigir_pela_conversa(criar_raiz):
+    local = '[usuario]\nnome = "Gabriel"\n[memoria]\nativa = true\nsimilaridade_minima = 0.2\n'
+    errado = "Gabriel tem prova de cálculo 1 na PUCMG em 21/11/2026"
+    certo = "Gabriel tem prova na PUCMG em 21/11/2026"
+    with OllamaComMemoria(fatos=[errado]) as ollama:
+        config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.url})
+        conversa = nova_conversa(config)
+        "".join(conversa.perguntar("tenho prova de cálculo 1 dia 21/11 na PUCMG"))
+        conversa.esperar_memoria()
+        assert [f.texto for f in conversa.memoria.listar()] == [errado]
+
+        ollama.fatos = [certo]
+        ollama.extras = {"esquecer": [errado]}
+        "".join(conversa.perguntar("não é cálculo 1, a prova é de outra matéria"))
+        avisos = conversa.encerrar()
+        textos = [f.texto for f in conversa.memoria.listar()]
+        agenda = [e.texto for e in conversa.memoria.eventos_contendo("PUCMG")]
+        conversa.memoria.fechar()
+
+    assert f"esqueci: {errado}" in avisos
+    assert textos == [certo]  # o errado saiu, o certo entrou (sem anotar o pedido de apagar)
+    assert agenda == [certo]  # e a agenda acompanha

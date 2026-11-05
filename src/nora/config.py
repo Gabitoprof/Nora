@@ -7,6 +7,7 @@ Ordem: config/nora.toml (padrão) -> config/local.toml (pessoal, fora do Git)
 from __future__ import annotations
 
 import os
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -115,6 +116,28 @@ class Memoria:
 
 
 @dataclass(frozen=True)
+class AutoMelhoria:
+    ativa: bool = True
+    hora_relatorio: str = "20:00"  # HH:MM, hora local do relatório diário
+    min_ocorrencias: int = 3  # menos que isso num dia não vira proposta
+    latencia_resposta_ms: int = 2500  # até o primeiro pedaço da resposta
+    latencia_ouvido_ms: int = 1500  # transcrição
+    latencia_voz_ms: int = 2000  # da primeira frase pronta até começar a falar
+    dias_de_eventos: int = 30  # eventos mais velhos são apagados no fechamento
+    notificar: bool = True  # notificação do Windows quando o relatório fica pronto
+    apresentar: str = "abrir"  # abrir: abre o .md; terminal: mostra o texto inteiro na conversa
+
+
+@dataclass(frozen=True)
+class Notas:
+    pasta: Path | None = None  # o vault do Obsidian; None = sem notas
+    trechos_por_pergunta: int = 3
+    similaridade_minima: float = 0.5
+    ignorar: tuple[str, ...] = ()
+    atualizar_ao_abrir: bool = True
+
+
+@dataclass(frozen=True)
 class Audio:
     microfone: str
     alto_falante: str
@@ -137,6 +160,30 @@ class ModeloNuvem:
     provedor: str
     rapido: str
     pesado: str
+    esforco_rapido: str = "low"
+    esforco_pesado: str = "medium"
+
+
+@dataclass(frozen=True)
+class ModeloOpenAI:
+    rapido: str = "gpt-5.5"
+    pesado: str = "gpt-5.5"
+    esforco_rapido: str = "low"
+    esforco_pesado: str = "medium"
+
+
+MODOS_DO_ROTEADOR = ("automatico", "local", "nuvem")
+NUVENS = ("openai", "anthropic")
+ESFORCOS = ("low", "medium", "high", "xhigh", "max")
+ESFORCOS_OPENAI = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
+
+
+@dataclass(frozen=True)
+class Roteador:
+    modo: str = "automatico"
+    escalar: bool = True
+    triagem: bool = True
+    complexas: str = "openai"  # quem responde as complexas; a outra nuvem é a reserva
 
 
 @dataclass(frozen=True)
@@ -152,11 +199,77 @@ class Config:
     emocao: Emocao
     modelo_local: ModeloLocal
     modelo_nuvem: ModeloNuvem
+    modelo_openai: ModeloOpenAI
+    roteador: Roteador
     pasta_dados: Path
     ollama_host: str
     tem_chave_anthropic: bool
     arquivos: tuple[Path, ...]
     chave_elevenlabs: str = field(default="", repr=False)
+    chave_anthropic: str = field(default="", repr=False)
+    chave_openai: str = field(default="", repr=False)
+    notas: Notas = field(default_factory=Notas)
+    auto_melhoria: AutoMelhoria = field(default_factory=AutoMelhoria)
+
+
+def _apresentar(valor: str) -> str:
+    valor = valor.strip().lower()
+    if valor not in ("abrir", "terminal"):
+        raise ConfigError(
+            f'[auto_melhoria] apresentar deve ser "abrir" ou "terminal", veio {valor!r}.'
+        )
+    return valor
+
+
+def _auto_melhoria(dados: dict[str, Any]) -> AutoMelhoria:
+    secao = "auto_melhoria"
+    hora = _campo(dados, secao, "hora_relatorio", str).strip()
+    if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", hora):
+        raise ConfigError(
+            f'[{secao}] hora_relatorio deve ser "HH:MM" (ex.: "20:00"), veio {hora!r}.'
+        )
+    inteiros = {}
+    for chave in (
+        "min_ocorrencias",
+        "latencia_resposta_ms",
+        "latencia_ouvido_ms",
+        "latencia_voz_ms",
+        "dias_de_eventos",
+    ):
+        inteiros[chave] = _campo(dados, secao, chave, int)
+        if inteiros[chave] < 1:
+            raise ConfigError(f"[{secao}] {chave} deve ser 1 ou mais.")
+    return AutoMelhoria(
+        ativa=_campo(dados, secao, "ativa", bool),
+        hora_relatorio=hora,
+        notificar=_campo(dados, secao, "notificar", bool),
+        apresentar=_apresentar(_campo(dados, secao, "apresentar", str)),
+        **inteiros,
+    )
+
+
+def _notas(dados: dict[str, Any], raiz: Path) -> Notas:
+    texto = _campo(dados, "notas", "pasta", str).strip()
+    pasta = None
+    if texto:
+        pasta = Path(texto).expanduser()
+        if not pasta.is_absolute():
+            pasta = raiz / pasta
+    ignorar = _campo(dados, "notas", "ignorar", list)
+    if not all(isinstance(item, str) for item in ignorar):
+        raise ConfigError('[notas] ignorar deve ser uma lista de pastas, como ["Diário"].')
+    trechos = _campo(dados, "notas", "trechos_por_pergunta", int)
+    if trechos < 0:
+        raise ConfigError("[notas] trechos_por_pergunta não pode ser negativo.")
+    return Notas(
+        pasta=pasta,
+        trechos_por_pergunta=trechos,
+        similaridade_minima=_entre_0_e_1(
+            "notas", "similaridade_minima", _campo(dados, "notas", "similaridade_minima", float)
+        ),
+        ignorar=tuple(ignorar),
+        atualizar_ao_abrir=_campo(dados, "notas", "atualizar_ao_abrir", bool),
+    )
 
 
 def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
@@ -175,7 +288,8 @@ def ler_env(caminho: Path) -> dict[str, str]:
     if not caminho.is_file():
         return {}
     valores = {}
-    for linha in caminho.read_text(encoding="utf-8").splitlines():
+    # utf-8-sig: o Bloco de Notas pode salvar com BOM, que grudaria no nome da primeira chave
+    for linha in caminho.read_text(encoding="utf-8-sig").splitlines():
         linha = linha.strip()
         if not linha or linha.startswith("#") or "=" not in linha:
             continue
@@ -211,6 +325,30 @@ def _velocidade(dados: dict[str, Any], secao: str) -> float:
     if not 0.5 <= velocidade <= 2.0:
         raise ConfigError(f"[{secao}] velocidade deve ficar entre 0.5 e 2.0, veio {velocidade}.")
     return velocidade
+
+
+def _esforco(
+    dados: dict[str, Any], chave: str, secao: str = "modelos.nuvem", validos=ESFORCOS
+) -> str:
+    valor = _campo(dados, secao, chave, str)
+    if valor not in validos:
+        raise ConfigError(f"[{secao}] {chave} deve ser um de {validos}, veio {valor!r}.")
+    return valor
+
+
+def _roteador(dados: dict[str, Any]) -> Roteador:
+    modo = _campo(dados, "roteador", "modo", str)
+    if modo not in MODOS_DO_ROTEADOR:
+        raise ConfigError(f"[roteador] modo deve ser um de {MODOS_DO_ROTEADOR}, veio {modo!r}.")
+    complexas = _campo(dados, "roteador", "complexas", str)
+    if complexas not in NUVENS:
+        raise ConfigError(f"[roteador] complexas deve ser um de {NUVENS}, veio {complexas!r}.")
+    return Roteador(
+        modo=modo,
+        escalar=_campo(dados, "roteador", "escalar", bool),
+        triagem=_campo(dados, "roteador", "triagem", bool),
+        complexas=complexas,
+    )
 
 
 def _variacao(dados: dict[str, Any], chave: str) -> float:
@@ -386,10 +524,23 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             provedor=_campo(dados, "modelos.nuvem", "provedor", str),
             rapido=_campo(dados, "modelos.nuvem", "rapido", str),
             pesado=_campo(dados, "modelos.nuvem", "pesado", str),
+            esforco_rapido=_esforco(dados, "esforco_rapido"),
+            esforco_pesado=_esforco(dados, "esforco_pesado"),
         ),
+        modelo_openai=ModeloOpenAI(
+            rapido=_campo(dados, "modelos.openai", "rapido", str),
+            pesado=_campo(dados, "modelos.openai", "pesado", str),
+            esforco_rapido=_esforco(dados, "esforco_rapido", "modelos.openai", ESFORCOS_OPENAI),
+            esforco_pesado=_esforco(dados, "esforco_pesado", "modelos.openai", ESFORCOS_OPENAI),
+        ),
+        roteador=_roteador(dados),
+        notas=_notas(dados, raiz),
+        auto_melhoria=_auto_melhoria(dados),
         pasta_dados=pasta_dados,
         ollama_host=ambiente.get("OLLAMA_HOST") or "http://127.0.0.1:11434",
         tem_chave_anthropic=bool(ambiente.get("ANTHROPIC_API_KEY")),
         chave_elevenlabs=ambiente.get("ELEVENLABS_API_KEY", ""),
+        chave_anthropic=ambiente.get("ANTHROPIC_API_KEY", ""),
+        chave_openai=ambiente.get("OPENAI_API_KEY", ""),
         arquivos=tuple(arquivos),
     )

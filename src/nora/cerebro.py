@@ -13,7 +13,28 @@ from nora.config import Config
 
 
 class CerebroIndisponivel(Exception):
-    """O Ollama não respondeu ou recusou o pedido."""
+    """O cérebro (Ollama ou nuvem) não respondeu ou recusou o pedido. `categoria` diz o tipo da
+    falha para o diagnóstico (erro_provedor, timeout, resposta_vazia); vazia = descobrir."""
+
+    def __init__(self, mensagem: str = "", categoria: str = "") -> None:
+        super().__init__(mensagem)
+        self.categoria = categoria
+
+
+def categoria_do_erro(erro: Exception) -> str:
+    """erro_provedor, timeout ou resposta_vazia, para o observador agrupar as falhas."""
+    if getattr(erro, "categoria", ""):
+        return erro.categoria
+    causa = erro.__cause__
+    texto = str(erro).lower()
+    if (
+        isinstance(causa, TimeoutError)
+        or "timeout" in type(causa).__name__.lower()
+        or "timed out" in texto
+        or "tempo esgotado" in texto
+    ):
+        return "timeout"
+    return "erro_provedor"
 
 
 @dataclass
@@ -64,6 +85,21 @@ class CerebroLocal:
                 f"Não consegui falar com o Ollama em {self.config.ollama_host}. Ele está aberto?"
             ) from erro
         return time.perf_counter() - inicio
+
+    def descarregar(self) -> None:
+        """Tira o modelo da memória da placa de vídeo agora (modo jogo)."""
+        pedido = urllib.request.Request(
+            f"{self.config.ollama_host.rstrip('/')}/api/generate",
+            data=json.dumps({"model": self.config.modelo_local.modelo, "keep_alive": 0}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(pedido, timeout=self.timeout) as resposta:
+                resposta.read()
+        except (urllib.error.URLError, OSError) as erro:
+            raise CerebroIndisponivel(
+                f"Não consegui falar com o Ollama em {self.config.ollama_host}."
+            ) from erro
 
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
         """Envia a conversa ao Ollama e devolve a resposta aos pedaços, conforme é gerada."""

@@ -22,10 +22,19 @@ from nora.config import Config
 from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
 from nora.emocao import FiltroDeTela
 from nora.frases import SeparadorDeFrases
+from nora.melhorias import iniciar as iniciar_melhorias
+from nora.melhorias import ler_entrada
 from nora.ouvido import OuvidoWhisper
 from nora.prioridade import abafar_outros
 from nora.servico import ServicoIndisponivel
-from nora.voz import VozComReserva, VozElevenLabs, VozHTTP, com_pronuncias_aprendidas, criar_voz
+from nora.troca_voz import atender_pedido, pedido_de_voz
+from nora.voz import (
+    VozComReserva,
+    VozElevenLabs,
+    VozHTTP,
+    VozTrocavel,
+    com_pronuncias_aprendidas,
+)
 
 _FIM = object()
 
@@ -139,7 +148,11 @@ def responder_falando(
     escrever: Callable[..., None],
     medir: bool,
 ) -> Tempos:
-    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve."""
+    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve.
+    Um pedido de troca de voz ("usa a voz do Piper") é atendido aqui, sem passar pelo cérebro."""
+    pedido = pedido_de_voz(texto)
+    if pedido:
+        return trocar_de_voz(conversa, voz, tocar, texto, pedido, escrever)
     locutor = Locutor(voz, tocar, inicio, abafador(conversa.config))
     locutor.tempos.transcricao = transcricao
     separador = SeparadorDeFrases()
@@ -167,6 +180,7 @@ def responder_falando(
     locutor.terminar()
 
     tempos = locutor.tempos
+    _observar_voz(conversa, voz, tempos, bool(getattr(voz, "aviso", "")))
     for erro in dict.fromkeys(tempos.erros):
         escrever(f"[erro na voz] {erro}")
     for aviso in audio.avisos_de_saida():
@@ -174,15 +188,56 @@ def responder_falando(
     if getattr(voz, "aviso", ""):
         escrever(f"[voz reserva] {voz.aviso}")
         voz.aviso = ""
+    for aviso in conversa.avisos_do_cerebro():
+        escrever(f"[cérebro] {aviso}")
     for aviso in conversa.avisos_pendentes():
         escrever(f"[memória] {aviso}")
     if medir:
         escrever(
-            f"  [transcrição {tempos.transcricao:.2f} s, "
+            f"  [{conversa.origem}: transcrição {tempos.transcricao:.2f} s, "
             f"primeira frase {tempos.primeira_frase:.2f} s, "
             f"começou a falar em {tempos.comeco_da_voz:.2f} s, "
-            f"lembrou {len(conversa.lembrancas)} fatos e {len(conversa.trechos)} trechos]"
+            f"lembrou {len(conversa.lembrancas)} fatos, {len(conversa.trechos)} trechos "
+            f"e {len(conversa.trechos_de_notas)} notas]"
         )
+    return tempos
+
+
+def _observar_voz(conversa: Conversa, voz, tempos: Tempos, usou_reserva: bool) -> None:
+    """Tempos do ouvido e da voz e falhas da voz, para a auto-melhoria (sem texto)."""
+    observador = getattr(conversa, "observador", None)
+    if observador is None:
+        return
+    interacao = conversa.ultima_interacao
+    motor = getattr(voz, "motor", "") or conversa.config.voz.motor
+    if tempos.transcricao:
+        observador.registrar(
+            "stt",
+            "transcricao",
+            conversa.config.ouvido.motor,
+            interacao,
+            int(tempos.transcricao * 1000),
+        )
+    if tempos.comeco_da_voz and tempos.primeira_frase:
+        espera = max(0.0, tempos.comeco_da_voz - tempos.primeira_frase)
+        observador.registrar("tts", "voz", motor, interacao, int(espera * 1000))
+    for _ in dict.fromkeys(tempos.erros):
+        observador.registrar("tts", "erro_provedor", motor, interacao, status="sem voz")
+    if usou_reserva:
+        observador.registrar("tts", "erro_provedor", motor, interacao, status="reserva usada")
+
+
+def trocar_de_voz(conversa: Conversa, voz, tocar, texto, pedido, escrever) -> Tempos:
+    resposta, wav = atender_pedido(voz, pedido, conversa.config.voz.motor)
+    escrever(f"{conversa.config.assistente.nome}: {resposta}")
+    conversa.historico.registrar("usuario", texto)
+    conversa.historico.registrar("assistente", resposta, modelo="comando de voz")
+    tempos = Tempos()
+    try:
+        tocar(wav if wav is not None else voz.sintetizar(resposta))
+    except Exception as erro:  # a conversa segue mesmo sem voz
+        tempos.erros.append(str(erro))
+        escrever(f"[erro na voz] {erro}")
     return tempos
 
 
@@ -203,7 +258,7 @@ def conversar_por_voz(
     saida = saida or sys.stdout
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
-    voz = com_pronuncias_aprendidas(voz or criar_voz(config), conversa.memoria)
+    voz = com_pronuncias_aprendidas(voz or VozTrocavel(config), conversa.memoria)
     microfone = audio.dispositivo(config.audio.microfone)
     gravar = gravar or (lambda entrada: audio.gravar_ate_enter(entrada, microfone))
     tocar = tocar or audio.tocador(config.audio)
@@ -225,10 +280,18 @@ def conversar_por_voz(
             f"Conversa por voz com {nome}. Aperte Enter, fale e aperte Enter de novo. "
             "Também dá para digitar. 'sair' encerra."
         )
+    for aviso in conversa.avisos_pendentes():
+        escrever(f"[memória] {aviso}")
+    agendador = iniciar_melhorias(conversa, escrever)
 
     while True:
         try:
-            comando = entrada("\nVocê: " if so_teclado else "\n[Enter para falar] ").strip()
+            comando = ler_entrada(
+                entrada,
+                "\nVocê: " if so_teclado else "\n[Enter para falar] ",
+                agendador,
+                lambda p: escrever(p, fim=""),
+            ).strip()
         except (EOFError, KeyboardInterrupt):
             escrever()
             break
@@ -270,5 +333,7 @@ def conversar_por_voz(
         escrever("(guardando o que aprendi nesta conversa...)")
     for aviso in conversa.encerrar():
         escrever(f"[memória] {aviso}")
+    if agendador is not None:
+        agendador.parar()
     escrever(f"Até mais! (conversa salva em {conversa.historico.arquivo})")
     return 0

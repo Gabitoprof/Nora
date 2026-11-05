@@ -48,7 +48,23 @@ def _instalado(modelo: str, instalados: list[str]) -> bool:
 
 def verificar(config: Config) -> list[str]:
     persona = config.persona
-    chave = "definida" if config.tem_chave_anthropic else "não definida (só precisa na v0.3.0)"
+    chave = (
+        "definida"
+        if config.tem_chave_anthropic
+        else "não definida (sem ela, o Claude não entra: só o cérebro local)"
+    )
+    from nora.cerebro_nuvem import problema_do_pacote
+    from nora.cerebro_openai import problema_do_pacote as problema_openai
+
+    sdk = problema_do_pacote() or "instalado"
+    sdk_openai = problema_openai() or "instalado"
+    chave_openai = (
+        "definida"
+        if config.chave_openai
+        else "não definida (sem ela, as difíceis vão direto para o Claude)"
+    )
+    nuvem, gpt = config.modelo_nuvem, config.modelo_openai
+    primeira = "ChatGPT" if config.roteador.complexas == "openai" else "Claude"
     modelo = config.modelo_local.modelo
     linhas = [
         "Config:",
@@ -60,12 +76,32 @@ def verificar(config: Config) -> list[str]:
         f"  voz         {descrever_voz(config)}",
         f"  modelo      {config.modelo_local.provedor} {modelo}"
         f" (modo pensando {'ligado' if config.modelo_local.pensar else 'desligado'})",
-        f"  nuvem       {config.modelo_nuvem.rapido} / {config.modelo_nuvem.pesado}",
+        f"  nuvem       rápido {nuvem.rapido} ({nuvem.esforco_rapido}), "
+        f"pesado {nuvem.pesado} ({nuvem.esforco_pesado})",
+        f"  ChatGPT     rápido {gpt.rapido} ({gpt.esforco_rapido}), "
+        f"pesado {gpt.pesado} ({gpt.esforco_pesado})",
+        f"  roteador    {config.roteador.modo}, difíceis primeiro no {primeira}"
+        f"{', o local passa as difíceis para a nuvem' if config.roteador.escalar else ''}",
         f"  dados       {config.pasta_dados}",
         "",
         "Ambiente:",
         f"  chave da API Anthropic  {chave}",
+        f"  pacote do Claude        {sdk}",
+        f"  chave da API OpenAI     {chave_openai}",
+        f"  pacote do ChatGPT       {sdk_openai}",
     ]
+    if config.tem_chave_anthropic and sdk == "instalado":
+        from nora.cerebro_nuvem import testar_conexao
+
+        falha = testar_conexao(config)
+        situacao = f"ok, chave aceita e {nuvem.pesado} disponível" if not falha else falha
+        linhas.append(f"  Claude                  {situacao}")
+    if config.chave_openai and sdk_openai == "instalado":
+        from nora.cerebro_openai import testar_conexao as testar_openai
+
+        falha = testar_openai(config)
+        situacao = f"ok, chave aceita e {gpt.pesado} disponível" if not falha else falha
+        linhas.append(f"  ChatGPT                 {situacao}")
     instalados = modelos_ollama(config.ollama_host)
     if instalados is None:
         linhas.append(f"  Ollama                  não respondeu em {config.ollama_host}")
@@ -82,6 +118,28 @@ def verificar(config: Config) -> list[str]:
         else:
             estado = f"falta o modelo: ollama pull {embeddings}"
         linhas.append(f"  {'Memória':<24}{estado}")
+    melhoria = config.auto_melhoria
+    linhas.append(
+        f"  {'Auto-melhoria':<24}"
+        + (
+            f"ligada: relatório às {melhoria.hora_relatorio} em "
+            f"{config.pasta_dados / 'auto_melhoria'} (nora melhorias)"
+            if melhoria.ativa
+            else "desligada ([auto_melhoria] ativa = false)"
+        )
+    )
+    if config.notas.pasta is None:
+        linhas.append(f"  {'Notas (Obsidian)':<24}sem pasta ([notas] pasta no config/local.toml)")
+    elif not config.notas.pasta.is_dir():
+        linhas.append(f"  {'Notas (Obsidian)':<24}a pasta não existe: {config.notas.pasta}")
+    else:
+        from nora.notas import abrir_notas
+
+        indice = abrir_notas(config)
+        total = indice.contar_notas()
+        indice.fechar()
+        situacao = f"{total} notas no índice" if total else "ainda sem índice: nora notas ler"
+        linhas.append(f"  {'Notas (Obsidian)':<24}ok, {config.notas.pasta} ({situacao})")
     servicos = [("whisper-server", config.ouvido.url)]
     for motor, papel in [(config.voz.motor, ""), (config.voz.reserva, " (reserva)")]:
         if motor == "kokoro":
@@ -367,6 +425,160 @@ def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> i
     return 0
 
 
+def comando_melhorias(config: Config, args) -> int:
+    from datetime import date, datetime
+
+    from nora.melhorias import abrir_arquivo, abrir_melhorias
+
+    melhorias = abrir_melhorias(config)
+    if melhorias is None:
+        print("A auto-melhoria está desligada ([auto_melhoria] ativa = false).", file=sys.stderr)
+        return 1
+    try:
+        if args.acao == "relatorio":
+            caminho = melhorias.relatorio(args.data)
+            if caminho is None or not caminho.is_file():
+                print(
+                    "Ainda não há relatório. Ele sai uma vez por dia "
+                    "(ou: nora melhorias fechar-dia)."
+                )
+                return 0
+            if args.abrir and abrir_arquivo(caminho):
+                print(f"Abrindo {caminho}")
+            else:
+                print(caminho.read_text(encoding="utf-8"))
+        elif args.acao == "listar":
+            status = () if args.todas else ("proposta",)
+            propostas = melhorias.propostas(status)
+            if not propostas:
+                print("Nenhuma proposta esperando decisão.")
+            for p in propostas:
+                d = p.dados
+                print(
+                    f"  nº {p.id} [{p.status}] {p.titulo} (prioridade {d['prioridade']}, "
+                    f"confiança {d['confianca']})"
+                )
+        elif args.acao in ("aprovar", "recusar", "adiar"):
+            feita = melhorias.decidir(
+                args.id, args.acao, "usuário (terminal)", args.motivo, getattr(args, "dias", 7)
+            )
+            if feita is None:
+                print(f"A melhoria nº {args.id} não existe ou já foi decidida.", file=sys.stderr)
+                return 1
+            print(f"Melhoria nº {args.id}: {feita.status}.")
+            if args.acao == "aprovar":
+                tarefa = melhorias.pasta / "tarefas" / f"melhoria-{args.id}.md"
+                print(f"Tarefa para desenvolver: {tarefa}. Nada foi mudado no código.")
+        elif args.acao == "estado":
+            feita = melhorias.avancar(
+                args.id, args.estado, "usuário (terminal)", args.autorizo_publicar
+            )
+            if feita is None:
+                print(
+                    "Não dá para ir para esse estado agora. A ordem é: aprovada → preparacao → "
+                    "em_teste → pronta_para_revisao → publicada (publicar pede "
+                    "--autorizo-publicar).",
+                    file=sys.stderr,
+                )
+                return 1
+            print(f"Melhoria nº {args.id}: {feita.status}.")
+        else:  # fechar-dia
+            from nora.memoria import abrir_memoria
+
+            memoria = abrir_memoria(config)
+            pendentes = memoria.pendentes() if memoria is not None else []
+            fechamento = melhorias.fechar(date.today(), datetime.now(), pendentes)
+            print(f"Relatório de hoje: {fechamento.resumo}. Em {fechamento.caminho}")
+    finally:
+        melhorias.fechar_banco()
+    return 0
+
+
+def comando_pendencias(config: Config, args) -> int:
+    from nora.memoria import abrir_memoria
+
+    memoria = abrir_memoria(config)
+    if memoria is None:
+        print("A memória está desligada ([memoria] ativa = false).", file=sys.stderr)
+        return 1
+    try:
+        if args.cancelar:
+            if not memoria.cancelar_pendencia(args.cancelar):
+                print(f"Não há pendência nº {args.cancelar} para cancelar.", file=sys.stderr)
+                return 1
+            print(f"Cancelada (nº {args.cancelar}): não vou retomar essa resposta.")
+            return 0
+        pendentes = memoria.pendentes()
+        if not pendentes:
+            print("Nenhuma resposta pela metade.")
+            return 0
+        print(f"{len(pendentes)} resposta(s) pela metade (a primeira é a que ela retoma):")
+        for p in pendentes:
+            parcial = f' — saiu: "{" ".join(p.parcial.split())[:60]}"' if p.parcial else ""
+            print(
+                f"  nº {p.id} [{p.criada[:16].replace('T', ' ')}] {p.motivo}, {p.provedor or '?'}"
+                f", {p.tentativas} tentativa(s): {p.pergunta[:80]}{parcial}"
+            )
+        print('Para retomar, diga ou digite: "termina a resposta que ficou pela metade".')
+    finally:
+        memoria.fechar()
+    return 0
+
+
+def comando_notas(config: Config, args) -> int:
+    from nora.notas import abrir_notas
+
+    indice = abrir_notas(config)
+    if indice is None:
+        print(
+            "Sem pasta de notas. No config/local.toml, ponha o caminho do vault do Obsidian:\n"
+            "  [notas]\n"
+            '  pasta = "C:/Users/voce/Documents/Obsidian"',
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        if args.acao == "ler":
+            print(f"Lendo as notas de {config.notas.pasta}...")
+
+            def andamento(lidas: int, total: int) -> None:
+                if lidas == total or lidas % 20 == 0:
+                    print(f"  {lidas}/{total} notas")
+
+            try:
+                resumo = indice.atualizar(andamento)
+            except FileNotFoundError as erro:
+                print(f"[erro] {erro}", file=sys.stderr)
+                return 1
+            except Exception as erro:
+                print(
+                    f"[erro] {erro} (o Ollama está aberto? ollama pull "
+                    f"{config.memoria.modelo_embeddings})",
+                    file=sys.stderr,
+                )
+                return 1
+            print(
+                f"Pronto: {resumo.lidas} nota(s) lida(s), {resumo.removidas} esquecida(s). "
+                f"Índice: {resumo.notas} notas, {resumo.trechos} trechos, em {indice.caminho}."
+            )
+        elif args.acao == "buscar":
+            achados = indice.buscar(" ".join(args.texto), k=args.quantos)
+            if not achados:
+                print("Nada encontrado (rode antes: nora notas ler).")
+            for trecho in achados:
+                print(f"[{trecho.similaridade:.2f}] {trecho.titulo}  ({trecho.caminho})")
+                print(f"    {' '.join(trecho.texto.split())[:300]}")
+        else:
+            print(
+                f"Vault: {config.notas.pasta}\n"
+                f"Índice: {indice.contar_notas()} notas, {indice.contar_trechos()} trechos, "
+                f"em {indice.caminho}"
+            )
+    finally:
+        indice.fechar()
+    return 0
+
+
 def comando_memoria(config: Config, args) -> int:
     from nora.memoria import Memoria, abrir_memoria
     from nora.servico import ServicoIndisponivel
@@ -414,6 +626,27 @@ def comando_memoria(config: Config, args) -> int:
                 print(f"Não existe fato nº {args.id}.", file=sys.stderr)
                 return 1
             print(f"Esquecido (nº {args.id}).")
+        elif args.acao == "apagar":
+            from nora.historico import apagar_do_historico
+
+            texto = " ".join(args.texto)
+            resultado = memoria.apagar_de_vez(texto, confirmar=args.confirmar)
+            if not resultado.fatos and not resultado.trocas:
+                print(f'Nada parecido com "{texto}" na memória.')
+                return 0
+            print(f"{'Apagado' if args.confirmar else 'Seria apagado'}:")
+            for fato in resultado.fatos:
+                print(f"  fato nº {fato.id}: {fato.texto}")
+            for troca in resultado.trocas:
+                print(f"  conversa de {troca.quando[:10]}: {troca.pergunta[:80]}")
+            if not args.confirmar:
+                print("Nada foi apagado ainda. Para apagar de vez, rode de novo com --confirmar.")
+                return 0
+            falas = apagar_do_historico(config.pasta_dados, resultado.textos)
+            print(
+                f"Também tirei {falas} fala(s) do histórico (data/historico). Notas do Obsidian "
+                "não são mexidas: edite a nota se o assunto estiver lá."
+            )
         elif args.acao == "importar":
             from nora.importar import importar_historico
 
@@ -535,6 +768,41 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="salva cada fala ouvida em data/falas (para diagnóstico)",
     )
+    melhorias_cmd = comandos.add_parser(
+        "melhorias", help="propostas de melhoria do relatório diário (auto-melhoria)"
+    )
+    acoes_melhorias = melhorias_cmd.add_subparsers(dest="acao", required=True)
+    rel_cmd = acoes_melhorias.add_parser("relatorio", help="mostra o relatório mais recente")
+    rel_cmd.add_argument("--data", default="", help="AAAA-MM-DD (padrão: o mais recente)")
+    rel_cmd.add_argument("--abrir", action="store_true", help="abre no programa padrão do .md")
+    lst_cmd = acoes_melhorias.add_parser("listar", help="propostas esperando decisão")
+    lst_cmd.add_argument("--todas", action="store_true", help="inclui as já decididas")
+    for nome, ajuda in [
+        ("aprovar", "aprova para desenvolver (gera a tarefa; não muda o código)"),
+        ("recusar", "recusa (só volta com evidência nova)"),
+        ("adiar", "adia (volta depois de alguns dias)"),
+    ]:
+        dec = acoes_melhorias.add_parser(nome, help=ajuda)
+        dec.add_argument("id", type=int)
+        dec.add_argument("--motivo", default="")
+        if nome == "adiar":
+            dec.add_argument("--dias", type=int, default=7)
+    est_cmd = acoes_melhorias.add_parser(
+        "estado", help="avança uma aprovada: preparacao, em_teste, pronta_para_revisao, publicada"
+    )
+    est_cmd.add_argument("id", type=int)
+    est_cmd.add_argument("estado")
+    est_cmd.add_argument("--autorizo-publicar", action="store_true")
+    acoes_melhorias.add_parser("fechar-dia", help="faz o relatório de hoje agora")
+    pend_cmd = comandos.add_parser("pendencias", help="respostas que ficaram pela metade")
+    pend_cmd.add_argument("--cancelar", type=int, default=0, metavar="ID", help="não retomar esta")
+    notas_cmd = comandos.add_parser("notas", help="notas do Obsidian que a Nora lê")
+    acoes_notas = notas_cmd.add_subparsers(dest="acao", required=True)
+    acoes_notas.add_parser("ler", help="lê as notas novas ou alteradas do vault")
+    buscar_notas = acoes_notas.add_parser("buscar", help="mostra os trechos parecidos com o texto")
+    buscar_notas.add_argument("texto", nargs="+")
+    buscar_notas.add_argument("--quantos", type=int, default=5)
+    acoes_notas.add_parser("status", help="quantas notas estão no índice")
     memoria_cmd = comandos.add_parser("memoria", help="ver e editar o que a Nora lembra de você")
     acoes = memoria_cmd.add_subparsers(dest="acao", required=True)
     listar_cmd = acoes.add_parser("listar", help="os fatos guardados, do mais recente")
@@ -550,6 +818,11 @@ def main(argv: list[str] | None = None) -> int:
     lembrar_cmd.add_argument("--area", default="", help="área do fato (ex.: trabalho)")
     esquecer_cmd = acoes.add_parser("esquecer", help="apagar um fato pelo número")
     esquecer_cmd.add_argument("id", type=int)
+    apagar_cmd = acoes.add_parser(
+        "apagar", help="apagar de vez um assunto: fatos, conversas guardadas e histórico"
+    )
+    apagar_cmd.add_argument("texto", nargs="+")
+    apagar_cmd.add_argument("--confirmar", action="store_true", help="apaga (sem isso, só mostra)")
     acoes.add_parser("importar", help="tirar fatos das conversas antigas (data/historico)")
     agenda_cmd = acoes.add_parser("agenda", help="os compromissos e datas anotados")
     agenda_cmd.add_argument("--dias", type=int, default=30, help="quantos dias à frente (30)")
@@ -654,6 +927,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.comando == "memoria":
         return comando_memoria(config, args)
+    if args.comando == "notas":
+        return comando_notas(config, args)
+    if args.comando == "pendencias":
+        return comando_pendencias(config, args)
+    if args.comando == "melhorias":
+        return comando_melhorias(config, args)
 
     if args.comando == "voz" and args.acao == "comparar":
         return comparar_realces(config, " ".join(args.frase), ouvir=args.ouvir)

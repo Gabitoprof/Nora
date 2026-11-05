@@ -18,10 +18,11 @@ from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import RAIZ, Config
 from nora.conversa import COMANDOS_SAIR, nova_conversa
 from nora.conversa_voz import responder_falando
+from nora.melhorias import iniciar as iniciar_melhorias
 from nora.ouvido import OuvidoWhisper
 from nora.servico import ServicoIndisponivel
 from nora.vad import DetectorDeFala, SileroVAD, baixar_modelo, em_quadros, falas
-from nora.voz import com_pronuncias_aprendidas, criar_voz
+from nora.voz import VozTrocavel, com_pronuncias_aprendidas
 
 MODELO_VAD = "models/silero_vad.onnx"
 
@@ -70,7 +71,7 @@ def conversar_maos_livres(
     saida = saida or sys.stdout
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)
-    voz = com_pronuncias_aprendidas(voz or criar_voz(config), conversa.memoria)
+    voz = com_pronuncias_aprendidas(voz or VozTrocavel(config), conversa.memoria)
     tocar = tocar or audio.tocador(config.audio)
     nome = config.assistente.nome
     palavra = config.assistente.palavra_de_ativacao
@@ -96,6 +97,7 @@ def conversar_maos_livres(
         escrever(f"\n[erro] {erro}")
 
     microfone = None
+    agendador = None
     try:
         if fontes is None:
             microfone = audio.Microfone(audio.dispositivo(config.audio.microfone)).__enter__()
@@ -110,6 +112,9 @@ def conversar_maos_livres(
 
         if teclado:
             escrever("Também dá para digitar: escreva e aperte Enter ('sair' encerra).")
+        for aviso in conversa.avisos_pendentes():
+            escrever(f"[memória] {aviso}")
+        agendador = iniciar_melhorias(conversa, escrever)
         digitados: queue.Queue[str | None] = queue.Queue()
         if teclado:
             threading.Thread(target=_ler_teclado, args=(entrada, digitados), daemon=True).start()
@@ -137,6 +142,8 @@ def conversar_maos_livres(
         numero = 0
         sair = False
         for fala in falas_detectadas:
+            if agendador is not None:
+                agendador.apresentar_pendentes()
             # O que foi digitado: não precisa do nome dela.
             while not digitados.empty():
                 linha = digitados.get_nowait()
@@ -184,6 +191,8 @@ def conversar_maos_livres(
         escrever(f"[erro] {erro}")
         return 1
     finally:
+        if agendador is not None:
+            agendador.parar()
         if microfone is not None:
             microfone.__exit__(None, None, None)
     if conversa.memoria is not None:

@@ -27,6 +27,39 @@ from nora.agenda import Evento, datas_no_texto, ocorrencia
 
 # Acima disso, dois fatos são considerados o mesmo; o mais novo substitui o antigo.
 MESMO_FATO = 0.9
+# Depois de um "esquece isso": um trecho de conversa tão parecido assim com o que foi esquecido
+# não volta nas buscas, e um fato tão parecido assim não volta pelo importar.
+TROCA_ESQUECIDA = 0.6
+FATO_ESQUECIDO = 0.85
+
+
+# Depois disso, uma resposta pendente deixa de ser retomada (não fica gastando API à toa).
+MAX_TENTATIVAS = 3
+
+
+@dataclass(frozen=True)
+class Pendente:
+    """Uma resposta que ficou pela metade (ou nem começou) e pode ser retomada."""
+
+    id: int
+    interacao: str
+    sessao: str
+    pergunta: str
+    parcial: str
+    motivo: str  # stream_interrompido, sem_resposta, erro_provedor, cancelada, encerramento
+    provedor: str
+    criada: str
+    status: str  # aberta, pendente, em_recuperacao, resolvida, cancelada
+    tentativas: int
+
+
+@dataclass(frozen=True)
+class Apagamento:
+    """O que "apagar de vez" tira (ou tiraria, na prévia) da memória."""
+
+    fatos: list
+    trocas: list
+    textos: set[str]  # perguntas e respostas apagadas, para tirar também do histórico
 
 
 @dataclass(frozen=True)
@@ -62,6 +95,11 @@ def _cosseno(a: list[float], b: list[float]) -> float:
     return sum(x * y for x, y in zip(a, b, strict=True)) / norma if norma else 0.0
 
 
+def _contem(texto: str | None, trecho: str | None) -> int:
+    """Se o texto tem o trecho, sem olhar maiúsculas (inclusive acentuadas) e sem curingas."""
+    return int(bool(texto) and (trecho or "").casefold() in texto.casefold())
+
+
 def _agora() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
@@ -73,6 +111,9 @@ class Memoria:
         self.embeddings = embeddings
         self._trava = threading.RLock()
         self._db = sqlite3.connect(str(caminho), check_same_thread=False)
+        # Busca por trecho: o LIKE do SQLite só ignora maiúsculas sem acento ("Á" ≠ "á") e trata
+        # "_" e "%" como curingas. contem() compara em Python, com casefold e sem curingas.
+        self._db.create_function("contem", 2, _contem, deterministic=True)
         self._db.executescript(
             """
             CREATE TABLE IF NOT EXISTS meta (chave TEXT PRIMARY KEY, valor TEXT);
@@ -111,6 +152,26 @@ class Memoria:
                 id INTEGER PRIMARY KEY,
                 texto TEXT NOT NULL UNIQUE,
                 criado TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS respostas_pendentes (
+                id INTEGER PRIMARY KEY,
+                interacao TEXT NOT NULL UNIQUE,
+                sessao TEXT NOT NULL,
+                pergunta TEXT NOT NULL,
+                parcial TEXT NOT NULL DEFAULT '',
+                motivo TEXT NOT NULL DEFAULT '',
+                provedor TEXT NOT NULL DEFAULT '',
+                criada TEXT NOT NULL,
+                atualizada TEXT NOT NULL,
+                status TEXT NOT NULL,
+                tentativas INTEGER NOT NULL DEFAULT 0,
+                resultado TEXT NOT NULL DEFAULT ''
+            );
+            CREATE TABLE IF NOT EXISTS esquecidos (
+                id INTEGER PRIMARY KEY,
+                texto TEXT NOT NULL,
+                vetor BLOB NOT NULL,
+                quando TEXT NOT NULL
             );
             """
         )
@@ -234,6 +295,11 @@ class Memoria:
         vetor = self.embeddings.vetor(texto)
         area = self.normalizar_area(area)
         with self._trava, self._db:
+            esquecidos = self._esquecidos_parecidos(vetor, FATO_ESQUECIDO)
+            if esquecidos and origem.startswith("historico"):
+                return 0, False  # a pessoa pediu para esquecer: conversa antiga não traz de volta
+            for esquecido_id in esquecidos:  # contou de novo numa conversa nova: volta a valer
+                self._db.execute("DELETE FROM esquecidos WHERE id = ?", (esquecido_id,))
             self._garantir_indice(len(vetor))
             agora = _agora()
             parecido = self._parecidos(vetor, 1)
@@ -285,8 +351,8 @@ class Memoria:
     def _filtro(contendo: str, area: str) -> tuple[str, list]:
         condicoes, parametros = [], []
         if contendo:
-            condicoes.append("texto LIKE ?")
-            parametros.append(f"%{contendo}%")
+            condicoes.append("contem(texto, ?)")
+            parametros.append(contendo)
         if area:
             condicoes.append("area = ?")
             parametros.append(area)
@@ -309,6 +375,176 @@ class Memoria:
         filtro, parametros = self._filtro(contendo, self.normalizar_area(area))
         with self._trava:
             return self._db.execute("SELECT COUNT(*) FROM fatos" + filtro, parametros).fetchone()[0]
+
+    def esquecer_parecido(self, texto: str, minimo: float = 0.75) -> list[Fato]:
+        """Deixa de usar o que foi pedido para esquecer: apaga o fato mais parecido com o texto
+        (e outros quase iguais a ele) e anota o pedido, para que trechos de conversas antigas
+        sobre isso não voltem nas buscas nem pelo importar. As conversas guardadas continuam no
+        histórico; para tirar de lá também, use apagar_de_vez. Devolve os fatos apagados."""
+        apagados = self._fatos_para_esquecer(texto, minimo)
+        for fato in apagados:
+            self.esquecer(fato.id)
+        for item in [texto, *(f.texto for f in apagados)]:
+            self._anotar_esquecido(item)
+        self._apagar_pendencias_sobre(texto)
+        return apagados
+
+    def _fatos_para_esquecer(self, texto: str, minimo: float) -> list[Fato]:
+        achados = self.buscar(texto, k=3, minimo=minimo)
+        if not achados:
+            return []
+        return [achados[0]] + [f for f in achados[1:] if f.similaridade >= MESMO_FATO]
+
+    def apagar_de_vez(
+        self, texto: str, confirmar: bool = False, minimo: float = 0.75
+    ) -> Apagamento:
+        """Tira da memória os fatos e os trechos de conversa sobre o texto. Sem `confirmar`, só
+        mostra o que sairia. O histórico em arquivo é limpo à parte, com os `textos` devolvidos
+        (historico.apagar_do_historico)."""
+        fatos = self._fatos_para_esquecer(texto, minimo)
+        vetor = self.embeddings.vetor(texto)
+        with self._trava:
+            trocas = [
+                Troca(troca_id, quando, sessao, pergunta, resposta, similaridade)
+                for troca_id, quando, sessao, pergunta, resposta, dados in self._db.execute(
+                    "SELECT id, quando, sessao, pergunta, resposta, vetor FROM trocas"
+                )
+                if len(dados) // 4 == len(vetor)
+                and (similaridade := _cosseno(vetor, _desempacotar(dados))) >= TROCA_ESQUECIDA
+            ]
+        textos = {t.pergunta for t in trocas} | {t.resposta for t in trocas}
+        if confirmar:
+            for fato in fatos:
+                self.esquecer(fato.id)
+            with self._trava, self._db:
+                for troca in trocas:
+                    self._db.execute("DELETE FROM trocas WHERE id = ?", (troca.id,))
+                    if self.vetorial and self.meta("dimensao"):
+                        self._db.execute("DELETE FROM vec_trocas WHERE rowid = ?", (troca.id,))
+            self._anotar_esquecido(texto)
+            self._apagar_pendencias_sobre(texto)
+        return Apagamento(fatos, trocas, textos)
+
+    # --- respostas pendentes (pela metade, canceladas, ou que caíram com o programa) ----------
+
+    _CAMPOS_PENDENTE = (
+        "id, interacao, sessao, pergunta, parcial, motivo, provedor, criada, status, tentativas"
+    )
+
+    def abrir_resposta(self, interacao: str, sessao: str, pergunta: str) -> None:
+        """Marca que uma resposta começou. Se o programa cair antes de terminar, ela vira pendência
+        na próxima vez (recuperar_abertas). Terminada, some (concluir_resposta)."""
+        agora = _agora()
+        with self._trava, self._db:
+            self._db.execute(
+                "INSERT OR IGNORE INTO respostas_pendentes"
+                "(interacao, sessao, pergunta, criada, atualizada, status) "
+                "VALUES (?, ?, ?, ?, ?, 'aberta')",
+                (interacao, sessao, pergunta, agora, agora),
+            )
+
+    def concluir_resposta(self, interacao: str) -> None:
+        with self._trava, self._db:
+            self._db.execute(
+                "DELETE FROM respostas_pendentes WHERE interacao = ? AND status = 'aberta'",
+                (interacao,),
+            )
+
+    def marcar_pendente(
+        self, interacao: str, sessao: str, pergunta: str, parcial: str, motivo: str, provedor: str
+    ) -> None:
+        """A resposta não terminou: guarda a pergunta e o pedaço que saiu (nunca como fato)."""
+        agora = _agora()
+        with self._trava, self._db:
+            self._db.execute(
+                "INSERT INTO respostas_pendentes(interacao, sessao, pergunta, parcial, motivo, "
+                "provedor, criada, atualizada, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente') "
+                "ON CONFLICT(interacao) DO UPDATE SET parcial = excluded.parcial, "
+                "motivo = excluded.motivo, provedor = excluded.provedor, "
+                "atualizada = excluded.atualizada, status = 'pendente'",
+                (interacao, sessao, pergunta, parcial, motivo, provedor, agora, agora),
+            )
+
+    def recuperar_abertas(self, exceto_sessao: str) -> int:
+        """Respostas abertas de outras sessões: o programa caiu no meio. Viram pendências."""
+        with self._trava, self._db:
+            return self._db.execute(
+                "UPDATE respostas_pendentes SET status = 'pendente', motivo = 'encerramento', "
+                "atualizada = ? WHERE status = 'aberta' AND sessao != ?",
+                (_agora(), exceto_sessao),
+            ).rowcount
+
+    def pendentes(self) -> list[Pendente]:
+        """As que ainda podem ser retomadas, da mais nova para a mais antiga."""
+        with self._trava:
+            linhas = self._db.execute(
+                f"SELECT {self._CAMPOS_PENDENTE} FROM respostas_pendentes "
+                "WHERE status IN ('pendente', 'em_recuperacao') ORDER BY id DESC"
+            ).fetchall()
+        return [Pendente(*linha) for linha in linhas]
+
+    def tentar_pendencia(self, pendente_id: int) -> int:
+        """Conta uma nova tentativa; depois de MAX_TENTATIVAS ela é cancelada. Devolve o total."""
+        with self._trava, self._db:
+            self._db.execute(
+                "UPDATE respostas_pendentes SET tentativas = tentativas + 1, "
+                "status = CASE WHEN tentativas + 1 >= ? THEN 'cancelada' ELSE 'em_recuperacao' END,"
+                " atualizada = ? WHERE id = ?",
+                (MAX_TENTATIVAS, _agora(), pendente_id),
+            )
+            linha = self._db.execute(
+                "SELECT tentativas FROM respostas_pendentes WHERE id = ?", (pendente_id,)
+            ).fetchone()
+        return linha[0] if linha else 0
+
+    def resolver_pendencia(self, pendente_id: int, resultado: str = "") -> None:
+        with self._trava, self._db:
+            self._db.execute(
+                "UPDATE respostas_pendentes SET status = 'resolvida', resultado = ?, "
+                "atualizada = ? WHERE id = ?",
+                (resultado, _agora(), pendente_id),
+            )
+
+    def cancelar_pendencia(self, pendente_id: int) -> bool:
+        with self._trava, self._db:
+            return (
+                self._db.execute(
+                    "UPDATE respostas_pendentes SET status = 'cancelada', atualizada = ? "
+                    "WHERE id = ? AND status IN ('pendente', 'em_recuperacao')",
+                    (_agora(), pendente_id),
+                ).rowcount
+                > 0
+            )
+
+    def _apagar_pendencias_sobre(self, texto: str) -> None:
+        """Esquecer ou apagar um assunto tira também as pendências sobre ele."""
+        vetor = self.embeddings.vetor(texto)
+        with self._trava:
+            linhas = self._db.execute("SELECT id, pergunta FROM respostas_pendentes").fetchall()
+        apagar = [
+            pendente_id
+            for pendente_id, pergunta in linhas
+            if _cosseno(vetor, self.embeddings.vetor(pergunta)) >= TROCA_ESQUECIDA
+        ]
+        with self._trava, self._db:
+            for pendente_id in apagar:
+                self._db.execute("DELETE FROM respostas_pendentes WHERE id = ?", (pendente_id,))
+
+    def _anotar_esquecido(self, texto: str) -> None:
+        vetor = self.embeddings.vetor(texto)
+        with self._trava, self._db:
+            self._db.execute(
+                "INSERT INTO esquecidos(texto, vetor, quando) VALUES (?, ?, ?)",
+                (texto, _empacotar(vetor), _agora()),
+            )
+
+    def _esquecidos_parecidos(self, vetor: list[float], minimo: float) -> list[int]:
+        """Os pedidos de esquecer parecidos com o vetor (ids)."""
+        return [
+            esquecido_id
+            for esquecido_id, dados in self._db.execute("SELECT id, vetor FROM esquecidos")
+            if len(dados) // 4 == len(vetor) and _cosseno(vetor, _desempacotar(dados)) >= minimo
+        ]
 
     def esquecer(self, fato_id: int) -> bool:
         with self._trava, self._db:
@@ -400,8 +636,8 @@ class Memoria:
         with self._trava:
             linhas = self._db.execute(
                 "SELECT id, data, anual, texto, area, fato_id FROM agenda "
-                "WHERE texto LIKE ? ORDER BY data",
-                (f"%{trecho}%",),
+                "WHERE contem(texto, ?) ORDER BY data",
+                (trecho,),
             ).fetchall()
         return self._eventos(linhas)
 
@@ -499,16 +735,27 @@ class Memoria:
         vetor = self.embeddings.vetor(texto)
         with self._trava:
             achados = self._parecidos(vetor, k * 4 + 10, "trocas")
+            esquecidos = [
+                _desempacotar(dados)
+                for (dados,) in self._db.execute("SELECT vetor FROM esquecidos")
+            ]
             trocas = []
             for troca_id, similaridade in achados:
                 if similaridade < minimo:
                     continue
                 linha = self._db.execute(
-                    "SELECT id, quando, sessao, pergunta, resposta FROM trocas WHERE id = ?",
+                    "SELECT id, quando, sessao, pergunta, resposta, vetor FROM trocas WHERE id = ?",
                     (troca_id,),
                 ).fetchone()
-                if linha and linha[2] != exceto_sessao:
-                    trocas.append(Troca(*linha, similaridade=similaridade))
+                if not linha or linha[2] == exceto_sessao:
+                    continue
+                vetor_troca = _desempacotar(linha[5])
+                if any(  # a pessoa pediu para esquecer isso
+                    len(e) == len(vetor_troca) and _cosseno(e, vetor_troca) >= TROCA_ESQUECIDA
+                    for e in esquecidos
+                ):
+                    continue
+                trocas.append(Troca(*linha[:5], similaridade=similaridade))
                 if len(trocas) == k:
                     break
             return trocas

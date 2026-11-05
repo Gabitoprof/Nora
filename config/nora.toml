@@ -93,9 +93,38 @@ pensar = false
 
 [modelos.nuvem]
 provedor = "anthropic"
-# Conversa rápida e tarefas pesadas (usados a partir da v0.3.0).
+# Claude pela API (chave ANTHROPIC_API_KEY no .env; pip install -e ".[nuvem]").
+# "rapido": conversa quando a nuvem responde tudo (modo nuvem, modo jogo, Ollama fora do ar).
+# "pesado": as perguntas difíceis que o cérebro local passa adiante.
 rapido = "claude-haiku-5-5"
 pesado = "claude-sonnet-5-5"
+# Quanto o modelo pensa antes de responder: low, medium, high, xhigh, max.
+# Mais alto = respostas melhores, mas mais lentas e mais caras.
+esforco_rapido = "low"
+esforco_pesado = "medium"
+
+[modelos.openai]
+# ChatGPT pela API da OpenAI (chave OPENAI_API_KEY no .env; pip install -e ".[nuvem]").
+rapido = "gpt-5.5"
+pesado = "gpt-5.5"
+# Quanto pensa antes de responder: none, minimal, low, medium, high, xhigh, max.
+esforco_rapido = "low"
+esforco_pesado = "medium"
+
+[roteador]
+# Quem responde: "automatico" (o local conversa e passa as perguntas difíceis para o Claude),
+# "local" (só o Ollama) ou "nuvem" (só o Claude). Dá para trocar falando: "use o Claude",
+# "use o cérebro local", "modo automático", "modo jogo".
+modo = "automatico"
+# No automático, o cérebro local pode passar adiante as perguntas que acha difíceis demais.
+escalar = true
+# Triagem: perguntas com cara de pesadas (código, contas, análises, planos, textos para escrever,
+# perguntas longas) vão direto para o Claude, sem depender do local se julgar. E, se o local
+# respondeu e você reclamar ("tá errado", "explica melhor"), a pergunta ganha uma segunda chance.
+triagem = true
+# Quem responde as perguntas complexas: "openai" (ChatGPT) ou "anthropic" (Claude). Se ela não
+# responder (erro, sem chave, recusa), a outra nuvem responde; se as duas falharem, o local.
+complexas = "openai"
 
 [escuta]
 # Modo mãos livres ("nora ouvir"): detecção de fala (Silero VAD) e palavra de ativação.
@@ -152,6 +181,42 @@ trocas_por_pergunta = 3
 # ela lê o que está marcado para os próximos N dias (0 = não usar) e para o dia de que a pergunta
 # fala ("amanhã", "sexta", "dia 21", "semana que vem", "em dezembro").
 agenda_dias = 7
+
+[notas]
+# Notas do Obsidian (v0.3.0): a Nora lê o seu vault e usa os trechos parecidos com a pergunta
+# ("o que eu anotei sobre a prova?"). Só lê, nunca altera. Ponha o caminho do vault no
+# config/local.toml (ex.: pasta = "C:/Users/voce/Documents/Obsidian"); vazio = sem notas.
+# Usa o mesmo modelo de embeddings da memória (bge-m3). O índice fica em <dados>/notas.db.
+pasta = ""
+# Quantos trechos das notas ela lê antes de responder, e quão parecidos (0 a 1).
+trechos_por_pergunta = 3
+similaridade_minima = 0.5
+# Pastas do vault que ela não lê (além das ocultas, como .obsidian e .trash). Ex.: ["Diário"]
+ignorar = []
+# Ao abrir uma conversa, lê em segundo plano as notas novas ou alteradas.
+atualizar_ao_abrir = true
+
+[auto_melhoria]
+# A Nora observa como foi cada conversa (só tempos, falhas e categorias, sem o texto do que foi
+# dito) e, uma vez por dia, junta o que se repetiu num relatório de propostas de melhoria, em
+# <dados>/auto_melhoria. Ela só propõe: nada muda no código sem você aprovar (nora melhorias).
+ativa = true
+# Hora local do relatório do dia. Se a Nora estiver fechada nessa hora, ele sai na próxima vez.
+hora_relatorio = "20:00"
+# Quantas vezes algo precisa acontecer no dia para virar proposta (uma vez só não basta).
+min_ocorrencias = 3
+# Acima disso conta como lento: resposta (até o primeiro pedaço), ouvido e voz, em milissegundos.
+latencia_resposta_ms = 2500
+latencia_ouvido_ms = 1500
+latencia_voz_ms = 2000
+# Eventos mais velhos que isso são apagados.
+dias_de_eventos = 30
+# Notificação do Windows quando o relatório fica pronto (clicar abre o relatório).
+notificar = true
+# Como o relatório novo aparece, sem você digitar nada (nunca no meio de uma resposta ou do modo
+# jogo): "abrir" abre o .md no programa padrão (se não abrir, mostra o texto na conversa);
+# "terminal" mostra o texto inteiro na conversa.
+apresentar = "abrir"
 
 [caminhos]
 # Banco de memória, histórico e outros dados pessoais. Fora do Git.

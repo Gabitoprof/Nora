@@ -5,12 +5,50 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
-Versão em desenvolvimento: `0.3.0.dev0`.
+## [0.3.0] - 2026-11-05
+
+**Roteador de modelos.** A conversa do dia a dia continua no PC, e as perguntas difíceis vão para a nuvem e voltam com a mesma voz, a mesma persona e a mesma memória. Critério da etapa atingido nos testes automatizados: a pergunta difícil sobe para a API (ChatGPT, com o Claude de reserva) e a resposta volta falada pela voz da Nora. Junto vieram a emoção na voz, a troca de cérebro e de voz por comando, as notas do Obsidian, o esquecer e apagar de vez, as respostas pela metade recuperáveis e uma auto-melhoria supervisionada. Homologação no Windows com GPU AMD registrada em `docs/RELEASE_v0.3.0.md`.
 
 ### Adicionado
 
-- **Emoção na voz** (`[emocao]`): a Nora escolhe sozinha a emoção de cada frase (alegre, empolgada, carinhosa, calma, séria, triste, curiosa, sussurro, risada, suspiro) pelo contexto: o que você disse, o que ela lembra, a agenda e a hora. No ElevenLabs v3 vira audio tag (ela ri, suspira, sussurra); no Flash, ajuste de tom por frase (estabilidade, estilo, velocidade); nas vozes locais e na reserva, a marca só é tirada. A tela, o histórico e a memória nunca mostram as marcas. `intensidade` (0 a 1) e `reacoes_por_resposta` controlam o exagero.
-- **Aprende com as suas reações:** a curadoria vê o tom da resposta anterior e, quando você reage ("kkkk", "calma, menos", se abre depois de um tom carinhoso), guarda como preferência de tom, sem você precisar pedir.
+- **Roteador de modelos** (`[roteador]`, guia em `docs/CEREBRO.md`):
+  - o cérebro local (Ollama) conversa; as perguntas difíceis vão para a nuvem, na ordem **ChatGPT → Claude → local** (`[roteador] complexas`), com uma frase de espera na mesma voz;
+  - a nuvem é acionada pela triagem (código, contas, análises, planos, textos, perguntas longas), pelo `{pensar}` do modelo local e pela segunda chance quando você reclama;
+  - pedido direto: "pensa com calma", "pergunta pro ChatGPT ...", "use o Claude para ...". O pedido é respondido por quem foi chamado e o modo não muda;
+  - comandos falados: "use o cérebro local", "use o ChatGPT", "use o Claude", "modo automático", "modo jogo" (libera a placa de vídeo e responde pela nuvem) e "sair do modo jogo" (pede confirmação);
+  - reservas nos dois sentidos, com avisos `[cérebro]`. Uma resposta que caiu no meio não é emendada com a de outro cérebro;
+  - `--medir` e o histórico mostram quem respondeu;
+  - config `[modelos.openai]`, `[modelos.nuvem]` e `[roteador]`; extra `.[nuvem]` (SDKs `openai` e `anthropic`); o `--verificar` confere chaves, pacotes e conexão.
+- **Emoção na voz** (`[emocao]`): a Nora escolhe o tom de cada frase pelo contexto. No ElevenLabs v3 vira audio tag (ela ri, suspira, sussurra); no Flash, ajuste de tom; nas vozes locais, a marca é tirada. A curadoria aprende com as suas reações.
+- **Trocar a voz falando:** "troque para a voz do Piper", "volta pro ElevenLabs", "qual voz você está usando?". Perguntas e comparações sobre vozes não trocam nada.
+- **Notas do Obsidian** (`[notas] pasta`, guia em `docs/OBSIDIAN.md`): leitura incremental do vault, só leitura, com os trechos parecidos usados na resposta e citados pelo nome da nota. Comandos `nora notas ler | buscar | status`.
+- **Esquecer e apagar de vez** (guia em `docs/MEMORIA.md`):
+  - "esquece que eu disse X" deixa de usar o assunto, inclusive os trechos de conversas antigas e o `importar`;
+  - "apaga de vez X" (pela conversa, com "sim") ou `nora memoria apagar "X" --confirmar` tira da memória e do histórico, mostrando antes o que vai sair.
+- **Respostas pela metade viram pendências:** resposta que caiu, ficou sem resposta, foi cancelada (Ctrl+C) ou foi cortada pelo programa fechar fica guardada, nunca como fato. "Termina a resposta que ficou pela metade" responde de novo, inteira e identificada; `nora pendencias` lista e cancela.
+- **Auto-melhoria supervisionada** (`[auto_melhoria]`, guia em `docs/AUTO_MELHORIA.md`):
+  - um observador anota, sem o texto das conversas, tentativas, falhas por categoria, tempos e reclamações;
+  - uma vez por dia, regras locais (sem internet e sem modelo) agrupam o que se repetiu em propostas com evidência, causa, solução, impacto, risco e testes;
+  - o relatório aparece sozinho, sem interromper uma resposta nem o modo jogo;
+  - você aprova, recusa ou adia (`nora melhorias`, ou pela voz com "sim"). Aprovar só gera a especificação; nada muda no código nem é publicado sem você.
+- Testes que mantêm o `.env.example` e o `docs/LICENCAS.md` em dia.
+
+### Corrigido
+
+- **Enter no `nora falar` com a auto-melhoria ligada:**
+  - um erro ao apresentar o relatório podia deixar para trás a thread que lê o teclado, e ela engolia o Enter seguinte (o de parar de gravar);
+  - o modo `abrir` podia tirar o foco do terminal (o editor do `.md` ficava com o teclado no Windows; no Linux, o `xdg-open` herdava o terminal).
+  
+  Agora o relatório abre minimizado e sem foco, nem o programa aberto nem a notificação usam o teclado da sessão, e o prompt reaparece depois de um relatório.
+- **Áudio que não carrega:** quando o pacote de áudio está instalado mas não carrega (o caso comum é o `.venv` recriado com outra versão do Python), a Nora mostra a causa real, em vez de "Falta a parte de áudio".
+- **Busca por trecho na agenda e no `listar --contendo`** ([#3](https://github.com/Gabitoprof/Nora/issues/3)): "Álgebra" agora acha "álgebra", e `_` e `%` não funcionam mais como curingas.
+- **Modo jogo:** se nenhuma nuvem responder, a Nora não volta a usar o cérebro local (que ocuparia a placa de vídeo); a pergunta vira pendência e, ao sair do modo jogo, ela oferece retomar.
+- **Comando com pedido:** "use o Claude para explicar fotossíntese" responde a pergunta, em vez de só trocar o modo; "como sair do modo jogo?" é respondida, não executada.
+- **Resposta que cai no meio:** nada de duas respostas emendadas. A resposta fica marcada no histórico (`"situacao"`) e não vai para a memória.
+- **Ctrl+C** no meio de uma resposta guarda a pendência na hora; **retomar** uma resposta conta como "ocupada" para o relatório diário.
+- **Relatório diário:** não traz o texto das perguntas (relatórios antigos são limpos); só conta como mostrado depois de aparecer; arquivo ausente ou ilegível continua pendente e não derruba a conversa.
+- **Apagar pela conversa:** a memória não regrava mais o fato apagado nem anota o próprio pedido de apagar.
+- No `nora ouvir`, o texto digitado é lido mesmo com o microfone captando sem parar.
 
 ## [0.2.0] - 2026-11-02
 

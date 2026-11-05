@@ -30,7 +30,9 @@ indicar outra.
 - Quando o fato tiver um dia (compromisso, prova, consulta, viagem, aniversário, data \
 comemorativa, acontecimento), ponha esse dia também em "data", no formato AAAA-MM-DD. Hoje é \
 {dia_da_semana}, {hoje}: calcule a partir daí "amanhã", "sexta", "dia 21", "semana que vem". \
-Escreva a data também no texto do fato (ex.: "{usuario} tem prova de cálculo em 21/11/2026").
+Escreva a data também no texto do fato (ex.: "{usuario} tem prova de cálculo em 21/11/2026"). \
+Não ponha "data" só porque a conversa aconteceu hoje: um pedido, uma ideia ou um plano sem dia \
+marcado ficam sem data.
 - Use "anual": true para o que se repete todo ano (aniversários, datas comemorativas).
 - Ignore cumprimentos, perguntas gerais, conhecimento sobre o mundo, humor passageiro sem \
 motivo e o que a assistente disse sobre si mesma.
@@ -55,9 +57,16 @@ brincadeira sobre estudos → "Brincadeiras sobre estudos funcionam com {usuario
 exagero ("calma", "menos") → "Seja menos expressiva."; se abriu depois de um tom carinhoso → \
 "Quando {usuario} estiver chateado, use um tom carinhoso." Só anote quando a reação for clara.
 
+Apagar e corrigir:
+- "esquecer": quando {usuario} pedir para apagar ou esquecer algo, ou corrigir uma informação \
+("não é cálculo 1, é outra matéria"; "apaga isso"; "esquece que eu disse X"), escreva o fato \
+ERRADO ou a apagar, do jeito que ele estaria anotado (ex.: "{usuario} tem prova de cálculo 1 na \
+PUCMG em 21/11/2026"). Numa correção, ponha também o fato certo em "fatos". Nunca anote o \
+próprio pedido de apagar como fato.
+
 Responda só com JSON no formato {{"fatos": [{{"texto": "...", "area": "...", \
 "data": "AAAA-MM-DD ou vazio", "anual": false}}], "pronuncias": [{{"palavra": "...", \
-"fala": "..."}}], "preferencias": ["..."]}}."""
+"fala": "..."}}], "preferencias": ["..."], "esquecer": ["..."]}}."""
 
 
 class FatoExtraido(NamedTuple):
@@ -73,6 +82,7 @@ class Curadoria(NamedTuple):
     fatos: list[FatoExtraido]
     pronuncias: list[tuple[str, str]]  # (palavra, como falar)
     preferencias: list[str]
+    esquecer: list[str] = []  # fatos que a pessoa pediu para apagar ou corrigiu
 
 
 def _dia(hoje: str) -> date:
@@ -149,7 +159,7 @@ def curar(
         dados = json.loads(conteudo)
         fatos = dados.get("fatos", [])
     except (json.JSONDecodeError, AttributeError):
-        return Curadoria([], [], [])
+        return Curadoria([], [], [], [])
     resultado = []
     for fato in fatos if isinstance(fatos, list) else []:
         if isinstance(fato, str):  # formato antigo, sem área nem data
@@ -179,4 +189,13 @@ def curar(
         if isinstance(dados.get("preferencias"), list)
         else []
     )
-    return Curadoria(resultado, pronuncias, preferencias)
+    esquecer = (
+        [
+            " ".join(item.split())
+            for item in (dados.get("esquecer") or [])
+            if isinstance(item, str) and item.strip()
+        ]
+        if isinstance(dados.get("esquecer"), list)
+        else []
+    )
+    return Curadoria(resultado, pronuncias, preferencias, esquecer)
