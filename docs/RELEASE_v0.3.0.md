@@ -1,6 +1,6 @@
 # Release v0.3.0 — Roteador de modelos
 
-Preparação da versão estável `v0.3.0` a partir do branch `Pull_code`, com Pull Request para `main`. **Merge, tag e publicação só com a autorização final do mantenedor.**
+Versão estável `v0.3.0`, preparada no branch `Pull_code` e integrada na `main` pelo PR [#5](https://github.com/Gabitoprof/Nora/pull/5), com a autorização do mantenedor em 05/11/2026.
 
 ## 1. Notas de lançamento
 
@@ -173,3 +173,18 @@ A CI não tem microfone, alto-falante, GPU, Ollama, whisper.cpp nem as chaves re
 | Commit | Execução | Resultado |
 |---|---|---|
 | `389e3cc` (correções do Enter e da busca) | [42087432996](https://github.com/Gabitoprof/Nora/actions/runs/42087432996) | Verde: Windows 3.11, Windows 3.13, Ubuntu 3.11, Ubuntu 3.13 (Ruff, pytest, `nora --verificar`) |
+| `df72267` (mensagem do áudio que não carrega) | [42110839485](https://github.com/Gabitoprof/Nora/actions/runs/42110839485) (push) e [42110850121](https://github.com/Gabitoprof/Nora/actions/runs/42110850121) (PR #5) | Verde nas quatro combinações |
+
+## 7. Homologação realizada e decisão de release
+
+Feita pelo mantenedor no Windows com GPU AMD em 05/11/2026:
+
+- `nora --verificar` com a versão `0.3.0`. Encontrado e resolvido: o `.venv` estava com outra versão do Python; ele foi recriado em 3.13 e a mensagem do áudio passou a mostrar a causa (`df72267`).
+- **Regressão do Enter, aprovada:** com a auto-melhoria ligada, o relatório abriu na entrada do `nora falar`, o primeiro Enter começou a gravar e o segundo parou. O prompt voltou depois do erro do whisper-server, que estava fechado.
+- **Conversa por voz completa** com o whisper-server aberto: gravação, transcrição, resposta falada e prompt de volta.
+
+**Decisão:** o mantenedor autorizou fechar a v0.3.0 com os demais itens da seção 3 (dez ciclos seguidos, relatório durante a espera, roteador, modo jogo, memória e notificação) para acompanhamento no uso. Eles continuam como pendências de validação.
+
+**Para a `v0.3.1`, observado na homologação:**
+- **Voz:** a primeira frase curta é sintetizada sozinha, e a troca para o pedido seguinte muda o tom e cria uma pausa no ElevenLabs v3. Plano: juntar a primeira frase curta com a seguinte e testar continuidade (`previous_text`/`next_text`) e semente fixa.
+- **Ouvido:** o Whisper `small` erra fala menos clara. Plano: `large-v3-turbo` quantizado pelo Vulkan e vocabulário como dica também no `nora falar`.

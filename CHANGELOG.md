@@ -5,9 +5,9 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
-## [0.3.0] - 2026-11-05 (candidata; a data final é a da tag)
+## [0.3.0] - 2026-11-05
 
-**Roteador de modelos.** A conversa do dia a dia continua no PC, e as perguntas difíceis vão para a nuvem e voltam com a mesma voz, a mesma persona e a mesma memória. Critério da etapa atingido nos testes automatizados: a pergunta difícil sobe para a API (ChatGPT, com o Claude de reserva) e a resposta volta falada pela voz da Nora. Junto vieram a emoção na voz, a troca de cérebro e de voz por comando, as notas do Obsidian, o esquecer e apagar de vez, as respostas pela metade recuperáveis e uma auto-melhoria supervisionada. A validação em hardware real (Windows com GPU AMD) está em `docs/RELEASE_v0.3.0.md`.
+**Roteador de modelos.** A conversa do dia a dia continua no PC, e as perguntas difíceis vão para a nuvem e voltam com a mesma voz, a mesma persona e a mesma memória. Critério da etapa atingido nos testes automatizados: a pergunta difícil sobe para a API (ChatGPT, com o Claude de reserva) e a resposta volta falada pela voz da Nora. Junto vieram a emoção na voz, a troca de cérebro e de voz por comando, as notas do Obsidian, o esquecer e apagar de vez, as respostas pela metade recuperáveis e uma auto-melhoria supervisionada. Homologação no Windows com GPU AMD registrada em `docs/RELEASE_v0.3.0.md`.
 
 ### Adicionado
 

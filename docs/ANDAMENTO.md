@@ -9,7 +9,8 @@ Assistente de voz pessoal em pt-BR, local primeiro, MIT. Python 3.11–3.13. Reg
 ## Versões
 
 - `v0.2.0` lançada (tag): conversa por voz e memória.
-- `v0.3.0` candidata a release (versão `0.3.0` no código): roteador de modelos, auditoria final, correções e documentação concluídas, CI verde. Faltam a homologação manual no PC (Windows/AMD) e a autorização para merge, tag e publicação: veja [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md).
+- `v0.3.0` lançada (05/11/2026): roteador de modelos. Release, qualidade e homologação em [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md).
+- Próximo: `v0.3.1` (voz sem troca de tom entre frases e ouvido mais preciso) e `v0.4.0` (HUD, no branch `feat/v0.4.0-hud`).
 
 ## Caminho de uma pergunta
 
