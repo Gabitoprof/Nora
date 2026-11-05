@@ -748,6 +748,7 @@ def notificar(titulo: str, texto: str, caminho: Path) -> bool:
         resultado = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
             capture_output=True,
+            stdin=subprocess.DEVNULL,  # o PowerShell não pode disputar o teclado da sessão
             timeout=20,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
@@ -756,14 +757,27 @@ def notificar(titulo: str, texto: str, caminho: Path) -> bool:
         return False
 
 
+# ShellExecute: mostra minimizada e sem ativar. O programa do .md não toma o foco do terminal,
+# onde a pessoa está no meio de um "[Enter para falar]" (senão o Enter iria para o editor).
+SW_SHOWMINNOACTIVE = 7
+
+
 def abrir_arquivo(caminho: Path) -> bool:
+    """Abre o relatório no programa padrão sem roubar o teclado da sessão: no Windows, a janela
+    abre minimizada e sem foco; fora dele, o programa não herda o terminal (stdin) da Nora."""
     try:
         if sys.platform == "win32":
-            os.startfile(caminho)  # noqa: S606 (abre com o programa padrão do .md)
+            os.startfile(caminho, "open", show_cmd=SW_SHOWMINNOACTIVE)  # noqa: S606
         else:
-            subprocess.Popen(["xdg-open", str(caminho)])
+            subprocess.Popen(
+                ["xdg-open", str(caminho)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
         return True
-    except (OSError, AttributeError):
+    except (OSError, AttributeError, TypeError):
         return False
 
 
@@ -788,7 +802,7 @@ class Agendador(threading.Thread):
         self.melhorias, self.ocupado, self.ao_fechar = melhorias, ocupado, ao_fechar
         self.pendentes, self.intervalo, self.relogio = pendentes, intervalo, relogio
         self._parar = threading.Event()
-        self.apresentar_pendentes: Callable[[], None] = lambda: None
+        self.apresentar_pendentes: Callable[[], bool] = lambda: False
 
     def conferir(self) -> Fechamento | None:
         if self.ocupado():
@@ -903,14 +917,18 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
     agendador = Agendador(melhorias, ocupado, ao_fechar, pendentes)
     tentados: set[str] = set()
 
-    def apresentar_pendentes() -> None:
+    def apresentar_pendentes() -> bool:
+        """Apresenta os relatórios novos; devolve se escreveu algo na tela."""
         if ocupado():
-            return
+            return False
+        escreveu = False
         for data, caminho, quantas in melhorias.nao_mostrados():
             if data in tentados:
                 continue  # uma tentativa por sessão; falhas continuam pendentes no banco
             tentados.add(data)
             apresentar(melhorias, data, Path(caminho), quantas, cfg.apresentar, escrever)
+            escreveu = True
+        return escreveu
 
     agendador.apresentar_pendentes = apresentar_pendentes
     apresentar_pendentes()
@@ -918,11 +936,19 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
     return agendador
 
 
-def ler_entrada(entrada: Callable[[str], str], prompt: str, agendador: Agendador | None) -> str:
+def ler_entrada(
+    entrada: Callable[[str], str],
+    prompt: str,
+    agendador: Agendador | None,
+    reimprimir: Callable[[str], None] | None = None,
+) -> str:
     """Mantém a interface atendendo relatórios enquanto o teclado espera uma linha.
 
     Só o loop chamador escreve relatórios; a thread de entrada apenas lê o teclado.
-    Não antecipa a próxima leitura (a gravação por Enter usa a mesma entrada).
+    Não antecipa a próxima leitura (a gravação por Enter usa a mesma entrada). Esta função só
+    volta com a linha que a sua própria thread leu: um erro ao apresentar um relatório não pode
+    deixar essa thread para trás, senão ela engoliria o Enter seguinte (o de parar de gravar).
+    Se um relatório aparecer durante a espera, `reimprimir` mostra o prompt de novo.
     """
     if agendador is None:
         return entrada(prompt)
@@ -936,7 +962,15 @@ def ler_entrada(entrada: Callable[[str], str], prompt: str, agendador: Agendador
 
     threading.Thread(target=ler, daemon=True, name="nora-entrada").start()
     while True:
-        agendador.apresentar_pendentes()
+        try:
+            mostrou = agendador.apresentar_pendentes()
+        except Exception as erro:  # a auto-melhoria nunca tira o teclado da conversa
+            logging.getLogger(__name__).error(
+                "Falha ao apresentar relatório: %s", type(erro).__name__
+            )
+            mostrou = False
+        if mostrou and reimprimir is not None:
+            reimprimir(prompt)
         try:
             sucesso, valor = resultado.get(timeout=0.1)
         except queue.Empty:

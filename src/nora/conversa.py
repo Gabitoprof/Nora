@@ -776,7 +776,9 @@ def conversar(
     agendador = iniciar_melhorias(conversa, escrever)
     while True:
         try:
-            texto = ler_entrada(entrada, "\nVocê: ", agendador).strip()
+            texto = ler_entrada(
+                entrada, "\nVocê: ", agendador, lambda p: escrever(p, fim="")
+            ).strip()
         except (EOFError, KeyboardInterrupt):
             escrever()
             break

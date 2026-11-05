@@ -598,3 +598,118 @@ def test_loops_entregam_relatorio_sem_pergunta(criar_raiz, monkeypatch, interfac
         )
     assert conversa.melhorias.relatorio().read_text("utf-8") in saida.getvalue()
     assert conversa.melhorias.nao_mostrados() == []
+
+
+# --- regressão do Enter no `nora falar` com a auto-melhoria ligada ------------------------------
+
+
+class Teclado:
+    """Teclado de verdade em miniatura: cada chamada espera a próxima linha digitada."""
+
+    def __init__(self):
+        import queue
+
+        self.linhas, self.prompts = queue.Queue(), []
+
+    def digitar(self, linha=""):
+        self.linhas.put(linha)
+
+    def __call__(self, prompt=""):
+        self.prompts.append(prompt)
+        return self.linhas.get(timeout=5)
+
+
+def test_falha_ao_apresentar_nao_deixa_leitor_orfao_que_engole_o_enter():
+    """Se apresentar o relatório der erro enquanto ela espera o Enter, o Enter seguinte (o de
+    parar de gravar) não pode ir para uma thread de leitura que ficou para trás."""
+    import threading
+
+    from nora.melhorias import ler_entrada
+
+    teclado = Teclado()
+    chamadas = []
+
+    class AgendadorQueFalha:
+        def apresentar_pendentes(self):
+            chamadas.append(1)
+            if len(chamadas) == 2:
+                raise OSError("disco ocupado")
+            return False
+
+    def digitar_depois():
+        import time
+
+        time.sleep(0.3)
+        teclado.digitar("")  # Enter para falar
+
+    threading.Thread(target=digitar_depois, daemon=True).start()
+    assert ler_entrada(teclado, "[Enter para falar] ", AgendadorQueFalha()) == ""
+    teclado.digitar("")  # Enter para parar de gravar: tem que chegar na gravação
+    assert teclado("  (gravando...) ") == ""
+    leitores = [t for t in threading.enumerate() if t.name == "nora-entrada" and t.is_alive()]
+    assert leitores == []
+
+
+def test_relatorio_que_aparece_na_espera_mostra_o_prompt_de_novo():
+    import threading
+    import time
+
+    from nora.melhorias import ler_entrada
+
+    teclado, telas, vezes = Teclado(), [], []
+
+    class AgendadorComRelatorio:
+        def apresentar_pendentes(self):
+            vezes.append(1)
+            if len(vezes) == 3:
+                telas.append("[melhorias] Relatório de 04/11 ...")
+                return True
+            return False
+
+    def digitar_depois():
+        time.sleep(0.5)
+        teclado.digitar("oi")
+
+    threading.Thread(target=digitar_depois, daemon=True).start()
+    linha = ler_entrada(
+        teclado, "\n[Enter para falar] ", AgendadorComRelatorio(), reimprimir=telas.append
+    )
+    assert linha == "oi"
+    assert telas == ["[melhorias] Relatório de 04/11 ...", "\n[Enter para falar] "]
+
+
+def test_abrir_o_relatorio_nao_rouba_o_teclado_da_sessao(tmp_path, monkeypatch):
+    """No Windows abre minimizado e sem foco (o Enter continua indo para a Nora); fora dele, o
+    programa não herda o terminal. A notificação também não usa o teclado da sessão."""
+    import os
+    import subprocess
+    import sys
+
+    from nora import melhorias as modulo
+
+    relatorio = tmp_path / "2026-11-04.md"
+    relatorio.write_text("# oi", encoding="utf-8")
+
+    chamadas = []
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(os, "startfile", lambda *a, **k: chamadas.append((a, k)), raising=False)
+    assert modulo.abrir_arquivo(relatorio)
+    assert chamadas == [((relatorio, "open"), {"show_cmd": modulo.SW_SHOWMINNOACTIVE})]
+
+    execucoes = []
+
+    def rodar(cmd, **k):
+        execucoes.append(k)
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(subprocess, "run", rodar)
+    assert modulo.notificar("Nora", "pronto", relatorio)
+    assert execucoes[0]["stdin"] is subprocess.DEVNULL
+
+    abertos = []
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(subprocess, "Popen", lambda cmd, **k: abertos.append((cmd, k)))
+    assert modulo.abrir_arquivo(relatorio)
+    cmd, k = abertos[0]
+    assert cmd == ["xdg-open", str(relatorio)] and k["start_new_session"]
+    assert k["stdin"] is subprocess.DEVNULL and k["stdout"] is subprocess.DEVNULL

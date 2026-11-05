@@ -287,7 +287,10 @@ def conversar_por_voz(
     while True:
         try:
             comando = ler_entrada(
-                entrada, "\nVocê: " if so_teclado else "\n[Enter para falar] ", agendador
+                entrada,
+                "\nVocê: " if so_teclado else "\n[Enter para falar] ",
+                agendador,
+                lambda p: escrever(p, fim=""),
             ).strip()
         except (EOFError, KeyboardInterrupt):
             escrever()
