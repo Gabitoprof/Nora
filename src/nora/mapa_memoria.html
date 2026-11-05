@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa da memória</title>
+<style>
+:root { --fundo:#07080d; --painel:#11131c; --linha:#232838; --texto:#e7e9f0; --suave:#8b91a5; }
+* { box-sizing: border-box; }
+html, body { margin:0; height:100%; background:var(--fundo); color:var(--texto);
+  font: 14px/1.4 system-ui, "Segoe UI", sans-serif; overflow:hidden; }
+canvas { position:fixed; inset:0; width:100%; height:100%; display:block; cursor:grab; }
+canvas.arrastando { cursor:grabbing; }
+.painel { position:fixed; background:color-mix(in srgb, var(--painel) 88%, transparent);
+  border:1px solid var(--linha); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px); }
+#controles { top:12px; left:12px; width:260px; max-height:calc(100% - 24px); overflow:auto; }
+#ficha { top:12px; right:12px; width:320px; display:none; max-height:calc(100% - 24px); overflow:auto; }
+h1 { font-size:15px; margin:0 0 8px; letter-spacing:.02em; }
+h2 { font-size:12px; text-transform:uppercase; color:var(--suave); margin:12px 0 6px; letter-spacing:.06em; }
+input[type=search] { width:100%; padding:7px 9px; border-radius:8px; border:1px solid var(--linha);
+  background:#0b0d14; color:var(--texto); }
+label { display:flex; align-items:center; gap:7px; margin:3px 0; cursor:pointer; user-select:none; }
+.bola { width:11px; height:11px; border-radius:50%; flex:none; }
+.halo { width:11px; height:11px; border-radius:50%; flex:none; background:transparent; border:2px solid; }
+button { background:#1a1e2b; color:var(--texto); border:1px solid var(--linha); border-radius:8px;
+  padding:6px 10px; cursor:pointer; margin:4px 4px 0 0; }
+button:hover { border-color:#3a4260; }
+.texto { white-space:pre-wrap; margin:8px 0; }
+.escondido { filter:blur(6px); user-select:none; }
+.dado { color:var(--suave); font-size:12px; margin:2px 0; }
+.ligacao { margin:6px 0; padding:6px 8px; border-radius:8px; background:#0b0d14; cursor:pointer; }
+.ligacao small { display:block; color:var(--suave); }
+a { color:#8fb4ff; }
+#vazio { position:fixed; inset:0; display:none; place-items:center; color:var(--suave); text-align:center; }
+@media (prefers-reduced-motion: reduce) { canvas { transition:none; } }
+</style>
+</head>
+<body>
+<canvas id="tela" aria-label="Grafo das memórias da Nora"></canvas>
+<div id="vazio"><div><h1>Ainda não há memórias exportadas</h1>
+<p>Converse com a Nora; as memórias consolidadas aparecem aqui depois da sincronização.</p></div></div>
+<div id="controles" class="painel">
+  <h1>Segundo cérebro da Nora</h1>
+  <input id="busca" type="search" placeholder="Buscar memória, área, nome…" aria-label="Buscar">
+  <div>
+    <button id="mostrar">Mostrar textos</button>
+    <button id="tudo">Ver tudo</button>
+  </div>
+  <h2>Áreas (cor do nó)</h2><div id="areas"></div>
+  <h2>Tipos</h2><div id="tipos"></div>
+  <h2>Tom da conversa (halo)</h2><div id="emocoes"></div>
+  <h2>Leitura</h2>
+  <div class="dado">Tamanho: número de ligações. Pulso: atualizada nos últimos 7 dias.
+  As ligações surgem aos poucos só ao abrir (animação).</div>
+</div>
+<div id="ficha" class="painel"></div>
+<script id="dados" type="application/json">__DADOS__</script>
+<script>
+"use strict";
+const DADOS = JSON.parse(document.getElementById("dados").textContent);
+let mostrarTexto = __MOSTRAR__;
+const TIPOS = { memoria: "Memórias", area: "Áreas", nome: "Nomes", agenda: "Meses da agenda", preferencia: "Preferências" };
+const COR_TIPO = { area: null, nome: "#E5E7EB", agenda: "#94A3B8", preferencia: "#C4B5FD" };
+const NOME_EMOCAO = { alegre:"alegre", empolgada:"empolgada", carinhosa:"carinhosa", calma:"calma",
+  seria:"séria", triste:"triste", curiosa:"curiosa", neutra:"neutra" };
+const tela = document.getElementById("tela"), ctx = tela.getContext("2d");
+const reduzir = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const corArea = a => (DADOS.legenda.areas[a] || "#9CA3AF");
+
+// --- dados -------------------------------------------------------------------------------
+const nos = DADOS.nos.map((n, i) => ({ ...n, i, x: 0, y: 0, vx: 0, vy: 0, grau: 0 }));
+const porId = new Map(nos.map(n => [n.id, n]));
+const ligacoes = DADOS.ligacoes.filter(l => porId.has(l.de) && porId.has(l.para))
+  .map((l, i) => ({ ...l, a: porId.get(l.de), b: porId.get(l.para), ordem: i }));
+for (const l of ligacoes) { l.a.grau++; l.b.grau++; }
+const vizinhos = new Map(nos.map(n => [n.id, new Set()]));
+for (const l of ligacoes) { vizinhos.get(l.de).add(l.para); vizinhos.get(l.para).add(l.de); }
+const agora = Date.now(), SEMANA = 7 * 864e5;
+for (const n of nos) {
+  n.raio = Math.min(26, (n.tipo === "area" ? 10 : n.tipo === "memoria" ? 4 : 6) + Math.sqrt(n.grau) * 2.2);
+  n.recente = n.atualizado && (agora - Date.parse(n.atualizado)) < SEMANA;
+  n.cor = n.tipo === "area" || n.tipo === "memoria" ? corArea(n.area) : COR_TIPO[n.tipo];
+}
+// posição inicial: áreas num círculo, o resto perto da sua área
+const areas = nos.filter(n => n.tipo === "area");
+areas.forEach((n, k) => { const ang = 2 * Math.PI * k / Math.max(1, areas.length);
+  n.x = Math.cos(ang) * 320; n.y = Math.sin(ang) * 320; });
+for (const n of nos) if (n.tipo !== "area") {
+  const area = porId.get("area-" + (n.area || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
+  const base = area || { x: 0, y: 0 };
+  n.x = base.x + (Math.random() - .5) * 160; n.y = base.y + (Math.random() - .5) * 160;
+}
+
+// --- filtros -----------------------------------------------------------------------------
+const filtro = { areas: new Set(), tipos: new Set(), emocoes: new Set(), busca: "" };
+const GRANDE = nos.length > 900;  // grafo grande: começa só com áreas, nomes e meses
+let tudo = !GRANDE;
+function caixa(onde, chave, valor, rotulo, cor, halo) {
+  const l = document.createElement("label");
+  const c = document.createElement("input"); c.type = "checkbox"; c.checked = true;
+  c.onchange = () => { c.checked ? filtro[chave].delete(valor) : filtro[chave].add(valor); };
+  const b = document.createElement("span"); b.className = halo ? "halo" : "bola";
+  if (halo) b.style.borderColor = cor; else b.style.background = cor;
+  l.append(c, b, document.createTextNode(rotulo)); onde.append(l);
+}
+for (const [a, cor] of Object.entries(DADOS.legenda.areas)) caixa(document.getElementById("areas"), "areas", a, a, cor);
+for (const [t, r] of Object.entries(TIPOS)) if (nos.some(n => n.tipo === t))
+  caixa(document.getElementById("tipos"), "tipos", t, r, t === "memoria" || t === "area" ? "#64748B" : COR_TIPO[t]);
+for (const [e, cor] of Object.entries(DADOS.legenda.emocoes)) if (nos.some(n => n.emocao === e))
+  caixa(document.getElementById("emocoes"), "emocoes", e, NOME_EMOCAO[e] || e, cor, true);
+document.getElementById("busca").oninput = ev => { filtro.busca = ev.target.value.trim().toLowerCase(); };
+document.getElementById("mostrar").onclick = ev => { mostrarTexto = !mostrarTexto;
+  ev.target.textContent = mostrarTexto ? "Esconder textos" : "Mostrar textos"; if (foco) ficha(foco); };
+const botaoTudo = document.getElementById("tudo");
+botaoTudo.style.display = GRANDE ? "" : "none";
+botaoTudo.onclick = () => { tudo = true; botaoTudo.style.display = "none"; };
+function visivel(n) {
+  if (filtro.tipos.has(n.tipo)) return false;
+  if (n.area && filtro.areas.has(n.area)) return false;
+  if (n.emocao && filtro.emocoes.has(n.emocao)) return false;
+  if (!tudo && n.tipo === "memoria" && !(foco && vizinhos.get(foco.id).has(n.id))) return false;
+  if (filtro.busca) {
+    const alvo = (n.rotulo + " " + (n.area || "") + " " + (mostrarTexto ? n.texto || "" : "")).toLowerCase();
+    if (!alvo.includes(filtro.busca)) return false;
+  }
+  return true;
+}
+
+// --- física (força dirigida, leve) -------------------------------------------------------
+function passo() {
+  const vis = nos.filter(n => n.mostra);
+  for (let i = 0; i < vis.length; i++) {
+    const a = vis[i];
+    for (let j = i + 1; j < vis.length; j++) {
+      const b = vis[j]; let dx = a.x - b.x, dy = a.y - b.y; let d2 = dx * dx + dy * dy || 1;
+      if (d2 > 90000) continue;
+      const f = 900 / d2; const d = Math.sqrt(d2); dx /= d; dy /= d;
+      a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
+    }
+  }
+  for (const l of ligacoes) {
+    if (!l.a.mostra || !l.b.mostra) continue;
+    const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y, d = Math.hypot(dx, dy) || 1;
+    const alvo = l.tipo === "pertence_a" ? 90 : 140, f = (d - alvo) * 0.004;
+    l.a.vx += dx / d * f; l.a.vy += dy / d * f; l.b.vx -= dx / d * f; l.b.vy -= dy / d * f;
+  }
+  for (const n of vis) {
+    if (n === arrastado) continue;
+    n.vx -= n.x * 0.0006; n.vy -= n.y * 0.0006; n.vx *= 0.82; n.vy *= 0.82;
+    n.x += n.vx; n.y += n.vy;
+  }
+}
+
+// --- câmera e desenho --------------------------------------------------------------------
+let cam = { x: 0, y: 0, z: 1 }, foco = null, arrastado = null, sobre = null;
+const inicio = performance.now();
+function redimensionar() { const r = devicePixelRatio || 1;
+  tela.width = innerWidth * r; tela.height = innerHeight * r; ctx.setTransform(r, 0, 0, r, 0, 0); }
+addEventListener("resize", redimensionar); redimensionar();
+const naTela = (x, y) => [(x - cam.x) * cam.z + innerWidth / 2, (y - cam.y) * cam.z + innerHeight / 2];
+const noMundo = (x, y) => [(x - innerWidth / 2) / cam.z + cam.x, (y - innerHeight / 2) / cam.z + cam.y];
+function desenhar(t) {
+  for (const n of nos) n.mostra = visivel(n);
+  passo();
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  // revelação: as ligações reais surgem em ~2,5 s (sem animação se o sistema pedir menos movimento)
+  const revelado = reduzir ? Infinity : (t - inicio) / 2500 * ligacoes.length;
+  const destaque = foco ? vizinhos.get(foco.id) : null;
+  for (const l of ligacoes) {
+    if (!l.a.mostra || !l.b.mostra || l.ordem > revelado) continue;
+    const perto = foco && (l.a === foco || l.b === foco);
+    const [x1, y1] = naTela(l.a.x, l.a.y), [x2, y2] = naTela(l.b.x, l.b.y);
+    const cresce = Math.min(1, revelado - l.ordem);
+    ctx.strokeStyle = perto ? "rgba(230,235,255,.75)" : foco ? "rgba(120,130,160,.08)" : "rgba(140,150,190,.22)";
+    ctx.lineWidth = (perto ? 1.6 : 0.8) * (l.tipo === "menciona" ? 1.2 : 1);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + (x2 - x1) * cresce, y1 + (y2 - y1) * cresce); ctx.stroke();
+    if (!reduzir && (perto || !foco) && cresce === 1) {  // impulso percorrendo a ligação
+      const p = ((t / 2600) + l.ordem * 0.137) % 1;
+      ctx.fillStyle = perto ? "rgba(255,255,255,.9)" : "rgba(180,200,255,.35)";
+      ctx.beginPath(); ctx.arc(x1 + (x2 - x1) * p, y1 + (y2 - y1) * p, perto ? 1.8 : 1.1, 0, 7); ctx.fill();
+    }
+  }
+  for (const n of nos) {
+    if (!n.mostra) continue;
+    const [x, y] = naTela(n.x, n.y), r = n.raio * Math.sqrt(cam.z);
+    const apagado = foco && n !== foco && !destaque.has(n.id);
+    ctx.globalAlpha = apagado ? 0.18 : 1;
+    if (n.emocao && DADOS.legenda.emocoes[n.emocao]) {  // halo: tom da conversa
+      const g = ctx.createRadialGradient(x, y, r, x, y, r * 2.6);
+      g.addColorStop(0, DADOS.legenda.emocoes[n.emocao] + "AA"); g.addColorStop(1, DADOS.legenda.emocoes[n.emocao] + "00");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.6, 0, 7); ctx.fill();
+    }
+    if (n.recente && !reduzir) {  // pulso: atualizada há pouco
+      const k = (t / 1400 + n.i * 0.21) % 1;
+      ctx.strokeStyle = `rgba(255,255,255,${0.45 * (1 - k)})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, r + 2 + k * 10, 0, 7); ctx.stroke();
+    }
+    // brilho de neurônio (desligado em grafos muito grandes, para o navegador ficar leve)
+    if (!GRANDE || tudo === false) { ctx.shadowColor = n.cor; ctx.shadowBlur = n.tipo === "memoria" ? 8 : 16; }
+    ctx.fillStyle = n.cor; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (n === foco || n === sobre) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); }
+    if (n.tipo !== "memoria" || n === foco || n === sobre || cam.z > 1.6) {
+      ctx.fillStyle = "#e7e9f0"; ctx.font = (n.tipo === "area" ? "600 13px" : "12px") + " system-ui, sans-serif";
+      const rotulo = n.tipo === "memoria" && !mostrarTexto ? "memória" : n.rotulo;
+      ctx.fillText(rotulo, x + r + 4, y + 4);
+    }
+    ctx.globalAlpha = 1;
+  }
+  document.getElementById("vazio").style.display = nos.length ? "none" : "grid";
+  requestAnimationFrame(desenhar);
+}
+requestAnimationFrame(desenhar);
+
+// --- interação ---------------------------------------------------------------------------
+function noEm(px, py) {
+  const [x, y] = noMundo(px, py); let melhor = null, dist = Infinity;
+  for (const n of nos) { if (!n.mostra) continue;
+    const d = Math.hypot(n.x - x, n.y - y); if (d < (n.raio + 6) / Math.sqrt(cam.z) && d < dist) { melhor = n; dist = d; } }
+  return melhor;
+}
+let arrasto = null;
+tela.onpointerdown = ev => { const n = noEm(ev.clientX, ev.clientY);
+  arrasto = { x: ev.clientX, y: ev.clientY, cx: cam.x, cy: cam.y, n, moveu: false };
+  if (n) arrastado = n; tela.classList.add("arrastando"); tela.setPointerCapture(ev.pointerId); };
+tela.onpointermove = ev => {
+  if (!arrasto) { sobre = noEm(ev.clientX, ev.clientY); return; }
+  const dx = ev.clientX - arrasto.x, dy = ev.clientY - arrasto.y;
+  if (Math.abs(dx) + Math.abs(dy) > 3) arrasto.moveu = true;
+  if (arrasto.n) { const [x, y] = noMundo(ev.clientX, ev.clientY); arrasto.n.x = x; arrasto.n.y = y; arrasto.n.vx = arrasto.n.vy = 0; }
+  else { cam.x = arrasto.cx - dx / cam.z; cam.y = arrasto.cy - dy / cam.z; }
+};
+tela.onpointerup = () => {
+  if (arrasto && !arrasto.moveu) { foco = arrasto.n || null; foco ? ficha(foco) : fecharFicha(); }
+  arrasto = null; arrastado = null; tela.classList.remove("arrastando");
+};
+tela.onwheel = ev => { ev.preventDefault(); const [x, y] = noMundo(ev.clientX, ev.clientY);
+  cam.z = Math.min(4, Math.max(0.2, cam.z * Math.exp(-ev.deltaY * 0.0015)));
+  const [x2, y2] = noMundo(ev.clientX, ev.clientY); cam.x += x - x2; cam.y += y - y2; };
+addEventListener("keydown", ev => { if (ev.key === "Escape") { foco = null; fecharFicha(); } });
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]); }
+function linkObsidian(n) {
+  if (!DADOS.vault || !n.caminho) return "";
+  const arquivo = (DADOS.prefixo ? DADOS.prefixo + "/" : "") + n.caminho.replace(/\.md$/, "");
+  return `obsidian://open?vault=${encodeURIComponent(DADOS.vault)}&file=${encodeURIComponent(arquivo)}`;
+}
+function fecharFicha() { document.getElementById("ficha").style.display = "none"; }
+function ficha(n) {
+  const el = document.getElementById("ficha");
+  const rel = ligacoes.filter(l => l.a === n || l.b === n).map(l => {
+    const outro = l.a === n ? l.b : l.a;
+    const nome = outro.tipo === "memoria" && !mostrarTexto ? "memória" : outro.rotulo;
+    return `<div class="ligacao" data-id="${esc(outro.id)}">${esc(nome)}<small>${esc(l.tipo.replace("_", " "))} · ${esc(l.base)}</small></div>`;
+  }).join("");
+  const texto = n.texto ? `<div class="texto ${mostrarTexto ? "" : "escondido"}">${esc(n.texto)}</div>` : "";
+  const link = linkObsidian(n);
+  el.innerHTML = `<h1>${esc(n.tipo === "memoria" && !mostrarTexto ? "Memória" : n.rotulo)}</h1>${texto}
+    ${n.area ? `<div class="dado">Área: ${esc(n.area)}</div>` : ""}
+    ${n.camada ? `<div class="dado">Camada: ${esc(n.camada === "episodica" ? "episódica (tem data)" : n.camada === "semantica" ? "semântica (fato)" : n.camada)}</div>` : ""}
+    ${n.emocao ? `<div class="dado">Tom da conversa: ${esc(NOME_EMOCAO[n.emocao] || n.emocao)} (das etiquetas de voz da Nora, não um sentimento seu)</div>` : ""}
+    ${n.data ? `<div class="dado">Data: ${esc(n.data)}</div>` : ""}
+    ${n.origem ? `<div class="dado">Origem: ${esc(n.origem)}</div>` : ""}
+    ${n.atualizado ? `<div class="dado">Atualizada em: ${esc(n.atualizado.replace("T", " "))}</div>` : ""}
+    ${link ? `<p><a href="${link}">Abrir no Obsidian</a></p>` : ""}
+    <h2>Por que se liga (${n.grau})</h2>${rel || '<div class="dado">Sem ligações.</div>'}`;
+  el.style.display = "block";
+  for (const d of el.querySelectorAll(".ligacao")) d.onclick = () => { foco = porId.get(d.dataset.id); ficha(foco); };
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "versao": 1,
+  "nome": "segundo_cerebro",
+  "descricao": "Grafo do Second Brain da Nora (data/segundo_cerebro/grafo.json). Somente leitura para quem consome: a fonte da verdade é a memória da Nora.",
+  "arquivo": "segundo_cerebro/grafo.json",
+  "grafo": {
+    "campos": ["versao", "vault", "prefixo", "nos", "ligacoes", "legenda"],
+    "no": {
+      "obrigatorios": ["id", "tipo", "rotulo"],
+      "opcionais": ["texto", "area", "camada", "emocao", "data", "origem", "atualizado", "caminho"],
+      "privados": ["texto"]
+    },
+    "tipos_de_no": ["memoria", "area", "nome", "agenda", "preferencia"],
+    "camadas": ["semantica", "episodica", "procedural"],
+    "ligacao": {
+      "obrigatorios": ["de", "para", "tipo", "base"]
+    },
+    "tipos_de_ligacao": {
+      "pertence_a": "memória → área (área anotada pela curadoria)",
+      "menciona": "memória → nome (nome próprio que aparece em 2 memórias ou mais)",
+      "aconteceu_em": "memória → mês da agenda (data anotada)"
+    },
+    "legenda": ["areas", "emocoes"]
+  },
+  "emocoes": {
+    "descricao": "Tom da conversa em que a memória surgiu (etiquetas de emocao.py). Mesmos nomes e cores do evento 'emocao' da HUD (hud_contrato.json, campo 'nome', e hud/src/state.ts 'cores'). Não é sentimento da pessoa.",
+    "nomes": ["alegre", "empolgada", "carinhosa", "calma", "seria", "triste", "curiosa", "neutra"]
+  },
+  "eventos": {
+    "descricao": "Para uma HUD de memória futura (não emitidos na v0.3.1, que grava só o arquivo). Mesmo formato dos eventos da HUD: {versao, tipo, dados}.",
+    "segundo_cerebro_atualizado": ["versao_grafo", "nos", "ligacoes"]
+  }
+}

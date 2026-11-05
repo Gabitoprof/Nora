@@ -206,6 +206,27 @@ ignorar = []
 # Ao abrir uma conversa, lê em segundo plano as notas novas ou alteradas.
 atualizar_ao_abrir = true
 
+[segundo_cerebro]
+# Second Brain (v0.3.1, guia em docs/SEGUNDO_CEREBRO.md): as memórias consolidadas da Nora viram
+# notas no seu vault, com links entre áreas, nomes e meses, para ver no grafo do Obsidian e no
+# mapa da memória ("Nora, mostre seu segundo cérebro"). Desligado até você ligar: escreve no vault.
+# As notas são escritas depois da resposta, quando ela está livre: a fala nunca espera por isso.
+ativo = false
+# Pasta dentro do vault de [notas] pasta (ou um caminho absoluto). Só mexe nos arquivos dela que
+# ela mesma criou; os seus ficam intactos. Ela não relê essa pasta como nota sua.
+pasta = "Nora Brain"
+# Áreas da memória que nunca viram nota (ficam só no banco da Nora).
+areas_privadas = ["saúde", "finanças"]
+# O que mais vai para o vault: as preferências sobre o jeito de falar, os meses da agenda e o tom
+# da conversa em que cada fato surgiu (das etiquetas de emoção da resposta; não é sentimento seu).
+preferencias = true
+agenda = true
+emocoes = true
+# Além do aviso da memória, confere a cada tantos segundos (pega o que mudou pelo terminal).
+intervalo_s = 60
+# O mapa da memória abre com o texto das memórias escondido (aparece ao clicar em "Mostrar").
+mostrar_texto_no_mapa = false
+
 [auto_melhoria]
 # A Nora observa como foi cada conversa (só tempos, falhas e categorias, sem o texto do que foi
 # dito) e, uma vez por dia, junta o que se repetiu num relatório de propostas de melhoria, em
