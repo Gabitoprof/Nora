@@ -95,6 +95,11 @@ def _cosseno(a: list[float], b: list[float]) -> float:
     return sum(x * y for x, y in zip(a, b, strict=True)) / norma if norma else 0.0
 
 
+def _contem(texto: str | None, trecho: str | None) -> int:
+    """Se o texto tem o trecho, sem olhar maiúsculas (inclusive acentuadas) e sem curingas."""
+    return int(bool(texto) and (trecho or "").casefold() in texto.casefold())
+
+
 def _agora() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
@@ -106,6 +111,9 @@ class Memoria:
         self.embeddings = embeddings
         self._trava = threading.RLock()
         self._db = sqlite3.connect(str(caminho), check_same_thread=False)
+        # Busca por trecho: o LIKE do SQLite só ignora maiúsculas sem acento ("Á" ≠ "á") e trata
+        # "_" e "%" como curingas. contem() compara em Python, com casefold e sem curingas.
+        self._db.create_function("contem", 2, _contem, deterministic=True)
         self._db.executescript(
             """
             CREATE TABLE IF NOT EXISTS meta (chave TEXT PRIMARY KEY, valor TEXT);
@@ -343,8 +351,8 @@ class Memoria:
     def _filtro(contendo: str, area: str) -> tuple[str, list]:
         condicoes, parametros = [], []
         if contendo:
-            condicoes.append("texto LIKE ?")
-            parametros.append(f"%{contendo}%")
+            condicoes.append("contem(texto, ?)")
+            parametros.append(contendo)
         if area:
             condicoes.append("area = ?")
             parametros.append(area)
@@ -628,8 +636,8 @@ class Memoria:
         with self._trava:
             linhas = self._db.execute(
                 "SELECT id, data, anual, texto, area, fato_id FROM agenda "
-                "WHERE texto LIKE ? ORDER BY data",
-                (f"%{trecho}%",),
+                "WHERE contem(texto, ?) ORDER BY data",
+                (trecho,),
             ).fetchall()
         return self._eventos(linhas)
 
