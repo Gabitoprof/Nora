@@ -134,4 +134,4 @@ agenda_dias = 7              # quantos dias à frente da agenda ela lê antes de
 - "Esquece isso" funciona pela conversa; "o que você sabe sobre mim?" ainda não lista a memória: use `nora memoria listar`.
 - O esquecer acha o assunto por significado: um trecho de conversa muito diferente das palavras do pedido pode escapar. `nora memoria apagar` mostra antes o que vai sair.
 - Dentro da mesma conversa, o que já foi dito continua no contexto até ela acabar (ou até `/limpar`).
-- A memória guarda fatos, não ainda a camada de **conhecimento** (boas respostas da API reaproveitadas), que depende do roteador da v0.3.0.
+- A memória guarda fatos, não ainda a camada de **conhecimento** (boas respostas da API reaproveitadas): fica para uma próxima etapa.

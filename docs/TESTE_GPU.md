@@ -47,7 +47,7 @@ A RX 9060 XT é uma placa nova (RDNA 4), e o suporte depende da versão do Ollam
 
 - A GPU AMD funciona no Windows com o Ollama, sem configuração extra. ✅
 - A velocidade passa com folga da meta de ~30 tokens/s.
-- O **modo pensando** do Qwen 3.5 escreve um raciocínio longo antes de responder, mesmo em perguntas simples. Na voz, fica **desligado** (`pensar = false` no config); para tarefas difíceis, o caminho é o roteador da v0.3.0.
+- O **modo pensando** do Qwen 3.5 escreve um raciocínio longo antes de responder, mesmo em perguntas simples. Na voz, fica **desligado** (`pensar = false` no config); para tarefas difíceis, o roteador manda a pergunta para a nuvem (veja [CEREBRO.md](CEREBRO.md)).
 - A carga de ~18 s só acontece quando o modelo não está na memória: o `keep_alive` mantém ele carregado entre as falas.
 
 ### 30/10/2026: mesmo PC, script medindo pela API

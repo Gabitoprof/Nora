@@ -2,7 +2,7 @@
 
 Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principalmente no seu computador**, lembra do que vocês conversaram e evolui com o uso. Inspirado nos assistentes da ficção, com nome, voz e personalidade próprios e configuráveis.
 
-> **Status:** `v0.2.0` lançada (**memória**): a Nora acorda com o nome, ouve, pensa no modelo local, responde falando e lembra de você entre conversas. Em desenvolvimento: `v0.3.0` (roteador de modelos), que já traz o **ChatGPT e o Claude para as perguntas difíceis** e a **emoção automática na voz**. Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
+> **Status:** `v0.3.0` (**roteador de modelos**): a Nora acorda com o nome, ouve, conversa no modelo local e manda as perguntas difíceis para o **ChatGPT, com o Claude de reserva**, respondendo sempre com a mesma voz, emoção e memória. Próxima etapa: `v0.4.0` (HUD). Veja o [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
 
 ## O que ela já faz
 
@@ -11,6 +11,9 @@ Assistente de IA pessoal que **conversa por voz em tempo real**, roda **principa
 - **Várias vozes:** Kokoro (local, grátis, padrão), Piper (local; dá para treinar a sua), ElevenLabs (nuvem, a mais natural) e ComfyUI (vozes que você cria). Uma voz de reserva entra sozinha se a principal falhar, e dá para trocar de voz falando ("troque para a voz do Piper").
 - **Emoção na voz:** ela escolhe sozinha o tom de cada frase (alegre, carinhosa, calma, risada, sussurro...) pelo contexto; no ElevenLabs v3, ri, suspira e sussurra de verdade.
 - **Memória:** anota fatos sobre você por área (saúde, estudos, trabalho...), guarda cada conversa inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias, jeito de responder, o tom que funciona com você). Também lê as notas do seu Obsidian para responder ("o que eu anotei sobre a prova?").
+- **Você manda por voz:** "use o cérebro local", "use o Claude", "modo jogo" (libera a placa de vídeo; para sair, ela confirma), "troque para a voz do Piper", "esquece isso", "apaga de vez ..." (com confirmação), "termina a resposta que ficou pela metade".
+- **Não perde respostas:** se uma resposta cai no meio, é cancelada ou fica sem resposta, a pergunta é guardada para você retomar depois.
+- **Melhora com supervisão:** uma vez por dia, ela junta o que deu errado (lento, falhas, reclamações) num relatório de propostas, sem guardar o texto das conversas. Nada muda sem a sua aprovação.
 - **Respeita o resto do PC:** abaixa o som dos outros programas enquanto fala.
 - **Privada:** memória, histórico e configurações pessoais ficam em `data/` e `config/local.toml`, só na sua máquina.
 
@@ -66,7 +69,7 @@ Depois, mãos livres (comece a frase com "Nora"; também dá para digitar):
 nora ouvir
 ```
 
-Ou digite e ouça a resposta falada: `nora conversar --voz`.
+Ou aperte Enter para falar e Enter para parar: `nora falar`. Para digitar e ouvir a resposta falada: `nora conversar --voz`.
 
 ### 3. Memória
 
@@ -81,7 +84,26 @@ Já vem ligada. Ela anota sozinha o que vale lembrar e mostra `[memória] anotei
 | `nora memoria preferencias` | Como você pediu que ela fale |
 | `nora memoria esquecer 12` | Apaga um fato |
 
-Se uma resposta ficar pela metade, diga "termina a resposta que ficou pela metade" (`nora pendencias` lista as que faltam). Tudo em [docs/MEMORIA.md](docs/MEMORIA.md). Para a Nora ler as suas notas do Obsidian: `[notas] pasta` no `config/local.toml` e `nora notas ler` (veja [docs/OBSIDIAN.md](docs/OBSIDIAN.md)).
+| `nora memoria apagar "assunto"` | Mostra o que sairia; com `--confirmar`, apaga de vez (também do histórico) |
+| `nora pendencias` | Respostas que ficaram pela metade |
+
+Se uma resposta ficar pela metade, diga "termina a resposta que ficou pela metade". Tudo em [docs/MEMORIA.md](docs/MEMORIA.md). Para a Nora ler as suas notas do Obsidian: `[notas] pasta` no `config/local.toml` e `nora notas ler` (veja [docs/OBSIDIAN.md](docs/OBSIDIAN.md)).
+
+### 4. Nuvem (opcional)
+
+Com `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY` no `.env` e `pip install -e ".[nuvem]"`, as perguntas difíceis vão para o ChatGPT, com o Claude de reserva. Sem chave nenhuma, tudo fica no PC. Comandos e ajustes em [docs/CEREBRO.md](docs/CEREBRO.md).
+
+### 5. Auto-melhoria
+
+Já vem ligada: o relatório do dia aparece sozinho (padrão: 20:00). Para decidir:
+
+| Comando | O que faz |
+|---|---|
+| `nora melhorias listar` | Propostas esperando decisão |
+| `nora melhorias relatorio --abrir` | Abre o relatório mais recente |
+| `nora melhorias aprovar 3` · `recusar 3` · `adiar 3` | Decide (aprovar só gera a especificação; o código não muda) |
+
+Detalhes em [docs/AUTO_MELHORIA.md](docs/AUTO_MELHORIA.md).
 
 ## Personalizando
 
@@ -109,7 +131,7 @@ Se uma resposta ficar pela metade, diga "termina a resposta que ficou pela metad
 
 | Pasta | Conteúdo |
 |---|---|
-| `src/nora/` | Núcleo em Python (conversa, voz, memória, agenda, emoção) |
+| `src/nora/` | Núcleo em Python (conversa, roteador, voz, memória, agenda, emoção, notas, auto-melhoria) |
 | `config/` | Config padrão |
 | `recursos/` | Frases de treino de voz |
 | `scripts/` | Instalar e iniciar a voz, teste de GPU, notebooks de treino do Piper (Kaggle e Colab) |
