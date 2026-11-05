@@ -19,7 +19,7 @@ from nora.config import RAIZ, Config
 from nora.conversa import COMANDOS_SAIR, nova_conversa
 from nora.conversa_voz import responder_falando
 from nora.melhorias import iniciar as iniciar_melhorias
-from nora.ouvido import OuvidoWhisper
+from nora.ouvido import OuvidoWhisper, dica_do_ouvido
 from nora.servico import ServicoIndisponivel
 from nora.vad import DetectorDeFala, SileroVAD, baixar_modelo, em_quadros, falas
 from nora.voz import VozTrocavel, com_pronuncias_aprendidas
@@ -75,9 +75,7 @@ def conversar_maos_livres(
     tocar = tocar or audio.tocador(config.audio)
     nome = config.assistente.nome
     palavra = config.assistente.palavra_de_ativacao
-    # Uma frase completa: com só "Nora, ", o Whisper às vezes entende que o nome já foi dito
-    # e não o escreve de novo.
-    dica = f"Conversa com a assistente {nome}."
+    dica = dica_do_ouvido(config)
 
     def escrever(texto: str = "", fim: str = "\n") -> None:
         saida.write(texto + fim)

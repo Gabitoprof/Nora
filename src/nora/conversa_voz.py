@@ -24,7 +24,7 @@ from nora.emocao import FiltroDeTela
 from nora.frases import SeparadorDeFrases
 from nora.melhorias import iniciar as iniciar_melhorias
 from nora.melhorias import ler_entrada
-from nora.ouvido import OuvidoWhisper
+from nora.ouvido import OuvidoWhisper, dica_do_ouvido
 from nora.prioridade import abafar_outros
 from nora.servico import ServicoIndisponivel
 from nora.troca_voz import atender_pedido, pedido_de_voz
@@ -45,6 +45,8 @@ def _e_pergunta(frase: str) -> bool:
 
 # Até quantos caracteres de frases que já estão esperando vão juntos num pedido à voz.
 LIMITE_DO_LOTE = 400
+# Quanto um pedido curto (abaixo de [voz] juntar_curta) espera a próxima frase para ir junto.
+ESPERA_PARA_JUNTAR = 1.5
 
 
 @dataclass
@@ -66,8 +68,12 @@ class Locutor:
         tocar: Callable[[bytes], None],
         inicio: float,
         abafar=nullcontext,
+        juntar: int = 0,
+        espera: float = ESPERA_PARA_JUNTAR,
     ) -> None:
         self.voz = voz
+        self.juntar = juntar
+        self.espera = espera
         self.tocar = tocar
         self.inicio = inicio
         self.abafar = abafar
@@ -100,8 +106,16 @@ class Locutor:
             # Uma pergunta sempre fecha o pedido: com o "?" no fim, a voz sobe a entonação; no
             # meio do texto, muitos modelos achatam.
             while sum(len(f) for f in lote) < LIMITE_DO_LOTE and not _e_pergunta(lote[-1]):
+                # Um pedido curto ("Hahaha, esse atchim!") espera um pouco a próxima frase: sozinho,
+                # vira um áudio curto que acaba antes da próxima ficar pronta (pausa), e a voz
+                # recomeça sem contexto (muda o tom).
+                curto = sum(len(f) for f in lote) < self.juntar
                 try:
-                    proxima = self._frases.get_nowait()
+                    proxima = (
+                        self._frases.get(timeout=self.espera)
+                        if curto
+                        else self._frases.get_nowait()
+                    )
                 except queue.Empty:
                     break
                 if proxima is _FIM:
@@ -153,7 +167,9 @@ def responder_falando(
     pedido = pedido_de_voz(texto)
     if pedido:
         return trocar_de_voz(conversa, voz, tocar, texto, pedido, escrever)
-    locutor = Locutor(voz, tocar, inicio, abafador(conversa.config))
+    locutor = Locutor(
+        voz, tocar, inicio, abafador(conversa.config), juntar=conversa.config.voz.juntar_curta
+    )
     locutor.tempos.transcricao = transcricao
     separador = SeparadorDeFrases()
     escrever(f"{conversa.config.assistente.nome}: ", fim="")
@@ -313,7 +329,7 @@ def conversar_por_voz(
                 if audio.duracao_wav(wav) < 0.3:
                     escrever("(não ouvi nada)")
                     continue
-                texto = ouvido.transcrever(wav)
+                texto = ouvido.transcrever(wav, dica=dica_do_ouvido(conversa.config))
                 transcricao = time.perf_counter() - inicio
                 if not texto:
                     escrever(

@@ -28,6 +28,9 @@ respostas_curtas = false
 motor = "whisper.cpp"
 url = "http://127.0.0.1:8178"
 idioma = "pt"
+# Nomes e termos que o Whisper costuma errar, para ele escrever certo (vão como dica junto com o
+# nome da assistente). Coloque os seus em config/local.toml. Ex.: ["Obsidian", "Ollama"]
+vocabulario = []
 
 [voz]
 # Motor de fala (TTS): "kokoro" (local, padrão), "piper" (local) ou "elevenlabs" (nuvem, pago).
@@ -39,6 +42,9 @@ reserva = "kokoro"
 # "" (normal), "duplo" ("Tudo bem??"), "invertido" ("¿Tudo bem?") ou "exclamado" ("Tudo bem?!").
 # Compare os jeitos com: nora voz comparar "Tudo bem com você?"
 realce_pergunta = ""
+# Pedido à voz com menos caracteres que isso (ex.: "Hahaha!") espera até 1,5 s pela próxima
+# frase e vai junto com ela: sem a pausa entre as duas e sem a voz mudar de tom. 0 = não junta.
+juntar_curta = 60
 
 [voz.pronuncias]
 # Palavras que a voz fala mal, reescritas só na fala (a tela mostra o texto original).
@@ -68,6 +74,10 @@ variacao_ritmo = 0.0
 # no ElevenLabs (Voices > ... > Copy voice ID). Coloque o seu em config/local.toml.
 voz_id = ""
 modelo = "eleven_flash_v2_5"
+# Mesma semente em todos os pedidos: a voz varia menos de uma frase para a outra. -1 = sorteia.
+semente = 42
+# Manda junto a frase anterior (previous_text), para a entonação continuar de onde parou.
+continuidade = true
 
 [voz.comfyui]
 # Usa um fluxo seu do ComfyUI como voz. Exporte o fluxo em "Workflow > Export (API)" e escreva

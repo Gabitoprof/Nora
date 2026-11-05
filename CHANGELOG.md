@@ -5,6 +5,18 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
+### Corrigido
+
+- **Voz que mudava de tom e pausava depois de uma primeira frase curta** (ex.: "Hahaha, esse atchim!" no ElevenLabs v3):
+  - um pedido à voz com menos de `[voz] juntar_curta` caracteres (padrão 60) espera até 1,5 s pela próxima frase e vai junto com ela. Perguntas não esperam, e o fim da resposta libera na hora;
+  - o ElevenLabs recebe uma semente fixa (`[voz.elevenlabs] semente`, padrão 42) e a frase anterior (`previous_text`, `continuidade = true`), para a entonação continuar. Se o modelo recusar o campo, ela segue sem ele.
+- **Ouvido errando nomes no `nora falar`:** a dica com o nome da assistente, que só ia no `nora ouvir`, agora vai também no `nora falar`.
+
+### Adicionado
+
+- `[ouvido] vocabulario`: nomes e termos que o Whisper deve escrever certo, mandados como dica nos dois modos.
+- Os scripts de voz aceitam o modelo `large-v3-turbo-q5_0` (mais preciso em fala pouco clara) e `-Feixe N` (busca em feixe no `whisper-server`). Guia em `docs/VOZ.md`, "Ouvido entendendo errado".
+
 ## [0.3.0] - 2026-11-05
 
 **Roteador de modelos.** A conversa do dia a dia continua no PC, e as perguntas difíceis vão para a nuvem e voltam com a mesma voz, a mesma persona e a mesma memória. Critério da etapa atingido nos testes automatizados: a pergunta difícil sobe para a API (ChatGPT, com o Claude de reserva) e a resposta volta falada pela voz da Nora. Junto vieram a emoção na voz, a troca de cérebro e de voz por comando, as notas do Obsidian, o esquecer e apagar de vez, as respostas pela metade recuperáveis e uma auto-melhoria supervisionada. Homologação no Windows com GPU AMD registrada em `docs/RELEASE_v0.3.0.md`.

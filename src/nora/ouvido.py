@@ -26,6 +26,16 @@ def limpar_transcricao(texto: str) -> str:
     return " ".join(_DESCRICAO.sub(" ", texto).split())
 
 
+def dica_do_ouvido(config: Config) -> str:
+    """O texto de contexto da conversa para o Whisper: o nome da assistente (numa frase completa:
+    com só "Nora, ", ele às vezes entende que o nome já foi dito e não o escreve de novo) e o
+    vocabulário de [ouvido] vocabulario, para nomes e termos saírem escritos certo."""
+    dica = f"Conversa com a assistente {config.assistente.nome}."
+    if config.ouvido.vocabulario:
+        dica += f" Palavras que podem aparecer: {', '.join(config.ouvido.vocabulario)}."
+    return dica
+
+
 @dataclass
 class OuvidoWhisper:
     config: Config

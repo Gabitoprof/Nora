@@ -285,6 +285,27 @@ Se a primeira palavra sai engolida ("Oi" rápido demais), teste nesta ordem, no 
    velocidade = 0.9   # 1.0 normal; menor = mais devagar
    ```
 
+## Voz que muda de tom ou pausa entre frases
+
+Cada pedido à voz é feito em separado, enquanto o modelo ainda escreve. Uma primeira frase curta ("Hahaha, esse atchim!") virava um áudio curto: ele acabava antes de a frase seguinte ficar pronta (a pausa), e a voz começava a seguinte sem saber como a anterior soou (a mudança de tom). Isso pesa mais no ElevenLabs v3, que é o mais expressivo e o mais lento.
+
+Desde a v0.3.1:
+
+- **Frase curta vai junto com a próxima.** Um pedido com menos de `juntar_curta` caracteres espera até 1,5 s pela frase seguinte e vai num pedido só. Se a resposta acabar, ele vai na hora. Uma pergunta nunca espera: o "?" no fim garante a entonação.
+- **ElevenLabs com semente fixa.** O mesmo `semente` em todos os pedidos deixa a voz mais parecida de uma frase para a outra.
+- **ElevenLabs com a frase anterior.** O pedido leva a frase anterior (`previous_text`), para a entonação continuar de onde parou. Vale por até 1 minuto depois da última fala. Se o modelo recusar o campo, a Nora fala sem ele e não manda mais até fechar.
+
+```toml
+[voz]
+juntar_curta = 60        # 0 = cada frase vai sozinha, como antes
+
+[voz.elevenlabs]
+semente = 42             # -1 = a API sorteia a cada pedido
+continuidade = true      # false = não manda a frase anterior
+```
+
+Se a primeira fala ainda demorar para começar, baixe `juntar_curta` (ex.: 30). Se o tom ainda mudar, troque a `semente`: cada número dá uma leitura um pouco diferente da mesma voz.
+
 ## Voz do Piper robótica ou monótona
 
 O Piper tem dois controles de naturalidade, no `config/local.toml`:
@@ -355,11 +376,38 @@ Teste com `nora voz salvar "Até amanhã!" --ouvir` e ajuste até soar bem.
 5. Inicie o ouvido e o Kokoro, que serve de **voz reserva** quando o ElevenLabs falha (ex.: sem internet): `iniciar_voz_windows.ps1 -Voz kokoro`. Sem reserva, use `-Voz nenhuma` e `reserva = ""` em `[voz]`.
 6. Rode `nora --verificar` (deve mostrar `ElevenLabs configurado` e `Kokoro (reserva) ok`) e `nora falar --medir`.
 
-O modelo padrão é o `eleven_flash_v2_5`, o mais rápido do ElevenLabs, com o idioma fixado em português. Cada frase é um pedido à API: a conversa por voz consome créditos.
+O modelo padrão é o `eleven_flash_v2_5`, o mais rápido do ElevenLabs, com o idioma fixado em português. Cada frase é um pedido à API: a conversa por voz consome créditos. Para o tom não mudar entre as frases, veja [Voz que muda de tom ou pausa entre frases](#voz-que-muda-de-tom-ou-pausa-entre-frases).
+
+## Ouvido entendendo errado
+
+Quando você fala rápido, baixo ou longe do microfone, o `small` erra mais. Há três ajustes, do mais leve ao mais pesado:
+
+1. **Vocabulário.** Nomes e termos que ele costuma errar vão como dica para o Whisper, no `nora falar` e no `nora ouvir`, junto com o nome da assistente:
+
+   ```toml
+   [ouvido]
+   vocabulario = ["Obsidian", "Ollama", "Kokoro"]
+   ```
+
+2. **Modelo maior.** O `large-v3-turbo` erra bem menos que o `small` em fala pouco clara. A versão `q5_0` (~550 MB) cabe bem na memória. Baixe uma vez e inicie com ele:
+
+   ```bash
+   powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0 -SemPiper
+   ```
+
+   ```bash
+   powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0
+   ```
+
+   No processador, ele é mais lento que o `small` (o `small` levou 0,72 s no 9800X3D). Meça com `nora falar --medir`: se a transcrição passar de ~1,5 s, a auto-melhoria vai apontar. O ganho de velocidade de verdade vem com o whisper.cpp compilado com Vulkan (veja abaixo).
+
+3. **Busca em feixe.** Com `-Feixe 5` no `iniciar_voz_windows.ps1`, o Whisper testa 5 caminhos em vez de 1: erra menos, demora mais. Teste depois do modelo maior, se ainda errar.
+
+Antes de tudo, confira o microfone: o volume de entrada do Windows perto de 80% e o fone perto da boca já resolvem boa parte dos erros.
 
 ## Escolhas e pendências
 
-- **Whisper no processador, por enquanto.** O projeto oficial não publica versão pronta para Windows com Vulkan; ela precisa ser compilada (Vulkan SDK, CMake e Visual Studio Build Tools) ou viria de terceiros. No primeiro teste, o `small` no 9800X3D transcreveu em 0,72 s. Se ficar lento, os próximos passos são o modelo `base` (`-ModeloWhisper base` nos dois scripts) ou compilar com Vulkan.
+- **Whisper no processador, por enquanto.** O projeto oficial não publica versão pronta para Windows com Vulkan; ela precisa ser compilada (Vulkan SDK, CMake e Visual Studio Build Tools) ou viria de terceiros. No primeiro teste, o `small` no 9800X3D transcreveu em 0,72 s. Se ficar lento, os próximos passos são o modelo `base` (`-ModeloWhisper base` nos dois scripts) ou compilar com Vulkan. Para errar menos, o caminho é o contrário: o `large-v3-turbo-q5_0` (veja [Ouvido entendendo errado](#ouvido-entendendo-errado)), que fica rápido de verdade só com Vulkan.
 - **Voz `pt_BR-faber-medium` (Piper) só para uso pessoal.** Foi ajustada a partir de uma voz em inglês treinada com uma base **só para uso não comercial**. É baixada à parte e nunca distribuída.
 - **Dois modos:** `nora falar` (Enter para falar, bom para ambiente barulhento) e `nora ouvir` (mãos livres).
 - **Sem interrupção ainda.** Falar por cima da Nora (barge-in) precisa de cancelamento de eco e vem depois; por enquanto, Ctrl+C interrompe.

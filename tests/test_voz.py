@@ -205,6 +205,7 @@ def test_elevenlabs_monta_o_pedido_e_devolve_wav(criar_raiz, monkeypatch):
         "text": "Olá!",
         "model_id": "eleven_flash_v2_5",
         "language_code": "pt",
+        "seed": 42,
     }
     assert ler_wav(wav) == (pcm, 22_050, 1)
     assert "segredo" not in repr(config)
@@ -308,6 +309,8 @@ def test_conversa_por_voz_de_ponta_a_ponta(criar_raiz):
     falado = " ".join(json.loads(audio)["text"] for audio in tocados)
     assert falado == f"{resposta} {resposta}"
     assert len(whisper.pedidos) == 1  # a segunda pergunta foi digitada
+    # o nora falar manda a dica (nome da assistente) para o Whisper escrever os nomes certo
+    assert b'name="prompt"\r\n\r\nConversa com a assistente Nora.' in whisper.pedidos[0][2]
 
 
 def test_conversa_por_voz_segue_sem_os_servicos(criar_raiz):

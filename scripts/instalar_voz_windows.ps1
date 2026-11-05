@@ -2,6 +2,8 @@
 # Uso, no PowerShell, na pasta do repositório e COM O AMBIENTE ATIVADO (.venv\Scripts\activate):
 #   powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1
 # Tudo vai para ferramentas\ e models\, que ficam fora do Git.
+# Ouvido mais preciso (fala rápida ou pouco clara), sem reinstalar o resto:
+#   powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0 -SemPiper
 
 param(
     [string]$ModeloWhisper = "small",
@@ -49,7 +51,10 @@ if ($servidor) {
     Write-Host "  instalado: $($servidor.FullName)"
 }
 
-Write-Host "`n[2/5] Modelo do Whisper ($ModeloWhisper, multilíngue; ~470 MB no small, pode demorar)"
+$tamanhos = @{ "small" = "~470 MB"; "medium" = "~1,5 GB"; "large-v3-turbo" = "~1,6 GB"; "large-v3-turbo-q5_0" = "~550 MB" }
+$tamanho = if ($tamanhos.ContainsKey($ModeloWhisper)) { $tamanhos[$ModeloWhisper] } else { "tamanho desconhecido" }
+Write-Host "`
+[2/5] Modelo do Whisper ($ModeloWhisper, multilíngue; $tamanho, pode demorar)"
 $arquivoModelo = Join-Path $modelos "ggml-$ModeloWhisper.bin"
 if (Test-Path $arquivoModelo) {
     Write-Host "  já baixado: $arquivoModelo"

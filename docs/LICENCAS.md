@@ -43,7 +43,7 @@ Nenhum deles é copiado para o repositório.
 | Modelo ou voz | Licença | Observação |
 |---|---|---|
 | Silero VAD | MIT | Baixado do pacote oficial `silero-vad` |
-| Whisper (pesos, ex.: `ggml-small`) | MIT | Baixado pelo `scripts/instalar_voz_windows.ps1` |
+| Whisper (pesos, ex.: `ggml-small`, `ggml-large-v3-turbo-q5_0`) | MIT | Baixado pelo `scripts/instalar_voz_windows.ps1` (o modelo escolhido em `-ModeloWhisper`) |
 | Qwen 3.5 (`qwen3.5:9b`, pelo Ollama) | Licença do próprio modelo | Confira em [ollama.com/library/qwen3.5](https://ollama.com/library/qwen3.5) |
 | bge-m3 (embeddings da memória) | MIT | Baixado pelo Ollama |
 | Kokoro-82M (pesos) | Apache-2.0 | Baixado à parte em `models/kokoro` |
