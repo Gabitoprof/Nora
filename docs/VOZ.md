@@ -293,6 +293,7 @@ Desde a v0.3.1:
 
 - **Frase curta vai junto com a próxima.** Um pedido com menos de `juntar_curta` caracteres espera até 1,5 s pela frase seguinte e vai num pedido só. Se a resposta acabar, ele vai na hora. Uma pergunta nunca espera: o "?" no fim garante a entonação.
 - **ElevenLabs com semente fixa.** O mesmo `semente` em todos os pedidos deixa a voz mais parecida de uma frase para a outra.
+- **ElevenLabs em streaming.** A Nora pede o áudio pelo endereço de streaming e começa a tocar quando chega a primeira parte (~150 ms de áudio), sem esperar a frase inteira. Os pedidos continuam um por vez. Se a internet cair no meio da frase, ela toca o que chegou e avisa `[erro na voz] A voz parou no meio da frase`.
 - **ElevenLabs com a frase anterior.** O pedido leva a frase anterior (`previous_text`), para a entonação continuar de onde parou. Vale por até 1 minuto depois da última fala. Se o modelo recusar o campo, a Nora fala sem ele e não manda mais até fechar.
 
 ```toml

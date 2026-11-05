@@ -34,6 +34,7 @@ from nora.voz import (
     VozHTTP,
     VozTrocavel,
     com_pronuncias_aprendidas,
+    em_partes,
 )
 
 _FIM = object()
@@ -98,6 +99,7 @@ class Locutor:
         """Sintetiza as frases em ordem. Se várias já estão esperando (a voz é mais lenta que
         o modelo, como no ComfyUI), junta-as num pedido só: menos pedidos, menos pausas."""
         acabou = False
+        anterior = None
         while not acabou:
             frase = self._frases.get()
             if frase is _FIM:
@@ -124,8 +126,13 @@ class Locutor:
                 lote.append(proxima)
             if self.tempos.erros:
                 continue
+            # Um pedido por vez, como antes: o próximo só sai quando o anterior chegou inteiro
+            # (o streaming adianta o começo da fala, não abre vários pedidos de uma vez).
+            if isinstance(anterior, audio.AudioEmPartes):
+                anterior.baixado.wait()
             try:
-                self._audios.put(self.voz.sintetizar(" ".join(lote)))
+                anterior = em_partes(self.voz, " ".join(lote))
+                self._audios.put(anterior)
             except ServicoIndisponivel as erro:
                 self.tempos.erros.append(str(erro))
         self._audios.put(_FIM)
@@ -136,12 +143,17 @@ class Locutor:
             return
         with self.abafar():  # os outros programas ficam mais baixos enquanto ela fala
             while wav is not _FIM:
+                em_streaming = isinstance(wav, audio.AudioEmPartes)
+                if em_streaming:
+                    wav.primeira.wait()  # o som começa quando chega a primeira parte
                 if not self.tempos.comeco_da_voz:
                     self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
                 try:
                     self.tocar(wav)
                 except Exception as erro:  # um problema no alto-falante não derruba a conversa
                     self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
+                if em_streaming and wav.erro is not None:
+                    self.tempos.erros.append(f"A voz parou no meio da frase: {wav.erro}")
                 wav = self._audios.get()
 
 

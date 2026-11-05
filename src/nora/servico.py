@@ -12,9 +12,18 @@ class ServicoIndisponivel(Exception):
 
 
 def enviar(nome: str, pedido: urllib.request.Request, timeout: float) -> bytes:
-    try:
-        with urllib.request.urlopen(pedido, timeout=timeout) as resposta:
+    with abrir(nome, pedido, timeout) as resposta:
+        try:
             return resposta.read()
+        except OSError as erro:
+            raise ServicoIndisponivel(f"{nome} parou de responder no meio ({erro}).") from erro
+
+
+def abrir(nome: str, pedido: urllib.request.Request, timeout: float):
+    """Faz o pedido e devolve a resposta aberta, para ler aos pedaços (streaming). Os erros de
+    conexão e as recusas (4xx, 5xx) viram ServicoIndisponivel aqui, antes de ler o corpo."""
+    try:
+        return urllib.request.urlopen(pedido, timeout=timeout)
     except urllib.error.HTTPError as erro:
         detalhe = erro.read().decode("utf-8", "replace").strip()[:300]
         raise ServicoIndisponivel(f"{nome} recusou o pedido ({erro.code}): {detalhe}") from erro

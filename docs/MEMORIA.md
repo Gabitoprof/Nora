@@ -34,6 +34,7 @@ A busca por significado acha "quando é minha prova?", mas não acha "o que tenh
 - **Ao anotar:** a curadoria transforma "amanhã", "sexta", "dia 21" e "21/11" em datas de verdade e guarda o fato na agenda (aniversários e datas comemorativas ficam marcados como **todo ano**). Na conversa aparece `[memória] anotei: ... (agenda: 21/11/2026)`.
 - **Ao responder:** ela sempre lê o que está marcado para os **próximos 7 dias** (`agenda_dias`) e, se a pergunta falar de um período, o que está marcado nele. Pergunte do jeito natural: "o que tenho amanhã?", "tenho algo essa semana?", "e na sexta?", "e no dia 21?", "o que tem em dezembro?", "quando é meu aniversário?".
 - **Fatos antigos:** os que já tinham data escrita no texto entram na agenda sozinhos, na primeira vez que a memória é aberta.
+- **Contas de data:** "que dia vai ser daqui a 23 dias?", "e daqui a 24?", "há 2 semanas", "3 meses atrás" e "que dia da semana cai 25/12?" são calculados pelo código, e o modelo só fala o resultado. O modelo local errava essas contas, mesmo sabendo a data de hoje. Funciona também com a memória desligada.
 
 ## Aprender pela conversa: pronúncia e jeito de falar
 

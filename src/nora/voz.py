@@ -11,10 +11,10 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from nora.audio import para_wav
+from nora.audio import AudioEmPartes, para_wav
 from nora.config import Config
 from nora.emocao import ajustes_de_voz, para_v3, sem_emocoes
-from nora.servico import ServicoIndisponivel, enviar
+from nora.servico import ServicoIndisponivel, abrir, enviar
 
 ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
 
@@ -33,6 +33,13 @@ class VozComPronuncias:
         except Exception:  # sem memória, fala sem as pronúncias aprendidas
             pronuncias = {}
         return self.voz.sintetizar(aplicar_pronuncias(texto, pronuncias))
+
+    def sintetizar_em_partes(self, texto: str) -> bytes | AudioEmPartes:
+        try:
+            pronuncias = self.fonte()
+        except Exception:
+            pronuncias = {}
+        return em_partes(self.voz, aplicar_pronuncias(texto, pronuncias))
 
     # Atributos da voz de dentro (ex.: o aviso da reserva) passam direto, para ler e escrever.
     def __getattr__(self, nome):
@@ -58,6 +65,16 @@ def aplicar_pronuncias(texto: str, pronuncias: dict[str, str]) -> str:
 
 
 ELEVENLABS_TAXA = 22_050
+# Tamanho de cada leitura do streaming: ~90 ms de áudio a 22 050 Hz.
+ELEVENLABS_PARTE = 4096
+
+
+def em_partes(voz, texto: str) -> bytes | AudioEmPartes:
+    """O áudio da voz em streaming, se ela souber (ElevenLabs); senão, o WAV inteiro."""
+    metodo = getattr(voz, "sintetizar_em_partes", None)
+    return metodo(texto) if metodo is not None else voz.sintetizar(texto)
+
+
 # Até quantos segundos depois do último pedido a frase anterior ainda conta como contexto.
 CONTEXTO_VALE_S = 60.0
 # Quantos caracteres da frase anterior vão como contexto (o fim dela é o que importa).
@@ -120,6 +137,12 @@ class VozElevenLabs:
         return sem_emocoes(texto), ajustes_de_voz(texto, self.intensidade)
 
     def sintetizar(self, texto: str) -> bytes:
+        return para_wav(self.sintetizar_em_partes(texto).tudo(), taxa=ELEVENLABS_TAXA)
+
+    def sintetizar_em_partes(self, texto: str) -> AudioEmPartes:
+        """Pede a fala em streaming: devolve assim que o ElevenLabs aceita o pedido, e o áudio
+        vai chegando enquanto toca. Recusas (chave, créditos) levantam ServicoIndisponivel aqui,
+        a tempo de a voz reserva entrar."""
         texto, ajustes = self._preparar(texto)
         texto = aplicar_pronuncias(texto, self.pronuncias)
         if not self.chave:
@@ -138,25 +161,34 @@ class VozElevenLabs:
         anterior = self._contexto()
         inicio = time.perf_counter()
         try:
-            pcm = self._pedir({**corpo, "previous_text": anterior} if anterior else corpo)
+            resposta = self._abrir({**corpo, "previous_text": anterior} if anterior else corpo)
         except ServicoIndisponivel as erro:
             # Se o modelo não aceitar a frase anterior, fala sem ela e não manda mais.
             if not anterior or "previous_text" not in str(erro):
                 raise
             self.continuidade = False
-            pcm = self._pedir(corpo)
-        self.ultima_duracao = time.perf_counter() - inicio
+            resposta = self._abrir(corpo)
         self._anterior, self._quando = texto, self.relogio()
-        return para_wav(pcm, taxa=ELEVENLABS_TAXA)
+        return AudioEmPartes(self._ler(resposta, inicio), ELEVENLABS_TAXA)
 
-    def _pedir(self, corpo: dict) -> bytes:
+    def _ler(self, resposta, inicio: float):
+        """As partes do áudio conforme chegam; anota o tempo até a primeira."""
+        primeira = True
+        with resposta:
+            while parte := resposta.read1(ELEVENLABS_PARTE):
+                if primeira:
+                    self.ultima_duracao = time.perf_counter() - inicio
+                    primeira = False
+                yield parte
+
+    def _abrir(self, corpo: dict):
         consulta = urllib.parse.urlencode({"output_format": f"pcm_{ELEVENLABS_TAXA}"})
         pedido = urllib.request.Request(
-            f"{ELEVENLABS_API}/{urllib.parse.quote(self.voz_id)}?{consulta}",
+            f"{ELEVENLABS_API}/{urllib.parse.quote(self.voz_id)}/stream?{consulta}",
             data=json.dumps(corpo).encode("utf-8"),
             headers={"Content-Type": "application/json", "xi-api-key": self.chave},
         )
-        return enviar("o ElevenLabs", pedido, self.timeout)
+        return abrir("o ElevenLabs", pedido, self.timeout)
 
 
 @dataclass
@@ -168,17 +200,23 @@ class VozComReserva:
     aviso: str = ""
 
     def sintetizar(self, texto: str) -> bytes:
+        return self._com_reserva(lambda voz: voz.sintetizar(texto))
+
+    def sintetizar_em_partes(self, texto: str) -> bytes | AudioEmPartes:
+        return self._com_reserva(lambda voz: em_partes(voz, texto))
+
+    def _com_reserva(self, falar):
         try:
-            return self.principal.sintetizar(texto)
+            return falar(self.principal)
         except ServicoIndisponivel as erro:
             try:
-                wav = self.reserva.sintetizar(texto)
+                audio = falar(self.reserva)
             except ServicoIndisponivel as erro_reserva:
                 raise ServicoIndisponivel(
                     f"{erro} A reserva também falhou: {erro_reserva}"
                 ) from erro
             self.aviso = f"{erro} Usei a voz reserva."
-            return wav
+            return audio
 
 
 _PERGUNTA = re.compile(r"([^.!?…]*?)\?+(?=[\s\"'”)»]|$)")
@@ -211,6 +249,9 @@ class VozComRealce:
 
     def sintetizar(self, texto: str) -> bytes:
         return self.voz.sintetizar(realcar_perguntas(texto, self.modo))
+
+    def sintetizar_em_partes(self, texto: str) -> bytes | AudioEmPartes:
+        return em_partes(self.voz, realcar_perguntas(texto, self.modo))
 
 
 MARCADOR = "{{texto}}"
@@ -426,6 +467,9 @@ class VozTrocavel:
 
     def sintetizar(self, texto: str) -> bytes:
         return self.voz.sintetizar(texto)
+
+    def sintetizar_em_partes(self, texto: str) -> bytes | AudioEmPartes:
+        return em_partes(self.voz, texto)
 
     @property
     def aviso(self) -> str:

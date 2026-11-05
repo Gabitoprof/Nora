@@ -10,10 +10,12 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 - **Voz que mudava de tom e pausava depois de uma primeira frase curta** (ex.: "Hahaha, esse atchim!" no ElevenLabs v3):
   - um pedido à voz com menos de `[voz] juntar_curta` caracteres (padrão 60) espera até 1,5 s pela próxima frase e vai junto com ela. Perguntas não esperam, e o fim da resposta libera na hora;
   - o ElevenLabs recebe uma semente fixa (`[voz.elevenlabs] semente`, padrão 42) e a frase anterior (`previous_text`, `continuidade = true`), para a entonação continuar. Se o modelo recusar o campo, ela segue sem ele.
+- **Datas erradas em "daqui a N dias":** o modelo local errava o dia e o dia da semana. Agora as contas ("daqui a 23 dias", "e daqui a 24?", "há 2 semanas", "3 meses atrás", o dia da semana de "25/12") são feitas pelo código e vão prontas para o modelo.
 - **Ouvido errando nomes no `nora falar`:** a dica com o nome da assistente, que só ia no `nora ouvir`, agora vai também no `nora falar`.
 
 ### Adicionado
 
+- **Voz do ElevenLabs em streaming:** a fala começa a tocar com a primeira parte do áudio, sem esperar a frase inteira chegar. As vozes locais não mudam.
 - `[ouvido] vocabulario`: nomes e termos que o Whisper deve escrever certo, mandados como dica nos dois modos.
 - Os scripts de voz aceitam o modelo `large-v3-turbo-q5_0` (mais preciso em fala pouco clara) e `-Feixe N` (busca em feixe no `whisper-server`). Guia em `docs/VOZ.md`, "Ouvido entendendo errado".
 
