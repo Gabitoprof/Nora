@@ -100,6 +100,8 @@ Também rodei o laço real do `nora falar` (`conversar_por_voz`, com o `input` v
 | `nora --verificar` | Código 0 |
 | CI GitHub Actions (Windows e Ubuntu × Python 3.11 e 3.13) | Ver seção 2.3 |
 
+Encontrado na homologação (05/11): com o `.venv` recriado em outra versão do Python, o `nora ouvir` dizia "Falta a parte de áudio" com o pacote instalado. A mensagem agora mostra a causa real (`test_audio_que_nao_carrega_mostra_a_causa`).
+
 Testes novos nesta preparação: `test_falha_ao_apresentar_nao_deixa_leitor_orfao_que_engole_o_enter`, `test_relatorio_que_aparece_na_espera_mostra_o_prompt_de_novo`, `test_abrir_o_relatorio_nao_rouba_o_teclado_da_sessao`, `test_busca_por_trecho_ignora_maiusculas_acentuadas_e_nao_usa_curingas`.
 
 ### 2.3 CI
@@ -111,6 +113,7 @@ Todas as execuções do candidato estão na seção 6. O critério para mudar a 
 A CI não tem microfone, alto-falante, GPU, Ollama, whisper.cpp nem as chaves reais. Itens a validar no PC:
 
 **Básico**
+- [ ] Antes de tudo: `python --version` no `.venv` ativo mostra **3.13.x**. Na homologação de 05/11, o `.venv` estava com outra versão do Python e os pacotes de áudio compilados para a 3.13 não carregavam (`_cffi_backend`). A saída é recriar com `py -3.13 -m venv .venv --clear` e reinstalar.
 - [ ] `nora --verificar` com tudo ok: Ollama, whisper-server, voz principal e reserva, chaves e conexões de ChatGPT e Claude, notas, auto-melhoria.
 - [ ] `nora ouvir`: ativação por "Nora", transcrição, resposta falada; digitar com o microfone ligado.
 

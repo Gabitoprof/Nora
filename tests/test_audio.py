@@ -311,3 +311,37 @@ def test_reamostrar_com_qualidade_corta_o_que_nao_cabe_na_taxa_nova():
     dobra = espectro[np.argmin(abs(freq - (22_050 - 15_000)))]  # onde o chiado apareceria
     assert dobra < voz / 100  # os 15 kHz não viraram chiado em 7 kHz
     assert audio.reamostrar_qualidade(entrada, taxa, taxa) == entrada
+
+
+def test_audio_que_nao_carrega_mostra_a_causa(monkeypatch):
+    """Pacote instalado para outra versão do Python: a mensagem diz o motivo real, não "falta"."""
+    import builtins
+
+    import pytest
+
+    from nora import audio
+
+    importar = builtins.__import__
+
+    def falso(nome, *args, **kwargs):
+        if nome == "sounddevice":
+            raise ModuleNotFoundError(
+                "No module named '_cffi_backend'. Although a module with this name was found "
+                "for a different Python version",
+                name="_cffi_backend",
+            )
+        return importar(nome, *args, **kwargs)
+
+    monkeypatch.delitem(__import__("sys").modules, "sounddevice", raising=False)
+    monkeypatch.setattr(builtins, "__import__", falso)
+    with pytest.raises(RuntimeError, match="instalada, mas não carregou.*_cffi_backend"):
+        audio._sounddevice()
+
+    def sem_pacote(nome, *args, **kwargs):
+        if nome == "sounddevice":
+            raise ModuleNotFoundError("No module named 'sounddevice'", name="sounddevice")
+        return importar(nome, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", sem_pacote)
+    with pytest.raises(RuntimeError, match="Falta a parte de áudio"):
+        audio._sounddevice()

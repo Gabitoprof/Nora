@@ -40,6 +40,7 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
   - o modo `abrir` podia tirar o foco do terminal (o editor do `.md` ficava com o teclado no Windows; no Linux, o `xdg-open` herdava o terminal).
   
   Agora o relatório abre minimizado e sem foco, nem o programa aberto nem a notificação usam o teclado da sessão, e o prompt reaparece depois de um relatório.
+- **Áudio que não carrega:** quando o pacote de áudio está instalado mas não carrega (o caso comum é o `.venv` recriado com outra versão do Python), a Nora mostra a causa real, em vez de "Falta a parte de áudio".
 - **Busca por trecho na agenda e no `listar --contendo`** ([#3](https://github.com/Gabitoprof/Nora/issues/3)): "Álgebra" agora acha "álgebra", e `_` e `%` não funcionam mais como curingas.
 - **Modo jogo:** se nenhuma nuvem responder, a Nora não volta a usar o cérebro local (que ocuparia a placa de vídeo); a pergunta vira pendência e, ao sair do modo jogo, ela oferece retomar.
 - **Comando com pedido:** "use o Claude para explicar fotossíntese" responde a pergunta, em vez de só trocar o modo; "como sair do modo jogo?" é respondida, não executada.
