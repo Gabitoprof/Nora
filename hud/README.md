@@ -7,7 +7,7 @@ procedural e animada; não há um segundo cérebro, microfone ou TTS no navegado
 
 ## Preparar e iniciar
 
-Requisitos: Python do projeto e Node.js 22 ou superior com npm. Na raiz do repositório:
+Requisitos: Python do projeto e Node.js LTS 22.13+ ou 24 com npm. Na raiz do repositório:
 
 ```powershell
 cd hud
@@ -86,3 +86,7 @@ do proprietário; P3/P4, MCP completo e operação distribuída permanecem fora 
 
 No Windows, não executar o script Bash da nuvem. Para corrigir caminhos Linux no PowerShell
 ou um ambiente criado com Python 3.15, usar o [procedimento Windows](../docs/HUD.md#powershell-não-executa-o-script-da-nuvem-linux).
+
+Se abrir por link retornar `Origem local obrigatória`, atualizar a branch e reiniciar
+o servidor Python: a correção distingue navegação pública inicial de acesso às APIs.
+Ver [diagnóstico de navegação](../docs/HUD.md#hud-retorna-origem-local-obrigatória-ao-abrir-por-link).

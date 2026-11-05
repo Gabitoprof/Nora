@@ -23,7 +23,7 @@ A medição com Ollama/STT/TTS e GPU AMD reais pertence à homologação integra
 ## Preparar no Windows
 
 Usar o checkout existente; não é preciso worktree ou outro clone. Requisitos: Python
-3.11–3.13, Node.js 22 ou superior compatível com Vite, e os serviços de voz já configurados.
+3.11–3.13, Node.js LTS 22.13+ ou 24, conforme `hud/package.json`, e os serviços de voz já configurados.
 Na raiz do repositório, em PowerShell:
 
 ```powershell
@@ -168,3 +168,23 @@ A entrada oficial `python -m nora` usa o mesmo `nora.cli.main` do launcher insta
 O diagnóstico da aplicação continua sendo `--verificar`. Não desativar políticas de
 segurança; se a política também impedir a execução pelo Python, solicitar a análise e
 liberação da aplicação ao responsável pela política do computador.
+
+## HUD retorna `Origem local obrigatória` ao abrir por link
+
+A abertura inicial pelo navegador envia `Sec-Fetch-Site: cross-site` ou `same-site` quando
+vem de um link de outra página. Uma versão anterior da ponte rejeitava também essa navegação
+legítima, embora o build estivesse correto. A correção autoriza somente `GET /` e
+`GET /index.html` com modo `navigate` e destino `document`, mantendo Host/Origin validados.
+APIs, requisições externas de dados, iframe e mutações continuam protegidos; não remover
+as verificações de origem ou token para abrir a interface.
+
+Parar o servidor antigo com Ctrl+C, atualizar a branch `feat/v0.4.0-hud`, reinstalar o
+lockfile com `npm.cmd ci`, compilar e reiniciar o Python. O processo antigo mantém em memória
+as regras anteriores até ser reiniciado. O build exibido como concluído no terminal já é
+uma evidência de compilação aprovada; o erro HTTP de origem é registrado separadamente.
+
+Os alertas de auditoria das ferramentas de desenvolvimento também foram corrigidos por
+atualizações explícitas e testadas. Não é necessário executar `npm audit fix --force`.
+O aviso local de scripts de instalação requer análise somente se uma instalação ou build
+falhar; a captura fornecida confirma build concluído, sem necessidade de liberar scripts
+adicionais para corrigir o HTTP 403.

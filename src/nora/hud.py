@@ -339,10 +339,20 @@ class ServidorHUD:
                 permitido = f"127.0.0.1:{dono.porta}"
                 host = self.headers.get("Host", "")
                 origem = self.headers.get("Origin")
+                if host != permitido or origem not in (None, f"http://{permitido}"):
+                    return False
+                # Links de outros sites abrem só o documento público, nunca a API.
+                # Após carregar, os assets/eventos usam a própria origem loopback.
+                navegacao_inicial = (
+                    not mutacao
+                    and self.command == "GET"
+                    and urlsplit(self.path).path in ("/", "/index.html")
+                    and self.headers.get("Sec-Fetch-Mode") == "navigate"
+                    and self.headers.get("Sec-Fetch-Dest") == "document"
+                )
                 if (
-                    host != permitido
-                    or origem not in (None, f"http://{permitido}")
-                    or self.headers.get("Sec-Fetch-Site") in ("cross-site", "same-site")
+                    self.headers.get("Sec-Fetch-Site") in ("cross-site", "same-site")
+                    and not navegacao_inicial
                 ):
                     return False
                 if mutacao:

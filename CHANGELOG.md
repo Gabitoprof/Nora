@@ -37,6 +37,11 @@ Versão em desenvolvimento: `0.3.0.dev0`.
 
 ### Corrigido
 
+- HUD: navegação inicial por link externo/same-site deixa de retornar HTTP 403; APIs,
+  iframe, Host/Origin e confirmação por token permanecem protegidos, com regressões HTTP/browser.
+- Ferramentas da HUD: dependências de teste/lint atualizadas para corrigir alertas de auditoria,
+  com override limitado às versões vulneráveis de minimatch e testes de compatibilidade.
+
 - **Ctrl+C no meio de uma resposta** guarda a pendência na hora; antes, se a Nora estava esperando o cérebro, ela só aparecia na sessão seguinte.
 - **Retomar uma resposta** também conta como "ocupada": o relatório diário não fecha no meio da retomada.
 - **Privacidade do relatório diário:** ele não traz mais o texto das perguntas pendentes (só número, motivo e data); relatórios antigos são limpos ao abrir a Nora.

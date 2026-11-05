@@ -153,3 +153,37 @@ anteriores sem impacto direto; nenhuma aprovação física foi registrada nesta 
   resultado no computador do proprietário ainda pendente. A forma como módulo foi
   executada no ambiente Linux, código 0; isso não substitui a confirmação local.
 - Instalação aprovada não homologa microfone, STT/TTS, GPU ou integração completa.
+
+### Correção de abertura por link e ferramentas da HUD
+
+- Evidência do proprietário: `npm ci` e build da HUD concluídos no Windows; não repetir
+  investigação de compilação como se ela tivesse falhado. Servidor iniciou, mas navegador
+  recebeu HTTP 403 `Origem local obrigatória`; abertura da interface **reprovada nessa versão**.
+- Reproduzido antes da correção: quatro cliques Chromium em páginas de outra origem
+  para `/` e `/index.html` retornaram 403 com `Sec-Fetch-Site` cross-site/same-site,
+  `Sec-Fetch-Mode: navigate`, `Sec-Fetch-Dest: document` e sem Origin.
+- Corrigido somente o documento público inicial. Quatro casos de navegador passaram
+  após a mudança, incluindo assets/SSE/consentimento na própria origem e zero pageerrors.
+  API de estado/token, POST externo, iframe e link diretamente à API continuam 403.
+- Novas regressões HTTP: 12 casos; suíte HUD: **41 aprovados**. Suíte completa Linux/Python
+  3.12: **307 aprovados e 1 ignorado** (Kokoro real). Ruff format/check aprovados e
+  `python -m nora --verificar` executado com código 0, sem serviços físicos nesta máquina.
+- QA repetiu as 13 verificações ponta a ponta e a corrida HTTP/SSE de privacidade:
+  aprovadas. Não substitui integração física Windows/AMD.
+- Auditoria npm inicial confirmou os 10 alertas do proprietário (8 moderados, 2 críticos).
+  Vitest/ESLint atualizados explicitamente; minimatch transitivo fixado no intervalo
+  vulnerável com testes das APIs consumidas. Sem `audit fix --force` ou testes desabilitados.
+- Requisito das ferramentas atualizado para Node LTS 22.13+ ou 24 (ver engines exatos no
+  package.json). Manter a matriz CI Windows/Ubuntu e confirmar o commit enviado.
+- Evidências de navegador desta sessão: `/workspace/scratch/qa-hud/navigation-before-results.json`,
+  `navigation-fixed-results.json`, `external-link-fixed.png` e `FINAL_QA.md`.
+- Reteste manual necessário somente da abertura corrigida no navegador do proprietário;
+  aprovações anteriores de instalação/pip check permanecem registradas, sem repetir módulos
+  não afetados. Voz/GPU e homologação final integrada continuam pendentes.
+
+- Ferramentas após atualização: `npm ci`, lint, typecheck, **19 testes Vitest** e build
+  aprovados tanto com Node 24.22.1 quanto com Node 22.23.4. Quatro novos casos verificam
+  as APIs minimatch consumidas pelo ESLint/parser, inclusive dotfiles, extensões e negação.
+- Auditoria npm completa: **0 vulnerabilidades**; auditoria somente produção: **0**.
+  Os avisos anteriores de instalação não foram usados para explicar o HTTP 403: as duas
+  causas foram investigadas e corrigidas separadamente. Nenhuma política Windows foi alterada.

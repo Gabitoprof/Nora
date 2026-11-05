@@ -363,3 +363,53 @@ def test_javascript_nao_depende_de_registro_mime_do_windows(servidor, monkeypatc
     assert status == 200 and corpo == b"export {};"
     assert headers["Content-Type"] == "text/javascript"
     assert headers["X-Content-Type-Options"] == "nosniff"
+
+
+@pytest.mark.parametrize("origem_site", ["same-site", "cross-site"])
+@pytest.mark.parametrize("rota", ["/", "/index.html"])
+def test_navegacao_documento_por_link_abre_hud(servidor, origem_site, rota):
+    _, http = servidor
+    headers = {
+        "Sec-Fetch-Site": origem_site,
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-User": "?1",
+    }
+    status, corpo, _ = pedido(http, rota, headers=headers)
+    assert status == 200
+    assert b"<title>Nora</title>" in corpo
+
+
+@pytest.mark.parametrize(
+    "rota,adicionais",
+    [
+        ("/api/sessao", {}),
+        ("/api/estado", {}),
+        ("/api/eventos", {}),
+        ("/", {"Sec-Fetch-Dest": "iframe"}),
+        ("/", {"Sec-Fetch-Mode": "cors"}),
+        ("/", {"Host": "hostil.example"}),
+        ("/", {"Origin": "https://hostil.example"}),
+    ],
+)
+def test_excecao_de_navegacao_nao_libera_api_ou_origem_hostil(servidor, rota, adicionais):
+    _, http = servidor
+    headers = {
+        "Sec-Fetch-Site": "cross-site",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Dest": "document",
+        **adicionais,
+    }
+    assert pedido(http, rota, headers=headers)[0] == 403
+
+
+def test_token_valido_nao_autoriza_mutacao_vinda_de_link_externo(servidor):
+    _, http = servidor
+    _, corpo, _ = pedido(http, "/api/sessao")
+    headers = {
+        "X-Nora-Token": json.loads(corpo)["token"],
+        "Sec-Fetch-Site": "cross-site",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Dest": "document",
+    }
+    assert pedido(http, "/api/privacidade", {"visivel": True}, headers)[0] == 403
