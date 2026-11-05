@@ -10,7 +10,7 @@ from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from typing import TextIO
 
-from nora.agenda import intervalo_da_pergunta, quando
+from nora.agenda import contas_de_data, intervalo_da_pergunta, quando
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
 from nora.confirmacao import confirmacao
@@ -233,10 +233,25 @@ class Conversa:
         """Preferências, fatos e trechos de conversas antigas parecidos com a pergunta, como
         notas para o modelo (que não ficam guardadas na conversa)."""
         self.lembrancas, self.trechos, self.trechos_de_notas = [], [], []
-        notas = self._notas(texto)
+        notas = self._notas(texto) + self._contas_de_data(texto)
         if self.memoria is None:
             return notas
         return self._preferencias() + self._lembrancas(texto) + notas
+
+    def _contas_de_data(self, texto: str) -> list[dict[str, str]]:
+        """As contas de data da pergunta, feitas pelo código: o modelo erra "daqui a 23 dias"."""
+        anteriores = [m["content"] for m in self.mensagens[:-1] if m["role"] == "user"]
+        try:
+            linhas = contas_de_data(texto, date.today(), anteriores[-1] if anteriores else "")
+        except Exception:
+            return []
+        if not linhas:
+            return []
+        cabecalho = (
+            "Contas de data já feitas pelo sistema (estão certas: use estes resultados, não "
+            "refaça a conta):"
+        )
+        return [{"role": "system", "content": "\n".join([cabecalho, *linhas])}]
 
     def _notas(self, texto: str) -> list[dict[str, str]]:
         """Os trechos das notas do Obsidian parecidos com a pergunta."""
