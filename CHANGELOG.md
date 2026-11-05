@@ -10,7 +10,8 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 - **Voz que mudava de tom e pausava depois de uma primeira frase curta** (ex.: "Hahaha, esse atchim!" no ElevenLabs v3):
   - um pedido à voz com menos de `[voz] juntar_curta` caracteres (padrão 60) espera até 1,5 s pela próxima frase e vai junto com ela. Perguntas não esperam, e o fim da resposta libera na hora;
   - o ElevenLabs recebe uma semente fixa (`[voz.elevenlabs] semente`, padrão 42) e a frase anterior (`previous_text`, `continuidade = true`), para a entonação continuar. Se o modelo recusar o campo, ela segue sem ele.
-- **Datas erradas em "daqui a N dias":** o modelo local errava o dia e o dia da semana. Agora as contas ("daqui a 23 dias", "e daqui a 24?", "há 2 semanas", "3 meses atrás", o dia da semana de "25/12") são feitas pelo código e vão prontas para o modelo.
+- **Datas erradas em "daqui a N dias":** o modelo local errava o dia e o dia da semana. Agora as contas ("daqui a 23 dias", "e daqui a 24?", que usa a unidade da última pergunta que tinha uma, "há 2 semanas", "3 meses atrás", o dia da semana de "25/12") são feitas pelo código e vão prontas para o modelo.
+- **Preferências inventadas a partir de erro de transcrição:** uma fala curta e sem sentido ("Aqui assim.") virava preferência copiada dos exemplos da instrução ("Seja mais direta."). Agora a preferência só vale se a fala tiver relação com ela, for uma risada ou tiver 6 palavras ou mais, e a curadoria é avisada de que fala sem sentido é erro de transcrição.
 - **Ouvido errando nomes no `nora falar`:** a dica com o nome da assistente, que só ia no `nora ouvir`, agora vai também no `nora falar`.
 
 ### Adicionado

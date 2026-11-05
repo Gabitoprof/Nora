@@ -44,6 +44,10 @@ def test_pergunta_seguinte_sem_unidade_usa_a_da_anterior():
         "- daqui a 24 dias: domingo, 29 de novembro de 2026"
     ]
     assert contas_de_data("E daqui a 24?", HOJE, "bom dia") == []
+    # "daqui a 22 dias" → "e daqui a 23" → "daqui a 50": a unidade vem da última que tinha
+    assert contas_de_data("Daqui a 50.", HOJE, ["Dia daqui a 22 dias.", "E daqui a 23."]) == [
+        "- daqui a 50 dias: sexta-feira, 25 de dezembro de 2026"
+    ]
 
 
 @pytest.mark.parametrize("pergunta", ["em dias de chuva", "daqui a 2 horas", "tudo bem?", ""])

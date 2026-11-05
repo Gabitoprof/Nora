@@ -277,14 +277,18 @@ def _unidade(unidade: str) -> str:
     return unidade.replace("mes", "mês") if unidade == "mes" else unidade
 
 
-def contas_de_data(texto: str, hoje: date, anterior: str = "") -> list[str]:
+def contas_de_data(texto: str, hoje: date, anterior: str | list[str] = "") -> list[str]:
     """As contas de data que a pergunta pede, já feitas: "daqui a 24 dias", "há 2 semanas",
     "3 meses atrás" e o dia da semana das datas citadas ("25/12", "29 de novembro"). Com
-    `anterior` (a pergunta de antes), "e daqui a 24?" usa a unidade dela."""
+    `anterior` (as perguntas de antes, da mais antiga para a mais nova), "e daqui a 24?" usa a
+    unidade da última que tinha uma ("daqui a 23 dias" → "e daqui a 24?" → "daqui a 50")."""
     limpo = _texto(texto)
     pedidos = [(achado.group(1), achado.group(2)) for achado in _FUTURO.finditer(limpo)]
     if not pedidos:
-        antes = _FUTURO.search(_texto(anterior))
+        anteriores = [anterior] if isinstance(anterior, str) else anterior
+        antes = next(
+            (a for a in map(_FUTURO.search, map(_texto, reversed(anteriores[-5:]))) if a), None
+        )
         if antes:
             unidade = antes.group(2)
             pedidos = [(achado.group(1), unidade) for achado in _SEM_UNIDADE.finditer(limpo)]

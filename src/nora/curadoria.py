@@ -4,6 +4,8 @@ pessoa (fatos duradouros, datas, planos e acontecimentos marcantes). Roda em seg
 from __future__ import annotations
 
 import json
+import re
+import unicodedata
 import urllib.request
 from datetime import date, datetime
 from typing import NamedTuple
@@ -56,6 +58,8 @@ assistente mostrar, mesmo sem pedido direto. As etiquetas entre chaves na respos
 brincadeira sobre estudos → "Brincadeiras sobre estudos funcionam com {usuario}."; reclamou de \
 exagero ("calma", "menos") → "Seja menos expressiva."; se abriu depois de um tom carinhoso → \
 "Quando {usuario} estiver chateado, use um tom carinhoso." Só anote quando a reação for clara.
+- A fala de {usuario} vem de transcrição de voz: se ela estiver sem sentido ou incompleta \
+("aqui assim", "e então o"), é erro de transcrição. Não anote preferência nem fato por ela.
 
 Apagar e corrigir:
 - "esquecer": quando {usuario} pedir para apagar ou esquecer algo, ou corrigir uma informação \
@@ -106,6 +110,25 @@ def _ler_data(valor, texto: str, dia: date) -> tuple[date | None, bool]:
 def extrair_fatos(*args, **kwargs) -> list[FatoExtraido]:
     """Só os fatos da troca (veja curar)."""
     return curar(*args, **kwargs).fatos
+
+
+_RISADA = re.compile(r"k{3,}|\b(?:ha){2,}|\b(?:rs){2,}|\bhehe|\brisos?\b", re.IGNORECASE)
+
+
+def _radicais(texto: str) -> set[str]:
+    sem_acento = unicodedata.normalize("NFKD", texto.lower())
+    limpo = "".join(c for c in sem_acento if not unicodedata.combining(c))
+    return {palavra[:5] for palavra in re.findall(r"[a-z]{4,}", limpo)}
+
+
+def _preferencia_tem_base(preferencia: str, pergunta: str) -> bool:
+    """Uma preferência só vale se a fala dá base para ela: fala algo parecido ("seja mais
+    direta" → "Seja mais direta."), é uma risada (reação ao tom) ou é uma fala de verdade (6
+    palavras ou mais). Uma fala curta e sem relação ("Aqui assim.", erro de transcrição) virava
+    preferência copiada dos exemplos da instrução."""
+    if _RISADA.search(pergunta) or len(pergunta.split()) >= 6:
+        return True
+    return bool(_radicais(preferencia) & _radicais(pergunta))
 
 
 def curar(
@@ -189,6 +212,7 @@ def curar(
         if isinstance(dados.get("preferencias"), list)
         else []
     )
+    preferencias = [p for p in preferencias if _preferencia_tem_base(p, pergunta)]
     esquecer = (
         [
             " ".join(item.split())

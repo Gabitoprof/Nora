@@ -242,7 +242,7 @@ class Conversa:
         """As contas de data da pergunta, feitas pelo código: o modelo erra "daqui a 23 dias"."""
         anteriores = [m["content"] for m in self.mensagens[:-1] if m["role"] == "user"]
         try:
-            linhas = contas_de_data(texto, date.today(), anteriores[-1] if anteriores else "")
+            linhas = contas_de_data(texto, date.today(), anteriores)
         except Exception:
             return []
         if not linhas:
