@@ -110,7 +110,7 @@ Peça falando ("Nora, mostre seu segundo cérebro", "abra o mapa da memória", "
 | Pulso branco | memória atualizada nos últimos 7 dias |
 | Ligações surgindo ao abrir | animação das ligações reais; nenhuma memória é criada |
 
-Clique num nó para ver a ficha: área, camada, origem, data e **por que se liga** a cada vizinho, com o link para abrir a nota no Obsidian. Busca, filtros por área, tipo e tom, zoom e arrasto. Com mais de 900 nós, o mapa abre só com áreas, nomes e meses, e as memórias aparecem ao clicar ou em "Ver tudo".
+Clique num nó para ver a ficha: área, camada, origem, data e **por que se liga** a cada vizinho, com o link para abrir a nota no Obsidian. O link usa o caminho completo do arquivo (`obsidian://open?path=...`), então funciona com qualquer nome de vault; só precisa que a pasta do vault já tenha sido aberta no Obsidian alguma vez (Abrir pasta como vault). Não precisa de plugin. Busca, filtros por área, tipo e tom, zoom e arrasto. Com mais de 900 nós, o mapa abre só com áreas, nomes e meses, e as memórias aparecem ao clicar ou em "Ver tudo".
 
 **Privacidade:** o texto das memórias abre escondido (borrado), e aparece no botão "Mostrar textos". Para abrir já visível: `mostrar_texto_no_mapa = true`.
 

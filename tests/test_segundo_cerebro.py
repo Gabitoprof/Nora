@@ -507,3 +507,17 @@ def test_padrao_e_desligado_e_privado(criar_raiz):
     assert config.segundo_cerebro.ativo is False
     assert config.segundo_cerebro.areas_privadas == ("saúde", "finanças")
     assert config.segundo_cerebro.mostrar_texto_no_mapa is False
+
+
+def test_link_do_obsidian_usa_o_caminho_e_mapa_velho_e_refeito(ambiente):
+    config, memoria, sincronizador, pasta = ambiente()
+    memorias_de_exemplo(memoria)
+    sincronizador.sincronizar()
+    grafo = json.loads((config.pasta_dados / "segundo_cerebro/grafo.json").read_text("utf-8"))
+    # ?path= acha o vault pelo arquivo: o nome da pasta de [notas] pode não ser o nome do vault
+    assert grafo["raiz"] == str(pasta.resolve())
+    mapa = config.pasta_dados / "segundo_cerebro/mapa.html"
+    assert "obsidian://open?path=" in mapa.read_text("utf-8")
+    mapa.write_text("versão antiga da página", encoding="utf-8")
+    sincronizador.sincronizar()  # nada mudou na memória, mas a página está desatualizada
+    assert "obsidian://open?path=" in mapa.read_text("utf-8")

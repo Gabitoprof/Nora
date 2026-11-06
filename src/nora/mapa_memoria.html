@@ -241,7 +241,13 @@ addEventListener("keydown", ev => { if (ev.key === "Escape") { foco = null; fech
 
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]); }
 function linkObsidian(n) {
-  if (!DADOS.vault || !n.caminho) return "";
+  if (!n.caminho) return "";
+  if (DADOS.raiz) {  // caminho completo: o Obsidian acha o vault que contém o arquivo
+    const sep = DADOS.raiz.includes("\\") ? "\\" : "/";
+    const arquivo = DADOS.raiz.replace(/[\\/]+$/, "") + sep + n.caminho.split("/").join(sep);
+    return `obsidian://open?path=${encodeURIComponent(arquivo)}`;
+  }
+  if (!DADOS.vault) return "";
   const arquivo = (DADOS.prefixo ? DADOS.prefixo + "/" : "") + n.caminho.replace(/\.md$/, "");
   return `obsidian://open?vault=${encodeURIComponent(DADOS.vault)}&file=${encodeURIComponent(arquivo)}`;
 }

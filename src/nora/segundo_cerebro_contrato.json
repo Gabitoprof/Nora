@@ -4,7 +4,7 @@
   "descricao": "Grafo do Second Brain da Nora (data/segundo_cerebro/grafo.json). Somente leitura para quem consome: a fonte da verdade é a memória da Nora.",
   "arquivo": "segundo_cerebro/grafo.json",
   "grafo": {
-    "campos": ["versao", "vault", "prefixo", "nos", "ligacoes", "legenda"],
+    "campos": ["versao", "vault", "prefixo", "raiz", "nos", "ligacoes", "legenda"],
     "no": {
       "obrigatorios": ["id", "tipo", "rotulo"],
       "opcionais": ["texto", "area", "camada", "emocao", "data", "origem", "atualizado", "caminho"],

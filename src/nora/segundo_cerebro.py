@@ -674,26 +674,27 @@ class Sincronizador:
             "versao": VERSAO_DO_CONTRATO,
             "vault": self.vault,
             "prefixo": self.planejador.prefixo,
+            # Caminho completo da pasta: o link "Abrir no Obsidian" usa ?path=, que acha o vault
+            # sozinho (o nome da pasta de [notas] nem sempre é o nome do vault no Obsidian).
+            "raiz": str(self.destino.resolve()),
             "nos": grafo.nos,
             "ligacoes": grafo.ligacoes,
             "legenda": {"areas": _legenda_das_areas(grafo), "emocoes": CORES_DAS_EMOCOES},
         }
         texto = json.dumps(dados, ensure_ascii=False, sort_keys=True)
-        caminho = self.pasta / "grafo.json"
-        anterior = caminho.read_text(encoding="utf-8") if caminho.exists() else ""
-        if (
-            anterior
-            and json.loads(anterior).get("nos") == dados["nos"]
-            and json.loads(anterior).get("ligacoes") == dados["ligacoes"]
-        ):
-            return
-        escrever_atomico(caminho, texto)
         from nora.mapa_memoria import pagina
 
-        escrever_atomico(
-            self.pasta / "mapa.html",
-            pagina(texto, self.config.segundo_cerebro.mostrar_texto_no_mapa),
-        )
+        # Compara o arquivo inteiro: uma versão nova da página ou da config também refaz o mapa.
+        arquivos = {
+            self.pasta / "grafo.json": texto,
+            self.pasta / "mapa.html": pagina(
+                texto, self.config.segundo_cerebro.mostrar_texto_no_mapa
+            ),
+        }
+        for caminho, conteudo in arquivos.items():
+            atual = caminho.read_text(encoding="utf-8") if caminho.exists() else None
+            if atual != conteudo:
+                escrever_atomico(caminho, conteudo)
 
     def fechar(self) -> None:
         with self._trava:
