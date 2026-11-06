@@ -524,6 +524,10 @@ def escrever_atomico(caminho: Path, conteudo: str) -> None:
         raise
 
 
+class VaultAusente(Exception):
+    """A pasta do vault (ou a de cima do Second Brain) não existe."""
+
+
 @dataclass
 class Resumo:
     escritas: int = 0
@@ -541,6 +545,11 @@ class Sincronizador:
         self.config = config
         self.destino = destino
         self.vault = vault  # nome do vault, para abrir a nota no Obsidian pelo mapa
+        # A pasta que precisa existir antes: o vault (pasta relativa) ou a pasta acima dela
+        # (caminho absoluto). Sem ela, não cria nada: um caminho errado na config não vira um
+        # vault novo no lugar errado.
+        relativa = not Path(config.segundo_cerebro.pasta).expanduser().is_absolute()
+        self.base = Path(config.notas.pasta) if relativa else destino.parent
         self.pasta = config.pasta_dados / "segundo_cerebro"
         self.pasta.mkdir(parents=True, exist_ok=True)
         self.planejador = Planejador(config, prefixo_dos_links)
@@ -601,6 +610,8 @@ class Sincronizador:
             inicio = time.perf_counter()
             resumo = Resumo()
             try:
+                if not self.base.is_dir():
+                    raise VaultAusente(str(self.base))
                 plano = self.planejador.planejar(
                     ler_memoria(self.config.pasta_dados / "memoria.db")
                 )

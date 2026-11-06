@@ -789,6 +789,14 @@ def comando_cerebro(config: Config, args) -> int:
     try:
         if args.acao == "sincronizar":
             resumo = sincronizador.sincronizar()
+            if resumo.erro == "VaultAusente":
+                print(
+                    f"A pasta {sincronizador.base} não existe. Confira [notas] pasta no "
+                    "config/local.toml: tem que ser a pasta do seu vault do Obsidian (no "
+                    "Obsidian, 'Gerenciar vaults' mostra o caminho). Nada foi escrito.",
+                    file=sys.stderr,
+                )
+                return 1
             if resumo.erro:
                 print(
                     f"Não consegui sincronizar ({resumo.erro}). Nada foi apagado.", file=sys.stderr

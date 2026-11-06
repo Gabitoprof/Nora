@@ -521,3 +521,14 @@ def test_link_do_obsidian_usa_o_caminho_e_mapa_velho_e_refeito(ambiente):
     mapa.write_text("versão antiga da página", encoding="utf-8")
     sincronizador.sincronizar()  # nada mudou na memória, mas a página está desatualizada
     assert "obsidian://open?path=" in mapa.read_text("utf-8")
+
+
+def test_vault_que_nao_existe_nao_vira_pasta_nova(criar_raiz):
+    # ex.: o caminho de exemplo da documentação copiado sem trocar o usuário
+    raiz = criar_raiz(local=LOCAL.replace('pasta = "vault"', 'pasta = "vault-que-nao-existe"'))
+    config = carregar(raiz, ambiente={})
+    memoria = Memoria(config.pasta_dados / "memoria.db", EmbeddingsFalsos())
+    memorias_de_exemplo(memoria)
+    resumo = Sincronizador(config, *destino(config)).sincronizar()
+    assert resumo.erro == "VaultAusente" and resumo.escritas == 0
+    assert not (raiz / "vault-que-nao-existe").exists()
