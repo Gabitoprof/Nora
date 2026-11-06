@@ -9,7 +9,7 @@ import sys
 import urllib.error
 import urllib.request
 
-from nora import __version__, versao_legivel
+from nora import __version__, commit, versao_legivel
 from nora.config import Config, ConfigError, carregar
 from nora.servico import responde
 
@@ -67,6 +67,7 @@ def verificar(config: Config) -> list[str]:
     primeira = "ChatGPT" if config.roteador.complexas == "openai" else "Claude"
     modelo = config.modelo_local.modelo
     linhas = [
+        f"Versão: {__version__} (commit {commit()})",
         "Config:",
         *(f"  arquivo     {arquivo}" for arquivo in config.arquivos),
         f"  assistente  {config.assistente.nome} ({config.assistente.idioma})",

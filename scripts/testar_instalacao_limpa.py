@@ -12,6 +12,7 @@ instalação por wheel e não é conferido aqui.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,7 @@ import venv
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
+IGNORAR = (".git", "build", "dist", "*.egg-info", "node_modules", "data", ".venv", "__pycache__")
 
 # Roda dentro do venv novo, com `python -I` (sem PYTHONPATH nem a pasta atual) e fora do checkout.
 CONFERIR = r"""
@@ -63,7 +65,10 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="nora-instalacao-") as pasta:
         pasta = Path(pasta)
         dist = pasta / "dist"
-        rodar(sys.executable, "-m", "pip", "wheel", str(RAIZ), "--no-deps", "-w", dist)
+        # Uma cópia limpa: o `build/` do checkout pode ter módulos velhos que iriam para o wheel.
+        fonte = pasta / "fonte"
+        shutil.copytree(RAIZ, fonte, ignore=shutil.ignore_patterns(*IGNORAR))
+        rodar(sys.executable, "-m", "pip", "wheel", str(fonte), "--no-deps", "-w", dist)
         rodas = list(dist.glob("nora-*.whl"))
         assert len(rodas) == 1, rodas
         print(f"wheel: {rodas[0].name}")
