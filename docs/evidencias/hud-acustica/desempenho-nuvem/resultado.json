@@ -1,0 +1,38 @@
+{
+ "ambiente": "Linux x86_64 (nuvem), 4 núcleos, Chromium headless, WebGL SwiftShader (sem GPU), 1600x900",
+ "motor": "Renderização atual: WebGL",
+ "versao": "Nora 0.4.0-dev.0 · commit cf519fc",
+ "medicoes": [
+  {
+   "qualidade": "alta",
+   "motor": "Renderização atual: WebGL",
+   "limite_fps": 30,
+   "segundos": 30,
+   "fps_desenhado": 16.8,
+   "cpu_navegador_pct_maquina": 84.4,
+   "cpu_navegador_pct_nucleo": 337.6,
+   "cpu_nora_pct_nucleo": 0
+  },
+  {
+   "qualidade": "alta",
+   "motor": "Renderização atual: WebGL",
+   "limite_fps": 60,
+   "segundos": 30,
+   "fps_desenhado": 16.7,
+   "cpu_navegador_pct_maquina": 84.8,
+   "cpu_navegador_pct_nucleo": 339.4,
+   "cpu_nora_pct_nucleo": 0
+  },
+  {
+   "qualidade": "baixa",
+   "motor": "Renderização atual: WebGL",
+   "limite_fps": 30,
+   "segundos": 30,
+   "fps_desenhado": 23.2,
+   "cpu_navegador_pct_maquina": 81.9,
+   "cpu_navegador_pct_nucleo": 327.4,
+   "cpu_nora_pct_nucleo": 0
+  }
+ ],
+ "erros": []
+}

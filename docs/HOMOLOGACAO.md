@@ -102,6 +102,35 @@ Ele roda e grava em `data\homologacao\AAAA-MM-DD_HHMM.txt`:
 
 Leva uns 5 minutos. O script ainda não rodou em nenhum Windows: foi escrito na nuvem, sem PowerShell. Se algum passo der erro, mande o arquivo assim mesmo.
 
+### Já executado na nuvem, sem o PC do Gabriel (06/11/2026, commit `cf519fc`)
+
+O PC com Windows não estava disponível. Na nuvem (Linux x86_64, 4 núcleos, sem GPU):
+
+| Verificação | Resultado |
+|---|---|
+| `pytest` | 457 passaram, 2 pulados |
+| `ruff format --check` e `ruff check` | sem erros |
+| HUD: `npm ci`, `lint`, `typecheck`, `npm test`, `build` | ok; 36 testes |
+| Instalação limpa (wheel fora do checkout) | ok, `nora 0.4.0.dev0` |
+| `nora --verificar` | 1ª linha: `Versão: 0.4.0.dev0 (commit cf519fc)` |
+| CI #170 (Windows e Linux, 7 jobs) | todos verdes |
+| HUD (Ajustes) | `Nora 0.4.0-dev.0 · commit cf519fc`, igual ao Python |
+
+Desempenho da HUD aberta (`nora hud` real + build real, Chromium sem tela, 1600×900, 30 s por medição; script e números em [`evidencias/hud-acustica/desempenho-nuvem/`](evidencias/hud-acustica/desempenho-nuvem/)):
+
+| Qualidade | Limite | FPS desenhado | CPU do navegador | CPU da Nora |
+|---|---|---|---|---|
+| Detalhada (WebGL) | 30 | 16,8 | 84% da máquina | 0% |
+| Detalhada (WebGL) | 60 | 16,7 | 85% da máquina | 0% |
+| Econômica (WebGL) | 30 | 23,2 | 82% da máquina | 0% |
+
+**Como ler:** sem GPU, o WebGL é calculado na CPU (SwiftShader), então o FPS fica preso pela CPU (~17 em vez de 30) e o navegador ocupa quase toda a máquina. Isso é o pior caso, não uma medida da RX 9060 XT. O que vale como resultado:
+- a Nora (Python) não gasta CPU com a HUD aberta: o desenho fica todo no navegador, outro processo;
+- a qualidade Econômica rende ~40% mais quadros no mesmo hardware;
+- nenhum erro de página.
+
+**Continua pendente no PC do Gabriel:** o script `homologacao_windows.ps1`, que nunca rodou num Windows (a execução do PowerShell foi bloqueada nesta sessão, então nem a sintaxe foi checada); FPS, GPU e VRAM reais; e todo o roteiro abaixo, que precisa de microfone, alto-falante e ElevenLabs.
+
 ### 2. Roteiro com você (~15 min)
 
 Antes: `git pull`, `.venv\Scripts\activate`, Ollama aberto, ElevenLabs como voz principal, Second Brain ligado (`[segundo_cerebro] ativo = true`) e a HUD visível (`nora ouvir --hud`, abrir o endereço que aparecer).
