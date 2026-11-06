@@ -100,7 +100,7 @@ Ele roda e grava em `data\homologacao\AAAA-MM-DD_HHMM.txt`:
 - `nora --verificar`;
 - 30 s de medição com o modelo local carregado e a HUD aberta no navegador: uso da GPU 3D, VRAM, CPU total, CPU do navegador e CPU do Python (média, mínimo e máximo).
 
-Leva uns 5 minutos. O script ainda não rodou em nenhum Windows: foi escrito na nuvem, sem PowerShell. Se algum passo der erro, mande o arquivo assim mesmo.
+Leva uns 5 minutos. No fim, ele diz "Todas as etapas passaram" ou lista as que falharam. Ainda não rodou num Windows de verdade (só no PowerShell 7 para Linux): se algum passo der erro, mande o arquivo assim mesmo.
 
 ### Já executado na nuvem, sem o PC do Gabriel (06/11/2026, commit `cf519fc`)
 
@@ -129,7 +129,9 @@ Desempenho da HUD aberta (`nora hud` real + build real, Chromium sem tela, 1600�
 - a qualidade Econômica rende ~40% mais quadros no mesmo hardware;
 - nenhum erro de página.
 
-**Continua pendente no PC do Gabriel:** o script `homologacao_windows.ps1`, que nunca rodou num Windows (a execução do PowerShell foi bloqueada nesta sessão, então nem a sintaxe foi checada); FPS, GPU e VRAM reais; e todo o roteiro abaixo, que precisa de microfone, alto-falante e ElevenLabs.
+**Script do Windows conferido no PowerShell 7.4 para Linux:** a sintaxe está ok, e a versão sem medição (`-SemDesempenho`) rodou de ponta a ponta, com as 7 etapas ok, a linha de versão e commit e o arquivo em UTF-8. Uma etapa que falha aparece como `FALHOU` e no resumo final; isso foi testado com um `ruff` falso. O PSScriptAnalyzer não está disponível aqui (a PowerShell Gallery é bloqueada), então a compatibilidade com o PowerShell 5.1 do Windows foi revisada à mão.
+
+**Continua pendente no PC do Gabriel:** rodar o script num Windows de verdade, incluindo os contadores de GPU (só existem no Windows); FPS, GPU e VRAM reais; e todo o roteiro abaixo, que precisa de microfone, alto-falante e ElevenLabs.
 
 ### 2. Roteiro com você (~15 min)
 

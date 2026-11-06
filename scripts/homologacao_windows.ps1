@@ -17,13 +17,25 @@ if (-not $env:VIRTUAL_ENV) { throw "Ative o ambiente antes: .venv\Scripts\activa
 $pasta = Join-Path $raiz "data\homologacao"
 New-Item -ItemType Directory -Force -Path $pasta | Out-Null
 $arquivo = Join-Path $pasta ((Get-Date -Format "yyyy-MM-dd_HHmm") + ".txt")
-function Anotar([string]$texto) { $texto | Tee-Object -FilePath $arquivo -Append }
-function Etapa([string]$nome, [scriptblock]$bloco) {
+# UTF-8 nos dois PowerShell (o Tee-Object do 5.1 gravaria em UTF-16).
+function Anotar([string]$texto) { Write-Host $texto; Add-Content -Path $arquivo -Value $texto -Encoding UTF8 }
+$script:falhas = @()
+function Etapa([string]$nome, [scriptblock]$bloco, [int]$Ultimas = 15) {
     Anotar "`n== $nome =="
     $inicio = Get-Date
-    try { & $bloco 2>&1 | ForEach-Object { "$_" } | Select-Object -Last 15 | ForEach-Object { Anotar "  $_" } }
-    catch { Anotar "  ERRO: $($_.Exception.Message)" }
-    Anotar ("  ({0:N0} s)" -f ((Get-Date) - $inicio).TotalSeconds)
+    $global:LASTEXITCODE = 0
+    try {
+        # Avisos no stderr (npm, vite) chegam como ErrorRecord: mostra só o texto, sem linhas vazias.
+        & $bloco 2>&1 | ForEach-Object {
+            if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { "$_" }
+        } | Where-Object { $_.Trim() -ne "" } | Select-Object -Last $Ultimas | ForEach-Object { Anotar "  $_" }
+        $codigo = $global:LASTEXITCODE
+    } catch { Anotar "  ERRO: $($_.Exception.Message)"; $codigo = -1 }
+    $tempo = "{0:N0} s" -f ((Get-Date) - $inicio).TotalSeconds
+    if ($codigo -ne 0) {
+        $script:falhas += $nome
+        Anotar "  FALHOU (código $codigo, $tempo)"
+    } else { Anotar "  ok ($tempo)" }
 }
 
 Anotar "Homologação Nora - $(Get-Date -Format 'dd/MM/yyyy HH:mm')"
@@ -35,13 +47,13 @@ Anotar "CPU: $((Get-CimInstance Win32_Processor | Select-Object -First 1).Name)"
 
 Etapa "pytest" { python -m pytest -q -p no:cacheprovider }
 Etapa "ruff" { ruff format --check .; ruff check . }
-Etapa "instalação limpa (wheel fora do checkout)" { python scripts\testar_instalacao_limpa.py }
+Etapa "instalação limpa (wheel fora do checkout)" { python (Join-Path (Join-Path $raiz "scripts") "testar_instalacao_limpa.py") }
 Push-Location (Join-Path $raiz "hud")
 Etapa "HUD: npm ci" { npm ci --no-audit --no-fund }
 Etapa "HUD: npm test" { npm test }
 Etapa "HUD: npm run build" { npm run build }
 Pop-Location
-Etapa "nora --verificar" { nora --verificar }
+Etapa "nora --verificar" { nora --verificar } -Ultimas 80
 
 if (-not $SemDesempenho) {
     Anotar "`n== Desempenho: HUD aberta e modelo local carregado, $Segundos s =="
@@ -81,4 +93,6 @@ if (-not $SemDesempenho) {
     Stop-Process -Id $hud.Id -ErrorAction SilentlyContinue
 }
 
-Anotar "`nPronto: $arquivo"
+if ($script:falhas.Count) { Anotar "`nATENÇÃO: falharam $($script:falhas.Count) etapa(s): $($script:falhas -join ', ')" }
+else { Anotar "`nTodas as etapas passaram." }
+Anotar "Pronto: $arquivo"
