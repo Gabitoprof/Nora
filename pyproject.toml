@@ -30,6 +30,8 @@ kokoro = ["kokoro-onnx>=0.4"]
 nuvem = ["anthropic>=1.0", "openai>=1.0"]
 # Busca vetorial rápida da memória (sem ela, a busca é feita em Python puro, mais lenta).
 memoria = ["sqlite-vec>=0.1.6"]
+# Gerar o nora.exe (scripts/empacotar_windows.ps1). Só no build; não vai dentro do .exe.
+empacotar = ["pyinstaller>=6.10"]
 
 [project.scripts]
 nora = "nora.cli:main"

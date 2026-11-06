@@ -24,6 +24,13 @@
 | openai (SDK oficial da OpenAI) | Apache-2.0 | `nuvem` | Cérebro na nuvem: o ChatGPT, padrão para as perguntas complexas |
 | pytest | MIT | `dev` | Testes |
 | ruff | MIT | `dev` | Formatação e lint |
+| pyinstaller | GPL-2.0-or-later com exceção para o bootloader (permite distribuir programas não livres gerados com ele) | `empacotar` | Gerar o `nora.exe`; só no build, não vai como biblioteca dentro do programa |
+
+**Dentro do `nora.exe`:** o Python (PSF-2.0) e os pacotes dos extras `voz`, `memoria` e `nuvem` com as dependências deles. O build copia o aviso de licença de cada um para a pasta `licencas` do programa (`empacotamento/juntar_licencas.py`). A libsndfile (LGPL-2.1, do `soundfile`) e a PortAudio (MIT, do `sounddevice`) vão como bibliotecas separadas (DLL) na pasta do programa. O Kokoro, o Piper e o espeak-ng **não** vão no `.exe`.
+
+**Ferramenta do instalador:** [Inno Setup](https://jrsoftware.org/isinfo.php) 6, com licença própria ([license.txt](https://github.com/jrsoftware/issrc/blob/main/license.txt)): permite o uso "for any purpose, including commercial applications", mantidos os avisos de copyright. Usado só para gerar o instalador.
+
+**Programas que o pacote de dependências instala** (cada um com a licença dele, aceita na instalação): Ollama (MIT), whisper.cpp (MIT), modelos do Whisper (MIT), `qwen3.5:9b` e `bge-m3` (tabela abaixo) e o Visual C++ Redistributable (licença da Microsoft).
 
 **Sobre o GPL do espeak-ng:** o Kokoro (que usa o espeak-ng, GPL-3.0) roda num processo separado (`nora servidor-kokoro`) e é instalado à parte, pelo extra `kokoro`. Distribuir a Nora junto com ele exige cumprir a GPL-3.0.
 

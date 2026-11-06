@@ -1,0 +1,39 @@
+name: Empacotar
+
+# Gera o nora.exe (sem assinatura) e o instalador no Windows, testa o .exe e publica os arquivos
+# na execução (Actions > Empacotar > Artifacts). Separado da CI para não atrasá-la.
+on:
+  push:
+    branches: [main, "integracao/**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: hud/package-lock.json
+      - name: Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Empacotar e testar o nora.exe
+        shell: pwsh
+        run: |
+          python -m venv .venv-empacotar
+          .venv-empacotar\Scripts\Activate.ps1
+          ./scripts/empacotar_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nora-windows
+          path: |
+            dist/Nora-*-instalador.exe
+            dist/Nora-*-windows.zip
+          retention-days: 14
+          if-no-files-found: error

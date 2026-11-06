@@ -19,9 +19,19 @@ CONFIG_PADRAO = Path(__file__).with_name("nora.toml")
 
 LOCAL_INICIAL = """# Sua config pessoal da Nora. Só o que você mudar em relação ao padrão.
 # O padrão, com a explicação de cada opção, está no nora.toml que vem com o programa.
-# Exemplo:
+
 # [usuario]
 # nome = "Seu nome"
+
+# Instalada (nora.exe), a voz é a do ElevenLabs: as vozes locais (Kokoro, Piper) usam programas
+# GPL e não vêm no instalador. Ponha a chave em ELEVENLABS_API_KEY no .env desta pasta e o id
+# da voz abaixo (ElevenLabs: Voices > ... > Copy voice ID).
+[voz]
+motor = "elevenlabs"
+reserva = ""
+
+[voz.elevenlabs]
+voz_id = ""
 """
 
 ENV_INICIAL = """# Chaves e endereços da Nora (fora do Git e de qualquer envio). Exemplos:
