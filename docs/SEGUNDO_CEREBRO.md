@@ -132,16 +132,16 @@ Clique num nó para ver a ficha: área, camada, origem, data e **por que se liga
 | Tecnologia | `#7C8CFF` azul elétrico |
 | Outras áreas | uma cor fixa da reserva, sempre a mesma para a mesma área |
 
-Tons (halo): **as mesmas cores da HUD** (`hud/src/state.ts`, branch `feat/v0.4.0-hud`), com os mesmos nomes das etiquetas de `emocao.py`. Não há um segundo sistema de cores:
+Tons (halo): **as mesmas cores da HUD**, lidas do mesmo arquivo, `hud/paleta.json` (em Python, `nora.paleta`), com os mesmos nomes das etiquetas de `emocao.py`. Não há um segundo sistema de cores; para mudar uma cor, mude só esse arquivo:
 
 | Tom | Cor |
 |---|---|
 | alegre, empolgada | `#F0C66A` |
 | carinhosa | `#E3A4BD` |
-| calma | `#AA9ACF` |
+| calma | `#66D4CB` turquesa |
 | séria | `#80A8F6` |
-| triste | `#DF876A` |
-| curiosa | `#66D4CB` |
+| triste | `#AA9ACF` lavanda |
+| curiosa | `#DF876A` terracota |
 | neutra | `#C9C9C9` |
 
 ## Contrato para a HUD de memória

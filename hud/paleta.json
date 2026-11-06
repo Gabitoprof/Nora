@@ -1,0 +1,48 @@
+{
+  "cores": {
+    "neutra": "#C9C9C9",
+    "alegria": "#F0C66A",
+    "carinho": "#E3A4BD",
+    "calma": "#66D4CB",
+    "seriedade": "#80A8F6",
+    "tristeza": "#AA9ACF",
+    "curiosidade": "#DF876A"
+  },
+  "aliases": {
+    "neutro": "neutra",
+    "neutra": "neutra",
+    "alegria": "alegria",
+    "alegre": "alegria",
+    "empolgada": "alegria",
+    "risada": "alegria",
+    "entusiasmo": "alegria",
+    "carinho": "carinho",
+    "acolhimento": "carinho",
+    "carinhosa": "carinho",
+    "calma": "calma",
+    "seriedade": "seriedade",
+    "seria": "seriedade",
+    "confianca": "seriedade",
+    "confiança": "seriedade",
+    "confiante": "seriedade",
+    "tristeza": "tristeza",
+    "triste": "tristeza",
+    "serenidade": "tristeza",
+    "sussurro": "tristeza",
+    "suspiro": "tristeza",
+    "curiosidade": "curiosidade",
+    "curiosa": "curiosidade",
+    "preocupacao": "curiosidade",
+    "preocupação": "curiosidade",
+    "preocupada": "curiosidade"
+  },
+  "dinamica": {
+    "neutra": 1,
+    "alegria": 1.12,
+    "carinho": 0.94,
+    "calma": 0.82,
+    "seriedade": 0.95,
+    "tristeza": 0.78,
+    "curiosidade": 1.05
+  }
+}

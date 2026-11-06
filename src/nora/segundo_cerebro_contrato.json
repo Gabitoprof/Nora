@@ -23,7 +23,7 @@
     "legenda": ["areas", "emocoes"]
   },
   "emocoes": {
-    "descricao": "Tom da conversa em que a memória surgiu (etiquetas de emocao.py). Mesmos nomes e cores do evento 'emocao' da HUD (hud_contrato.json, campo 'nome', e hud/src/state.ts 'cores'). Não é sentimento da pessoa.",
+    "descricao": "Tom da conversa em que a memória surgiu (etiquetas de emocao.py). Mesmos nomes e cores do evento 'emocao' da HUD (hud_contrato.json, campo 'nome'); cores de hud/paleta.json, a mesma fonte da HUD. Não é sentimento da pessoa.",
     "nomes": ["alegre", "empolgada", "carinhosa", "calma", "seria", "triste", "curiosa", "neutra"]
   },
   "eventos": {

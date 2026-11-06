@@ -20,6 +20,7 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
   - medição em `scripts/medir_segundo_cerebro.py`.
 - **Mapa da memória:** "Nora, mostre seu segundo cérebro" ou `nora cerebro mapa --abrir`. É uma página sem internet, com cor por área, halo pelo tom da conversa (as cores da HUD), tamanho por ligações, pulso de recência, ligações que surgem ao abrir, busca, filtros, foco, a ficha com o porquê de cada ligação e o link para o Obsidian. O texto das memórias abre escondido.
 - **Tom da conversa no fato** (`fatos.emocao`): o tom predominante das etiquetas da resposta, guardado em segundo plano pela curadoria. É o tom da Nora, não um sentimento da pessoa.
+- **Cores dos tons** lidas de `hud/paleta.json` (`nora.paleta`), o mesmo arquivo da HUD: calma turquesa, tristeza lavanda, curiosidade terracota, como na tabela da HUD v0.4.0.
 - **Contrato versionado** `segundo_cerebro_contrato.json` (v1) para uma HUD de memória futura, com os mesmos nomes de emoção da HUD.
 - **Comandos novos:** `nora cerebro sincronizar | status | mapa`.
 

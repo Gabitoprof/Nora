@@ -34,23 +34,24 @@ from datetime import datetime
 from pathlib import Path
 
 from nora.agenda import NOMES_DOS_MESES
+from nora.paleta import cor as cor_da_emocao
 
 VERSAO_DO_CONTRATO = 1
 CONTRATO = Path(__file__).with_name("segundo_cerebro_contrato.json")
 
-# As cores das emoções são as da HUD (hud/src/state.ts, `cores`, branch feat/v0.4.0-hud), com
-# os mesmos nomes das etiquetas de emocao.py: um sistema de cores só. O teste
-# test_cores_de_emocao_sao_as_da_hud confere que toda emoção de tom tem cor aqui.
-CORES_DAS_EMOCOES = {
-    "alegre": "#F0C66A",
-    "empolgada": "#F0C66A",
-    "carinhosa": "#E3A4BD",
-    "calma": "#AA9ACF",
-    "seria": "#80A8F6",
-    "triste": "#DF876A",
-    "curiosa": "#66D4CB",
-    "neutra": "#C9C9C9",
-}
+# As cores das emoções vêm de hud/paleta.json, o mesmo arquivo que a HUD lê (nora.paleta): um
+# sistema de cores só, sem cópia. Os nomes são os tons de emocao.py e a neutra.
+NOMES_DOS_TONS = (
+    "alegre",
+    "empolgada",
+    "carinhosa",
+    "calma",
+    "seria",
+    "triste",
+    "curiosa",
+    "neutra",
+)
+CORES_DAS_EMOCOES = {nome: cor_da_emocao(nome) for nome in NOMES_DOS_TONS}
 # Cor de base de cada área (o corpo do nó). Áreas novas ganham uma cor estável da reserva.
 CORES_DAS_AREAS = {
     "trabalho": "#2F6BFF",  # azul

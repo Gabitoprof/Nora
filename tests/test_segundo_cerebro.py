@@ -270,12 +270,14 @@ def test_grafo_segue_o_contrato_versionado(ambiente):
 
 
 def test_cores_de_emocao_sao_as_da_hud():
-    # Mesma tabela de hud/src/state.ts (`cores`) da branch feat/v0.4.0-hud: um sistema só.
-    da_hud = {
-        "alegre": "#F0C66A", "empolgada": "#F0C66A", "carinhosa": "#E3A4BD", "calma": "#AA9ACF",
-        "seria": "#80A8F6", "triste": "#DF876A", "curiosa": "#66D4CB", "neutra": "#C9C9C9",
-    }  # fmt: skip
-    assert CORES_DAS_EMOCOES == da_hud
+    # Uma fonte só: hud/paleta.json (a HUD importa o mesmo arquivo). Tabela do prompt da HUD:
+    # calma turquesa, tristeza lavanda, curiosidade terracota.
+    from nora.paleta import cor
+
+    assert CORES_DAS_EMOCOES == {nome: cor(nome) for nome in CORES_DAS_EMOCOES}
+    assert CORES_DAS_EMOCOES["calma"] == "#66D4CB"
+    assert CORES_DAS_EMOCOES["triste"] == "#AA9ACF"
+    assert CORES_DAS_EMOCOES["curiosa"] == "#DF876A"
     assert TONS <= set(CORES_DAS_EMOCOES)
 
 
