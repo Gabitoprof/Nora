@@ -90,3 +90,7 @@ ou um ambiente criado com Python 3.15, usar o [procedimento Windows](../docs/HUD
 Se abrir por link retornar `Origem local obrigatória`, atualizar a branch e reiniciar
 o servidor Python: a correção distingue navegação pública inicial de acesso às APIs.
 Ver [diagnóstico de navegação](../docs/HUD.md#hud-retorna-origem-local-obrigatória-ao-abrir-por-link).
+
+## Ideias
+
+- Criar um passo a passo de guia para os usuários terem experiências individuais, cada Nora tem sua identidade.
