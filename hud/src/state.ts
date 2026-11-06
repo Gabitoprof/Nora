@@ -294,6 +294,35 @@ export const nomesEstado: Record<Estado, string> = {
 /** Fonte compartilhável também pelo futuro Segundo Cérebro: hud/paleta.json. */
 export const cores: Record<string,string> = Object.fromEntries(Object.entries(paleta.aliases).map(([nome,grupo])=>[nome,paleta.cores[grupo as keyof typeof paleta.cores]]));
 
+/** RMS linear (0–1) em escala de decibéis: −60 dBFS = 0, 0 dBFS = 1. Fala comum (RMS 0,005 a
+ * 0,1) fica entre 23% e 67%, em vez de 0% a 10% na escala linear. */
+export function nivelPerceptivo(rms: number): number {
+  if (!(rms > 0)) return 0;
+  return Math.min(1, Math.max(0, (20 * Math.log10(rms) + 60) / 60));
+}
+/** Mesma regra da onda central (scene-math `onda`): o microfone só conta enquanto ela escuta e
+ * a voz só enquanto ela fala. Fora disso (pensando, repouso), a última medida não vale mais. */
+function sinalDaOnda(m: Modelo): number {
+  const escutando = m.estado === "ouvindo" || m.estado === "fala_detectada";
+  const a = m.acustica;
+  if (a?.ativo)
+    return (a.fonte === "microfone" && escutando) || (a.fonte === "voz" && m.estado === "falando")
+      ? Math.max(a.rms, a.envelope)
+      : 0;
+  return escutando || m.estado === "falando" ? m.nivel_audio : 0;
+}
+/** O que o painel lateral mostra. Usa o mesmo sinal que move a onda central: a medida acústica
+ * da fonte em uso (RMS ou envelope, o maior, como a onda, que segura o envelope na soltura).
+ * Com sinal, nunca mostra "0%" nem "Em silêncio" (antes, RMS 0,004 virava "0%" enquanto a onda
+ * já se mexia); sem a onda reagir (pensando, repouso), não mostra nível antigo. */
+export function leituraDoPainel(m: Modelo): { nivel: number; rotulo: string } {
+  if (!m.conectado) return { nivel: 0, rotulo: "Sem dados" };
+  const sinal = sinalDaOnda(m);
+  const nivel = nivelPerceptivo(sinal);
+  if (!(sinal > 0)) return { nivel: 0, rotulo: "Em silêncio" };
+  const porcento = Math.round(nivel * 100);
+  return { nivel, rotulo: porcento < 1 ? "<1%" : `${porcento}%` };
+}
 export function expressaoEmocional(emocao:string) {
   const grupo=paleta.aliases[emocao as keyof typeof paleta.aliases]??"neutra";
   return paleta.dinamica[grupo as keyof typeof paleta.dinamica];

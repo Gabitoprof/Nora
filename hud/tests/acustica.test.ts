@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EnvelopeVisual, SILENCIO, aproximar, cadenciaVisual, energiaBanda, faixaAcustica, type Acustica } from "../src/scene-audio";
 import { onda } from "../src/scene-math";
-import { cores, desconectar, inicial, lerAcustica, lerFala, reduzir, snapshot, type FalaTemporizada } from "../src/state";
+import { cores, desconectar, inicial, leituraDoPainel, lerAcustica, lerFala, nivelPerceptivo, reduzir, snapshot, type FalaTemporizada } from "../src/state";
 import { RelogioFala } from "../src/word-particles";
 const amostra=(alteracoes:Partial<Acustica>={}):Acustica=>({fonte:"voz",rms:.45,pico:.8,envelope:.65,bandas:[.7,.4,.3,.15,.1,.05],centroide:.2,fluxo:.25,ativo:true,reproducao_id:1,posicao_ms:50,duracao_ms:1000,...alteracoes});
 const fala:FalaTemporizada={id:1,duracao_ms:1000,precisao:"estimada",palavras:[{texto:"Olá",inicio_ms:0,fim_ms:300,destaque:false},{texto:"Nora",inicio_ms:500,fim_ms:1000,destaque:true}]};
@@ -87,5 +87,44 @@ describe("palavras seguem a posição de reprodução",()=>{
     expect(r.palavra(fala,120)).toBeNull();expect(r.palavra({...fala,id:2},120)?.palavra.texto).toBe("Nora");
     r.atualizar(amostra({reproducao_id:1,posicao_ms:50}),130);expect(r.palavra({...fala,id:2},140)?.palavra.texto).toBe("Nora");
     r.limpar();expect(r.palavra({...fala,id:2},150)).toBeNull();
+  });
+});
+
+describe("painel lateral acompanha a onda central (regressão)",()=>{
+  // Antes: o painel mostrava Math.round(rms*100)%, e uma fala baixa (RMS 0,004) virava "0%"
+  // enquanto a onda central, movida pelo envelope e pelo pico do mesmo evento, já se mexia.
+  const conectado={...inicial,conectado:true,estado:"ouvindo" as const};
+  const baixa=amostra({fonte:"microfone",rms:.004,envelope:.003,pico:.03,reproducao_id:0,posicao_ms:0,duracao_ms:0});
+  it("fala baixa: a onda se deforma e o painel não mostra zero",()=>{
+    const m=reduzir(conectado,evento("acustica",baixa));
+    const env=new EnvelopeVisual();env.alimentar(m.acustica,0);for(let i=1;i<=6;i++)env.passo(50,i*50);
+    const comSinal=onda(1,.5,0,"ouvindo",0,env.microfone),semSinal=onda(1,.5,0,"ouvindo",0,SILENCIO);
+    expect(Math.hypot(comSinal[0]-semSinal[0],comSinal[1]-semSinal[1])).toBeGreaterThan(0);
+    const painel=leituraDoPainel(m);
+    expect(painel.nivel).toBeGreaterThan(0);
+    expect(painel.rotulo).not.toBe("0%");expect(painel.rotulo).not.toBe("Em silêncio");
+  });
+  it("usa o envelope na soltura, como a onda, e zera quando o sinal acaba",()=>{
+    const soltando=reduzir(conectado,evento("acustica",{...baixa,rms:0,envelope:.02}));
+    expect(leituraDoPainel(soltando).nivel).toBeGreaterThan(0);
+    const fim=reduzir(soltando,evento("acustica",{...baixa,ativo:false},4));
+    expect(leituraDoPainel(fim)).toEqual({nivel:0,rotulo:"Em silêncio"});
+    expect(leituraDoPainel({...fim,conectado:false}).rotulo).toBe("Sem dados");
+  });
+  it("pensando ou em repouso, a última medida do microfone não aparece (a onda também a ignora)",()=>{
+    const ouvindo=reduzir(conectado,evento("acustica",{...baixa,rms:.2,envelope:.2}));
+    expect(leituraDoPainel(ouvindo).nivel).toBeGreaterThan(0);
+    for(const estado of ["pensando","transcrevendo","ociosa","modo_jogo"]){
+      const m=reduzir(ouvindo,evento(estado,{},4));
+      expect(leituraDoPainel(m)).toEqual({nivel:0,rotulo:"Em silêncio"});
+    }
+    const falando=reduzir(reduzir(ouvindo,evento("falando",{},4)),evento("acustica",amostra(),5));
+    expect(leituraDoPainel(falando).nivel).toBeGreaterThan(0);
+    expect(leituraDoPainel({...falando,estado:"ouvindo"}).nivel).toBe(0); // voz não vale ouvindo
+  });
+  it("escala em decibéis: −60 dBFS é zero, 0 dBFS é cheio, fala comum fica no meio",()=>{
+    expect(nivelPerceptivo(0)).toBe(0);expect(nivelPerceptivo(.001)).toBeCloseTo(0);expect(nivelPerceptivo(1)).toBe(1);
+    expect(nivelPerceptivo(.01)).toBeCloseTo(1/3);expect(nivelPerceptivo(.1)).toBeCloseTo(2/3);
+    expect(nivelPerceptivo(NaN)).toBe(0);
   });
 });

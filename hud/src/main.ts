@@ -4,6 +4,7 @@ import { Cena } from "./scene";
 import { PalavrasParticulas } from "./word-particles";
 import {
   inicial,
+  leituraDoPainel,
   nomesEstado,
   objeto,
   privacidadeConfirmada,
@@ -100,20 +101,14 @@ function renderizar() {
         : "Uma conversa. Uma presença."
       : "Sua presença. No seu espaço.",
   );
-  const nivel = atual.conectado ? atual.nivel_audio : 0;
-  el("level").style.width = `${nivel * 100}%`;
+  // Mesmo sinal da onda central, em escala de decibéis (ver leituraDoPainel).
+  const painel = leituraDoPainel(atual);
+  el("level").style.width = `${painel.nivel * 100}%`;
   el("level").parentElement!.setAttribute(
     "aria-valuenow",
-    String(Math.round(nivel * 100)),
+    String(Math.round(painel.nivel * 100)),
   );
-  texto(
-    "level-label",
-    !atual.conectado
-      ? "Sem dados"
-      : nivel > 0
-        ? `${Math.round(nivel * 100)}%`
-        : "Em silêncio",
-  );
+  texto("level-label", painel.rotulo);
   visivel = !atual.privacidade && atual.conectado;
   texto("privacy-label", visivel ? "Visível" : "Privado");
   el("privacy").setAttribute("aria-pressed", String(visivel));
