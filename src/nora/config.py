@@ -1,7 +1,9 @@
 """Carrega e valida a config da Nora.
 
-Ordem: config/nora.toml (padrão) -> config/local.toml (pessoal, fora do Git)
--> variáveis de ambiente e .env (segredos).
+Ordem: nora.toml (padrão, dentro do pacote; `config/nora.toml` na pasta do usuário o substitui, se
+existir) -> config/local.toml (pessoal, fora do Git) -> variáveis de ambiente e .env (segredos).
+A pasta do usuário é a raiz do repositório no desenvolvimento e `%APPDATA%\\Nora` instalada
+(veja caminhos.py).
 """
 
 from __future__ import annotations
@@ -13,7 +15,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-RAIZ = Path(__file__).resolve().parents[2]
+from nora.caminhos import CONFIG_PADRAO, pasta_do_usuario
+
+RAIZ = pasta_do_usuario()
 
 
 class ConfigError(Exception):
@@ -508,7 +512,10 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
     """Lê os arquivos de config a partir de `raiz` e devolve uma Config validada."""
     ambiente = {**ler_env(raiz / ".env"), **(os.environ if ambiente is None else ambiente)}
 
-    padrao = Path(ambiente.get("ELLA_CONFIG") or raiz / "config/nora.toml")
+    substituta = raiz / "config/nora.toml"
+    padrao = Path(
+        ambiente.get("ELLA_CONFIG") or (substituta if substituta.is_file() else CONFIG_PADRAO)
+    )
     if not padrao.is_file():
         raise ConfigError(f"Arquivo de config não encontrado: {padrao}")
     dados = _ler_toml(padrao)

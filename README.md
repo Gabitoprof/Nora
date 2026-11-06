@@ -109,7 +109,7 @@ Detalhes em [docs/AUTO_MELHORIA.md](docs/AUTO_MELHORIA.md).
 
 ## Personalizando
 
-- **`config/nora.toml`**: config padrão (nome, persona, voz, emoção, memória, modelos). Não coloque nada pessoal aqui.
+- **`src/nora/nora.toml`**: config padrão (nome, persona, voz, emoção, memória, modelos), que vai dentro do programa. Não coloque nada pessoal aqui.
 - **`config/local.toml`**: crie este arquivo só com o que quiser mudar. Ele é ignorado pelo Git. Exemplo:
 
   ```toml

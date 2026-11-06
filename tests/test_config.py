@@ -67,9 +67,13 @@ def test_variavel_de_ambiente_vence_o_env(criar_raiz):
     assert config.ollama_host == "http://do-sistema:2"
 
 
-def test_sem_arquivo_de_config(tmp_path):
+def test_sem_config_na_pasta_usa_o_padrao_do_pacote(tmp_path):
+    # Instalada, a pasta do usuário não tem config/nora.toml: vale o padrão de dentro do pacote.
+    from nora.caminhos import CONFIG_PADRAO
+
+    assert carregar(tmp_path, ambiente={}).arquivos == (CONFIG_PADRAO,)
     with pytest.raises(ConfigError, match="não encontrado"):
-        carregar(tmp_path, ambiente={})
+        carregar(tmp_path, ambiente={"ELLA_CONFIG": str(tmp_path / "nao-existe.toml")})
 
 
 def test_mesclar_e_ler_env(tmp_path):

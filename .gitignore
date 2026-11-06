@@ -35,3 +35,6 @@ Thumbs.db
 .obsidian/workspace-mobile.json
 .obsidian/cache
 .trash/
+
+# Commit gravado no build do executável (scripts/empacotar_windows.ps1)
+src/nora/_commit.txt

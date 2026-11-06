@@ -11,7 +11,7 @@ Assistente de voz pessoal em pt-BR, local primeiro, todos os direitos reservados
 - `v0.2.0` lançada (tag): conversa por voz e memória.
 - `v0.3.0` lançada (05/11/2026): roteador de modelos. Release, qualidade e homologação em [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md).
 - Em andamento: `v0.4.0` (`0.4.0.dev0`), na branch `integracao/v0.4.0`. Ela junta a HUD acústica, o `Pull_code` (voz sem troca de tom, streaming do ElevenLabs, ouvido com vocabulário, contas de data) e o Second Brain ([`SEGUNDO_CEREBRO.md`](SEGUNDO_CEREBRO.md)). As correções da revisão (P0, P2, P3) estão feitas. Falta a homologação no Windows: roteiro em [`HOMOLOGACAO.md`](HOMOLOGACAO.md), seção "v0.4.0 — preparação da homologação".
-- Pendente para a distribuição: a config padrão e o build da HUD ainda são lidos do repositório (uma instalação por wheel precisa deles dentro do pacote ou numa pasta do usuário, como `%APPDATA%\Nora`). Decisão do Gabriel.
+- Distribuição: a config padrão vai dentro do pacote; instalada, a pasta pessoal é `%APPDATA%\Nora` (`caminhos.py`). Em seguida: o `.exe` sem assinatura (gerado na CI) e o pacote de dependências.
 
 ## Caminho de uma pergunta
 

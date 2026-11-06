@@ -13,7 +13,7 @@ def criar_raiz(tmp_path: Path):
     def criar(local: str | None = None, env: str | None = None) -> Path:
         (tmp_path / "config").mkdir(exist_ok=True)
         (tmp_path / "config/nora.toml").write_text(
-            (RAIZ / "config/nora.toml").read_text(encoding="utf-8"), encoding="utf-8"
+            (RAIZ / "src/nora/nora.toml").read_text(encoding="utf-8"), encoding="utf-8"
         )
         # A memória fica desligada nos testes, a não ser que o teste a ligue: ela faria pedidos
         # extras ao Ollama falso em segundo plano.

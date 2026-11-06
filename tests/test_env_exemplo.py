@@ -5,6 +5,8 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 SENSIVEIS = re.compile(r"(KEY|TOKEN|SECRET|SENHA|PASSWORD)")
+# Variáveis do próprio sistema operacional, que o código só lê (não são opções da Nora).
+DO_SISTEMA = {"APPDATA"}
 
 
 def _exemplo() -> dict[str, str]:
@@ -21,7 +23,7 @@ def test_toda_variavel_lida_pelo_codigo_esta_no_env_example():
     codigo = "\n".join(p.read_text("utf-8") for p in (RAIZ / "src").rglob("*.py"))
     lidas = set(re.findall(r"(?:ambiente|environ)\.get\(\s*\"([A-Z][A-Z0-9_]*)\"", codigo))
     lidas |= set(re.findall(r"environ\[\s*\"([A-Z][A-Z0-9_]*)\"", codigo))
-    faltando = sorted(lidas - set(_exemplo()))
+    faltando = sorted(lidas - set(_exemplo()) - DO_SISTEMA)
     assert not faltando, f"Acrescente ao .env.example (sem valor pessoal): {faltando}"
 
 

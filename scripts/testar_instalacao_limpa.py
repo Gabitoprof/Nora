@@ -5,13 +5,13 @@ funciona sozinho (sem o repositório ao lado).
 
 Roda no CI (job `instalacao`, só Linux). Sai com código 1 e explica o que faltou se algo falhar.
 
-Ainda fora do pacote (pendente, ver docs/ANDAMENTO.md): a config padrão (`config/nora.toml`) e o
-build da HUD (`hud/dist`) são lidos do repositório; por isso `nora --verificar` ainda não roda numa
-instalação por wheel e não é conferido aqui.
+Também roda `nora --verificar` instalada, com a pasta do usuário num lugar temporário
+(`NORA_HOME`): a config padrão vem de dentro do pacote e a pasta pessoal é criada na hora.
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -79,6 +79,17 @@ def main() -> int:
         rodar(python, "-m", "pip", "install", "--no-index", "--no-deps", rodas[0])
         saida = rodar(python, "-I", "-c", CONFERIR, RAIZ, cwd=pasta)
         print(saida.stdout.strip())
+        # `nora --verificar` instalada: lê o padrão do pacote e cria a pasta do usuário.
+        casa = pasta / "casa"
+        ambiente = {**os.environ, "NORA_HOME": str(casa)}
+        ambiente.pop("PYTHONPATH", None)
+        verificar = rodar(python, "-I", "-m", "nora", "--verificar", cwd=pasta, env=ambiente)
+        primeira = next(
+            linha for linha in verificar.stdout.splitlines() if linha.startswith("Versão")
+        )
+        assert (casa / "config" / "local.toml").is_file() and (casa / ".env").is_file()
+        assert "site-packages" in verificar.stdout and "nora.toml" in verificar.stdout
+        print(f"ok: nora --verificar instalada ({primeira}); pasta do usuário criada")
     return 0
 
 

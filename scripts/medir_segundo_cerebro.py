@@ -126,7 +126,7 @@ def preparar(pasta: Path, modelo: Path, ativo: bool):
     (pasta / "config").mkdir(parents=True, exist_ok=True)
     (pasta / "vault").mkdir(exist_ok=True)
     (pasta / "config/nora.toml").write_text(
-        (RAIZ / "config/nora.toml").read_text(encoding="utf-8"), encoding="utf-8"
+        (RAIZ / "src/nora/nora.toml").read_text(encoding="utf-8"), encoding="utf-8"
     )
     (pasta / "config/local.toml").write_text(
         '[usuario]\nnome = "Lia"\n[notas]\npasta = "vault"\natualizar_ao_abrir = false\n'

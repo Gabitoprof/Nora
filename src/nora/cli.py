@@ -1028,6 +1028,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    from nora.caminhos import preparar_pasta_do_usuario
+    from nora.config import RAIZ
+
+    try:
+        preparar_pasta_do_usuario(RAIZ)  # instalada: cria a pasta da Nora na primeira vez
+    except OSError as erro:
+        print(f"Não consegui criar a pasta da Nora em {RAIZ}: {erro}", file=sys.stderr)
     try:
         config = carregar()
     except ConfigError as erro:

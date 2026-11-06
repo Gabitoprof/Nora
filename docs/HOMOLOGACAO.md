@@ -81,7 +81,7 @@ Correções da revisão aplicadas e cobertas por testes automatizados (CI Window
 - **Falhas da HUD:** contadas e registradas uma vez por tipo, sem texto nem áudio; a fala continua.
 - **Paleta revisada:** serenidade, sussurro e suspiro em calma; preocupação em seriedade.
 
-**Ainda fora do pacote** (uma instalação por wheel ainda precisa do repositório para isto): a config padrão (`config/nora.toml`) e o build da HUD (`hud/dist`). Por isso a homologação é feita no checkout.
+**Instalada, fora do repositório:** a config padrão vem dentro do pacote (`src/nora/nora.toml`), e a config pessoal, o `.env`, a memória e os modelos ficam em `%APPDATA%\Nora`, criada na primeira execução. O teste de instalação limpa roda `nora --verificar` assim. O build da HUD vai dentro do `.exe`; numa instalação por wheel a HUD ainda precisa de `NORA_HUD_DIST`.
 
 **Palavras em partículas: limitação conhecida.** O tempo das palavras é estimado a partir do áudio que toca (trechos com som), e a HUD mostra "tempo estimado no áudio". A ElevenLabs tem um streaming com alinhamento por caractere (`/stream/with-timestamps`), mas não conseguimos confirmar que ele custa o mesmo nem que funciona com o `eleven_v3`. Por isso não foi ligado; o passo 7 do roteiro testa isso na sua conta.
 

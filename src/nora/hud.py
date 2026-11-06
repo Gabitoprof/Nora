@@ -495,7 +495,9 @@ class ServidorHUD:
         self.ponte, self.token = ponte, secrets.token_urlsafe(32)
         self._pedidos: list[float] = []
         self._trava_pedidos = threading.Lock()
-        self.pasta = (pasta or Path(__file__).resolve().parents[2] / "hud" / "dist").resolve()
+        from nora.caminhos import build_da_hud
+
+        self.pasta = (pasta or build_da_hud()).resolve()
         dono = self
 
         class Handler(BaseHTTPRequestHandler):

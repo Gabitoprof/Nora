@@ -17,9 +17,13 @@ def versao_legivel(versao: str = __version__) -> str:
 
 def commit() -> str:
     """O commit em uso, para a homologação registrar exatamente o que foi testado: a variável
-    NORA_COMMIT (instalação empacotada) ou o `git rev-parse` do checkout; senão, "desconhecido"."""
+    NORA_COMMIT, o `_commit.txt` gravado no build do executável ou o `git rev-parse` do
+    checkout; senão, "desconhecido"."""
     if os.environ.get("NORA_COMMIT"):
         return os.environ["NORA_COMMIT"][:12]
+    gravado = Path(__file__).with_name("_commit.txt")  # escrito no build do executável
+    if gravado.is_file():
+        return gravado.read_text(encoding="utf-8").strip()[:12] or "desconhecido"
     raiz = Path(__file__).resolve().parents[2]
     if not (raiz / ".git").exists():
         return "desconhecido"

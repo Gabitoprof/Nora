@@ -114,7 +114,7 @@ REGRAS = {
         "Esforço menor pode dar respostas um pouco piores; custo tende a cair.",
         "Baixo.",
         "Teste com cliente falso que demora e confere a reserva.",
-        "src/nora/cerebro_openai.py, src/nora/cerebro_nuvem.py, config/nora.toml",
+        "src/nora/cerebro_openai.py, src/nora/cerebro_nuvem.py, src/nora/nora.toml",
     ),
     ("llm", "resposta_vazia"): Regra(
         "{motor} recusou ou não respondeu {n} vezes",
@@ -160,7 +160,7 @@ REGRAS = {
         "Modelo menor pode responder pior.",
         "Médio.",
         "Medir com `nora conversar --medir` antes e depois.",
-        "src/nora/cerebro.py, config/nora.toml",
+        "src/nora/cerebro.py, src/nora/nora.toml",
     ),
     ("llm", "feedback_negativo"): Regra(
         "Reclamações de respostas do {motor} ({n} vezes)",
