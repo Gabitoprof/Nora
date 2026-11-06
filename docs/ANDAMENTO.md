@@ -11,7 +11,7 @@ Assistente de voz pessoal em pt-BR, local primeiro, todos os direitos reservados
 - `v0.2.0` lançada (tag): conversa por voz e memória.
 - `v0.3.0` lançada (05/11/2026): roteador de modelos. Release, qualidade e homologação em [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md).
 - Em andamento: `v0.4.0` (`0.4.0.dev0`), na branch `integracao/v0.4.0`. Ela junta a HUD acústica, o `Pull_code` (voz sem troca de tom, streaming do ElevenLabs, ouvido com vocabulário, contas de data) e o Second Brain ([`SEGUNDO_CEREBRO.md`](SEGUNDO_CEREBRO.md)). As correções da revisão (P0, P2, P3) estão feitas. Falta a homologação no Windows: roteiro em [`HOMOLOGACAO.md`](HOMOLOGACAO.md), seção "v0.4.0 — preparação da homologação".
-- Distribuição: a config padrão vai dentro do pacote; instalada, a pasta pessoal é `%APPDATA%\Nora` (`caminhos.py`). Em seguida: o `.exe` sem assinatura (gerado na CI) e o pacote de dependências.
+- Distribuição: `nora.exe` sem assinatura e instalador gerados pelo workflow **Empacotar** (Actions > Empacotar > Artifacts), mais o pacote de dependências e o guia [`INSTALACAO.md`](INSTALACAO.md). Instalada, a pasta pessoal é `%APPDATA%\Nora`. Pendentes: assinatura (Microsoft Store/MSIX ou certificado OV), vozes locais no instalador (GPL) e a etapa de segurança (memória criptografada, chaves no Cofre do Windows, permissões das ferramentas).
 
 ## Caminho de uma pergunta
 

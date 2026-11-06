@@ -17,6 +17,13 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 - **Cores:** serenidade, sussurro e suspiro passam para calma (turquesa); preocupação, para seriedade (azul).
 - **Documentação de licença:** o mapa mental troca "Open source" por "Licença e distribuição"; `LICENCAS.md` só registra que o Kokoro (espeak-ng, GPL-3.0) roda em processo separado e que distribuir junto com ele exige cumprir a GPL.
 
+### Adicionado (distribuição no Windows)
+
+- **Nora instalada, fora do repositório** (`caminhos.py`): a config padrão vai dentro do pacote (`src/nora/nora.toml`); a config pessoal, o `.env`, a memória e os modelos ficam em `%APPDATA%\Nora`, criada na primeira execução (`NORA_HOME` troca a pasta). No repositório, nada muda.
+- **`nora.exe` sem assinatura e instalador** (`scripts/empacotar_windows.ps1`, PyInstaller em pasta e Inno Setup). O instalador não pede administrador e não apaga `%APPDATA%\Nora` ao desinstalar. O workflow **Empacotar** gera os dois no Windows a cada push na `main`, na `integracao/...` e nas tags, testa o `.exe` (versão, pasta do usuário, HUD) e publica os arquivos por 14 dias. Os avisos de licença dos componentes vão na pasta `licencas` do programa.
+- **Pacote de dependências da Nora** (`instalar_dependencias.ps1`): Visual C++, Ollama e modelos, whisper.cpp e modelo do Whisper, pelo `winget` e pelos sites oficiais, com resumo `ok`/`FALHOU`. Atalho **Nora** no menu Iniciar (liga o Ollama e o ouvido, abre a HUD e escuta). Guia em `docs/INSTALACAO.md`.
+- Instalada, a voz padrão é o ElevenLabs: as vozes locais (Kokoro, Piper) usam programas GPL e não vão no `.exe`.
+
 ### Adicionado (revisão da v0.4.0)
 
 - **Teste de instalação limpa** (`scripts/testar_instalacao_limpa.py`, job `instalacao` no CI): gera o wheel, instala fora do checkout e confere a paleta, o Second Brain e os arquivos do pacote.
