@@ -60,9 +60,12 @@ $exe = Join-Path $programa "nora.exe"
 $casa = Join-Path $env:TEMP ("nora-teste-" + [guid]::NewGuid().ToString("N"))
 $env:NORA_HOME = $casa
 try {
-    $saida = & $exe --verificar 2>&1 | Out-String
+    $codificacao = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [Text.Encoding]::UTF8  # o nora.exe escreve UTF-8 quando redirecionado
+    try { $saida = & $exe --verificar 2>&1 | Out-String } finally { [Console]::OutputEncoding = $codificacao }
     if ($LASTEXITCODE) { throw "nora.exe --verificar falhou:`n$saida" }
-    if ($saida -notmatch "Versão: $([regex]::Escape($versao)) \(commit $commit\)") { throw "versão/commit errados:`n$saida" }
+    if ($saida -notmatch "$([regex]::Escape($versao)) \(commit $commit\)") { throw "versão/commit errados:`n$saida" }
+    if ($saida -notmatch "Versão") { throw "acentos quebrados na saída do nora.exe:`n$saida" }
     if (-not (Test-Path (Join-Path $casa "config\local.toml"))) { throw "a pasta do usuário não foi criada" }
     Write-Host "  --verificar ok: $versao ($commit), pasta do usuário criada"
     $hudProc = Start-Process -FilePath $exe -ArgumentList "hud", "--porta", "8799" -PassThru -WindowStyle Hidden

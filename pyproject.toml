@@ -43,7 +43,7 @@ version = { attr = "nora.__version__" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-nora = ["*.json", "*.html", "*.toml"]
+nora = ["*.json", "*.html", "*.toml", "_commit.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
