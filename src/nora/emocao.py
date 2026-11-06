@@ -64,6 +64,21 @@ def emocoes_em(texto: str) -> list[Emocao]:
     return [EMOCOES[c] for c in map(_chave, _ETIQUETA.findall(texto)) if c in EMOCOES]
 
 
+# Tons que valem como "tom da conversa" no Second Brain (reações e sussurro não contam).
+TONS = {"alegre", "empolgada", "carinhosa", "calma", "seria", "triste", "curiosa"}
+
+
+def tom_predominante(texto: str) -> str:
+    """O tom que mais apareceu nas etiquetas da resposta ({alegre}, {calma}...), ou "" sem
+    etiqueta de tom. Empate: o primeiro que apareceu."""
+    contagem: dict[str, int] = {}
+    for achado in _ETIQUETA.finditer(texto):
+        chave = _chave(achado.group(1))
+        if chave in TONS:
+            contagem[chave] = contagem.get(chave, 0) + 1
+    return max(contagem, key=contagem.get) if contagem else ""
+
+
 def sem_emocoes(texto: str) -> str:
     """O texto sem as etiquetas (para a tela, a memória e vozes que não as entendem)."""
     return _espacos(_ETIQUETA.sub(" ", texto))

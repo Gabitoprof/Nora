@@ -295,5 +295,21 @@ def abrir_notas(config) -> IndiceDeNotas | None:
     from nora.embeddings import EmbeddingsOllama
 
     return IndiceDeNotas(
-        config.pasta_dados / "notas.db", notas.pasta, EmbeddingsOllama(config), notas.ignorar
+        config.pasta_dados / "notas.db",
+        notas.pasta,
+        EmbeddingsOllama(config),
+        (*notas.ignorar, *pastas_da_nora(config)),
     )
+
+
+def pastas_da_nora(config) -> tuple[str, ...]:
+    """A pasta do Second Brain dentro do vault: são notas que a Nora gerou da própria memória e
+    não podem voltar para ela como se fossem suas (exportar → reler → duplicar). Vale mesmo
+    com o Second Brain desligado, se a pasta já existir de antes."""
+    pasta = Path(config.segundo_cerebro.pasta).expanduser()
+    if not pasta.is_absolute():
+        return (pasta.as_posix(),)
+    try:
+        return (pasta.resolve().relative_to(Path(config.notas.pasta).resolve()).as_posix(),)
+    except ValueError:
+        return ()

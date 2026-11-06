@@ -25,7 +25,9 @@ O repositório inteiro funciona como um **vault** do Obsidian: documentação, m
 
 ## A Nora lendo as suas notas (v0.3.0)
 
-A Nora pode ler as notas do **seu** vault do Obsidian (o pessoal, não precisa ser o do projeto) e usar o que você escreveu para responder: "o que eu anotei sobre a prova de cálculo?", "qual era a receita do bolo?". Ela **só lê**: nunca cria, altera nem apaga nota.
+A Nora pode ler as notas do **seu** vault do Obsidian (o pessoal, não precisa ser o do projeto) e usar o que você escreveu para responder: "o que eu anotei sobre a prova de cálculo?", "qual era a receita do bolo?". Ela **só lê** as suas notas: nunca cria, altera nem apaga nenhuma delas.
+
+A única pasta em que ela escreve é a do **Second Brain** (v0.3.1, desligado por padrão), onde as memórias dela viram notas. Essa pasta fica de fora da leitura, para as memórias não voltarem como se fossem notas suas. Veja [SEGUNDO_CEREBRO.md](SEGUNDO_CEREBRO.md).
 
 ### Ligar (uma vez)
 

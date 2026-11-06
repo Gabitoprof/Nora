@@ -5,6 +5,25 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
+### Adicionado (Second Brain, branch `feat/v0.3.1-second-brain`)
+
+- **Second Brain no Obsidian** (`[segundo_cerebro]`, desligado por padrão; guia em `docs/SEGUNDO_CEREBRO.md`):
+  - as memórias consolidadas viram notas em `Nora Brain/`, com propriedades YAML, tags e `[[links]]` para a área, os nomes que aparecem em 2 memórias ou mais, os meses da agenda e as preferências;
+  - a sincronização é incremental, idempotente e retomável depois de uma queda (escrita atômica);
+  - correções, esquecer e apagar de vez saem do vault;
+  - as notas que você criou ou editou nunca são sobrescritas nem apagadas: viram conflito;
+  - as áreas privadas (saúde e finanças, por padrão) não saem do banco;
+  - a pasta fica de fora do leitor de notas, para não haver ciclo.
+- **Fora do caminho da fala:**
+  - a conversa só levanta um sinal; uma linha própria espera a Nora parar de responder e de falar (`conversa.falando`), lê a memória em modo só leitura e para no meio se ela voltar a falar;
+  - nenhuma chamada nova a modelo;
+  - medição em `scripts/medir_segundo_cerebro.py`.
+- **Mapa da memória:** "Nora, mostre seu segundo cérebro" ou `nora cerebro mapa --abrir`. É uma página sem internet, com cor por área, halo pelo tom da conversa (as cores da HUD), tamanho por ligações, pulso de recência, ligações que surgem ao abrir, busca, filtros, foco, a ficha com o porquê de cada ligação e o link para o Obsidian. O texto das memórias abre escondido.
+- **Tom da conversa no fato** (`fatos.emocao`): o tom predominante das etiquetas da resposta, guardado em segundo plano pela curadoria. É o tom da Nora, não um sentimento da pessoa.
+- **Cores dos tons** lidas de `hud/paleta.json` (`nora.paleta`), o mesmo arquivo da HUD: calma turquesa, tristeza lavanda, curiosidade terracota, como na tabela da HUD v0.4.0.
+- **Contrato versionado** `segundo_cerebro_contrato.json` (v1) para uma HUD de memória futura, com os mesmos nomes de emoção da HUD.
+- **Comandos novos:** `nora cerebro sincronizar | status | mapa`.
+
 ### Corrigido
 
 - **Voz que mudava de tom e pausava depois de uma primeira frase curta** (ex.: "Hahaha, esse atchim!" no ElevenLabs v3):

@@ -164,7 +164,18 @@ def abafador(config: Config):
     return lambda: abafar_outros(config.audio.volume_outros)
 
 
-def responder_falando(
+def responder_falando(conversa: Conversa, *args, **kwargs) -> Tempos:
+    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve.
+    Enquanto isso, `conversa.falando` fica ligado: o Second Brain e outras tarefas de fundo
+    esperam a voz terminar (não disputam tempo com ela)."""
+    conversa.falando = True
+    try:
+        return _responder_falando(conversa, *args, **kwargs)
+    finally:
+        conversa.falando = False
+
+
+def _responder_falando(
     conversa: Conversa,
     voz,
     tocar: Callable[[bytes], None],

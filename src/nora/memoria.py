@@ -179,6 +179,9 @@ class Memoria:
         if "area" not in colunas:  # bancos criados antes das áreas
             self._db.execute("ALTER TABLE fatos ADD COLUMN area TEXT NOT NULL DEFAULT ''")
             self._db.commit()
+        if "emocao" not in colunas:  # v0.3.1: o tom da conversa em que o fato surgiu
+            self._db.execute("ALTER TABLE fatos ADD COLUMN emocao TEXT NOT NULL DEFAULT ''")
+            self._db.commit()
         self.vetorial = self._carregar_sqlite_vec()
         if self.meta("agenda_preenchida") is None:  # bancos de antes da agenda
             self.preencher_agenda()
@@ -288,9 +291,12 @@ class Memoria:
 
     # --- fatos ----------------------------------------------------------------------------
 
-    def lembrar(self, texto: str, origem: str = "", area: str = "") -> tuple[int, bool]:
+    def lembrar(
+        self, texto: str, origem: str = "", area: str = "", emocao: str = ""
+    ) -> tuple[int, bool]:
         """Guarda um fato na área dada. Se já existe um quase igual, troca pelo novo texto.
-        Devolve (id, se é um fato novo)."""
+        `emocao` é o tom que a Nora usou na conversa em que o fato surgiu (das etiquetas da
+        resposta), não um sentimento da pessoa. Devolve (id, se é um fato novo)."""
         texto = " ".join(texto.split())
         vetor = self.embeddings.vetor(texto)
         area = self.normalizar_area(area)
@@ -307,8 +313,9 @@ class Memoria:
                 fato_id = parecido[0][0]
                 self._db.execute(
                     "UPDATE fatos SET texto = ?, vetor = ?, atualizado = ?, "
-                    "area = CASE WHEN ? != '' THEN ? ELSE area END WHERE id = ?",
-                    (texto, _empacotar(vetor), agora, area, area, fato_id),
+                    "area = CASE WHEN ? != '' THEN ? ELSE area END, "
+                    "emocao = CASE WHEN ? != '' THEN ? ELSE emocao END WHERE id = ?",
+                    (texto, _empacotar(vetor), agora, area, area, emocao, emocao, fato_id),
                 )
                 if self.vetorial:
                     self._db.execute("DELETE FROM vec_fatos WHERE rowid = ?", (fato_id,))
@@ -318,9 +325,9 @@ class Memoria:
                     )
                 return fato_id, False
             cursor = self._db.execute(
-                "INSERT INTO fatos(texto, vetor, criado, atualizado, origem, area) "
-                "VALUES (?,?,?,?,?,?)",
-                (texto, _empacotar(vetor), agora, agora, origem, area),
+                "INSERT INTO fatos(texto, vetor, criado, atualizado, origem, area, emocao) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (texto, _empacotar(vetor), agora, agora, origem, area, emocao),
             )
             fato_id = cursor.lastrowid
             if self.vetorial:

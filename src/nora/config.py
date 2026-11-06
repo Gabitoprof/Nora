@@ -142,6 +142,20 @@ class Notas:
 
 
 @dataclass(frozen=True)
+class SegundoCerebro:
+    """Second Brain (v0.3.1): as memórias consolidadas viram notas no Obsidian."""
+
+    ativo: bool = False  # exportar só com consentimento: desligado por padrão
+    pasta: str = "Nora Brain"  # dentro do vault de [notas] pasta (ou um caminho absoluto)
+    areas_privadas: tuple[str, ...] = ("saúde", "finanças")  # nunca viram nota
+    preferencias: bool = True  # exporta as preferências sobre o jeito de falar
+    agenda: bool = True  # liga fatos com data aos meses da agenda
+    emocoes: bool = True  # anota o tom da conversa em que o fato surgiu
+    intervalo_s: int = 60  # além do aviso da memória, confere a cada tantos segundos
+    mostrar_texto_no_mapa: bool = False  # o mapa abre com o texto das memórias escondido
+
+
+@dataclass(frozen=True)
 class Audio:
     microfone: str
     alto_falante: str
@@ -214,6 +228,7 @@ class Config:
     chave_openai: str = field(default="", repr=False)
     notas: Notas = field(default_factory=Notas)
     auto_melhoria: AutoMelhoria = field(default_factory=AutoMelhoria)
+    segundo_cerebro: SegundoCerebro = field(default_factory=SegundoCerebro)
 
 
 def _apresentar(valor: str) -> str:
@@ -249,6 +264,29 @@ def _auto_melhoria(dados: dict[str, Any]) -> AutoMelhoria:
         notificar=_campo(dados, secao, "notificar", bool),
         apresentar=_apresentar(_campo(dados, secao, "apresentar", str)),
         **inteiros,
+    )
+
+
+def _segundo_cerebro(dados: dict[str, Any]) -> SegundoCerebro:
+    secao = "segundo_cerebro"
+    pasta = _campo(dados, secao, "pasta", str).strip().strip("/\\")
+    if not pasta:
+        raise ConfigError(f'[{secao}] pasta não pode ficar vazia (ex.: "Nora Brain").')
+    privadas = _campo(dados, secao, "areas_privadas", list)
+    if not all(isinstance(item, str) for item in privadas):
+        raise ConfigError(f'[{secao}] areas_privadas deve ser uma lista, como ["saúde"].')
+    intervalo = _campo(dados, secao, "intervalo_s", int)
+    if intervalo < 5:
+        raise ConfigError(f"[{secao}] intervalo_s deve ser 5 ou mais, veio {intervalo}.")
+    return SegundoCerebro(
+        ativo=_campo(dados, secao, "ativo", bool),
+        pasta=pasta,
+        areas_privadas=tuple(item.strip().lower() for item in privadas if item.strip()),
+        preferencias=_campo(dados, secao, "preferencias", bool),
+        agenda=_campo(dados, secao, "agenda", bool),
+        emocoes=_campo(dados, secao, "emocoes", bool),
+        intervalo_s=intervalo,
+        mostrar_texto_no_mapa=_campo(dados, secao, "mostrar_texto_no_mapa", bool),
     )
 
 
@@ -570,6 +608,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
         roteador=_roteador(dados),
         notas=_notas(dados, raiz),
         auto_melhoria=_auto_melhoria(dados),
+        segundo_cerebro=_segundo_cerebro(dados),
         pasta_dados=pasta_dados,
         ollama_host=ambiente.get("OLLAMA_HOST") or "http://127.0.0.1:11434",
         tem_chave_anthropic=bool(ambiente.get("ANTHROPIC_API_KEY")),

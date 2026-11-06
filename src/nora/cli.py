@@ -140,6 +140,7 @@ def verificar(config: Config) -> list[str]:
         indice.fechar()
         situacao = f"{total} notas no índice" if total else "ainda sem índice: nora notas ler"
         linhas.append(f"  {'Notas (Obsidian)':<24}ok, {config.notas.pasta} ({situacao})")
+    linhas.append(f"  {'Second Brain':<24}{_situacao_do_segundo_cerebro(config)}")
     servicos = [("whisper-server", config.ouvido.url)]
     for motor, papel in [(config.voz.motor, ""), (config.voz.reserva, " (reserva)")]:
         if motor == "kokoro":
@@ -734,6 +735,108 @@ def comando_memoria(config: Config, args) -> int:
     return 0
 
 
+def _situacao_do_segundo_cerebro(config: Config) -> str:
+    """Uma linha para o --verificar: desligado, sem destino ou a última rodada."""
+    if not config.segundo_cerebro.ativo:
+        return "desligado ([segundo_cerebro] ativo = false)"
+    from nora.segundo_cerebro import destino
+
+    onde = destino(config)
+    if onde is None:
+        return "ligado, mas sem vault: configure [notas] pasta ou um caminho absoluto"
+    estado = config.pasta_dados / "segundo_cerebro" / "estado.db"
+    if not estado.exists():
+        return f"ligado, {onde[0]} (ainda sem sincronizar: nora cerebro sincronizar)"
+    import sqlite3
+
+    db = sqlite3.connect(f"{estado.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        meta = dict(db.execute("SELECT chave, valor FROM meta"))
+        conflitos = db.execute("SELECT COUNT(*) FROM conflitos").fetchone()[0]
+    finally:
+        db.close()
+    situacao = f"ligado, {onde[0]} (última rodada {meta.get('ultima_rodada', 'nunca')}"
+    if meta.get("ultimo_erro"):
+        situacao += f", erro {meta['ultimo_erro']}"
+    if conflitos:
+        situacao += f", {conflitos} conflito(s): nora cerebro status"
+    return situacao + ")"
+
+
+def comando_cerebro(config: Config, args) -> int:
+    """nora cerebro sincronizar | status | mapa [--abrir]."""
+    from nora.segundo_cerebro import Sincronizador, caminho_do_mapa, destino
+
+    opcoes = config.segundo_cerebro
+    if not opcoes.ativo:
+        print(
+            "O Second Brain está desligado. Para ligar, ponha em config/local.toml:\n"
+            "  [segundo_cerebro]\n  ativo = true\n"
+            "Ele escreve as memórias consolidadas no vault de [notas] pasta (guia em "
+            "docs/SEGUNDO_CEREBRO.md).",
+            file=sys.stderr,
+        )
+        return 1
+    onde = destino(config)
+    if onde is None:
+        print(
+            f'[segundo_cerebro] pasta = "{opcoes.pasta}" é relativa ao vault, mas [notas] '
+            "pasta está vazia. Configure o vault ou use um caminho absoluto.",
+            file=sys.stderr,
+        )
+        return 1
+    sincronizador = Sincronizador(config, *onde)
+    try:
+        if args.acao == "sincronizar":
+            resumo = sincronizador.sincronizar()
+            if resumo.erro == "VaultAusente":
+                print(
+                    f"A pasta {sincronizador.base} não existe. Confira [notas] pasta no "
+                    "config/local.toml: tem que ser a pasta do seu vault do Obsidian (no "
+                    "Obsidian, 'Gerenciar vaults' mostra o caminho). Nada foi escrito.",
+                    file=sys.stderr,
+                )
+                return 1
+            if resumo.erro:
+                print(
+                    f"Não consegui sincronizar ({resumo.erro}). Nada foi apagado.", file=sys.stderr
+                )
+                return 1
+            print(
+                f"Pronto: {resumo.escritas} nota(s) escrita(s), {resumo.removidas} removida(s), "
+                f"{resumo.notas} no total em {onde[0]}."
+            )
+            if resumo.conflitos:
+                print(f"{resumo.conflitos} conflito(s): veja com 'nora cerebro status'.")
+            return 0
+        if args.acao == "status":
+            estado = sincronizador.status()
+            meta = estado["meta"]
+            print(f"Pasta: {estado['destino']}")
+            print(f"Notas da Nora: {estado['notas']}")
+            print(f"Última rodada: {meta.get('ultima_rodada', 'nunca')}"
+                  f" ({meta.get('ultima_duracao_ms', '?')} ms)")  # fmt: skip
+            if meta.get("ultimo_erro"):
+                print(f"Último erro: {meta['ultimo_erro']}")
+            for caminho, motivo in estado["conflitos"]:
+                print(f"  conflito: {caminho}: {motivo}")
+            return 0
+        mapa = caminho_do_mapa(config)
+        if not mapa.exists():
+            print(
+                "O mapa ainda não existe: rode 'nora cerebro sincronizar' antes.", file=sys.stderr
+            )
+            return 1
+        print(mapa)
+        if args.abrir:
+            from nora.melhorias import abrir_arquivo
+
+            abrir_arquivo(mapa, na_frente=True)
+        return 0
+    finally:
+        sincronizador.fechar()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nora", description="Assistente de IA pessoal por voz.")
     parser.add_argument("--versao", action="version", version=f"nora {__version__}")
@@ -796,6 +899,14 @@ def main(argv: list[str] | None = None) -> int:
     acoes_melhorias.add_parser("fechar-dia", help="faz o relatório de hoje agora")
     pend_cmd = comandos.add_parser("pendencias", help="respostas que ficaram pela metade")
     pend_cmd.add_argument("--cancelar", type=int, default=0, metavar="ID", help="não retomar esta")
+    cerebro_cmd = comandos.add_parser(
+        "cerebro", help="Second Brain: as memórias da Nora como notas no Obsidian e o mapa"
+    )
+    acoes_cerebro = cerebro_cmd.add_subparsers(dest="acao", required=True)
+    acoes_cerebro.add_parser("sincronizar", help="escreve agora no vault o que mudou na memória")
+    acoes_cerebro.add_parser("status", help="última sincronização, notas e conflitos")
+    mapa_cmd = acoes_cerebro.add_parser("mapa", help="onde está o mapa da memória (ou abre)")
+    mapa_cmd.add_argument("--abrir", action="store_true", help="abre no navegador")
     notas_cmd = comandos.add_parser("notas", help="notas do Obsidian que a Nora lê")
     acoes_notas = notas_cmd.add_subparsers(dest="acao", required=True)
     acoes_notas.add_parser("ler", help="lê as notas novas ou alteradas do vault")
@@ -931,6 +1042,8 @@ def main(argv: list[str] | None = None) -> int:
         return comando_notas(config, args)
     if args.comando == "pendencias":
         return comando_pendencias(config, args)
+    if args.comando == "cerebro":
+        return comando_cerebro(config, args)
     if args.comando == "melhorias":
         return comando_melhorias(config, args)
 
