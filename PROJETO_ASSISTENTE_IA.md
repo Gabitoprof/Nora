@@ -146,7 +146,7 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
   - pasta `data/` no `.gitignore` desde a v0.0.
 - **Nome e marca:** não usar "Jarvis", nem logos ou referências visuais da Marvel, no nome, no logo ou na divulgação. É marca registrada. "Inspirado em assistentes da ficção" pode.
 - **Nome personalizável:** o nome do assistente vem do config. Cada usuário dá o seu, e o do Gabriel continua exclusivo.
-- **Licença do código:** MIT ou Apache-2.0.
+- **Licença do código:** todos os direitos reservados desde 06/11/2026 (até a v0.3.0, MIT). O que for aberto no futuro sai num repositório separado, com licença escolhida na hora.
 - **Licenças de modelos e vozes:** verificar uma a uma. Algumas proíbem uso comercial ou redistribuição (ex.: **XTTS é não comercial**; algumas vozes do Piper têm restrições). Preferir componentes redistribuíveis, ou baixar os modelos à parte via script.
 - **Backends trocáveis:** Vulkan, ROCm, CUDA e CPU, para rodar em outras máquinas.
 - **Qualidade do repositório:** commits organizados (Conventional Commits), uma tag por etapa, `CHANGELOG.md`, CI básico. Serve também como portfólio.
@@ -233,7 +233,7 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 2. **Nome:** ✅ **Nora** para o projeto e para o assistente. O nome do assistente continua configurável.
 3. **Linguagem:** ✅ **núcleo em Python + HUD em web (TypeScript)**.
 4. **Uso 24h:** ✅ **não por enquanto**. O modo distribuído fica na v0.8.0, como previsto.
-5. **Licença:** ✅ **MIT**.
+5. **Licença:** ✅ **MIT** até a v0.3.0; desde 06/11/2026, **todos os direitos reservados**, pensando na comercialização (o que for aberto sai num repositório separado).
 
 ---
 

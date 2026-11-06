@@ -1,5 +1,5 @@
 # Frases para gerar um conjunto de treino de voz (uma por linha; linhas com # são ignoradas).
-# Escritas para o projeto Nora (licença MIT). Variadas de propósito: perguntas, exclamações,
+# Escritas para o projeto Nora (todos os direitos reservados). Variadas de propósito: perguntas, exclamações,
 # números, datas, nomes e sons diferentes do português. Para 500 a 1.000 frases, junte com
 # textos de domínio público (nora voz gerar-dataset --texto livro.txt).
 Bom dia! Dormiu bem esta noite?

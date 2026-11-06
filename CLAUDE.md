@@ -4,7 +4,7 @@ Regras do projeto Nora para o Claude Code. Detalhes em `PROJETO_ASSISTENTE_IA.md
 
 ## O que é
 
-Assistente de IA pessoal por voz em tempo real, local primeiro, com memória que evolui. Desenvolvido por etapas (`v0.0.0` → `v1.0.0`), cada uma uma versão funcional. Será open source (MIT).
+Assistente de IA pessoal por voz em tempo real, local primeiro, com memória que evolui. Desenvolvido por etapas (`v0.0.0` → `v1.0.0`), cada uma uma versão funcional. Repositório público só para consulta, com todos os direitos reservados (até a v0.3.0, MIT); pensado para comercialização, e o que for aberto sai num repositório separado.
 
 ## Idioma
 
@@ -24,7 +24,7 @@ Assistente de IA pessoal por voz em tempo real, local primeiro, com memória que
 - GPU **AMD RX 9060 XT 16 GB** (RDNA 4) no **Windows**: **evitar ferramentas só-CUDA**; usar Vulkan (ROCm no Linux). Backends sempre trocáveis (Vulkan, ROCm, CUDA, CPU).
 - VRAM: LLM ~9–10 GB + Whisper ~1–2 GB + folga.
 
-## Open source (seção 6), obrigatório
+## Repositório público (seção 6), obrigatório
 
 - **Nada pessoal no repositório.** Chaves só em `.env`; config pessoal só em `config/local.toml`; `data/` nunca vai para o Git.
 - **Não usar** "Jarvis", Marvel ou referências visuais deles em nome, logo ou divulgação.

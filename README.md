@@ -158,4 +158,6 @@ Detalhes em [docs/AUTO_MELHORIA.md](docs/AUTO_MELHORIA.md).
 
 ## Licença
 
-O código da Nora é [MIT](LICENSE). Programas, modelos de IA e vozes que ela usa têm licenças próprias e são baixados à parte: veja [docs/LICENCAS.md](docs/LICENCAS.md) antes de redistribuir qualquer coisa.
+Copyright © 2026 Carlos Gabriel Moura Santiago. **Todos os direitos reservados.** O código está público só para consulta; usar, copiar, modificar ou distribuir exige autorização por escrito (veja [LICENSE](LICENSE)). As versões até a `v0.3.0` saíram em MIT e continuam em MIT.
+
+Programas, modelos de IA e vozes que a Nora usa têm licenças próprias e são baixados à parte: veja [docs/LICENCAS.md](docs/LICENCAS.md).

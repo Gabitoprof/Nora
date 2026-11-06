@@ -2,7 +2,7 @@
 
 ## Resumo
 
-- **O código da Nora** (tudo o que está neste repositório) é **[MIT](../LICENSE)**: pode usar, modificar, vender e redistribuir, mantendo o aviso de copyright.
+- **O código da Nora** é de **todos os direitos reservados** ([LICENSE](../LICENSE)): público para consulta, sem permissão de uso, cópia ou redistribuição sem autorização. As versões até a `v0.3.0` saíram em MIT e continuam em MIT.
 - **Os programas, modelos e vozes que a Nora usa não estão no repositório** e têm licença própria. Eles são instalados ou baixados à parte (pelo `pip`, pelos scripts de `scripts/` ou pela própria ferramenta) e a Nora conversa com eles pela rede local ou como processo separado. **Ao baixar cada um, você aceita a licença dele.**
 - **O que é seu nunca entra no repositório:** memória e histórico (`data/`), chaves (`.env`), config pessoal (`config/local.toml`), fluxos do ComfyUI (`config/voz_comfyui.json`) e modelos e vozes (`models/`).
 
@@ -25,7 +25,7 @@
 | pytest | MIT | `dev` | Testes |
 | ruff | MIT | `dev` | Formatação e lint |
 
-**Sobre o GPL do espeak-ng:** o Kokoro roda num processo separado (`nora servidor-kokoro`), e a Nora só fala com ele por HTTP. O código da Nora não importa nada GPL, por isso continua MIT. Quem redistribuir um pacote com o extra `kokoro` instalado precisa cumprir a GPL-3.0 dessa parte.
+**Sobre o GPL do espeak-ng:** o Kokoro roda num processo separado (`nora servidor-kokoro`), e a Nora só fala com ele por HTTP. O código da Nora não importa nada GPL, por isso não fica sujeito à GPL. Quem redistribuir um pacote com o extra `kokoro` instalado precisa cumprir a GPL-3.0 dessa parte.
 
 ## Programas separados
 

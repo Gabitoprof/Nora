@@ -10,7 +10,7 @@ A Nora conversa por voz usando programas locais, cada um no seu processo, e fala
 | Voz (opcional) | Piper (`piper.http_server`) | 5000 | GPL-3.0 |
 | Voz (opcional, nuvem) | ElevenLabs | — | serviço pago |
 
-Separar em processos mantém o núcleo da Nora em MIT, deixa cada peça trocável e prepara o modo distribuído (v0.8.0).
+Separar em processos mantém o núcleo da Nora livre de licenças de terceiros, deixa cada peça trocável e prepara o modo distribuído (v0.8.0).
 
 ## Motores de voz
 
