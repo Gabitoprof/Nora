@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import TypedDict
 from urllib.parse import urlsplit
 
+from nora.falhas_hud import registrar
+
 CONTRATO = json.loads(Path(__file__).with_name("hud_contrato.json").read_text(encoding="utf-8"))
 VERSAO = CONTRATO["versao"]
 LIMITE_EVENTO = CONTRATO["limite_evento"]
@@ -383,24 +385,24 @@ def emitir(tipo: str, **dados) -> None:
             if tipo == "emocao" and _ponte._reproduzindo:
                 return
             _ponte.publicar(tipo, **dados)
-        except Exception:
-            pass
+        except Exception as erro:
+            registrar("hud.emitir", erro)
 
 
 def anexar(conversa) -> None:
     if _ponte is not None:
         try:
             _ponte.anexar(conversa)
-        except Exception:
-            pass
+        except Exception as erro:
+            registrar("hud.anexar", erro)
 
 
 def atualizar_notas() -> None:
     if _ponte is not None:
         try:
             emitir("notas", notas=_ponte.notas())
-        except Exception:
-            pass
+        except Exception as erro:
+            registrar("hud.notas", erro)
 
 
 def reproducao(ativa: bool) -> None:
@@ -438,8 +440,8 @@ def reproducao(ativa: bool) -> None:
                 fluxo=0.0,
             )
             emitir("nivel_audio", nivel=0.0, fonte="voz")
-    except Exception:
-        pass  # falha de visualização nunca chega ao callback de áudio
+    except Exception as erro:  # falha de visualização nunca chega ao callback de áudio
+        registrar("hud.reproducao", erro)
 
 
 def nivel_pcm(amostras: bytes, fonte: str) -> None:
@@ -473,8 +475,8 @@ def amostrar_pcm(amostras: bytes, fonte: str, taxa: int = 16000, canais: int = 1
         return
     try:
         _analisador().micro(amostras, taxa, canais)
-    except Exception:
-        pass
+    except Exception as erro:
+        registrar("hud.microfone", erro)
 
 
 def preparar_reproducao(amostras: bytes | None, taxa: int, canais: int):
@@ -483,7 +485,8 @@ def preparar_reproducao(amostras: bytes | None, taxa: int, canais: int):
         return None
     try:
         return _analisador().preparar(amostras, taxa, canais)
-    except Exception:
+    except Exception as erro:
+        registrar("hud.preparar", erro)
         return None
 
 

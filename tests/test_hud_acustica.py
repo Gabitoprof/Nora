@@ -340,3 +340,87 @@ def test_snapshot_nao_reanima_pcm_antigo_e_limita_unicode(ponte):
     ponte._ultimo_quadro = time.monotonic() - 1
     assert ponte.snapshot()["acustica"] is None
     hud.reproducao(False)
+
+
+class SaidaFalsa:
+    """sounddevice falso: chama o callback de saída em blocos, como a placa de som."""
+
+    PortAudioError = RuntimeError
+
+    class CallbackStop(Exception):
+        pass
+
+    def __init__(self):
+        self.tocado = bytearray()
+
+    def RawOutputStream(self, callback, finished_callback, channels, **_):  # noqa: N802
+        dono = self
+
+        class Fluxo:
+            def __enter__(self):
+                while True:
+                    saida = bytearray(512 * 2 * channels)
+                    try:
+                        callback(saida, 512, None, None)
+                    except dono.CallbackStop:
+                        dono.tocado.extend(saida)
+                        break
+                    dono.tocado.extend(saida)
+                finished_callback()
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        return Fluxo()
+
+
+def test_falha_da_hud_e_contada_e_a_fala_continua(ponte, monkeypatch, caplog):
+    from nora import falhas_hud
+
+    falhas_hud.zerar()
+
+    class ObservadorQuebrado:
+        def entregar(self, *args):
+            raise ValueError("texto pessoal que não pode ir para o log")
+
+    monkeypatch.setattr(hud, "preparar_reproducao", lambda *a: ObservadorQuebrado())
+    som = tom(segundos=0.2)
+    saida = SaidaFalsa()
+    with caplog.at_level("WARNING", logger="nora.hud"):
+        audio._tocar(saida, som, 16000, 1, None)
+        audio._tocar(saida, som, 16000, 1, None)
+    # o áudio inteiro foi para o alto-falante, nas duas vezes, apesar da HUD quebrada
+    assert bytes(saida.tocado[: len(som)]) == som
+    contagem = falhas_hud.contagem()
+    assert contagem["audio.entregar: ValueError"] >= 2
+    linhas = [r.getMessage() for r in caplog.records if "audio.entregar" in r.getMessage()]
+    assert len(linhas) == 1  # uma linha por tipo; as próximas só contam
+    assert "texto pessoal" not in caplog.text  # nunca a mensagem do erro
+
+
+def test_falha_no_observador_em_streaming_e_contada(ponte, monkeypatch):
+    from nora import falhas_hud
+
+    falhas_hud.zerar()
+
+    class Quebrado:
+        def __getattr__(self, nome):
+            def falhar(*args):
+                raise KeyError(nome)
+
+            return falhar
+
+    monkeypatch.setattr(hud, "preparar_reproducao", lambda *a: Quebrado())
+    som = tom(segundos=0.1)
+    saida = SaidaFalsa()
+    audio._tocar_partes(saida, audio.AudioEmPartes(iter([som]), 16000), 0, None)
+    assert bytes(saida.tocado).startswith(som)
+    assert any(k.startswith("audio.") for k in falhas_hud.contagem())
+
+
+def test_registro_de_falha_nunca_levanta(monkeypatch):
+    from nora import falhas_hud
+
+    monkeypatch.setattr(falhas_hud, "_contagem", None)  # até o contador quebrado
+    falhas_hud.registrar("qualquer", RuntimeError("x"))

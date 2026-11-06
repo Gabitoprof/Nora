@@ -207,6 +207,8 @@ descarte de dados atrasados e frequência de atualização limitada protegem o p
 voz; desconectar a HUD não deve interrompê-lo. Movimento reduzido, página oculta, modo
 jogo e qualidade Canvas continuam disponíveis.
 
+**Falhas da HUD não param a fala, mas não somem:** no caminho acústico (o callback de saída, o observador da reprodução, o analisador, os eventos), cada falha é contada por lugar e tipo (`nora.falhas_hud`). A primeira de cada tipo vira uma linha de log (`nora.hud`); as seguintes só contam. A mensagem do erro e o áudio nunca são registrados.
+
 O painel lateral "Sinal de áudio" mostra o mesmo sinal que move a onda central (a medida da fonte em uso: microfone enquanto escuta, voz enquanto fala), em escala de decibéis (−60 dBFS = 0%, 0 dBFS = 100%). Com sinal, nunca mostra "0%"; pensando ou em repouso, mostra "Em silêncio".
 
 A paleta fica num arquivo só, `src/nora/paleta.json` (dentro do pacote Python, vai junto na instalação), lido pela HUD (`state.ts`) e pelo Python (`nora.paleta.cor("curiosa")`), para o Second Brain usar as mesmas cores sem copiá-las. A paleta canônica mantém prata neutra, dourado para alegria/entusiasmo, rosa para carinho,

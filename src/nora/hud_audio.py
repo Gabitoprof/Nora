@@ -10,6 +10,7 @@ from contextlib import contextmanager
 
 from nora.acustica import MAX_QUADROS, EnvelopeTemporal, Medidor, temporizar
 from nora.emocao import emocoes_em
+from nora.falhas_hud import registrar
 
 _contexto = threading.local()
 
@@ -237,8 +238,8 @@ class AnalisadorHUD:
                 agora = time.monotonic()
                 self._voz(agora)
                 self._micro(agora)
-            except Exception:
-                pass  # visualização nunca interrompe STT, LLM, TTS ou áudio
+            except Exception as erro:  # visualização nunca interrompe STT, LLM, TTS ou áudio
+                registrar("hud_audio.rodar", erro)
 
     def encerrar(self):
         self.parado = True

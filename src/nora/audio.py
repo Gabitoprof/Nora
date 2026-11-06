@@ -345,8 +345,10 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
         if observador is not None:
             try:
                 observador.entregar(antes // bytes_por_quadro, posicao // bytes_por_quadro, tempo)
-            except Exception:
-                pass
+            except Exception as erro:  # a HUD nunca para a fala; a falha é contada
+                from nora.falhas_hud import registrar
+
+                registrar("audio.entregar", erro)
         saida[: len(pedaco)] = pedaco
         if len(pedaco) < len(saida):
             saida[len(pedaco) :] = bytes(len(saida) - len(pedaco))
@@ -473,8 +475,10 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
         if observador is not None:
             try:
                 getattr(observador, metodo)(*args)
-            except Exception:
-                pass
+            except Exception as erro:  # a HUD nunca para a fala; a falha é contada
+                from nora.falhas_hud import registrar
+
+                registrar(f"audio.{metodo}", erro)
 
     def encher() -> None:
         for parte in audio.partes():
