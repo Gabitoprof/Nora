@@ -39,7 +39,7 @@ from nora.paleta import cor as cor_da_emocao
 VERSAO_DO_CONTRATO = 1
 CONTRATO = Path(__file__).with_name("segundo_cerebro_contrato.json")
 
-# As cores das emoções vêm de hud/paleta.json, o mesmo arquivo que a HUD lê (nora.paleta): um
+# As cores das emoções vêm de src/nora/paleta.json, o mesmo arquivo que a HUD lê (nora.paleta): um
 # sistema de cores só, sem cópia. Os nomes são os tons de emocao.py e a neutra.
 NOMES_DOS_TONS = (
     "alegre",

@@ -270,7 +270,7 @@ def test_grafo_segue_o_contrato_versionado(ambiente):
 
 
 def test_cores_de_emocao_sao_as_da_hud():
-    # Uma fonte só: hud/paleta.json (a HUD importa o mesmo arquivo). Tabela do prompt da HUD:
+    # Uma fonte só: src/nora/paleta.json (a HUD importa o mesmo arquivo). Tabela do prompt da HUD:
     # calma turquesa, tristeza lavanda, curiosidade terracota.
     from nora.paleta import cor
 

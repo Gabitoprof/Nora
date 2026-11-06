@@ -132,7 +132,7 @@ Clique num nó para ver a ficha: área, camada, origem, data e **por que se liga
 | Tecnologia | `#7C8CFF` azul elétrico |
 | Outras áreas | uma cor fixa da reserva, sempre a mesma para a mesma área |
 
-Tons (halo): **as mesmas cores da HUD**, lidas do mesmo arquivo, `hud/paleta.json` (em Python, `nora.paleta`), com os mesmos nomes das etiquetas de `emocao.py`. Não há um segundo sistema de cores; para mudar uma cor, mude só esse arquivo:
+Tons (halo): **as mesmas cores da HUD**, lidas do mesmo arquivo, `src/nora/paleta.json` (em Python, `nora.paleta`), com os mesmos nomes das etiquetas de `emocao.py`. Não há um segundo sistema de cores; para mudar uma cor, mude só esse arquivo:
 
 | Tom | Cor |
 |---|---|

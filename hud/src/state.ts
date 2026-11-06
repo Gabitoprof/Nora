@@ -1,4 +1,4 @@
-import paleta from "../paleta.json";
+import paleta from "../../src/nora/paleta.json";
 import type { Acustica } from "./scene-audio";
 import contrato from "../../src/nora/hud_contrato.json";
 /** Contrato v1 compartilhado com o núcleo Python. */
@@ -291,7 +291,7 @@ export const nomesEstado: Record<Estado, string> = {
   erro: "Atenção necessária",
   recuperando: "Reconectando",
 };
-/** Fonte compartilhável também pelo futuro Segundo Cérebro: hud/paleta.json. */
+/** Fonte única, dentro do pacote Python: src/nora/paleta.json (o Second Brain lê o mesmo). */
 export const cores: Record<string,string> = Object.fromEntries(Object.entries(paleta.aliases).map(([nome,grupo])=>[nome,paleta.cores[grupo as keyof typeof paleta.cores]]));
 
 /** RMS linear (0–1) em escala de decibéis: −60 dBFS = 0, 0 dBFS = 1. Fala comum (RMS 0,005 a

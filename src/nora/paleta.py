@@ -1,5 +1,6 @@
-"""Cores das emoções da Nora: uma fonte só, `hud/paleta.json`, lida pela HUD (TypeScript) e por
-qualquer parte em Python (ex.: o mapa do Second Brain). Não copie as cores para outro lugar.
+"""Cores das emoções da Nora: uma fonte só, `src/nora/paleta.json`, dentro do pacote (vai junto
+no wheel), lida pela HUD (TypeScript, importa o mesmo arquivo) e por qualquer parte em Python (ex.:
+o mapa do Second Brain). Não copie as cores para outro lugar.
 
 `cores` tem os grupos (neutra, alegria, carinho, calma, seriedade, tristeza, curiosidade);
 `aliases` liga cada nome de emoção da Nora (as etiquetas de emocao.py e os nomes antigos da
@@ -13,7 +14,7 @@ import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
-ARQUIVO = Path(__file__).resolve().parents[2] / "hud" / "paleta.json"
+ARQUIVO = Path(__file__).with_name("paleta.json")
 
 
 @lru_cache(maxsize=1)
