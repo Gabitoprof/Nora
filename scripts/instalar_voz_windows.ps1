@@ -53,8 +53,7 @@ if ($servidor) {
 
 $tamanhos = @{ "small" = "~470 MB"; "medium" = "~1,5 GB"; "large-v3-turbo" = "~1,6 GB"; "large-v3-turbo-q5_0" = "~550 MB" }
 $tamanho = if ($tamanhos.ContainsKey($ModeloWhisper)) { $tamanhos[$ModeloWhisper] } else { "tamanho desconhecido" }
-Write-Host "`
-[2/5] Modelo do Whisper ($ModeloWhisper, multilíngue; $tamanho, pode demorar)"
+Write-Host "`n[2/5] Modelo do Whisper ($ModeloWhisper, multilíngue; $tamanho, pode demorar)"
 $arquivoModelo = Join-Path $modelos "ggml-$ModeloWhisper.bin"
 if (Test-Path $arquivoModelo) {
     Write-Host "  já baixado: $arquivoModelo"
