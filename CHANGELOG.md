@@ -9,6 +9,20 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 - **Licença:** a partir de 06/11/2026, o código passa a ser de **todos os direitos reservados** (público só para consulta). As versões até a `v0.3.0` continuam em MIT.
 
+### Corrigido (revisão da v0.4.0, branch `integracao/v0.4.0`)
+
+- **Paleta dentro do pacote:** `src/nora/paleta.json`, lido pela HUD e pelo Second Brain. Antes ficava em `hud/` e uma instalação por wheel quebrava ao importar o Second Brain.
+- **Versão única do produto:** `0.4.0.dev0` (Python) e `0.4.0-dev.0` (HUD), com teste que falha se divergirem. `nora --verificar` e a HUD (Ajustes) mostram versão e commit. `hud/package.json` com `"license": "UNLICENSED"`.
+- **Falhas da HUD no caminho do áudio** deixam de ser engolidas em silêncio: são contadas por lugar e tipo, com uma linha de log por tipo, sem texto da conversa nem áudio. A fala nunca para por isso.
+- **Cores:** serenidade, sussurro e suspiro passam para calma (turquesa); preocupação, para seriedade (azul).
+- **Documentação de licença:** o mapa mental troca "Open source" por "Licença e distribuição"; `LICENCAS.md` só registra que o Kokoro (espeak-ng, GPL-3.0) roda em processo separado e que distribuir junto com ele exige cumprir a GPL.
+
+### Adicionado (revisão da v0.4.0)
+
+- **Teste de instalação limpa** (`scripts/testar_instalacao_limpa.py`, job `instalacao` no CI): gera o wheel, instala fora do checkout e confere a paleta, o Second Brain e os arquivos do pacote.
+- **Teste de regressão** da troca de voz: a confirmação leva o texto à HUD.
+- **`scripts/homologacao_windows.ps1`:** testes, build, `nora --verificar` e medição de CPU, GPU e VRAM com a HUD aberta, gravados num arquivo. Roteiro de ~15 min em `docs/HOMOLOGACAO.md`.
+
 ### Adicionado (Second Brain, branch `feat/v0.3.1-second-brain`)
 
 - **Second Brain no Obsidian** (`[segundo_cerebro]`, desligado por padrão; guia em `docs/SEGUNDO_CEREBRO.md`):

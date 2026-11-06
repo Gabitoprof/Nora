@@ -71,6 +71,65 @@ Dados de teste devem ser sintéticos; não guardar perguntas pessoais, áudio, c
 - [ ] Registrar resultados reais, limitações e falhas encontradas; corrigir e retestar as afetadas.
 - [ ] Obter aceite do proprietário para integração à `main` e autorização separada para publicação.
 
+## v0.4.0 — preparação da homologação no Windows (branch `integracao/v0.4.0`)
+
+Correções da revisão aplicadas e cobertas por testes automatizados (CI Windows e Linux):
+- **Paleta dentro do pacote** (`src/nora/paleta.json`): a HUD e o Second Brain leem o mesmo arquivo; um teste proíbe cópia.
+- **Instalação limpa:** `scripts/testar_instalacao_limpa.py` gera o wheel, instala num venv fora do checkout e confere a paleta, o Second Brain e os arquivos do pacote (job `instalacao` no CI, só Linux).
+- **Versão única:** `0.4.0.dev0` no Python e `0.4.0-dev.0` na HUD, com teste de divergência. `nora --verificar` (1ª linha) e a HUD (Ajustes) mostram versão e commit.
+- **Troca de voz:** a confirmação leva o texto à HUD (teste de regressão).
+- **Falhas da HUD:** contadas e registradas uma vez por tipo, sem texto nem áudio; a fala continua.
+- **Paleta revisada:** serenidade, sussurro e suspiro em calma; preocupação em seriedade.
+
+**Ainda fora do pacote** (uma instalação por wheel ainda precisa do repositório para isto): a config padrão (`config/nora.toml`) e o build da HUD (`hud/dist`). Por isso a homologação é feita no checkout.
+
+**Palavras em partículas: limitação conhecida.** O tempo das palavras é estimado a partir do áudio que toca (trechos com som), e a HUD mostra "tempo estimado no áudio". A ElevenLabs tem um streaming com alinhamento por caractere (`/stream/with-timestamps`), mas não conseguimos confirmar que ele custa o mesmo nem que funciona com o `eleven_v3`. Por isso não foi ligado; o passo 7 do roteiro testa isso na sua conta.
+
+### 1. Automático (sem você): `scripts/homologacao_windows.ps1`
+
+Na pasta do repositório, com o `.venv` ativado:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\homologacao_windows.ps1
+```
+
+Ele roda e grava em `data\homologacao\AAAA-MM-DD_HHMM.txt`:
+- versão, commit, GPU e driver;
+- `pytest`, `ruff` e a instalação limpa;
+- `npm ci`, `npm test` e `npm run build` da HUD;
+- `nora --verificar`;
+- 30 s de medição com o modelo local carregado e a HUD aberta no navegador: uso da GPU 3D, VRAM, CPU total, CPU do navegador e CPU do Python (média, mínimo e máximo).
+
+Leva uns 5 minutos. O script ainda não rodou em nenhum Windows: foi escrito na nuvem, sem PowerShell. Se algum passo der erro, mande o arquivo assim mesmo.
+
+### 2. Roteiro com você (~15 min)
+
+Antes: `git pull`, `.venv\Scripts\activate`, Ollama aberto, ElevenLabs como voz principal, Second Brain ligado (`[segundo_cerebro] ativo = true`) e a HUD visível (`nora ouvir --hud`, abrir o endereço que aparecer).
+
+| # | Faça | Observe | Resultado |
+|---|---|---|---|
+| 0 | Anote a 1ª linha de `nora --verificar` e a versão em Ajustes da HUD | Mesma versão e mesmo commit nos dois | |
+| 1 | Diga "Nora, que dia vai ser daqui a 23 dias?" | Responde a data certa; a onda reage à sua voz (prata, "Ouvindo"), muda em "Pensando" e fala com outra forma | |
+| 2 | Fale baixo e depois normal | O painel "Sinal de áudio" acompanha, sem ficar em 0% com a onda se mexendo | |
+| 3 | Peça algo longo ("me conta uma história curta") | O áudio começa rápido (streaming); as palavras em partículas seguem a fala e param nas pausas, sem adiantar | |
+| 4 | Fale por cima da Nora no meio da resposta | Ela para (barge-in) ou, se ainda não houver barge-in no seu modo, anote o que acontece | |
+| 5 | "Troque para a voz do Piper" e depois "volta pro ElevenLabs" | A confirmação aparece na HUD (texto e palavras) e a voz troca | |
+| 6 | "Modo jogo" → "sim, sair do modo jogo" | A HUD mostra o modo jogo; `ollama ps` sem o modelo carregado durante o jogo | |
+| 7 | Opcional, alinhamento: rode o comando abaixo e confira o consumo no painel da ElevenLabs | Se vier `alignment` (ou `normalized_alignment`) e o consumo for só os ~25 caracteres do texto, a gente liga o alinhamento real | |
+| 8 | Diga um fato novo ("eu estudo com a Ana às quartas") e depois "mostre seu segundo cérebro" | A nota aparece no vault em até ~1 min, sem pausa na fala; o mapa abre | |
+| 9 | Durante tudo isso, com a HUD aberta | Alguma travada, eco ou pausa na fala? FPS (Edge/Chrome: F12 → Ctrl+Shift+P → "Show frame rate") | |
+
+Comando do passo 7 (PowerShell, na pasta do repositório, com o `.venv` ativado; usa a chave do seu `.env` e gasta ~25 caracteres):
+
+```powershell
+$chave = (Select-String -Path .env -Pattern '^ELEVENLABS_API_KEY=(.+)').Matches[0].Groups[1].Value
+$voz = python -c "from nora.config import carregar; print(carregar().voz.elevenlabs.voz_id)"
+$r = Invoke-WebRequest -Method Post -Uri "https://api.elevenlabs.io/v1/text-to-speech/$voz/stream/with-timestamps" -Headers @{ "xi-api-key" = $chave } -ContentType "application/json" -Body '{"text":"Teste de alinhamento.","model_id":"eleven_v3"}'
+$r.Content.Substring(0, [Math]::Min(600, $r.Content.Length)) -replace '"audio_base64":"[^"]*"', '"audio_base64":"..."'
+```
+
+Mande o arquivo do passo 1 e a coluna Resultado (pode ser foto). Problemas viram correções com teste antes da aprovação.
+
 ## HUD v0.4.0 — execução atual
 
 Branch `feat/v0.4.0-hud`, base `Pull_code` no commit `70d39b7`.
