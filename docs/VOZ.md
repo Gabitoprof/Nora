@@ -20,7 +20,7 @@ Escolha em `[voz] motor` (no `config/local.toml`, para valer só na sua máquina
 |---|---|---|---|---|
 | **`kokoro`** (padrão) | `pf_dora` (feminina pt-BR); também `pm_alex`, `pm_santa` | seu PC (processador) | grátis | quem baixa o projeto e quer testar |
 | `piper` | `pt_BR-faber-medium` (masculina) ou uma voz treinada por você ([TREINAR_VOZ.md](TREINAR_VOZ.md)) | seu PC | grátis | voz própria, leve; uso pessoal (bases não comerciais) |
-| `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz mais natural; com `eleven_v3`, emoção de verdade ([Emoção na voz](#emoção-na-voz)) |
+| `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz mais natural; padrão `eleven_v4_turbo`, em tempo real ([ElevenLabs v4](#elevenlabs-v4-diálogo-em-tempo-real)) |
 | `comfyui` | a que você montar num fluxo do ComfyUI | seu PC | grátis | vozes próprias, criadas ou clonadas com autorização |
 
 ## Instalar (uma vez)
@@ -377,7 +377,42 @@ Teste com `nora voz salvar "Até amanhã!" --ouvir` e ajuste até soar bem.
 5. Inicie o ouvido e o Kokoro, que serve de **voz reserva** quando o ElevenLabs falha (ex.: sem internet): `iniciar_voz_windows.ps1 -Voz kokoro`. Sem reserva, use `-Voz nenhuma` e `reserva = ""` em `[voz]`.
 6. Rode `nora --verificar` (deve mostrar `ElevenLabs configurado` e `Kokoro (reserva) ok`) e `nora falar --medir`.
 
-O modelo padrão é o `eleven_flash_v2_5`, o mais rápido do ElevenLabs, com o idioma fixado em português. Cada frase é um pedido à API: a conversa por voz consome créditos. Para o tom não mudar entre as frases, veja [Voz que muda de tom ou pausa entre frases](#voz-que-muda-de-tom-ou-pausa-entre-frases).
+O modelo padrão é o `eleven_v4_turbo`, pelo diálogo em tempo real (próxima seção). Se o diálogo falhar, a Nora fala com o `eleven_flash_v2_5` (o `modelo_reserva`), o mais rápido do ElevenLabs, pelo caminho de sempre: um pedido por frase, com o idioma fixado em português. As duas formas consomem créditos. Para o tom não mudar entre as frases no flash, veja [Voz que muda de tom ou pausa entre frases](#voz-que-muda-de-tom-ou-pausa-entre-frases).
+
+> Se o seu `config\local.toml` tiver um `modelo` antigo (ex.: `eleven_v3`), é ele que vale. Para usar o v4, troque para `modelo = "eleven_v4_turbo"` ou apague a linha.
+
+## ElevenLabs v4 (diálogo em tempo real)
+
+O v4 não funciona no text-to-speech comum (o ElevenLabs responde `400 unsupported_model`): só no **Text to Dialogue**, por WebSocket (`wss://api.elevenlabs.io/v1/text-to-dialogue/stream-input`). A Nora usa assim:
+
+- **Uma conexão por conversa.** Ela abre enquanto o modelo pensa e fica aberta entre as respostas (`keep_alive` a cada 10 s, porque o servidor fecha depois de 20 s sem mensagem). Fecha sozinha depois de `manter_conexao_s` sem falar.
+- **O texto vai conforme o modelo escreve**, frase por frase, na mesma conexão: a primeira de cada resposta com `new_turn`, e um `flush` no fim. Não há um pedido por frase.
+- **O áudio toca conforme chega**, numa reprodução só, sem pausa entre as frases.
+- **Palavras alinhadas na HUD.** O ElevenLabs manda o tempo de cada letra (`sync_alignment`); a HUD recebe as palavras com `precisao "alinhada"`. Se o alinhamento não vier, ela estima pelo som, como nas outras vozes.
+- **Interromper** (Ctrl+C) corta o áudio e fecha a conexão; a próxima resposta abre uma nova, sem sobra da anterior.
+- **Reserva.** Se a conexão não abrir ou o ElevenLabs recusar (ex.: modelo não liberado na sua conta), a Nora fala a resposta inteira com o `modelo_reserva` pelo HTTP, avisa `[voz reserva] ...` com o motivo e tenta o diálogo de novo depois de 5 minutos.
+- Do `voice_settings`, o diálogo só usa a **estabilidade**. A voz é a do `voz_id`, uma só.
+
+```toml
+[voz.elevenlabs]
+modelo = "eleven_v4_turbo"          # ou "eleven_v4" (mais lento, mais expressivo)
+modelo_reserva = "eleven_flash_v2_5"
+estabilidade = 0.5                  # 0 = mais variada, 1 = mais estável
+continuidade = true                 # false = fecha a conexão depois de cada resposta
+manter_conexao_s = 120              # tempo sem falar até fechar a conexão
+```
+
+Precisa do pacote `websockets` (vem com `pip install -e ".[voz]"` e no `nora.exe`).
+
+**Diagnóstico.** `nora --verificar` mostra o **modelo efetivo** (o que vai falar de fato: sem o `websockets`, é a reserva), a **Continuidade ElevenLabs** (`ativa`, `desativada`, `não suportada` ou `erro`) e os tempos da última fala. O `nora falar --medir` mostra o mesmo a cada resposta:
+
+- **primeiro áudio:** do envio do primeiro texto até o primeiro PCM chegar;
+- **tocando:** do envio até o som começar a sair;
+- **silêncio entre trechos:** buracos por falta de áudio da rede (soma e o maior).
+
+Os números também vão para o log e para `data\diagnostico_voz.json`, sem o texto da conversa e sem a chave.
+
+**Comparar no seu PC.** Com o mesmo roteiro, troque o `modelo` entre `eleven_v4_turbo`, `eleven_v4` e `eleven_flash_v2_5` e anote: como soa, o "primeiro áudio" e o "tocando" do `--medir`, se as palavras da HUD acompanham a fala em português e quantos caracteres cada um gastou no painel do ElevenLabs.
 
 ## Ouvido entendendo errado
 

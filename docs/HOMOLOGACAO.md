@@ -83,7 +83,9 @@ Correções da revisão aplicadas e cobertas por testes automatizados (CI Window
 
 **Instalada, fora do repositório:** a config padrão vem dentro do pacote (`src/nora/nora.toml`), e a config pessoal, o `.env`, a memória e os modelos ficam em `%APPDATA%\Nora`, criada na primeira execução. O teste de instalação limpa roda `nora --verificar` assim. O build da HUD vai dentro do `.exe`; numa instalação por wheel a HUD ainda precisa de `NORA_HUD_DIST`.
 
-**Palavras em partículas: limitação conhecida.** O tempo das palavras é estimado a partir do áudio que toca (trechos com som), e a HUD mostra "tempo estimado no áudio". A ElevenLabs tem um streaming com alinhamento por caractere (`/stream/with-timestamps`), mas não conseguimos confirmar que ele custa o mesmo nem que funciona com o `eleven_v3`. Por isso não foi ligado; o passo 7 do roteiro testa isso na sua conta.
+**Palavras em partículas.** Com o ElevenLabs v4 (padrão), o tempo de cada palavra vem do próprio ElevenLabs (`precisao "alinhada"`). Nas outras vozes, e se o alinhamento não vier, ele é estimado a partir do áudio que toca, e a HUD mostra "tempo estimado no áudio". O passo 7 do roteiro confere o v4 na sua conta.
+
+**ElevenLabs v4: testado sem rede, falta o real.** Os testes usam um servidor WebSocket falso (streaming numa conexão, alinhamento, `keep_alive`, barge-in, reserva no flash, diagnóstico). O formato das mensagens veio do SDK oficial, não de uma chamada real: o passo 7 confirma no seu PC.
 
 ### 1. Automático (sem você): `scripts/homologacao_windows.ps1`
 
@@ -146,18 +148,9 @@ Antes: `git pull`, `.venv\Scripts\activate`, Ollama aberto, ElevenLabs como voz 
 | 4 | Fale por cima da Nora no meio da resposta | Ela para (barge-in) ou, se ainda não houver barge-in no seu modo, anote o que acontece | |
 | 5 | "Troque para a voz do Piper" e depois "volta pro ElevenLabs" | A confirmação aparece na HUD (texto e palavras) e a voz troca | |
 | 6 | "Modo jogo" → "sim, sair do modo jogo" | A HUD mostra o modo jogo; `ollama ps` sem o modelo carregado durante o jogo | |
-| 7 | Opcional, alinhamento: rode o comando abaixo e confira o consumo no painel da ElevenLabs | Se vier `alignment` (ou `normalized_alignment`) e o consumo for só os ~25 caracteres do texto, a gente liga o alinhamento real | |
+| 7 | ElevenLabs v4: com o mesmo roteiro, rode `nora falar --medir` com `modelo` = `eleven_v4_turbo`, depois `eleven_v4`, depois `eleven_flash_v2_5` | `nora --verificar` mostra o modelo efetivo e "Continuidade ElevenLabs: ativa". Anote de cada um: como soa, "primeiro áudio" e "tocando" do `[voz: ...]`, se as palavras da HUD acompanham a fala em português e os caracteres gastos no painel do ElevenLabs. Se aparecer `[voz reserva]`, anote o motivo | |
 | 8 | Diga um fato novo ("eu estudo com a Ana às quartas") e depois "mostre seu segundo cérebro" | A nota aparece no vault em até ~1 min, sem pausa na fala; o mapa abre | |
 | 9 | Durante tudo isso, com a HUD aberta | Alguma travada, eco ou pausa na fala? FPS (Edge/Chrome: F12 → Ctrl+Shift+P → "Show frame rate") | |
-
-Comando do passo 7 (PowerShell, na pasta do repositório, com o `.venv` ativado; usa a chave do seu `.env` e gasta ~25 caracteres):
-
-```powershell
-$chave = (Select-String -Path .env -Pattern '^ELEVENLABS_API_KEY=(.+)').Matches[0].Groups[1].Value
-$voz = python -c "from nora.config import carregar; print(carregar().voz.elevenlabs.voz_id)"
-$r = Invoke-WebRequest -Method Post -Uri "https://api.elevenlabs.io/v1/text-to-speech/$voz/stream/with-timestamps" -Headers @{ "xi-api-key" = $chave } -ContentType "application/json" -Body '{"text":"Teste de alinhamento.","model_id":"eleven_v3"}'
-$r.Content.Substring(0, [Math]::Min(600, $r.Content.Length)) -replace '"audio_base64":"[^"]*"', '"audio_base64":"..."'
-```
 
 Mande o arquivo do passo 1 e a coluna Resultado (pode ser foto). Problemas viram correções com teste antes da aprovação.
 

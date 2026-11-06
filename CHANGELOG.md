@@ -24,6 +24,14 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 - **Pacote de dependências da Nora** (`instalar_dependencias.ps1`): Visual C++, Ollama e modelos, whisper.cpp e modelo do Whisper, pelo `winget` e pelos sites oficiais, com resumo `ok`/`FALHOU`. Atalho **Nora** no menu Iniciar (liga o Ollama e o ouvido, abre a HUD e escuta). Guia em `docs/INSTALACAO.md`.
 - Instalada, a voz padrão é o ElevenLabs: as vozes locais (Kokoro, Piper) usam programas GPL e não vão no `.exe`.
 
+### Adicionado (voz)
+
+- **ElevenLabs v4 como voz principal** (`modelo = "eleven_v4_turbo"`; `"eleven_v4"` opcional), pelo diálogo em tempo real (WebSocket do Text to Dialogue), porque o v4 não aceita o text-to-speech comum. Uma conexão por conversa, com `keep_alive`; o texto vai conforme o modelo escreve e o áudio toca conforme chega, sem um pedido por frase. Interromper fecha a conexão sem misturar áudio.
+- **Palavras alinhadas na HUD:** o tempo real de cada palavra vem do ElevenLabs (`precisao "alinhada"`); a estimativa fica só de reserva.
+- **Reserva no flash:** se o diálogo falhar, a resposta sai com o `eleven_flash_v2_5` pelo HTTP, com o motivo no aviso.
+- **Diagnóstico da voz** no `nora --verificar`, no `--medir` e no log: modelo efetivo, continuidade (ativa, desativada, não suportada, erro), tempo até o primeiro áudio e até tocar, e silêncio entre trechos. Sem texto da conversa nem chave.
+- Dependência nova: `websockets` (BSD-3-Clause), no extra `voz`.
+
 ### Adicionado (revisão da v0.4.0)
 
 - **Teste de instalação limpa** (`scripts/testar_instalacao_limpa.py`, job `instalacao` no CI): gera o wheel, instala fora do checkout e confere a paleta, o Second Brain e os arquivos do pacote.
