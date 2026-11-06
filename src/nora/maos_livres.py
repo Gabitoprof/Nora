@@ -87,7 +87,10 @@ def conversar_maos_livres(
     def dizer(frase: str) -> None:
         escrever(f"{nome}: {frase}")
         try:
-            tocar(voz.sintetizar(frase))
+            from nora.hud_audio import contexto_fala
+
+            with contexto_fala(frase):
+                tocar(voz.sintetizar(frase))
         except Exception as erro:  # a conversa segue mesmo sem voz
             escrever(f"[erro na voz] {erro}")
 

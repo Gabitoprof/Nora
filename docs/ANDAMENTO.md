@@ -126,3 +126,11 @@ Ondas/partículas conforme PNG oficial, cliente TypeScript e ponte de eventos lo
 Fonte única da voz, memória e decisões permanece no Python.
 Guia e evidências serão mantidos em [HUD](HUD.md) e [homologação cumulativa](HOMOLOGACAO.md).
 A etapa permanece em andamento até a validação integrada no Windows/AMD; sem tag ou release.
+
+### Retomada da HUD acústica — 06/11/2026
+
+O commit local antigo `83257f4` e seu bundle não estavam disponíveis no novo ambiente.
+A retomada parte da branch remota `feat/v0.4.0-hud` (`d952770`), preservando seu desenho.
+A compatibilidade usa as interfaces de streaming existentes da `Pull_code`, adaptadas
+na branch de desenvolvimento, sem merge ou alteração da branch de destino. Resultados
+e pendências físicos serão mantidos em [HUD](HUD.md) e [homologação](HOMOLOGACAO.md).

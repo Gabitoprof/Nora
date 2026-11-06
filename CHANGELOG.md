@@ -9,6 +9,10 @@ Versão em desenvolvimento: `0.3.0.dev0`.
 
 ### Adicionado
 
+- HUD acústica em retomada: medidas derivadas do PCM, animações de ondas e partículas,
+  palavras somente com temporização válida e integração com reprodução em streaming.
+  Implementação validada por regressões e checklist em `docs/HOMOLOGACAO.md`.
+
 - **HUD v0.4.0 em desenvolvimento:** cliente web TypeScript com ondas e partículas conforme
   referência visual aprovada e ponte local opcional de eventos do núcleo. Não cria outro
   microfone ou TTS; conteúdo privado oculto por padrão. Guia: `docs/HUD.md`.

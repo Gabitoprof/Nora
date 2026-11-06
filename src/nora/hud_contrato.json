@@ -63,6 +63,45 @@
     ],
     "notas": [
       "notas"
+    ],
+    "acustica": [
+      "fonte",
+      "rms",
+      "pico",
+      "envelope",
+      "bandas",
+      "centroide",
+      "fluxo",
+      "ativo",
+      "reproducao_id",
+      "posicao_ms",
+      "duracao_ms"
+    ],
+    "fala_temporizada": [
+      "id",
+      "duracao_ms",
+      "precisao",
+      "palavras"
+    ],
+    "modo_jogo_ativo": [
+      "ativo"
     ]
+  },
+  "acustica": {
+    "bandas_hz": [
+      0,
+      200,
+      500,
+      1200,
+      2500,
+      5000
+    ],
+    "max_hz": 20,
+    "max_duracao_ms": 600000
+  },
+  "fala_temporizada": {
+    "limite_palavras": 256,
+    "limite_palavra": 80,
+    "limite_texto": 6000
   }
 }

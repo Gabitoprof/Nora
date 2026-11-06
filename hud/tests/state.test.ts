@@ -32,7 +32,7 @@ describe("contrato compartilhado com o Python", () => {
   it("cada tipo do contrato Python é reconhecido sem manter lista paralela", () => {
     for (const tipo of Object.keys(contrato.campos)) {
       const dados =
-        tipo === "nivel_audio" ? { nivel: 0.5, fonte: "microfone" } : {};
+        tipo === "nivel_audio" ? { nivel: 0.5, fonte: "microfone" } : tipo === "acustica" ? {fonte:"voz",rms:.2,pico:.3,envelope:.2,bandas:[0,0,0,0,0,0],centroide:.1,fluxo:0,ativo:true,reproducao_id:1,posicao_ms:0,duracao_ms:100} : tipo === "fala_temporizada" ? {id:1,duracao_ms:100,precisao:"estimada",palavras:[{texto:"Olá",inicio_ms:0,fim_ms:100,destaque:false}]} : tipo === "modo_jogo_ativo" ? {ativo:true} : {};
       expect(eventoValido(evento(tipo, dados)), tipo).toBe(true);
     }
   });

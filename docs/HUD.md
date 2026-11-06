@@ -129,12 +129,15 @@ permite recuperar o estado após perda de eventos. Falhas da HUD não devem para
 ## Fala, emoção e conteúdo
 
 Estados diferenciam repouso, escuta, transcrição, pensamento, fala, jogo e erro. Eventos de
-fala devem acompanhar o início/fim de reprodução, não apenas a síntese. A amplitude vem do
-mesmo áudio usado pela Nora. Emoções vêm das etiquetas já usadas pelo motor de voz.
+fala devem acompanhar o início/fim de reprodução, não apenas a síntese. Os dados acústicos vêm do
+mesmo PCM captado/reproduzido pela Nora. Emoções vêm das etiquetas já usadas pelo motor de voz.
 
-Texto progressivo e notas exigem consentimento. Palavras em partículas são desativáveis.
-Sem alinhamento temporal do TTS, o efeito é uma **estimativa visual**, não sincronismo
-fonético. O frontend não revela pensamento privado, perguntas pessoais ou chaves.
+Texto progressivo, notas e palavras em partículas exigem consentimento. O efeito de palavras
+é desativável. A sequência usa o relógio da reprodução e os intervalos da frase; mudanças
+de estado não avançam palavras. Sem alinhamento temporal fornecido pelo TTS, os intervalos
+são uma **estimativa fundamentada na duração do áudio**, identificada internamente como
+`estimada`; não é sincronismo fonético. O frontend não revela pensamento privado, perguntas
+pessoais ou chaves.
 
 ## Qualidade e homologação
 
@@ -188,3 +191,30 @@ atualizações explícitas e testadas. Não é necessário executar `npm audit f
 O aviso local de scripts de instalação requer análise somente se uma instalação ou build
 falhar; a captura fornecida confirma build concluído, sem necessidade de liberar scripts
 adicionais para corrigir o HTTP 403.
+
+
+## Retomada acústica e emocional — 06/11/2026
+
+A coroa central preserva o centro aberto e os contornos orgânicos da referência. RMS,
+picos, envelope, distribuição espectral em seis bandas, centroide e fluxo derivados do
+PCM controlam a dinâmica; a geometria continua sendo interpretação artística, não um
+osciloscópio. Escuta e reprodução usam comportamentos distintos. A faixa inferior é
+complementar e reage somente à voz da Nora. Em repouso permanece a respiração discreta.
+
+A análise reutiliza o pipeline único de áudio. O navegador recebe somente medidas e
+metadados temporais, nunca áudio bruto, credenciais ou uma nova captura. Filas limitadas,
+descarte de dados atrasados e frequência de atualização limitada protegem o pipeline de
+voz; desconectar a HUD não deve interrompê-lo. Movimento reduzido, página oculta, modo
+jogo e qualidade Canvas continuam disponíveis.
+
+A paleta canônica mantém prata neutra, dourado para alegria/entusiasmo, rosa para carinho,
+turquesa para calma, azul para seriedade, lavanda para tristeza e terracota para curiosidade.
+Os nomes de emoção são os do núcleo existente; não há outro classificador. As marcações
+amarela, roxa e rosa da referência não fazem parte da interface.
+
+As evidências atuais, seus tipos de simulação e limitações estão em
+[QA acústica](evidencias/hud-acustica/README.md). Resultados históricos acima continuam
+restritos aos commits indicados. O checklist cumulativo preserva a instalação, o
+`pip check`, o diagnóstico e a abertura/conexão no Windows informados pelo proprietário.
+Essas evidências não homologam a nova reatividade acústica, a voz física ou o consumo na
+GPU AMD; esses cenários permanecem na homologação integrada.

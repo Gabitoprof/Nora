@@ -1240,3 +1240,44 @@ button:hover {
 [data-estado="modo_jogo"] .ticks {
   opacity: 0.3;
 }
+
+/* A região das palavras preserva a coroa vazada e a proporção da tipografia. */
+.word-stage {
+  position: absolute;
+  z-index: 4;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(70vw, 1060px);
+  pointer-events: none;
+  text-align: center;
+}
+.word-stage #word-particles {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 60 / 7;
+  margin: 0 auto;
+}
+.word-stage #word-caption {
+  display: block;
+  font-size: 9px;
+  margin-top: 3px;
+  color: var(--accent);
+  opacity: .65;
+}
+.state-line, .level-track span, .signal-orbit i {
+  background-color: var(--accent);
+}
+.mini-wave, .mini-constellation, .connected .status-dot {
+  color: var(--accent);
+}
+.connected .status-dot {
+  background: var(--accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+@media (max-width: 800px) {
+  .word-stage { width: calc(100% - 56px); top: 12%; }
+  .word-stage #word-caption { font-size: 8px; }
+}

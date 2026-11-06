@@ -1,0 +1,70 @@
+{
+  "erro": "AssertionError [ERR_ASSERTION]: alegre #ecc67b vs #F0C66A\n    at /workspace/scratch/qa-hud-acoustic/browser.cjs:63:564",
+  "checks": [
+    {
+      "name": "Ponte Python→SSE→browser real, privacidade fechada por padrão",
+      "result": "aprovado"
+    },
+    {
+      "name": "PCM microfone sintético 16k: amplitude e frequência alteram medidas reais",
+      "result": "aprovado",
+      "low": {
+        "fonte": "microfone",
+        "ativo": true,
+        "reproducao_id": 0,
+        "posicao_ms": 0,
+        "duracao_ms": 0,
+        "rms": 0.127261,
+        "pico": 0.179993,
+        "envelope": 0.096763,
+        "bandas": [
+          0.999648,
+          0.000352,
+          0,
+          0,
+          0,
+          0
+        ],
+        "centroide": 0.01872,
+        "fluxo": 1
+      },
+      "high": {
+        "fonte": "microfone",
+        "ativo": true,
+        "reproducao_id": 0,
+        "posicao_ms": 0,
+        "duracao_ms": 0,
+        "rms": 0.509093,
+        "pico": 0.719971,
+        "envelope": 0.420706,
+        "bandas": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "centroide": 0.375,
+        "fluxo": 1
+      }
+    },
+    {
+      "name": "Timeline rejeitada antes do consentimento",
+      "result": "aprovado"
+    },
+    {
+      "name": "PCM voz48k via callback de saída real com dispositivo simulado: intensidade, pausas, relógio e fim",
+      "result": "aprovado",
+      "packets": 23
+    },
+    {
+      "name": "Palavra segue pacote temporal; mudanças de estado não avançam; pacote obsoleto limpa",
+      "result": "aprovado"
+    },
+    {
+      "name": "Pausa PCM silencia palavra preservando timeline, retomada mesma frase",
+      "result": "aprovado"
+    }
+  ]
+}

@@ -1,0 +1,1324 @@
+[
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 60.396,
+      "duracao_ms": 3800,
+      "rms": 0.245885,
+      "pico": 0.349976,
+      "envelope": 0.232173,
+      "bandas": [
+        0.392798,
+        0.607155,
+        0.000047,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0.010076,
+      "fluxo": 0.004907
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: Olá"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 980.354,
+      "duracao_ms": 3800,
+      "rms": 0.245864,
+      "pico": 0.349976,
+      "envelope": 0.246014,
+      "bandas": [
+        0.392894,
+        0.607059,
+        0.000047,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0.010074,
+      "fluxo": 0.000096
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 1130.333,
+      "duracao_ms": 3800,
+      "rms": 0,
+      "pico": 0,
+      "envelope": 0.124871,
+      "bandas": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0,
+      "fluxo": 0
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 1230.354,
+      "duracao_ms": 3800,
+      "rms": 0,
+      "pico": 0,
+      "envelope": 0.07152,
+      "bandas": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0,
+      "fluxo": 0
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 1280.917,
+      "duracao_ms": 3800,
+      "rms": 0,
+      "pico": 0,
+      "envelope": 0.053945,
+      "bandas": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0,
+      "fluxo": 0
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 1430.271,
+      "duracao_ms": 3800,
+      "rms": 0.387001,
+      "pico": 0.649963,
+      "envelope": 0.302184,
+      "bandas": [
+        0.000058,
+        0,
+        0,
+        0.000006,
+        0.999936,
+        0
+      ],
+      "centroide": 0.11666,
+      "fluxo": 1
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 1530.188,
+      "duracao_ms": 3800,
+      "rms": 0.459657,
+      "pico": 0.649963,
+      "envelope": 0.450682,
+      "bandas": [
+        0.000009,
+        0,
+        0,
+        0.000006,
+        0.999985,
+        0
+      ],
+      "centroide": 0.116666,
+      "fluxo": 0.000021
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 1680.25,
+      "duracao_ms": 3800,
+      "rms": 0.459546,
+      "pico": 0.649963,
+      "envelope": 0.459451,
+      "bandas": [
+        0.000063,
+        0,
+        0,
+        0.000006,
+        0.999931,
+        0
+      ],
+      "centroide": 0.116659,
+      "fluxo": 0.000054
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 1830.229,
+      "duracao_ms": 3800,
+      "rms": 0.459589,
+      "pico": 0.649963,
+      "envelope": 0.459628,
+      "bandas": [
+        0.000052,
+        0,
+        0,
+        0.000006,
+        0.999942,
+        0
+      ],
+      "centroide": 0.116661,
+      "fluxo": 0.000034
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 1930.458,
+      "duracao_ms": 3800,
+      "rms": 0.45953,
+      "pico": 0.649963,
+      "envelope": 0.45962,
+      "bandas": [
+        0.000052,
+        0,
+        0,
+        0.000006,
+        0.999942,
+        0
+      ],
+      "centroide": 0.116661,
+      "fluxo": 0.000042
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 2030.333,
+      "duracao_ms": 3800,
+      "rms": 0.459628,
+      "pico": 0.649963,
+      "envelope": 0.459622,
+      "bandas": [
+        0.000002,
+        0,
+        0,
+        0.000006,
+        0.999992,
+        0
+      ],
+      "centroide": 0.116666,
+      "fluxo": 0.000061
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 2180.167,
+      "duracao_ms": 3800,
+      "rms": 0.459647,
+      "pico": 0.649963,
+      "envelope": 0.459635,
+      "bandas": [
+        0,
+        0,
+        0,
+        0.000006,
+        0.999994,
+        0
+      ],
+      "centroide": 0.116667,
+      "fluxo": 0.000063
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 2330.25,
+      "duracao_ms": 3800,
+      "rms": 0.459546,
+      "pico": 0.649963,
+      "envelope": 0.459613,
+      "bandas": [
+        0.000063,
+        0,
+        0,
+        0.000006,
+        0.999931,
+        0
+      ],
+      "centroide": 0.116659,
+      "fluxo": 0.000033
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: mundo"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 2381.021,
+      "duracao_ms": 3800,
+      "rms": 0.459569,
+      "pico": 0.649963,
+      "envelope": 0.459602,
+      "bandas": [
+        0.000023,
+        0,
+        0,
+        0.000006,
+        0.999971,
+        0
+      ],
+      "centroide": 0.116664,
+      "fluxo": 0.00004
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": null
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 2540.333,
+      "duracao_ms": 3800,
+      "rms": 0,
+      "pico": 0,
+      "envelope": 0.220831,
+      "bandas": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0,
+      "fluxo": 0
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": null
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 2700.354,
+      "duracao_ms": 3800,
+      "rms": 0,
+      "pico": 0,
+      "envelope": 0.090365,
+      "bandas": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0,
+      "fluxo": 0
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": null
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 2851.854,
+      "duracao_ms": 3800,
+      "rms": 0.317949,
+      "pico": 0.449982,
+      "envelope": 0.258652,
+      "bandas": [
+        0.004309,
+        0.000055,
+        0.995623,
+        0.000013,
+        0,
+        0
+      ],
+      "centroide": 0.033193,
+      "fluxo": 0.993999
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: Nora"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 2971.104,
+      "duracao_ms": 3800,
+      "rms": 0.318584,
+      "pico": 0.449982,
+      "envelope": 0.316473,
+      "bandas": [
+        0.001834,
+        0.000052,
+        0.9981,
+        0.000014,
+        0,
+        0
+      ],
+      "centroide": 0.033274,
+      "fluxo": 0.002478
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: Nora"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 3190.771,
+      "duracao_ms": 3800,
+      "rms": 0.317695,
+      "pico": 0.449982,
+      "envelope": 0.318276,
+      "bandas": [
+        0.003252,
+        0.000053,
+        0.996681,
+        0.000014,
+        0,
+        0
+      ],
+      "centroide": 0.033227,
+      "fluxo": 0.003141
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: Nora"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 3290.583,
+      "duracao_ms": 3800,
+      "rms": 0.318059,
+      "pico": 0.449982,
+      "envelope": 0.318183,
+      "bandas": [
+        0.004026,
+        0.000054,
+        0.995906,
+        0.000013,
+        0,
+        0
+      ],
+      "centroide": 0.033202,
+      "fluxo": 0
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: Nora"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 3402,
+      "duracao_ms": 3800,
+      "rms": 0.317648,
+      "pico": 0.449982,
+      "envelope": 0.318114,
+      "bandas": [
+        0.003669,
+        0.000054,
+        0.996264,
+        0.000014,
+        0,
+        0
+      ],
+      "centroide": 0.033214,
+      "fluxo": 0.003076
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: Nora"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 3570.708,
+      "duracao_ms": 3800,
+      "rms": 0.317624,
+      "pico": 0.449982,
+      "envelope": 0.318228,
+      "bandas": [
+        0.004309,
+        0.000055,
+        0.995623,
+        0.000013,
+        0,
+        0
+      ],
+      "centroide": 0.033193,
+      "fluxo": 0
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: Nora"
+  },
+  {
+    "estado": "falando",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": true,
+      "reproducao_id": 1,
+      "posicao_ms": 3680.438,
+      "duracao_ms": 3800,
+      "rms": 0.318699,
+      "pico": 0.449982,
+      "envelope": 0.318636,
+      "bandas": [
+        0.000956,
+        0.000051,
+        0.99898,
+        0.000014,
+        0,
+        0
+      ],
+      "centroide": 0.033302,
+      "fluxo": 0.000645
+    },
+    "timeline": {
+      "id": 1,
+      "duracao_ms": 3800,
+      "precisao": "estimada",
+      "palavras": [
+        {
+          "texto": "Olá",
+          "inicio_ms": 0,
+          "fim_ms": 760,
+          "destaque": false
+        },
+        {
+          "texto": "mundo",
+          "inicio_ms": 760,
+          "fim_ms": 2400,
+          "destaque": false
+        },
+        {
+          "texto": "Nora",
+          "inicio_ms": 2800,
+          "fim_ms": 3800,
+          "destaque": false
+        }
+      ]
+    },
+    "word": "Palavra atual: Nora"
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": false,
+      "reproducao_id": 1,
+      "posicao_ms": 0,
+      "duracao_ms": 0,
+      "rms": 0,
+      "pico": 0,
+      "envelope": 0,
+      "bandas": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0,
+      "fluxo": 0
+    },
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": false,
+      "reproducao_id": 1,
+      "posicao_ms": 0,
+      "duracao_ms": 0,
+      "rms": 0,
+      "pico": 0,
+      "envelope": 0,
+      "bandas": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0,
+      "fluxo": 0
+    },
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": {
+      "fonte": "voz",
+      "ativo": false,
+      "reproducao_id": 1,
+      "posicao_ms": 0,
+      "duracao_ms": 0,
+      "rms": 0,
+      "pico": 0,
+      "envelope": 0,
+      "bandas": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "centroide": 0,
+      "fluxo": 0
+    },
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  },
+  {
+    "estado": "ouvindo",
+    "acustica": null,
+    "timeline": null,
+    "word": null
+  }
+]

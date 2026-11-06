@@ -141,7 +141,14 @@ def test_agendador_espera_a_nora_desocupada_e_avisa(criar_raiz):
     assert agendador.conferir() is None  # não repete
 
 
-def test_decisoes_aprovar_recusar_adiar(criar_raiz):
+def test_decisoes_aprovar_recusar_adiar(criar_raiz, monkeypatch):
+    class DataDoTeste(date):
+        @classmethod
+        def today(cls):
+            return DIA.date()
+
+    # O adiamento parte do mesmo dia simulado dos eventos, não da data da máquina.
+    monkeypatch.setattr("nora.melhorias.date", DataDoTeste)
     m = _melhorias(criar_raiz)
     _eventos(m, n=3)
     _eventos(m, "timeout", "Claude Sonnet 5.5", n=3)

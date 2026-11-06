@@ -31,8 +31,8 @@ com GPU AMD, cobrindo todos os módulos em conjunto. Durante o desenvolvimento:
 
 ## Checklist por módulo
 
-Nenhuma aprovação manual foi informada nesta sessão. “Sem registro” não significa que o
-proprietário nunca tenha testado; uma evidência fornecida deve ser incorporada e preservada.
+As evidências manuais informadas pelo proprietário estão preservadas abaixo. “Sem registro”
+indica apenas ausência de evidência para aquele módulo, sem invalidar testes anteriores.
 A coluna automatizada refere-se à suíte de referência acima, não a modelos ou dispositivos reais.
 
 | Módulo | Resultado automatizado / cobertura | Manual aprovado registrado | Pendente para homologação integrada |
@@ -57,7 +57,9 @@ Dados de teste devem ser sintéticos; não guardar perguntas pessoais, áudio, c
 
 | Módulo/caso | Commit ou versão testada | Ambiente e configuração relevante | Resultado e evidência | Alteração que exige repetir |
 |---|---|---|---|---|
-| Nenhuma execução manual registrada nesta sessão | — | — | Pendente de evidência | — |
+| Instalação e dependências | HUD anterior à retomada acústica de 06/11/2026 | Windows, Python 3.13 | Instalação editável concluída e `pip check` aprovado, conforme capturas do proprietário | Repetir somente se dependências/ambiente forem alterados |
+| Entrada oficial e diagnóstico | HUD anterior à retomada acústica de 06/11/2026 | Windows, `python -m nora --verificar` | Módulo executado; diagnóstico mostrou Ollama e memória disponíveis, STT indisponível. Não é aprovação integral do diagnóstico | Retestar STT quando seu serviço estiver disponível |
+| Abertura e conexão da HUD | HUD anterior à retomada acústica de 06/11/2026 | Windows, navegador conectado ao núcleo | Captura posterior do proprietário confirma interface aberta e núcleo conectado | Mudanças acústicas exigem sua própria validação, sem repetir instalação aprovada |
 
 ## Homologação final integrada — Windows/AMD
 
@@ -89,7 +91,8 @@ PNG local. Mock de teste não representa estado real em runtime.
 | Responsividade, acessibilidade e movimento reduzido | Quatro viewports sem overflow, campos móveis 12px, zero pageerrors; movimento reduzido e página oculta sem desenhos | Sem registro | Tela cheia ultrawide e preferências de acessibilidade no Windows |
 
 Não liberar v0.4.0 antes da homologação final integrada. Não repetir aprovações manuais
-anteriores sem impacto direto; nenhuma aprovação física foi registrada nesta conversa.
+anteriores sem impacto direto. A abertura/conexão no Windows foi informada pelo proprietário;
+voz, dispositivos e GPU ainda não foram homologados.
 
 ### Evidências de QA da HUD
 
@@ -150,8 +153,9 @@ anteriores sem impacto direto; nenhuma aprovação física foi registrada nesta 
 - `nora.exe --verificar`: **bloqueado pelo Controle de Aplicativos do Windows**;
   não classificar como erro da Nora nem como diagnóstico funcional aprovado.
 - Orientada a entrada oficial `python -m nora --verificar`, sem alterar políticas;
-  resultado no computador do proprietário ainda pendente. A forma como módulo foi
-  executada no ambiente Linux, código 0; isso não substitui a confirmação local.
+  resultado posteriormente informado: módulo executado, Ollama e memória disponíveis, STT
+  indisponível. Isso não homologa os serviços faltantes nem a reprodução de voz. A execução
+  Linux com código 0 continua sendo uma evidência separada.
 - Instalação aprovada não homologa microfone, STT/TTS, GPU ou integração completa.
 
 ### Correção de abertura por link e ferramentas da HUD

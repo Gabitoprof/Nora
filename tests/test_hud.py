@@ -283,9 +283,12 @@ def test_falando_somente_no_callback_real_de_saida(monkeypatch):
             estados.append(ponte.snapshot()["estado"])
 
         def __enter__(self):
-            saida = bytearray(8)
-            self.kwargs["callback"](saida, 4, None, None)
+            saida = bytearray(6400)
+            self.kwargs["callback"](saida, 3200, None, None)
             estados.append(ponte.snapshot()["estado"])
+            from test_hud_acustica import esperar
+
+            esperar(lambda: ponte.snapshot()["nivel_audio"] > 0.49)
             assert ponte.snapshot()["nivel_audio"] == pytest.approx(0.5)
             # O fim do LLM não pode anunciar repouso enquanto o áudio está tocando.
             assert not ponte.publicar("ociosa")
@@ -296,9 +299,10 @@ def test_falando_somente_no_callback_real_de_saida(monkeypatch):
             return False
 
     sd = SimpleNamespace(RawOutputStream=SaidaFalsa)
-    audio._tocar(sd, array("h", [16384] * 4).tobytes(), 16000, 1, None)
+    audio._tocar(sd, array("h", [16384] * 3200).tobytes(), 16000, 1, None)
     assert estados == ["desconectado", "falando"]
     assert ponte.snapshot()["estado"] == "ouvindo"
+    ponte._audio.encerrar()
 
 
 def test_configuracao_hud_opcional_na_cli(criar_raiz, monkeypatch):

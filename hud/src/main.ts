@@ -1,8 +1,8 @@
 import "./style.css";
 import { Ponte } from "./client";
 import { Cena } from "./scene";
+import { PalavrasParticulas } from "./word-particles";
 import {
-  cores,
   inicial,
   nomesEstado,
   objeto,
@@ -21,12 +21,13 @@ app.innerHTML = `
     </header>
     <div id="scene" class="scene" aria-hidden="true"></div>
     <div class="calibration" aria-hidden="true"><div class="outer-ring"></div><div class="ticks"></div><div class="ring-arc arc-one"></div><div class="ring-arc arc-two"></div><span class="axis axis-top"></span><span class="axis axis-bottom"></span><span class="axis axis-left"></span><span class="axis axis-right"></span></div>
-    <section class="presence" aria-labelledby="assistant-name"><p class="eyebrow">ASSISTENTE PESSOAL</p><h1 id="assistant-name">Nora</h1><div class="state-label"><span class="state-line"></span><span id="state" role="status">Aguardando conexão</span><span class="state-line"></span></div><p id="center-caption">Sua presença. No seu espaço.</p><canvas id="word-particles" width="600" height="100" aria-hidden="true" hidden></canvas><span id="word-caption" hidden>Palavras · estimativa visual, sem sincronismo fonético</span></section>
+    <section class="presence" aria-labelledby="assistant-name"><p class="eyebrow">ASSISTENTE PESSOAL</p><h1 id="assistant-name">Nora</h1><div class="state-label"><span class="state-line"></span><span id="state" role="status">Aguardando conexão</span><span class="state-line"></span></div><p id="center-caption">Sua presença. No seu espaço.</p></section>
+    <div class="word-stage"><canvas id="word-particles" width="1200" height="140" aria-hidden="true" hidden></canvas><span id="word-caption" hidden></span></div>
     <aside class="side-panel system-panel" aria-labelledby="system-heading"><p class="panel-index">01 <span>SISTEMA</span></p><h2 id="system-heading">Conexão com o núcleo</h2><svg class="mini-wave" viewBox="0 0 220 70" aria-hidden="true"><g fill="none" stroke="currentColor"><path d="M0 38 Q30 10 58 38 T110 38 T160 38 T220 38"/><path d="M0 38 Q40 68 70 38 T140 38 T220 38"/><path d="M0 38 Q50 -6 80 38 T155 38 T220 38"/><path d="M0 38 Q30 52 65 38 T140 38 T220 38"/></g></svg><dl class="telemetry"><div><dt>Cérebro</dt><dd id="origin">—</dd></div><div><dt>Modelo</dt><dd id="model">—</dd></div><div><dt>Voz</dt><dd id="voice">—</dd></div><div><dt>Latência</dt><dd id="latency">—</dd></div></dl><div class="signal"><div class="signal-orbit" aria-hidden="true"><i></i><b></b></div><div><span class="micro-label">SINAL DE ÁUDIO</span><strong id="level-label">Sem dados</strong><div class="level-track" role="meter" aria-label="Nível de áudio real" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="level"></span></div></div></div></aside>
     <aside class="side-panel context-panel" aria-labelledby="context-heading"><p class="panel-index">02 <span>CONTEXTO</span></p><h2 id="context-heading">Tudo no seu tempo</h2><svg class="mini-constellation" viewBox="0 0 220 70" aria-hidden="true"><defs><pattern id="dust" width="9" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="3" r="0.7" fill="currentColor"/></pattern></defs><path d="M0 55Q65 80 105 30T220 17V46Q155 25 110 50T0 65Z" fill="url(#dust)"/></svg><div class="context-row"><span class="small-dot"></span><div><strong id="report-label">Relatórios</strong><span id="report-status">Aguardando o núcleo</span></div><button id="open-improvements" class="text-button" aria-label="Ver melhorias supervisionadas">↗</button></div><div class="context-row"><span class="small-dot"></span><div><strong>Notas conectadas</strong><span id="notes-status">Conteúdo protegido</span></div><button id="open-notes" class="text-button" aria-label="Ver notas usadas na conversa">↗</button></div><p class="local-note">PRESENÇA LOCAL · CONTEÚDO PROTEGIDO</p></aside>
     <section class="response-card" aria-label="Resposta da Nora" hidden><div class="response-heading"><span>NA CONVERSA</span><span id="response-origin"></span></div><p id="response-text"></p></section>
     <footer class="bottom-bar"><div class="session-status"><span class="small-dot"></span><span id="session-label">Aguardando a Nora</span><span class="footer-divider">/</span><span>UMA PRESENÇA, NO SEU ESPAÇO</span></div><div class="clock"><time id="clock">—</time><span id="date">—</span></div></footer>
-    <section id="settings" class="settings floating-panel" aria-label="Ajustes visuais" hidden><h2>Ajustes da presença</h2><label>Qualidade<select id="quality"><option value="alta">Detalhada · WebGL</option><option value="baixa">Econômica · WebGL</option><option value="canvas">Leve · Canvas</option></select></label><label>Limite de quadros<select id="fps"><option value="30">30 FPS</option><option value="60">60 FPS</option></select></label><label class="check-label"><input id="words" type="checkbox"/> Palavras em partículas</label><p>Estimativa visual da resposta. Não representa alinhamento fonético. Desativada com movimento reduzido.</p><p id="render-mode"></p><p>Sem microfone ou armazenamento de conversas no navegador.</p></section>
+    <section id="settings" class="settings floating-panel" aria-label="Ajustes visuais" hidden><h2>Ajustes da presença</h2><label>Qualidade<select id="quality"><option value="alta">Detalhada · WebGL</option><option value="baixa">Econômica · WebGL</option><option value="canvas">Leve · Canvas</option></select></label><label>Limite de quadros<select id="fps"><option value="30">30 FPS</option><option value="60">60 FPS</option></select></label><label class="check-label"><input id="words" type="checkbox" checked/> Palavras em partículas</label><p>Palavras acompanham a reprodução. O tempo é estimado pela duração do áudio quando não há alinhamento. Desativadas com movimento reduzido.</p><p id="render-mode"></p></section>
     <dialog id="context-dialog" class="dialog floating-panel"><div class="dialog-header"><h2 id="dialog-title">Contexto</h2><button id="close-dialog" class="icon-button" aria-label="Fechar painel">×</button></div><div id="dialog-content"></div></dialog>
     <dialog id="confirm-dialog" class="dialog floating-panel"><h2>Confirmar decisão</h2><p id="confirm-description"></p><p>Aprovar gera apenas uma tarefa. Código e publicação continuam sob sua decisão.</p><div class="dialog-actions"><button id="cancel-decision" class="secondary-button">Cancelar</button><button id="confirm-decision" class="primary-button">Confirmar</button></div></dialog>
     <p id="feedback" class="feedback" role="status" hidden></p>
@@ -40,8 +41,12 @@ const cena = new Cena(el("scene"));
 let atual: Modelo = { ...inicial };
 let visivel = false;
 let ultimaProposta: { id: number; acao: string } | undefined;
-let indicePalavra = 0;
-let ultimasPalavras = "";
+const palavras=new PalavrasParticulas(el<HTMLCanvasElement>("word-particles"),el("word-caption"));
+const movimentoReduzido=matchMedia("(prefers-reduced-motion: reduce)");
+cena.aoDesenhar=({agora,cor,reduzido})=>{
+  document.documentElement.style.setProperty("--accent",cor);
+  palavras.desenhar(agora,cor,reduzido);
+};
 const ponte = new Ponte((modelo, evento) => {
   atual = modelo;
   renderizar();
@@ -60,8 +65,6 @@ function feedback(mensagem: string) {
   }, 7000);
 }
 function renderizar() {
-  const cor = cores[atual.emocao] ?? cores.neutro;
-  document.documentElement.style.setProperty("--accent", cor);
   el("app").dataset.estado = atual.estado;
   texto("name-top", atual.nome.toLocaleUpperCase("pt-BR"));
   texto("assistant-name", atual.nome);
@@ -146,7 +149,7 @@ function renderizar() {
     el("dialog-title").textContent === "Notas desta conversa"
   )
     el("dialog-content").replaceChildren();
-  if (!visivel) particulasPalavra();
+  particulasPalavra();
   cena.atualizar(atual);
 }
 function clock() {
@@ -166,50 +169,9 @@ function clock() {
   );
 }
 function particulasPalavra() {
-  const c = el<HTMLCanvasElement>("word-particles");
-  const ctx = c.getContext("2d")!;
-  const habilitado =
-    visivel &&
-    el<HTMLInputElement>("words").checked &&
-    !matchMedia("(prefers-reduced-motion: reduce)").matches &&
-    atual.estado === "falando" &&
-    atual.texto.trim().length > 0;
-  c.hidden = !habilitado;
-  el("word-caption").hidden = !habilitado;
-  ctx.clearRect(0, 0, c.width, c.height);
-  if (!habilitado) {
-    indicePalavra = 0;
-    ultimasPalavras = "";
-    return;
-  }
-  if (
-    atual.texto !== ultimasPalavras &&
-    !atual.texto.startsWith(ultimasPalavras)
-  )
-    indicePalavra = 0;
-  ultimasPalavras = atual.texto;
-  const palavras = atual.texto.split(/\s+/);
-  const palavra = palavras[
-    Math.min(indicePalavra++, palavras.length - 1)
-  ].slice(0, 25);
-  const mascara = document.createElement("canvas");
-  mascara.width = c.width;
-  mascara.height = c.height;
-  const m = mascara.getContext("2d")!;
-  m.fillStyle = "white";
-  m.font = "38px sans-serif";
-  m.textAlign = "center";
-  m.fillText(palavra, 300, 60, 550);
-  const pixels = m.getImageData(0, 0, c.width, c.height);
-  ctx.fillStyle = cores[atual.emocao] ?? cores.neutro;
-  for (let y = 0; y < c.height; y += 3)
-    for (let x = 0; x < c.width; x += 3)
-      if (pixels.data[(y * c.width + x) * 4 + 3] > 100) {
-        ctx.beginPath();
-        ctx.arc(x, y, 0.85, 0, Math.PI * 2);
-        ctx.fill();
-      }
+  palavras.atualizar(atual,el<HTMLInputElement>("words").checked,movimentoReduzido.matches);
 }
+movimentoReduzido.addEventListener("change",particulasPalavra);
 el("privacy").addEventListener("click", async () => {
   if (!atual.conectado) {
     feedback("Conecte a HUD ao núcleo para alterar a privacidade.");
@@ -224,6 +186,7 @@ el("privacy").addEventListener("click", async () => {
       privacidade: true,
       texto: "",
       notas: [],
+      fala_temporizada: null,
     };
     renderizar();
     particulasPalavra();
@@ -400,12 +363,12 @@ el("confirm-decision").addEventListener("click", async () => {
 });
 clock();
 const clockTimer = setInterval(clock, 1000);
-const palavrasTimer = setInterval(particulasPalavra, 450);
 renderizar();
 void ponte.iniciar();
 window.addEventListener("pagehide", () => {
   clearInterval(clockTimer);
-  clearInterval(palavrasTimer);
+  palavras.limpar();
+  movimentoReduzido.removeEventListener("change",particulasPalavra);
   ponte.fechar();
   cena.fechar();
 });

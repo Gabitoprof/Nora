@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { onda, aleatorio } from "./scene-math";
-import { cores, inicial, type Modelo } from "./state";
+import { cores, inicial, expressaoEmocional, type Modelo } from "./state";
+import { EnvelopeVisual, SILENCIO, aproximar, cadenciaVisual, faixaAcustica, type Dinamica } from "./scene-audio";
+export interface QuadroVisual { agora: number; delta: number; reduzido: boolean; cor: string; }
 type Qualidade = "alta" | "baixa" | "canvas";
 export class Cena {
   private modelo: Modelo = inicial;
@@ -13,18 +15,30 @@ export class Cena {
   private contexto?: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
   private observador: ResizeObserver;
-  private frame = 0;
+  aoDesenhar?: (quadro: QuadroVisual) => void;
+  private frame?: number;
+  private envelope = new EnvelopeVisual();
+  private ultimaAmostra: Modelo["acustica"] = null;
+  private cor = new THREE.Color(cores.neutro);
+  private alvoCor = new THREE.Color();
+  private corParticulas = new THREE.Color();
+  private saida: [number,number,number] = [0,0,0];
+  private expressao=1;
+  private sementes = new Float32Array();
+  private faixas: THREE.Line[] = [];
   private anterior = 0;
-  private ultimoTempo = 0;
   private densidade: Qualidade = "alta";
   private fps = 30;
   private reduzido = matchMedia("(prefers-reduced-motion: reduce)");
   private parar = false;
   private sprite?: THREE.CanvasTexture;
   private brilhos?: THREE.Points;
-  private aoReduzir = () => {
-    cancelAnimationFrame(this.frame);
-    this.animar(0);
+  private aoAmbiente = () => {
+    if(this.frame!==undefined) cancelAnimationFrame(this.frame);
+    this.frame=undefined;this.anterior=0;
+    if(this.parar||document.hidden)return;
+    if(this.reduzido.matches) this.desenhar(performance.now(),0);
+    else this.agendar();
   };
   constructor(private container: HTMLElement) {
     this.canvas = document.createElement("canvas");
@@ -34,8 +48,9 @@ export class Cena {
     this.preparar();
     this.observador = new ResizeObserver(() => this.redimensionar());
     this.observador.observe(container);
-    this.reduzido.addEventListener("change", this.aoReduzir);
-    this.animar(0);
+    this.reduzido.addEventListener("change", this.aoAmbiente);
+    document.addEventListener("visibilitychange",this.aoAmbiente);
+    this.aoAmbiente();
   }
   get motor() {
     return this.renderer ? "WebGL" : "Canvas";
@@ -47,11 +62,17 @@ export class Cena {
     this.redimensionar();
   }
   atualizar(modelo: Modelo) {
-    this.modelo = modelo;
-    if (this.reduzido.matches) this.desenhar(this.ultimoTempo);
+    const mudou=modelo.estado!==this.modelo.estado||modelo.emocao!==this.modelo.emocao||modelo.conectado!==this.modelo.conectado;
+    this.modelo=modelo;
+    if(modelo.acustica!==this.ultimaAmostra) {
+      this.ultimaAmostra=modelo.acustica;
+      this.envelope.alimentar(modelo.acustica,performance.now());
+    }
+    if(!modelo.conectado) this.envelope.silenciar();
+    if(this.reduzido.matches&&mudou&&!document.hidden)this.desenhar(performance.now(),0);
   }
   private limpar() {
-    this.linhas.forEach((l) => {
+    [...this.linhas,...this.faixas].forEach((l) => {
       l.geometry.dispose();
       (l.material as THREE.Material).dispose();
     });
@@ -67,6 +88,7 @@ export class Cena {
     this.sprite?.dispose();
     this.scene.clear();
     this.linhas = [];
+    this.faixas = [];
     this.particulas = undefined;
     this.renderer?.dispose();
     this.renderer = undefined;
@@ -79,6 +101,12 @@ export class Cena {
     this.canvas.replaceWith(novo);
     this.canvas = novo;
     this.contexto = undefined;
+    const numeroPontos=this.densidade === "alta" ? 12500 : this.densidade === "baixa" ? 4800 : 4200;
+    this.sementes=new Float32Array(numeroPontos*6);
+    for(let i=0;i<numeroPontos;i++) {
+      const giro=i%3===0?-.45:.35;
+      this.sementes.set([aleatorio(i),aleatorio(i+15001),aleatorio(i+31002),Math.cos(giro),Math.sin(giro),aleatorio(i+9)],i*6);
+    }
     if (this.densidade !== "canvas") {
       try {
         this.renderer = new THREE.WebGLRenderer({
@@ -110,7 +138,11 @@ export class Cena {
           this.linhas.push(linha);
           this.scene.add(linha);
         }
-        const numeroPontos = this.densidade === "alta" ? 12500 : 4800;
+        for(let i=0;i<5;i++) {
+          const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.BufferAttribute(new Float32Array(241*3),3).setUsage(THREE.DynamicDrawUsage));
+          const linha=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xc9c9c9,transparent:true,opacity:i===2?.24:.11,blending:THREE.AdditiveBlending,depthWrite:false}));
+          this.faixas.push(linha);this.scene.add(linha);
+        }
         this.positions = new Float32Array(numeroPontos * 3);
         const geo = new THREE.BufferGeometry();
         geo.setAttribute(
@@ -179,7 +211,7 @@ export class Cena {
           { once: true },
         );
       } catch {
-        this.renderer = undefined;
+        this.limpar();
       }
     }
     if (!this.renderer) {
@@ -206,35 +238,34 @@ export class Cena {
       this.canvas.width = w * Math.min(devicePixelRatio, 1.5);
       this.canvas.height = h * Math.min(devicePixelRatio, 1.5);
     }
-    this.desenhar(this.ultimoTempo);
+    if(!document.hidden)this.desenhar(performance.now(),0);
   }
-  private ponto(i: number, tempo: number): [number, number, number] {
-    const a = aleatorio(i),
-      b = aleatorio(i + 15001),
-      c = aleatorio(i + 31002);
-    if (i % 5 === 0) {
-      const x = (a - 0.5) * 20,
-        z = b * 6;
-      return [
-        x,
-        -4.1 + Math.sin(x * 0.55 + tempo * 0.12 + z) * 0.28 + z * 0.055,
-        -0.5,
-      ];
+  private ponto(i:number,tempo:number,sinal:Dinamica, destino: Float32Array | [number,number,number], offset=0) {
+    const k=i*6,a=this.sementes[k],b=this.sementes[k+1],c=this.sementes[k+2];
+    if(i%5===0) {
+      const x=(a-.5)*20;
+      destino[offset]=x;
+      destino[offset+1]=-3.55+Math.sin(x*.55+tempo*.025+b*6)*(.035+sinal.envelope*.09)+b*.16+faixaAcustica(x,b,tempo,sinal);
+      destino[offset+2]=-.5;return;
     }
-    const t = a * Math.PI * 2 + tempo * 0.018;
-    const r = 4.4 + (b - 0.5) * 0.72;
-    const giro = i % 3 === 0 ? -0.45 : 0.35;
-    let x = Math.cos(t) * r * 1.57;
-    let y = Math.sin(t) * r * 0.52 + Math.sin(t * 3 + b) * 0.24;
-    const xx = x * Math.cos(giro) - y * Math.sin(giro);
-    y = x * Math.sin(giro) + y * Math.cos(giro);
-    x = xx;
-    return [x, y, (c - 0.5) * 1.5];
+    const t=a*Math.PI*2+tempo*.009,r=4.4+(b-.5)*.72;
+    const x=Math.cos(t)*r*1.57,y=Math.sin(t)*r*.52+Math.sin(t*3+b)*.24;
+    destino[offset]=x*this.sementes[k+3]-y*this.sementes[k+4];
+    destino[offset+1]=x*this.sementes[k+4]+y*this.sementes[k+3];
+    destino[offset+2]=(c-.5)*1.5;
   }
-  private desenhar(tempo: number) {
-    this.ultimoTempo = tempo;
-    const cor = new THREE.Color(cores[this.modelo.emocao] ?? cores.neutro);
-    const nivel = this.modelo.conectado ? this.modelo.nivel_audio : 0;
+  private desenhar(agora:number,delta:number) {
+    if(this.parar||document.hidden)return;
+    const reduzido=this.reduzido.matches,tempo=reduzido?0:agora/1000;
+    if(!reduzido)this.envelope.passo(delta,agora);
+    const nivel=0;
+    const sinal=reduzido?SILENCIO:this.modelo.estado === "falando"?this.envelope.voz:this.envelope.microfone;
+    const voz=reduzido?SILENCIO:this.envelope.voz;
+    this.alvoCor.set(cores[this.modelo.emocao]??cores.neutro);
+    this.cor.lerp(this.alvoCor,reduzido?1:aproximar(0,1,delta,550));
+    const cor=this.cor;
+    this.expressao=reduzido?expressaoEmocional(this.modelo.emocao):aproximar(this.expressao,expressaoEmocional(this.modelo.emocao),delta,550);
+    this.corParticulas.set(0xeeeeee).lerp(cor,.28);
     if (this.renderer) {
       this.linhas.forEach((linha, i) => {
         const coords = linha.geometry.getAttribute(
@@ -246,24 +277,32 @@ export class Cena {
             i / this.linhas.length,
             tempo,
             this.modelo.estado,
-            nivel,
+            nivel, sinal, this.saida, this.expressao,
           );
           coords.setXYZ(j, ...p);
         }
         coords.needsUpdate = true;
         (linha.material as THREE.LineBasicMaterial).color.copy(
-          i % 5 === 0 ? cor : new THREE.Color(0xc9c9c9),
+          cor,
         );
       });
+      this.faixas.forEach((linha,i)=>{
+        const coords=linha.geometry.getAttribute("position") as THREE.BufferAttribute;
+        for(let j=0;j<=240;j++){const x=j/240*20-10;coords.setXYZ(j,x,-3.5+(i-2)*.022+faixaAcustica(x,i/4,tempo,voz),-.4);}
+        coords.needsUpdate=true;(linha.material as THREE.LineBasicMaterial).color.copy(cor);
+      });
       if (this.particulas && this.positions) {
+        (this.particulas.material as THREE.PointsMaterial).color.copy(this.corParticulas);
         for (let i = 0; i < this.positions.length / 3; i++)
-          this.positions.set(this.ponto(i, tempo), i * 3);
+          this.ponto(i,tempo,voz,this.positions,i*3);
         this.particulas.geometry.getAttribute("position").needsUpdate = true;
       }
       if (this.brilhos) {
         const pontos = this.brilhos.geometry.getAttribute("position");
         for (let i = 0; i < 4; i++)
-          pontos.setXYZ(i, ...this.ponto([124, 319, 2481, 4768][i], tempo));
+          {const k=[124,319,2481,4768][i]%Math.floor(this.sementes.length/6);this.ponto(k,tempo,voz,this.saida);pontos.setXYZ(i,...this.saida);}
+        (this.brilhos.material as THREE.PointsMaterial).color.copy(cor);
+        (this.brilhos.material as THREE.PointsMaterial).opacity=.5+voz.envelope*.12*this.expressao;
         pontos.needsUpdate = true;
       }
       this.renderer.render(this.scene, this.camera);
@@ -285,47 +324,49 @@ export class Cena {
             i / numero,
             tempo,
             this.modelo.estado,
-            nivel,
+            nivel, sinal, this.saida, this.expressao,
           );
           if (!j) c.moveTo(x, y);
           else c.lineTo(x, y);
         }
-        c.strokeStyle = i % 5 === 0 ? `#${cor.getHexString()}` : "#d4d4d4";
+        c.strokeStyle = `#${cor.getHexString()}`;
         c.lineWidth = 0.009;
         c.globalAlpha = 0.12 + Math.sin((i / numero) * Math.PI) ** 5 * 0.45;
         c.stroke();
       }
+      for(let i=0;i<5;i++) {
+        c.beginPath();for(let j=0;j<=240;j++){const x=j/240*20-10,y=-3.5+(i-2)*.022+faixaAcustica(x,i/4,tempo,voz);if(!j)c.moveTo(x,y);else c.lineTo(x,y);}
+        c.strokeStyle=`#${cor.getHexString()}`;c.lineWidth=.008;c.globalAlpha=i===2?.24:.11;c.stroke();
+      }
       const pontos = this.densidade === "baixa" ? 1900 : 4200;
-      c.fillStyle = "#eeeeee";
+      c.fillStyle = `#${this.corParticulas.getHexString()}`;
       for (let i = 0; i < pontos; i++) {
-        const [x, y] = this.ponto(i, tempo);
-        c.globalAlpha = 0.15 + aleatorio(i + 9) * 0.5;
+        this.ponto(i,tempo,voz,this.saida);
+        const [x,y]=this.saida;
+        c.globalAlpha = 0.15 + this.sementes[i*6+5] * 0.5;
         c.fillRect(x, y, 0.009, 0.009);
       }
       c.restore();
     }
+    this.aoDesenhar?.({agora,delta,reduzido,cor:`#${cor.getHexString()}`});
   }
-  private animar = (agora: number) => {
-    if (this.parar) return;
-    if (document.hidden) {
-      this.frame = requestAnimationFrame(this.animar);
-      return;
-    }
-    if (
-      agora - this.anterior >=
-        1000 / (this.modelo.estado === "modo_jogo" ? 8 : this.fps) ||
-      agora === 0
-    ) {
-      this.anterior = agora;
-      this.desenhar(this.reduzido.matches ? 0 : agora / 1000);
-    }
-    if (!this.reduzido.matches) this.frame = requestAnimationFrame(this.animar);
+  private agendar() {
+    if(!this.parar&&!document.hidden&&!this.reduzido.matches&&this.frame===undefined)this.frame=requestAnimationFrame(this.animar);
+  }
+  private animar = (agora:number) => {
+    this.frame=undefined;
+    const fps=cadenciaVisual(this.fps,this.modelo.jogo||this.modelo.estado==="modo_jogo",this.reduzido.matches,document.hidden);
+    if(this.parar||fps===0)return;
+    const intervalo=1000/fps,delta=this.anterior===0?intervalo:agora-this.anterior;
+    if(delta>=intervalo-.25){this.anterior=agora;this.desenhar(agora,Math.min(delta,250));}
+    this.agendar();
   };
   fechar() {
     this.parar = true;
-    cancelAnimationFrame(this.frame);
+    if(this.frame!==undefined)cancelAnimationFrame(this.frame);
     this.observador.disconnect();
-    this.reduzido.removeEventListener("change", this.aoReduzir);
+    this.reduzido.removeEventListener("change", this.aoAmbiente);
+    document.removeEventListener("visibilitychange",this.aoAmbiente);
     this.limpar();
   }
 }

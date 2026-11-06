@@ -199,7 +199,7 @@ def test_elevenlabs_monta_o_pedido_e_devolve_wav(criar_raiz, monkeypatch):
         assert isinstance(voz, VozElevenLabs)
         wav = voz.sintetizar("Olá!")
     caminho, cabecalhos, corpo = nuvem.pedidos[0]
-    assert caminho == "/v1/text-to-speech/abc123?output_format=pcm_22050"
+    assert caminho == "/v1/text-to-speech/abc123/stream?output_format=pcm_22050"
     assert {nome.lower(): valor for nome, valor in cabecalhos.items()}["xi-api-key"] == "segredo"
     assert json.loads(corpo) == {
         "text": "Olá!",

@@ -6,7 +6,7 @@ import io
 import re
 import wave
 from array import array
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
 
 TAXA = 16_000  # Hz, o que o Whisper espera
 
@@ -294,9 +294,9 @@ class Microfone:
                 yield b""  # sinal de vida: quem consome pode olhar outras coisas (o teclado)
                 continue
             convertido = reamostrar(_para_mono(bloco, self._canais), self._taxa)
-            from nora.hud import nivel_pcm
+            from nora.hud import amostrar_pcm
 
-            nivel_pcm(convertido, "microfone")
+            amostrar_pcm(bloco, "microfone", self._taxa, self._canais)
             yield convertido
 
 
@@ -312,31 +312,39 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
     posicao = 0
     iniciou = False
     bytes_por_quadro = 2 * canais
+    from nora.hud import preparar_reproducao
+
+    observador = preparar_reproducao(amostras, taxa, canais)
 
     def entregar(saida, quadros, tempo, status) -> None:
         nonlocal posicao, iniciou
-        from nora.hud import nivel_pcm, reproducao
+        from nora.hud import reproducao
 
         if not iniciou:
             reproducao(True)  # primeiro callback real da saída, não início da síntese
             iniciou = True
+        antes = posicao
         pedaco = amostras[posicao : posicao + quadros * bytes_por_quadro]
         posicao += len(pedaco)
-        nivel_pcm(pedaco, "voz")
+        if observador is not None:
+            try:
+                observador.entregar(antes // bytes_por_quadro, posicao // bytes_por_quadro, tempo)
+            except Exception:
+                pass
         saida[: len(pedaco)] = pedaco
         if len(pedaco) < len(saida):
             saida[len(pedaco) :] = bytes(len(saida) - len(pedaco))
             raise sd.CallbackStop
 
-    fluxo = sd.RawOutputStream(
-        device=alto_falante,
-        samplerate=taxa,
-        channels=canais,
-        dtype="int16",
-        callback=entregar,
-        finished_callback=terminou.set,
-    )
     try:
+        fluxo = sd.RawOutputStream(
+            device=alto_falante,
+            samplerate=taxa,
+            channels=canais,
+            dtype="int16",
+            callback=entregar,
+            finished_callback=terminou.set,
+        )
         with fluxo:
             segundos = len(amostras) / (bytes_por_quadro * taxa)
             terminou.wait(timeout=segundos + 5)
@@ -378,11 +386,178 @@ def com_silencio_inicial(dados: bytes, ms: int) -> bytes:
     return para_wav(silencio + amostras, taxa, canais)
 
 
-def tocador(config_audio) -> Callable[[bytes], None]:
-    """Função que toca um WAV na saída da config ([audio] alto_falante e silencio_inicial_ms)."""
+class AudioEmPartes:
+    """Áudio PCM 16 bits que ainda está chegando (voz em streaming). Uma linha própria baixa as
+    partes assim que ele é criado; quem toca começa com as primeiras, sem esperar o resto."""
+
+    def __init__(self, partes: Iterable[bytes], taxa: int, canais: int = 1) -> None:
+        import queue
+        import threading
+
+        self.taxa = taxa
+        self.canais = canais
+        self.erro: Exception | None = None
+        self.primeira = threading.Event()  # chegou a primeira parte (ou acabou sem nenhuma)
+        self.baixado = threading.Event()  # chegou tudo (ou deu erro)
+        self._fila: queue.Queue = queue.Queue()
+        threading.Thread(target=self._baixar, args=(partes,), daemon=True).start()
+
+    def _baixar(self, partes: Iterable[bytes]) -> None:
+        sobra = b""  # um byte de amostra cortada no meio, que vai com a próxima parte
+        quadro = 2 * self.canais
+        try:
+            for parte in partes:
+                dados = sobra + parte
+                inteiro = len(dados) - len(dados) % quadro
+                sobra = dados[inteiro:]
+                if inteiro:
+                    self._fila.put(dados[:inteiro])
+                    self.primeira.set()
+        except Exception as erro:  # a internet caiu no meio: toca o que chegou
+            self.erro = erro
+        finally:
+            self._fila.put(None)
+            self.primeira.set()
+            self.baixado.set()
+
+    def partes(self) -> Iterator[bytes]:
+        """As partes em ordem, conforme chegam (só dá para percorrer uma vez)."""
+        while (parte := self._fila.get()) is not None:
+            yield parte
+
+    def tudo(self) -> bytes:
+        """Espera chegar tudo e devolve o PCM inteiro; levanta o erro, se o download caiu."""
+        pcm = b"".join(self.partes())
+        if self.erro is not None:
+            raise self.erro
+        return pcm
+
+
+# Quanto áudio juntar antes de abrir o alto-falante: menos que isso e uma demora da rede vira
+# um buraco no som.
+PRE_CARGA_S = 0.15
+
+
+def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> None:
+    """Toca o áudio conforme ele chega. Se a saída recusar a taxa, converte cada parte."""
+    import threading
+
+    taxa, canais = audio.taxa, audio.canais
+    bytes_por_quadro = 2 * canais
+    buffer = bytearray(b"\x00\x00" * canais * (taxa * max(0, silencio_ms) // 1000))
+    trava = threading.Lock()
+    chegou = threading.Event()  # tudo baixado e posto no buffer
+    terminou = threading.Event()
+    saida_taxa = [taxa]
+    observador = None
+    posicao = 0
+    iniciou = False
+
+    def observar(metodo, *args):
+        if observador is not None:
+            try:
+                getattr(observador, metodo)(*args)
+            except Exception:
+                pass
+
+    def encher() -> None:
+        for parte in audio.partes():
+            if saida_taxa[0] != taxa:
+                parte = reamostrar(parte, taxa, saida_taxa[0])
+            observar("receber_pcm", parte)
+            with trava:
+                buffer.extend(parte)
+        observar("concluir_tempos")
+        chegou.set()
+
+    def entregar(saida, quadros, tempo, status) -> None:
+        nonlocal posicao, iniciou
+        from nora.hud import reproducao
+
+        if not iniciou:
+            reproducao(True)
+            iniciou = True
+        precisa = quadros * bytes_por_quadro
+        with trava:
+            pedaco = bytes(buffer[:precisa])
+            del buffer[:precisa]
+            acabou = chegou.is_set() and not buffer
+        saida[: len(pedaco)] = pedaco
+        if len(pedaco) < precisa:
+            saida[len(pedaco) :] = bytes(precisa - len(pedaco))
+        anterior = posicao
+        posicao += len(pedaco) // bytes_por_quadro  # zeros de falta de rede não avançam palavras
+        observar("entregar_pcm", saida, anterior, posicao, tempo)
+        if len(pedaco) < precisa and acabou:
+            raise sd.CallbackStop
+
+    def abrir(taxa_saida: int):
+        return sd.RawOutputStream(
+            device=alto_falante,
+            samplerate=taxa_saida,
+            channels=canais,
+            dtype="int16",
+            callback=entregar,
+            finished_callback=terminou.set,
+        )
+
+    try:
+        fluxo = abrir(taxa)
+    except sd.PortAudioError:
+        if canais != 1:
+            raise
+        saida_taxa[0] = int(sd.query_devices(alto_falante, "output")["default_samplerate"])
+        with trava:
+            buffer[:] = reamostrar(bytes(buffer), taxa, saida_taxa[0])
+        fluxo = abrir(saida_taxa[0])
+    from nora.hud import preparar_reproducao, reproducao
+
+    observador = preparar_reproducao(None, saida_taxa[0], canais)
+    observar("receber_pcm", bytes(buffer))
+    try:
+        threading.Thread(target=encher, daemon=True).start()
+        pre_carga = int(saida_taxa[0] * PRE_CARGA_S) * bytes_por_quadro
+        while not chegou.wait(0.01):
+            with trava:
+                if len(buffer) >= pre_carga:
+                    break
+        with fluxo:
+            while not terminou.wait(0.1):
+                pass
+    finally:
+        reproducao(False)
+
+
+def tocar_partes(audio: AudioEmPartes, alto_falante=None, silencio_ms: int = 0) -> None:
+    """Toca um áudio em streaming e espera terminar. Se a saída escolhida não abrir, toca na
+    padrão (como tocar_wav)."""
+    sd = _sounddevice()
+    try:
+        _tocar_partes(sd, audio, silencio_ms, alto_falante)
+        return
+    except (sd.PortAudioError, ValueError) as erro:
+        if alto_falante is None:
+            raise
+        _avisos_de_saida.append(
+            f"A saída '{alto_falante}' não abriu ({erro}); usei a saída padrão. "
+            "Confira [audio] alto_falante com 'nora audio'."
+        )
+    _tocar_partes(sd, audio, silencio_ms, None)
+
+
+def tocador(config_audio) -> Callable[[bytes | AudioEmPartes], None]:
+    """Função que toca um WAV (ou um áudio em streaming) na saída da config ([audio]
+    alto_falante e silencio_inicial_ms)."""
     alto_falante = dispositivo(config_audio.alto_falante)
     ms = config_audio.silencio_inicial_ms
-    return lambda wav: tocar_wav(com_silencio_inicial(wav, ms), alto_falante)
+
+    def tocar(audio: bytes | AudioEmPartes) -> None:
+        if isinstance(audio, AudioEmPartes):
+            tocar_partes(audio, alto_falante, ms)
+        else:
+            tocar_wav(com_silencio_inicial(audio, ms), alto_falante)
+
+    return tocar
 
 
 def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:

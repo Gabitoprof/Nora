@@ -1,0 +1,38 @@
+{
+  "environment": "Linux Chromium headless, Canvas forçado,1280×800",
+  "checks": [
+    {
+      "name": "Fallback Canvas automático sem WebGL",
+      "result": "aprovado"
+    },
+    {
+      "name": "Cadência limitada 30/60/jogo8FPS",
+      "result": "aprovado",
+      "observed": {
+        "f30": 45,
+        "f60": 91,
+        "game": 11
+      },
+      "interval_ms": 1500,
+      "limitation": "Software headless, não benchmark GPU AMD nem garantia de atingir60FPS"
+    },
+    {
+      "name": "Visibilidade simulada: zero desenhos oculto e retorno ativo",
+      "result": "aprovado",
+      "hidden": 0,
+      "resumed": 3,
+      "interval_ms": 500
+    },
+    {
+      "name": "Movimento reduzido sem animação autônoma",
+      "result": "aprovado",
+      "draws": 0,
+      "interval_ms": 1000
+    },
+    {
+      "name": "Zero pageerrors com fallback, FPS, jogo, oculto e movimento reduzido",
+      "result": "aprovado"
+    }
+  ],
+  "errors": []
+}

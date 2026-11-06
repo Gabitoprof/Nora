@@ -37,6 +37,62 @@ class Evento(TypedDict):
     instante: str
 
 
+def _numero(valor, minimo=0, maximo=1):
+    return type(valor) in (int, float) and math.isfinite(valor) and minimo <= valor <= maximo
+
+
+def _acustica_valida(dados):
+    if dados.keys() != CAMPOS["acustica"]:
+        return False
+    return (
+        dados["fonte"] in ("microfone", "voz")
+        and type(dados["ativo"]) is bool
+        and type(dados["reproducao_id"]) is int
+        and 0 <= dados["reproducao_id"] <= 2**53 - 1
+        and all(_numero(dados[k]) for k in ("rms", "pico", "envelope", "centroide", "fluxo"))
+        and isinstance(dados["bandas"], list)
+        and len(dados["bandas"]) == 6
+        and all(_numero(v) for v in dados["bandas"])
+        and _numero(dados["duracao_ms"], 0, CONTRATO["acustica"]["max_duracao_ms"])
+        and _numero(dados["posicao_ms"], 0, dados["duracao_ms"])
+        and (
+            dados["fonte"] != "microfone"
+            or dados["reproducao_id"] == dados["duracao_ms"] == dados["posicao_ms"] == 0
+        )
+    )
+
+
+def _fala_valida(dados):
+    if dados.keys() != CAMPOS["fala_temporizada"]:
+        return False
+    palavras = dados["palavras"]
+    if not (
+        type(dados["id"]) is int
+        and 1 <= dados["id"] <= 2**53 - 1
+        and _numero(dados["duracao_ms"], 0.001, CONTRATO["acustica"]["max_duracao_ms"])
+        and dados["precisao"] in ("estimada", "alinhada")
+        and isinstance(palavras, list)
+        and 0 < len(palavras) <= 256
+    ):
+        return False
+    fim, caracteres = 0, 0
+    for p in palavras:
+        if not (
+            isinstance(p, dict)
+            and p.keys() == {"texto", "inicio_ms", "fim_ms", "destaque"}
+            and isinstance(p["texto"], str)
+            and 0 < len(p["texto"]) <= 80
+            and type(p["destaque"]) is bool
+            and _numero(p["inicio_ms"], fim, dados["duracao_ms"])
+            and _numero(p["fim_ms"], p["inicio_ms"], dados["duracao_ms"])
+            and p["fim_ms"] > p["inicio_ms"]
+        ):
+            return False
+        fim = p["fim_ms"]
+        caracteres += len(p["texto"])
+    return caracteres <= 6000
+
+
 class PonteHUD:
     """Estado efêmero de apresentação. Publicar é best-effort e nunca faz I/O."""
 
@@ -47,17 +103,24 @@ class PonteHUD:
         self._ultimo_nivel: dict[str, float] = {}
         self.conversa = None
         self._reproduzindo = False
+        self._id_reproducao = 0
+        self._epoca_privacidade = 0
+        self._audio = None
+        self._ultimo_quadro = 0.0
         self.estado = {
             "versao": VERSAO,
             "sequencia": 0,
             "estado": "desconectado",
             "conectado": False,
+            "jogo": False,
             "nome": nome[:200],
             "modelo": "",
             "origem": "",
             "voz": "",
             "emocao": "neutra",
             "nivel_audio": 0.0,
+            "acustica": None,
+            "fala_temporizada": None,
             "texto": "",
             "notas": [],
             "relatorio": None,
@@ -67,7 +130,12 @@ class PonteHUD:
 
     def snapshot(self) -> dict:
         with self._trava:
-            return json.loads(json.dumps(self.estado))
+            dados = json.loads(json.dumps(self.estado))
+            if time.monotonic() - self._ultimo_quadro > 0.3:
+                dados["acustica"] = dados["fala_temporizada"] = None
+            if len(json.dumps(dados, ensure_ascii=False).encode("utf-8")) > LIMITE_EVENTO - 1024:
+                dados["fala_temporizada"] = None
+            return dados
 
     def assinar(self) -> queue.Queue:
         with self._trava:
@@ -87,7 +155,10 @@ class PonteHUD:
         try:
             if tipo not in CAMPOS or not dados.keys() <= CAMPOS[tipo]:
                 return False
-            if tipo in ("texto_visivel", "notas") and self.estado["privacidade"]:
+            if (
+                tipo in ("texto_visivel", "notas", "fala_temporizada")
+                and self.estado["privacidade"]
+            ):
                 return False
             try:
                 if (
@@ -97,7 +168,40 @@ class PonteHUD:
                     return False
             except (ValueError, TypeError):
                 return False
-            if tipo == "nivel_audio":
+            if tipo == "acustica":
+                if not _acustica_valida(dados):
+                    return False
+                fonte = dados["fonte"]
+                if fonte == "microfone" and self._reproduzindo:
+                    return False
+                if fonte == "voz" and (
+                    dados["reproducao_id"] != self._id_reproducao
+                    or dados["ativo"]
+                    and not self._reproduzindo
+                ):
+                    return False
+                agora = time.monotonic()
+                chave = "acustica:" + fonte
+                if dados["ativo"] and agora - self._ultimo_nivel.get(chave, -1) < 0.05:
+                    return False
+                self._ultimo_nivel[chave] = self._ultimo_quadro = agora
+                self.estado["acustica"] = dados
+                self.estado["nivel_audio"] = dados["rms"] if dados["ativo"] else 0.0
+                if fonte == "voz" and not dados["ativo"]:
+                    self.estado["fala_temporizada"] = None
+            elif tipo == "fala_temporizada":
+                if (
+                    not _fala_valida(dados)
+                    or not self._reproduzindo
+                    or dados["id"] != self._id_reproducao
+                ):
+                    return False
+                self.estado["fala_temporizada"] = dados
+            elif tipo == "modo_jogo_ativo":
+                if type(dados.get("ativo")) is not bool:
+                    return False
+                self.estado["jogo"] = dados["ativo"]
+            elif tipo == "nivel_audio":
                 nivel, fonte = dados.get("nivel"), dados.get("fonte")
                 if (
                     isinstance(nivel, bool)
@@ -113,14 +217,27 @@ class PonteHUD:
                 self._ultimo_nivel[fonte] = agora
                 self.estado["nivel_audio"] = nivel
             elif tipo in ESTADOS:
+                jogo = bool(getattr(getattr(self.conversa, "cerebro", None), "jogo", False))
+                if jogo != self.estado["jogo"]:
+                    self.publicar("modo_jogo_ativo", ativo=jogo)
                 if self._reproduzindo and tipo not in ("falando", "desconectado", "erro"):
                     return False
                 self.estado["estado"] = tipo
                 if tipo == "desconectado":
                     self.estado.update(
-                        conectado=False, texto="", notas=[], nivel_audio=0.0, privacidade=True
+                        conectado=False,
+                        texto="",
+                        notas=[],
+                        nivel_audio=0.0,
+                        privacidade=True,
+                        acustica=None,
+                        fala_temporizada=None,
+                        jogo=False,
                     )
                     self.conversa = None
+                    self._reproduzindo = False
+                    if self._audio is not None and self._audio.reproducao is not None:
+                        self._audio.reproducao.encerrar()
             elif tipo == "notas":
                 notas = dados.get("notas")
                 if not isinstance(notas, list) or len(notas) > 12:
@@ -142,7 +259,11 @@ class PonteHUD:
             elif tipo == "privacidade":
                 if type(dados.get("privacidade")) is not bool:
                     return False
+                if self.estado["privacidade"] != dados["privacidade"]:
+                    self._epoca_privacidade += 1
                 self.estado["privacidade"] = dados["privacidade"]
+                if dados["privacidade"]:
+                    self.estado.update(texto="", notas=[], fala_temporizada=None)
             elif tipo == "texto_visivel":
                 texto = dados.get("texto")
                 if not isinstance(texto, str) or not isinstance(dados.get("acumular", False), bool):
@@ -206,7 +327,8 @@ class PonteHUD:
 
     def privacidade(self, visivel: bool) -> None:
         with self._trava:
-            self.estado.update(privacidade=not visivel, texto="", notas=[])
+            self._epoca_privacidade += 1
+            self.estado.update(privacidade=not visivel, texto="", notas=[], fala_temporizada=None)
             # Nada pessoal já enfileirado pode chegar após a confirmação de ocultar.
             for fila in self._filas:
                 with fila.mutex:
@@ -258,6 +380,8 @@ def emitir(tipo: str, **dados) -> None:
     """Uma HUD indisponível ou um observador defeituoso nunca interrompe a Nora."""
     if _ponte is not None:
         try:
+            if tipo == "emocao" and _ponte._reproduzindo:
+                return
             _ponte.publicar(tipo, **dados)
         except Exception:
             pass
@@ -283,6 +407,8 @@ def reproducao(ativa: bool) -> None:
     if _ponte is None:
         return
     try:
+        if not ativa and _ponte._audio is not None and _ponte._audio.reproducao is not None:
+            _ponte._audio.reproducao.encerrar()
         _ponte._reproduzindo = ativa
         if ativa:
             emitir("falando")
@@ -296,6 +422,21 @@ def reproducao(ativa: bool) -> None:
             # Leitura simples: o callback de áudio nunca espera o lock de uma apresentação.
             if _ponte.estado["estado"] != "erro":
                 emitir(estado)
+            _ponte.estado.update(fala_temporizada=None, nivel_audio=0.0)
+            emitir(
+                "acustica",
+                fonte="voz",
+                ativo=False,
+                reproducao_id=_ponte._id_reproducao,
+                posicao_ms=0.0,
+                duracao_ms=0.0,
+                rms=0.0,
+                pico=0.0,
+                envelope=0.0,
+                bandas=[0.0] * 6,
+                centroide=0.0,
+                fluxo=0.0,
+            )
             emitir("nivel_audio", nivel=0.0, fonte="voz")
     except Exception:
         pass  # falha de visualização nunca chega ao callback de áudio
@@ -315,6 +456,35 @@ def nivel_pcm(amostras: bytes, fonte: str) -> None:
             nivel=min(1.0, math.sqrt(sum(v * v for v in pontos) / len(pontos)) / 32768),
             fonte=fonte,
         )
+
+
+def _analisador():
+    if _ponte is None:
+        return None
+    if _ponte._audio is None:
+        from nora.hud_audio import AnalisadorHUD
+
+        _ponte._audio = AnalisadorHUD(_ponte)
+    return _ponte._audio
+
+
+def amostrar_pcm(amostras: bytes, fonte: str, taxa: int = 16000, canais: int = 1):
+    if _ponte is None or fonte != "microfone" or not amostras:
+        return
+    try:
+        _analisador().micro(amostras, taxa, canais)
+    except Exception:
+        pass
+
+
+def preparar_reproducao(amostras: bytes | None, taxa: int, canais: int):
+    """None = streaming, cuja duração final ainda não chegou; nunca espera o download."""
+    if _ponte is None:
+        return None
+    try:
+        return _analisador().preparar(amostras, taxa, canais)
+    except Exception:
+        return None
 
 
 class ServidorHUD:
@@ -572,4 +742,6 @@ def executar(config, ouvir: bool = False, porta: int = 8765, **opcoes) -> int:
         return 0
     finally:
         _ponte = None
+        if ponte._audio is not None:
+            ponte._audio.encerrar()
         servidor.parar()

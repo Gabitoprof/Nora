@@ -23,6 +23,7 @@ from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
 from nora.emocao import FiltroDeTela
 from nora.frases import SeparadorDeFrases
 from nora.hud import emitir
+from nora.hud_audio import contexto_fala
 from nora.melhorias import iniciar as iniciar_melhorias
 from nora.melhorias import ler_entrada
 from nora.ouvido import OuvidoWhisper
@@ -35,6 +36,7 @@ from nora.voz import (
     VozHTTP,
     VozTrocavel,
     com_pronuncias_aprendidas,
+    em_partes,
 )
 
 _FIM = object()
@@ -93,6 +95,7 @@ class Locutor:
         """Sintetiza as frases em ordem. Se várias já estão esperando (a voz é mais lenta que
         o modelo, como no ComfyUI), junta-as num pedido só: menos pedidos, menos pausas."""
         acabou = False
+        anterior = None
         while not acabou:
             frase = self._frases.get()
             if frase is _FIM:
@@ -111,25 +114,36 @@ class Locutor:
                 lote.append(proxima)
             if self.tempos.erros:
                 continue
+            if isinstance(anterior, audio.AudioEmPartes):
+                anterior.baixado.wait()
             try:
-                self._audios.put(self.voz.sintetizar(" ".join(lote)))
+                texto = " ".join(lote)
+                anterior = em_partes(self.voz, texto)
+                self._audios.put((anterior, texto))
             except ServicoIndisponivel as erro:
                 self.tempos.erros.append(str(erro))
         self._audios.put(_FIM)
 
     def _tocar(self) -> None:
-        wav = self._audios.get()
-        if wav is _FIM:
+        item = self._audios.get()
+        if item is _FIM:
             return
         with self.abafar():  # os outros programas ficam mais baixos enquanto ela fala
-            while wav is not _FIM:
+            while item is not _FIM:
+                wav, texto = item
+                em_streaming = isinstance(wav, audio.AudioEmPartes)
+                if em_streaming:
+                    wav.primeira.wait()
                 if not self.tempos.comeco_da_voz:
                     self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
                 try:
-                    self.tocar(wav)
+                    with contexto_fala(texto):
+                        self.tocar(wav)
                 except Exception as erro:  # um problema no alto-falante não derruba a conversa
                     self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
-                wav = self._audios.get()
+                if em_streaming and wav.erro is not None:
+                    self.tempos.erros.append(f"A voz parou no meio da frase: {wav.erro}")
+                item = self._audios.get()
 
 
 def abafador(config: Config):
@@ -236,7 +250,8 @@ def trocar_de_voz(conversa: Conversa, voz, tocar, texto, pedido, escrever) -> Te
     conversa.historico.registrar("assistente", resposta, modelo="comando de voz")
     tempos = Tempos()
     try:
-        tocar(wav if wav is not None else voz.sintetizar(resposta))
+        with contexto_fala(resposta):
+            tocar(wav if wav is not None else voz.sintetizar(resposta))
     except Exception as erro:  # a conversa segue mesmo sem voz
         tempos.erros.append(str(erro))
         escrever(f"[erro na voz] {erro}")

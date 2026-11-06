@@ -1,3 +1,5 @@
+import paleta from "../paleta.json";
+import type { Acustica } from "./scene-audio";
 import contrato from "../../src/nora/hud_contrato.json";
 /** Contrato v1 compartilhado com o núcleo Python. */
 export type Estado =
@@ -39,6 +41,25 @@ export interface Relatorio {
   data: string;
   propostas?: number;
 }
+export interface PalavraTemporizada { texto: string; inicio_ms: number; fim_ms: number; destaque: boolean; }
+export interface FalaTemporizada { id: number; duracao_ms: number; precisao: "estimada" | "alinhada"; palavras: PalavraTemporizada[]; }
+const finito = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const unitario = (v: unknown): v is number => finito(v) && v >= 0 && v <= 1;
+export function lerAcustica(v: unknown): Acustica | null {
+  if (!objeto(v) || !["microfone","voz"].includes(String(v.fonte)) || ![v.rms,v.pico,v.envelope,v.centroide,v.fluxo].every(unitario) || !Array.isArray(v.bandas) || v.bandas.length !== 6 || !v.bandas.every(unitario) || typeof v.ativo !== "boolean" || !Number.isSafeInteger(v.reproducao_id) || Number(v.reproducao_id)<0 || !finito(v.posicao_ms) || v.posicao_ms<0 || !finito(v.duracao_ms) || v.duracao_ms<0 || v.duracao_ms>contrato.acustica.max_duracao_ms || v.posicao_ms>v.duracao_ms) return null;
+  if(v.fonte==="microfone" && (v.reproducao_id!==0||v.posicao_ms!==0||v.duracao_ms!==0))return null;
+  return {...v,bandas:[...v.bandas]} as unknown as Acustica;
+}
+export function lerFala(v: unknown): FalaTemporizada | null {
+  if(!objeto(v)||!Number.isSafeInteger(v.id)||Number(v.id)<1||!finito(v.duracao_ms)||v.duracao_ms<=0||v.duracao_ms>contrato.acustica.max_duracao_ms||!["estimada","alinhada"].includes(String(v.precisao))||!Array.isArray(v.palavras)||v.palavras.length===0||v.palavras.length>contrato.fala_temporizada.limite_palavras) return null;
+  let fim=0, total=0;
+  for(const p of v.palavras) {
+    if(!objeto(p)||typeof p.texto!=="string"||Array.from(p.texto).length>contrato.fala_temporizada.limite_palavra||!p.texto.trim()||!finito(p.inicio_ms)||!finito(p.fim_ms)||p.inicio_ms<fim||p.fim_ms<=p.inicio_ms||p.fim_ms>v.duracao_ms||typeof p.destaque!=="boolean") return null;
+    fim=p.fim_ms;total+=Array.from(p.texto).length;
+  }
+  if(total>contrato.limite_texto) return null;
+  return {...v,palavras:v.palavras.map(p=>({...p}))} as unknown as FalaTemporizada;
+}
 export interface Modelo {
   versao: 1;
   sequencia: number;
@@ -55,6 +76,9 @@ export interface Modelo {
   notas: Nota[];
   relatorio: Relatorio | null;
   latencia_ms?: number;
+  acustica: Acustica | null;
+  fala_temporizada: FalaTemporizada | null;
+  jogo: boolean;
 }
 export const inicial: Modelo = {
   versao: 1,
@@ -71,6 +95,9 @@ export const inicial: Modelo = {
   privacidade: true,
   notas: [],
   relatorio: null,
+  acustica: null,
+  fala_temporizada: null,
+  jogo: false,
 };
 export function objeto(dado: unknown): dado is Dados {
   return dado !== null && typeof dado === "object" && !Array.isArray(dado);
@@ -95,6 +122,9 @@ export function eventoValido(dado: unknown): dado is Evento {
     typeof dado.instante !== "string"
   )
     return false;
+  if (dado.tipo === "acustica") return lerAcustica(dado.dados) !== null;
+  if (dado.tipo === "fala_temporizada") return lerFala(dado.dados) !== null;
+  if (dado.tipo === "modo_jogo_ativo") return typeof dado.dados.ativo === "boolean";
   if (dado.tipo === "nivel_audio")
     return (
       typeof dado.dados.nivel === "number" &&
@@ -123,6 +153,9 @@ export function snapshot(dados: unknown, anterior: Modelo = inicial): Modelo {
     voz: texto(dados.voz),
     emocao: texto(dados.emocao, "neutro"),
     privacidade: privado,
+    acustica: dados.conectado === true ? lerAcustica(dados.acustica) : null,
+    fala_temporizada: privado || dados.conectado !== true ? null : lerFala(dados.fala_temporizada),
+    jogo: dados.jogo === true,
     nivel_audio:
       typeof dados.nivel_audio === "number" &&
       Number.isFinite(dados.nivel_audio)
@@ -163,11 +196,24 @@ export function reduzir(anterior: Modelo, evento: unknown): Modelo {
   if (estados.includes(evento.tipo as Estado))
     proximo.estado = evento.tipo as Estado;
   switch (evento.tipo) {
+    case "acustica":
+      proximo.acustica = lerAcustica(d);
+      proximo.nivel_audio=proximo.acustica?.ativo?proximo.acustica.rms:0;
+      if(proximo.acustica?.fonte === "voz" && !proximo.acustica.ativo) proximo.fala_temporizada=null;
+      break;
+    case "fala_temporizada":
+      if(!proximo.privacidade && proximo.conectado) proximo.fala_temporizada=lerFala(d);
+      break;
+    case "modo_jogo_ativo":
+      proximo.jogo=d.ativo===true;
+      break;
     case "desconectado":
       proximo.conectado = false;
       proximo.nivel_audio = 0;
       proximo.texto = "";
       proximo.notas = [];
+      proximo.acustica = null;
+      proximo.fala_temporizada = null;
       break;
     case "nivel_audio":
       proximo.nivel_audio = Number(d.nivel);
@@ -200,6 +246,7 @@ export function reduzir(anterior: Modelo, evento: unknown): Modelo {
       if (proximo.privacidade) {
         proximo.texto = "";
         proximo.notas = [];
+        proximo.fala_temporizada = null;
       }
       break;
     case "relatorio_pronto":
@@ -216,6 +263,7 @@ export function reduzir(anterior: Modelo, evento: unknown): Modelo {
           .slice(0, 12);
       break;
   }
+  if (["ociosa","desconectado","erro","recuperando"].includes(evento.tipo)) proximo.fala_temporizada=null;
   return proximo;
 }
 export function desconectar(anterior: Modelo): Modelo {
@@ -226,6 +274,8 @@ export function desconectar(anterior: Modelo): Modelo {
     texto: "",
     notas: [],
     nivel_audio: 0,
+    acustica: null,
+    fala_temporizada: null,
   };
 }
 export const nomesEstado: Record<Estado, string> = {
@@ -241,30 +291,13 @@ export const nomesEstado: Record<Estado, string> = {
   erro: "Atenção necessária",
   recuperando: "Reconectando",
 };
-export const cores: Record<string, string> = {
-  empolgada: "#F0C66A",
-  risada: "#F0C66A",
-  seria: "#80A8F6",
-  triste: "#DF876A",
-  sussurro: "#AA9ACF",
-  suspiro: "#AA9ACF",
-  neutro: "#C9C9C9",
-  neutra: "#C9C9C9",
-  alegria: "#F0C66A",
-  alegre: "#F0C66A",
-  acolhimento: "#E3A4BD",
-  carinhosa: "#E3A4BD",
-  curiosidade: "#66D4CB",
-  curiosa: "#66D4CB",
-  preocupacao: "#DF876A",
-  preocupação: "#DF876A",
-  preocupada: "#DF876A",
-  confianca: "#80A8F6",
-  confiança: "#80A8F6",
-  confiante: "#80A8F6",
-  serenidade: "#AA9ACF",
-  calma: "#AA9ACF",
-};
+/** Fonte compartilhável também pelo futuro Segundo Cérebro: hud/paleta.json. */
+export const cores: Record<string,string> = Object.fromEntries(Object.entries(paleta.aliases).map(([nome,grupo])=>[nome,paleta.cores[grupo as keyof typeof paleta.cores]]));
+
+export function expressaoEmocional(emocao:string) {
+  const grupo=paleta.aliases[emocao as keyof typeof paleta.aliases]??"neutra";
+  return paleta.dinamica[grupo as keyof typeof paleta.dinamica];
+}
 
 /** A resposta HTTP é snapshot autoritativo, mesmo se o SSE já aplicou a decisão. */
 export function privacidadeConfirmada(
