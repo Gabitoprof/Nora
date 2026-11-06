@@ -83,7 +83,7 @@ def test_exporta_memorias_com_propriedades_links_e_sem_areas_privadas(ambiente):
     assert arquivos == [
         "Agenda/2026-11.md",
         "Memórias/Lia estuda com a Bia na Unifictícia às quartas.md",
-        "Memórias/Lia tem prova de Cálculo na Unifictícia em 21∕11∕2026.md".replace("∕", " "),
+        "Memórias/Lia tem prova de Cálculo na Unifictícia em 21-11-2026.md",
         "Nomes/Unifictícia.md",
         "Nora Brain.md",
         "Preferências.md",
@@ -130,14 +130,14 @@ def test_correcao_troca_a_nota_e_esquecer_tira_do_vault_e_do_grafo(ambiente):
     memorias = sorted(p.name for p in (pasta / "Memórias").glob("*.md"))
     assert memorias == [
         "Lia estuda com a Bia na Unifictícia às quartas e sextas.md",
-        "Lia tem prova de Cálculo na Unifictícia em 21 11 2026.md",
+        "Lia tem prova de Cálculo na Unifictícia em 21-11-2026.md",
     ]
     # esquecer: a nota sai, o nome que ficou com uma menção só sai, e o grafo acompanha
     memoria.esquecer(estudo)
     resumo = sincronizador.sincronizar()
     assert resumo.removidas >= 2
     assert [p.name for p in (pasta / "Memórias").glob("*.md")] == [
-        "Lia tem prova de Cálculo na Unifictícia em 21 11 2026.md"
+        "Lia tem prova de Cálculo na Unifictícia em 21-11-2026.md"
     ]
     assert not (pasta / "Nomes").exists()
     grafo = json.loads((config.pasta_dados / "segundo_cerebro/grafo.json").read_text("utf-8"))
@@ -221,6 +221,7 @@ def test_notas_da_nora_nao_voltam_como_notas_suas(ambiente):
 
 def test_nomes_de_arquivo_e_propriedades_seguros():
     assert nome_de_arquivo('a/b:c*?"<>|# d.') == "a b c d"
+    assert nome_de_arquivo("Prova em 21/11/2026 às 10:30") == "Prova em 21-11-2026 às 10-30"
     assert nome_de_arquivo("x" * 100).endswith("…") and len(nome_de_arquivo("x" * 100)) <= 61
     assert nome_de_arquivo("...") == "sem título"
     assert nomes_no_texto("Lia viu a Bia e o IBGE em Belo Horizonte.", {"lia"}) == [

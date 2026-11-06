@@ -61,7 +61,7 @@ tags:
   - "nora/emocao/curiosa"
 ---
 
-# Lia tem prova de Cálculo na Unifictícia em 21 11 2026
+# Lia tem prova de Cálculo na Unifictícia em 21-11-2026
 
 Lia tem prova de Cálculo na Unifictícia em 21/11/2026
 
@@ -234,4 +234,5 @@ Resultado em 05/11/2026 (Linux x86_64 na nuvem, Python 3.13, 60 respostas por ce
 - **Nomes próprios por regra:** uma palavra com maiúscula no meio da frase vira nome. Homônimos ("Ana" do trabalho e "Ana" da família) viram o mesmo nó, e um nome que começa a frase só conta se for sigla.
 - **Títulos mudam com o texto:** um link escrito à mão para uma nota da Nora quebra se ela corrigir o fato. Use os links das notas de área, que ela atualiza.
 - **Concorrência do Python:** a linha roda no mesmo processo da conversa. Ela espera a voz e para no meio se a Nora voltar a falar, mas uma rodada já em andamento ainda disputa a CPU por alguns milissegundos. O cenário de estresse da medição mostra o pior caso.
+- **Plugins de grafo** que mostram tags como nós (`#nora` está em todas as notas) ou criam ligações adivinhadas ("inferred links") embolam o desenho: desligue essas opções para ver só as ligações da Nora.
 - **O grafo nativo do Obsidian** colore por grupos de busca (tag, pasta), não por halo nem tamanho por relevância. Para ver as cores das áreas lá: Grafo → Grupos → `tag:#nora/area/estudos` com a cor da tabela. O mapa da Nora mostra o resto.

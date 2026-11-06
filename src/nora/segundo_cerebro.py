@@ -78,6 +78,7 @@ _NAO_SAO_NOMES = {
 _NOME = re.compile(
     r"\b([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ]+(?:\s+(?:de|da|do|dos|das)?\s*[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ]+)*)"
 )
+_ENTRE_NUMEROS = re.compile(r"(?<=\d)[/\\:](?=\d)")
 _PROIBIDOS_NO_NOME = re.compile(r'[\\/:*?"<>|#^\[\]{}\x00-\x1f]')
 TAMANHO_DO_TITULO = 60
 AVISO_DA_NOTA = (
@@ -105,7 +106,10 @@ def cor_da_area(area: str) -> str:
 
 
 def nome_de_arquivo(texto: str, tamanho: int = TAMANHO_DO_TITULO) -> str:
-    """Um nome que serve de arquivo no Windows e de [[link]] no Obsidian."""
+    """Um nome que serve de arquivo no Windows e de [[link]] no Obsidian. Barras e dois-pontos
+    entre números viram hífen ("21/11/2026" → "21-11-2026", "10:30" → "10-30"), para a data
+    continuar legível; o resto dos caracteres proibidos vira espaço."""
+    texto = _ENTRE_NUMEROS.sub("-", texto)
     limpo = " ".join(_PROIBIDOS_NO_NOME.sub(" ", texto).split())
     if len(limpo) > tamanho:
         corte = limpo[:tamanho].rsplit(" ", 1)[0] or limpo[:tamanho]
