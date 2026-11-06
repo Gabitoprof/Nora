@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import re
+import time
 import wave
 from array import array
 from collections.abc import Callable, Iterable, Iterator
@@ -417,8 +418,48 @@ class AudioEmPartes:
         self.erro: Exception | None = None
         self.primeira = threading.Event()  # chegou a primeira parte (ou acabou sem nenhuma)
         self.baixado = threading.Event()  # chegou tudo (ou deu erro)
+        self.cancelado = threading.Event()  # barge-in: para de tocar e descarta o resto
+        # Palavras com tempo real (alinhamento da voz), para a HUD; a versão sobe a cada mudança.
+        self.palavras: list[dict] = []
+        self.versao_palavras = 0
+        self.texto = ""  # o texto todo, para estimar as palavras se não vier alinhamento
+        # Medidas da reprodução (diagnóstico): quando o som começou e o silêncio por falta de dados.
+        self.inicio_som: float | None = None
+        self.silencio_ms = 0.0
+        self.maior_silencio_ms = 0.0
         self._fila: queue.Queue = queue.Queue()
         threading.Thread(target=self._baixar, args=(partes,), daemon=True).start()
+
+    @classmethod
+    def de_fila(cls, taxa: int, canais: int = 1):
+        """Áudio alimentado aos pedaços por quem chama (ex.: um WebSocket). Devolve
+        (áudio, pôr(pcm), fechar(erro=None))."""
+        import queue
+
+        fila: queue.Queue = queue.Queue()
+
+        def partes():
+            while (item := fila.get()) is not None:
+                if isinstance(item, BaseException):
+                    raise item
+                yield item
+
+        audio = cls(partes(), taxa, canais)
+
+        def fechar(erro: BaseException | None = None) -> None:
+            if erro is not None:
+                fila.put(erro)
+            fila.put(None)
+
+        return audio, fila.put, fechar
+
+    def cancelar(self) -> None:
+        """Para a reprodução na hora (o resto do áudio é descartado)."""
+        self.cancelado.set()
+
+    def definir_palavras(self, palavras: list[dict]) -> None:
+        self.palavras = palavras
+        self.versao_palavras += 1
 
     def _baixar(self, partes: Iterable[bytes]) -> None:
         sobra = b""  # um byte de amostra cortada no meio, que vai com a próxima parte
@@ -470,6 +511,7 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
     observador = None
     posicao = 0
     iniciou = False
+    buraco = [0.0]  # silêncio seguido por falta de dados (o maior vira diagnóstico)
 
     def observar(metodo, *args):
         if observador is not None:
@@ -481,12 +523,20 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
                 registrar(f"audio.{metodo}", erro)
 
     def encher() -> None:
+        versao = 0
         for parte in audio.partes():
+            if audio.cancelado.is_set():
+                break
             if saida_taxa[0] != taxa:
                 parte = reamostrar(parte, taxa, saida_taxa[0])
             observar("receber_pcm", parte)
+            if audio.versao_palavras != versao:  # alinhamento real da voz: palavras para a HUD
+                versao = audio.versao_palavras
+                observar("alinhar", list(audio.palavras))
             with trava:
                 buffer.extend(parte)
+        if audio.texto and not audio.palavras:
+            observar("definir_texto", audio.texto)
         observar("concluir_tempos")
         chegou.set()
 
@@ -498,13 +548,25 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
             reproducao(True)
             iniciou = True
         precisa = quadros * bytes_por_quadro
+        if audio.cancelado.is_set():  # barge-in: silêncio já, sem tocar o resto
+            saida[:] = bytes(len(saida))
+            raise sd.CallbackStop
         with trava:
             pedaco = bytes(buffer[:precisa])
             del buffer[:precisa]
             acabou = chegou.is_set() and not buffer
         saida[: len(pedaco)] = pedaco
+        if pedaco and audio.inicio_som is None:
+            audio.inicio_som = time.perf_counter()
         if len(pedaco) < precisa:
             saida[len(pedaco) :] = bytes(precisa - len(pedaco))
+            if audio.inicio_som is not None and not acabou:  # buraco: a rede atrasou
+                falta = (precisa - len(pedaco)) / bytes_por_quadro / saida_taxa[0] * 1000
+                audio.silencio_ms += falta
+                buraco[0] += falta
+                audio.maior_silencio_ms = max(audio.maior_silencio_ms, buraco[0])
+        else:
+            buraco[0] = 0.0
         anterior = posicao
         posicao += len(pedaco) // bytes_por_quadro  # zeros de falta de rede não avançam palavras
         observar("entregar_pcm", saida, anterior, posicao, tempo)

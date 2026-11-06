@@ -16,13 +16,21 @@ _contexto = threading.local()
 
 
 @contextmanager
-def contexto_fala(texto: str):
-    anterior = getattr(_contexto, "texto", "")
-    _contexto.texto = texto
+def contexto_fala(texto: str, emocao: str = "", texto_depois: bool = False):
+    """O texto que vai tocar (para estimar as palavras) e, se souber, a emoção da fala. No
+    diálogo em streaming o texto ainda não existe ao começar (`texto_depois`): as palavras chegam
+    alinhadas pela própria voz (`ReproducaoHUD.alinhar`) e, se o alinhamento não vier, são
+    estimadas no fim com o texto completo (`ReproducaoHUD.definir_texto`)."""
+    anterior = (
+        getattr(_contexto, "texto", ""),
+        getattr(_contexto, "emocao", ""),
+        getattr(_contexto, "texto_depois", False),
+    )
+    _contexto.texto, _contexto.emocao, _contexto.texto_depois = texto, emocao, texto_depois
     try:
         yield
     finally:
-        _contexto.texto = anterior
+        _contexto.texto, _contexto.emocao, _contexto.texto_depois = anterior
 
 
 def _atraso(tempo):
@@ -44,12 +52,15 @@ class ReproducaoHUD:
         self.epoca = dono.ponte._epoca_privacidade
         texto = getattr(_contexto, "texto", "")
         self.texto_pendente = texto if not dono.ponte.estado["privacidade"] else ""
+        depois = getattr(_contexto, "texto_depois", False) and not dono.ponte.estado["privacidade"]
         self.envelope_temporal = (
-            EnvelopeTemporal(taxa, canais) if self.streaming and self.texto_pendente else None
+            EnvelopeTemporal(taxa, canais)
+            if self.streaming and (self.texto_pendente or depois)
+            else None
         )
         self.tempos = None
         emocoes = emocoes_em(texto)
-        self.emocao = emocoes[0].nome if emocoes else "neutra"
+        self.emocao = getattr(_contexto, "emocao", "") or (emocoes[0].nome if emocoes else "neutra")
         self.entregas: deque = deque(maxlen=4)
         self.ultima = None
         self.encerrada = False
@@ -87,8 +98,28 @@ class ReproducaoHUD:
         if self.envelope_temporal is not None:
             self.envelope_temporal.alimentar(pcm)
 
+    def alinhar(self, palavras: list[dict]):
+        """Palavras com o tempo real dado pela voz (alinhamento do ElevenLabs): substituem a
+        estimativa. Saem na HUD só com o conteúdo visível (a privacidade é checada ao publicar)."""
+        if self.encerrada or not palavras:
+            return
+        self.envelope_temporal = None
+        self.texto_pendente = ""
+        fim = max(p["fim_ms"] for p in palavras)
+        self.tempos = {
+            "duracao_ms": round(max(self.duracao, fim), 3),
+            "precisao": "alinhada",
+            "palavras": palavras,
+        }
+        self.dono.sinal.set()
+
+    def definir_texto(self, texto: str):
+        """Reserva do alinhamento: o texto completo, para estimar as palavras no fim."""
+        if self.envelope_temporal is not None and not self.dono.ponte.estado["privacidade"]:
+            self.texto_pendente = texto
+
     def concluir_tempos(self):
-        if self.envelope_temporal is not None and not self.encerrada:
+        if self.envelope_temporal is not None and self.texto_pendente and not self.encerrada:
             self.tempos = self.envelope_temporal.finalizar(self.texto_pendente)
         self.envelope_temporal = None
         self.texto_pendente = ""
