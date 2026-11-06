@@ -73,10 +73,21 @@ variacao_ritmo = 0.0
 # Nuvem, paga por uso. Chave em ELEVENLABS_API_KEY (.env). O voz_id aparece na página da voz
 # no ElevenLabs (Voices > ... > Copy voice ID). Coloque o seu em config/local.toml.
 voz_id = ""
-modelo = "eleven_flash_v2_5"
-# Mesma semente em todos os pedidos: a voz varia menos de uma frase para a outra. -1 = sorteia.
+# Modelo da voz. "eleven_v4_turbo" (padrão, para tempo real) e "eleven_v4" só funcionam pelo
+# diálogo em tempo real (WebSocket): uma conexão por conversa, o texto vai conforme o cérebro
+# escreve e o áudio toca conforme chega, com as palavras alinhadas na HUD. Os outros
+# ("eleven_flash_v2_5", "eleven_v3") vão pelo HTTP, uma frase por pedido. Guia: docs/VOZ.md.
+modelo = "eleven_v4_turbo"
+# Se o diálogo (v4) falhar, a Nora fala com este modelo pelo HTTP e registra o motivo.
+modelo_reserva = "eleven_flash_v2_5"
+# v4: estabilidade da voz (0 a 1; menos = mais emoção). É o único ajuste que o diálogo aceita.
+estabilidade = 0.5
+# v4: quanto tempo (s) a conexão fica aberta esperando a próxima resposta (0 = fecha a cada uma).
+manter_conexao_s = 120
+# HTTP: mesma semente em todos os pedidos (a voz varia menos de uma frase para a outra); -1 = sorteia.
 semente = 42
-# Manda junto a frase anterior (previous_text), para a entonação continuar de onde parou.
+# Continuidade: no HTTP, manda junto a frase anterior (previous_text); no v4, mantém a conexão
+# entre as respostas. false = cada resposta (v4) ou frase (HTTP) começa do zero.
 continuidade = true
 
 [voz.comfyui]

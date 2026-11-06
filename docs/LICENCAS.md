@@ -17,6 +17,7 @@
 | onnxruntime | MIT | `voz` | Rodar o Silero VAD |
 | soundfile (usa libsndfile, LGPL-2.1, como biblioteca dinâmica) | BSD-3-Clause | `voz` | Ler FLAC, MP3 e WAV |
 | pycaw | MIT | `voz` (Windows) | Abaixar o som dos outros programas |
+| websockets | BSD-3-Clause | `voz` | ElevenLabs v4 (diálogo em tempo real) |
 | kokoro-onnx | MIT | `kokoro` | Voz local Kokoro |
 | phonemizer-fork e espeakng-loader (trazem o espeak-ng) | GPL-3.0 | `kokoro`, indiretamente | Fonemas para o Kokoro |
 | sqlite-vec | MIT ou Apache-2.0 (à escolha) | `memoria` | Busca vetorial da memória |

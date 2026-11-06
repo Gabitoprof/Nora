@@ -197,6 +197,135 @@ class VozElevenLabs:
 
 
 @dataclass
+class VozElevenLabsDialogo:
+    """ElevenLabs v4 pelo diálogo em tempo real (WebSocket; veja elevenlabs_dialogo.py).
+
+    Na conversa por voz, o `LocutorDialogo` usa `novo_turno()`: uma conexão só, o texto vai
+    conforme o cérebro escreve e o áudio toca conforme chega. Fora dela (troca de voz, `nora voz
+    salvar`), `sintetizar` faz um turno sozinho. Se o diálogo falhar, fala pela `reserva` (HTTP,
+    `modelo_reserva`) e guarda o motivo; tenta o diálogo de novo depois de `REPOUSO_S`."""
+
+    chave: str = field(repr=False)
+    voz_id: str
+    modelo: str
+    reserva: VozElevenLabs
+    pronuncias: dict = field(default_factory=dict)
+    intensidade: float = 0.5
+    estabilidade: float = 0.5
+    continuidade: bool = True
+    manter_conexao_s: float = 120.0
+    url: str = ""  # vazio = o do ElevenLabs; os testes apontam para um servidor falso
+    aviso: str = ""
+    motivo_reserva: str = ""  # o último motivo de ter caído na reserva (sem texto pessoal)
+    ultima_duracao: float = 0.0
+    _sessao: object = field(default=None, repr=False)
+    _reserva_ate: float = field(default=0.0, repr=False)
+
+    REPOUSO_S = 300.0
+
+    def preparar(self, texto: str) -> str:
+        """Etiquetas de emoção viram audio tags (como no v3) e as pronúncias são aplicadas."""
+        return aplicar_pronuncias(para_v3(texto, self.intensidade), self.pronuncias)
+
+    @property
+    def em_reserva(self) -> bool:
+        return time.monotonic() < self._reserva_ate
+
+    def usar_reserva(self, erro: Exception) -> None:
+        """O diálogo falhou: fala pela reserva (HTTP) por um tempo e deixa o aviso."""
+        self.motivo_reserva = str(erro)
+        self._reserva_ate = time.monotonic() + self.REPOUSO_S
+        self.aviso = f"{erro} Usei o {self.reserva.modelo} pelo HTTP."
+        if self._sessao is not None:
+            self._sessao.fechar()
+
+    def sessao(self):
+        from nora.elevenlabs_dialogo import SessaoDialogo
+
+        if self._sessao is None:
+            self._sessao = SessaoDialogo(
+                self.chave,
+                self.voz_id,
+                self.modelo,
+                self.estabilidade,
+                url=self.url or None,
+                ociosa_s=self.manter_conexao_s if self.continuidade else 0.0,
+            )
+        return self._sessao
+
+    def novo_turno(self):
+        if not self.chave:
+            raise ServicoIndisponivel("Falta ELEVENLABS_API_KEY no .env para usar o ElevenLabs.")
+        if not self.voz_id:
+            raise ServicoIndisponivel(
+                "Falta o voz_id em [voz.elevenlabs] (config/local.toml) para usar o ElevenLabs."
+            )
+        if self.em_reserva:
+            raise ServicoIndisponivel(
+                f"Diálogo em pausa depois de uma falha: {self.motivo_reserva}"
+            )
+        return self.sessao().novo_turno()
+
+    def sintetizar_em_partes(self, texto: str) -> AudioEmPartes:
+        """Uma fala avulsa (fora do streaming da conversa), num turno sozinho."""
+        if not self.em_reserva:
+            try:
+                turno = self.novo_turno()
+                turno.enviar(self.preparar(texto))
+                turno.finalizar()
+                turno.audio.primeira.wait(turno.sessao.timeout)
+                if turno.recebeu_audio:
+                    return turno.audio
+                raise turno.erro or ServicoIndisponivel("O ElevenLabs não mandou áudio.")
+            except ServicoIndisponivel as erro:
+                if not self.chave or not self.voz_id:
+                    raise
+                self.usar_reserva(erro)
+        return self.reserva.sintetizar_em_partes(texto)
+
+    def sintetizar(self, texto: str) -> bytes:
+        return para_wav(self.sintetizar_em_partes(texto).tudo(), taxa=ELEVENLABS_TAXA)
+
+
+def achar_dialogo(voz):
+    """Se a voz em uso é o ElevenLabs v4 (diálogo), devolve (voz do diálogo, transformar), em que
+    `transformar` aplica ao texto o que as camadas de fora fariam (pronúncias aprendidas, realce
+    de perguntas). Senão, (None, None): a conversa usa o caminho de sempre, frase por frase."""
+    transformacoes = []
+    atual = voz
+    for _ in range(10):
+        if isinstance(atual, VozElevenLabsDialogo):
+
+            def transformar(texto: str, passos=tuple(transformacoes), dialogo=atual) -> str:
+                for passo in passos:
+                    texto = passo(texto)
+                return dialogo.preparar(texto)
+
+            return atual, transformar
+        if isinstance(atual, VozComPronuncias):
+            fonte = atual.fonte
+
+            def pronunciar(texto: str, fonte=fonte) -> str:
+                try:
+                    return aplicar_pronuncias(texto, fonte())
+                except Exception:
+                    return texto
+
+            transformacoes.append(pronunciar)
+            atual = atual.voz
+        elif isinstance(atual, VozComRealce):
+            transformacoes.append(lambda texto, modo=atual.modo: realcar_perguntas(texto, modo))
+            atual = atual.voz
+        elif isinstance(atual, VozTrocavel):
+            atual = atual.voz
+        elif isinstance(atual, VozComReserva):
+            atual = atual.principal
+        else:
+            return None, None
+    return None, None
+
+
+@dataclass
 class VozComReserva:
     """Usa a voz principal; se ela falhar, fala com a reserva e deixa um aviso."""
 
@@ -424,14 +553,33 @@ def _criar_motor_puro(config: Config, motor: str) -> VozHTTP | VozElevenLabs | V
         comfy = voz.comfyui
         return VozComfyUI(comfy.url, comfy.fluxo, comfy.espera_s, pronuncias, comfy.campo)
     intensidade = config.emocao.intensidade if config.emocao.ativa else 0.0
-    return VozElevenLabs(
+    eleven = voz.elevenlabs
+
+    def http(modelo: str) -> VozElevenLabs:
+        return VozElevenLabs(
+            config.chave_elevenlabs,
+            eleven.voz_id,
+            modelo,
+            pronuncias,
+            intensidade=intensidade,
+            semente=eleven.semente,
+            continuidade=eleven.continuidade,
+        )
+
+    from nora.elevenlabs_dialogo import e_modelo_de_dialogo
+
+    if not e_modelo_de_dialogo(eleven.modelo):
+        return http(eleven.modelo)
+    return VozElevenLabsDialogo(
         config.chave_elevenlabs,
-        voz.elevenlabs.voz_id,
-        voz.elevenlabs.modelo,
-        pronuncias,
+        eleven.voz_id,
+        eleven.modelo,
+        reserva=http(eleven.modelo_reserva),
+        pronuncias=pronuncias,
         intensidade=intensidade,
-        semente=voz.elevenlabs.semente,
-        continuidade=voz.elevenlabs.continuidade,
+        estabilidade=eleven.estabilidade,
+        continuidade=eleven.continuidade,
+        manter_conexao_s=eleven.manter_conexao_s,
     )
 
 

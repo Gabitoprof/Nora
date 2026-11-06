@@ -19,7 +19,7 @@ jobs:
           python-version: ${{ matrix.python }}
       # numpy e soundfile: os testes de áudio (laboratório de voz, conjunto de treino) rodam de
       # verdade; o resto do extra [voz] (microfone, onnxruntime) não é preciso nos testes.
-      - run: pip install -e ".[dev,memoria]" numpy soundfile
+      - run: pip install -e ".[dev,memoria]" numpy soundfile websockets
       - run: ruff format --check .
       - run: ruff check .
       - run: pytest

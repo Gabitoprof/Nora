@@ -76,7 +76,10 @@ class VozElevenLabs:
     voz_id: str
     modelo: str
     semente: int = -1  # mesma semente em todos os pedidos = tom mais constante; -1 = sorteia
-    continuidade: bool = True  # manda a frase anterior junto, para a entonação continuar
+    continuidade: bool = True  # HTTP: frase anterior junto; v4: a conexão fica aberta
+    modelo_reserva: str = "eleven_flash_v2_5"  # se o diálogo (v4) falhar, pelo HTTP
+    estabilidade: float = 0.5  # v4 (diálogo): o único ajuste de voz que vale
+    manter_conexao_s: int = 120  # v4: fecha a conexão depois de tanto tempo sem resposta
 
 
 @dataclass(frozen=True)
@@ -466,6 +469,13 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
             modelo=_campo(dados, "voz.elevenlabs", "modelo", str),
             semente=_semente(dados),
             continuidade=_campo(dados, "voz.elevenlabs", "continuidade", bool),
+            modelo_reserva=_campo(dados, "voz.elevenlabs", "modelo_reserva", str).strip(),
+            estabilidade=_entre_0_e_1(
+                "voz.elevenlabs",
+                "estabilidade",
+                _campo(dados, "voz.elevenlabs", "estabilidade", float),
+            ),
+            manter_conexao_s=_manter_conexao(dados),
         ),
         comfyui=VozComfyUI(
             url=_campo(dados, "voz.comfyui", "url", str),
@@ -475,6 +485,16 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
         ),
         juntar_curta=_juntar_curta(dados),
     )
+
+
+def _manter_conexao(dados: dict[str, Any]) -> int:
+    valor = _campo(dados, "voz.elevenlabs", "manter_conexao_s", int)
+    if not 0 <= valor <= 3600:
+        raise ConfigError(
+            f"[voz.elevenlabs] manter_conexao_s deve ficar entre 0 e 3600 (0 = fecha a cada "
+            f"resposta), veio {valor}."
+        )
+    return valor
 
 
 def _semente(dados: dict[str, Any]) -> int:

@@ -20,7 +20,7 @@ from nora import audio
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
 from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
-from nora.emocao import FiltroDeTela
+from nora.emocao import FiltroDeTela, emocoes_em
 from nora.frases import SeparadorDeFrases
 from nora.hud import emitir
 from nora.hud_audio import contexto_fala
@@ -35,6 +35,7 @@ from nora.voz import (
     VozElevenLabs,
     VozHTTP,
     VozTrocavel,
+    achar_dialogo,
     com_pronuncias_aprendidas,
     em_partes,
 )
@@ -90,6 +91,9 @@ class Locutor:
 
     def falar(self, frase: str) -> None:
         self._frases.put(frase)
+
+    def cancelar(self) -> None:
+        """Ctrl+C: o que já foi pedido termina de tocar (frase por frase não tem como cortar)."""
 
     def terminar(self) -> None:
         """Espera tudo o que foi pedido ser falado."""
@@ -160,6 +164,96 @@ class Locutor:
                 item = self._audios.get()
 
 
+class LocutorDialogo:
+    """ElevenLabs v4 (diálogo): uma conexão só; cada frase vai assim que o cérebro a termina e o
+    áudio toca conforme chega, numa reprodução contínua (sem um pedido nem um toque por frase).
+
+    Mesma interface do `Locutor`. Se o diálogo falhar antes de qualquer som, a resposta inteira
+    vai para a reserva (HTTP, frase por frase) e o motivo fica em `motivo_reserva`."""
+
+    def __init__(
+        self,
+        dialogo,
+        transformar: Callable[[str], str],
+        voz,
+        tocar: Callable[[bytes], None],
+        inicio: float,
+        abafar=nullcontext,
+        juntar: int = 0,
+    ) -> None:
+        self.dialogo, self.transformar, self.voz = dialogo, transformar, voz
+        self.tocar, self.inicio, self.abafar, self.juntar = tocar, inicio, abafar, juntar
+        self.tempos = Tempos()
+        self.frases: list[str] = []
+        self.reserva: Locutor | None = None
+        self.motivo_reserva = ""
+        self.emocao = ""
+        self.turno = None
+        self._toque: threading.Thread | None = None
+        try:
+            # Abre (ou reaproveita) a conexão já, enquanto o cérebro ainda pensa.
+            self.turno = dialogo.novo_turno()
+        except ServicoIndisponivel as erro:
+            self._para_reserva(erro)
+        else:
+            self._toque = threading.Thread(target=self._tocar, daemon=True, name="nora-v4-toque")
+            self._toque.start()
+
+    def falar(self, frase: str) -> None:
+        if self.reserva is None and self.turno.erro is not None and not self.turno.recebeu_audio:
+            self._para_reserva(self.turno.erro, repetir=True)
+        if self.reserva is not None:
+            self.reserva.falar(frase)
+            return
+        if not self.frases:
+            emocoes = emocoes_em(frase)
+            self.emocao = emocoes[0].nome if emocoes else ""
+        self.frases.append(frase)
+        self.turno.audio.texto = " ".join(self.frases)  # estimativa, se não vier alinhamento
+        self.turno.enviar(self.transformar(frase))
+
+    def cancelar(self) -> None:
+        """Barge-in: corta o áudio e fecha a conexão (a próxima resposta abre outra, limpa)."""
+        if self.turno is not None:
+            self.turno.cancelar()
+
+    def terminar(self) -> None:
+        if self.turno is not None and self.reserva is None:
+            self.turno.finalizar()
+            if self._toque is not None:
+                self._toque.join()
+            turno = self.turno
+            if turno.erro is not None and not turno.cancelado:
+                if not turno.recebeu_audio:
+                    self._para_reserva(turno.erro, repetir=True)
+                else:
+                    self.tempos.erros.append(f"A voz parou no meio da frase: {turno.erro}")
+        if self.reserva is not None:
+            self.reserva.terminar()
+
+    def _para_reserva(self, erro: Exception, repetir: bool = False) -> None:
+        self.motivo_reserva = str(erro)
+        self.dialogo.usar_reserva(erro)
+        self.reserva = Locutor(self.voz, self.tocar, self.inicio, self.abafar, juntar=self.juntar)
+        self.reserva.tempos = self.tempos
+        if repetir:
+            for frase in self.frases:
+                self.reserva.falar(frase)
+
+    def _tocar(self) -> None:
+        som = self.turno.audio
+        som.primeira.wait()
+        if not self.turno.recebeu_audio:
+            return  # falhou ou foi cancelado antes de qualquer som
+        if not self.tempos.comeco_da_voz:
+            self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
+        with self.abafar(), contexto_fala("", emocao=self.emocao, texto_depois=True):
+            try:
+                self.tocar(som)
+            except Exception as erro:  # um problema no alto-falante não derruba a conversa
+                self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
+
+
 def abafador(config: Config):
     """O que fazer com os outros programas enquanto a Nora fala, conforme [audio] prioridade."""
     if not config.audio.prioridade:
@@ -193,9 +287,16 @@ def _responder_falando(
     pedido = pedido_de_voz(texto)
     if pedido:
         return trocar_de_voz(conversa, voz, tocar, texto, pedido, escrever)
-    locutor = Locutor(
-        voz, tocar, inicio, abafador(conversa.config), juntar=conversa.config.voz.juntar_curta
-    )
+    dialogo, transformar = achar_dialogo(voz)
+    if dialogo is not None:  # ElevenLabs v4: diálogo em tempo real, uma conexão por conversa
+        locutor = LocutorDialogo(
+            dialogo, transformar, voz, tocar, inicio, abafador(conversa.config),
+            juntar=conversa.config.voz.juntar_curta,
+        )  # fmt: skip
+    else:
+        locutor = Locutor(
+            voz, tocar, inicio, abafador(conversa.config), juntar=conversa.config.voz.juntar_curta
+        )
     locutor.tempos.transcricao = transcricao
     separador = SeparadorDeFrases()
     escrever(f"{conversa.config.assistente.nome}: ", fim="")
@@ -217,11 +318,16 @@ def _responder_falando(
         escrever(f"\n[erro] {erro}")
     except KeyboardInterrupt:
         escrever("\n(interrompido)")
+        locutor.cancelar()
         audio.parar_audio()
     escrever()
     locutor.terminar()
 
     tempos = locutor.tempos
+    medida = _diagnosticar(conversa, voz, locutor, dialogo)
+    if dialogo is not None and dialogo.aviso:
+        escrever(f"[voz reserva] {dialogo.aviso}")
+        dialogo.aviso = ""
     _observar_voz(conversa, voz, tempos, bool(getattr(voz, "aviso", "")))
     for erro in dict.fromkeys(tempos.erros):
         escrever(f"[erro na voz] {erro}")
@@ -242,7 +348,60 @@ def _responder_falando(
             f"lembrou {len(conversa.lembrancas)} fatos, {len(conversa.trechos)} trechos "
             f"e {len(conversa.trechos_de_notas)} notas]"
         )
+        if medida is not None:
+            escrever(f"  [voz: {resumo_da_voz(medida)}]")
     return tempos
+
+
+def _nucleo(voz):
+    """O motor de voz de dentro das camadas (pronúncias, troca, reserva, realce)."""
+    for _ in range(10):
+        proxima = getattr(voz, "principal", None) or getattr(voz, "voz", None)
+        if proxima is None or isinstance(voz, VozElevenLabs):
+            return voz
+        voz = proxima
+    return voz
+
+
+def _diagnosticar(conversa: Conversa, voz, locutor, dialogo):
+    """Grava o diagnóstico da voz desta resposta (ElevenLabs): modelo efetivo, continuidade e
+    tempos. Sem texto da conversa. Devolve a medida (ou None, para as outras vozes)."""
+    from nora import diagnostico_voz as diag
+
+    config = conversa.config.voz.elevenlabs
+    try:
+        if dialogo is not None:
+            turno = getattr(locutor, "turno", None)
+            reserva = getattr(locutor, "reserva", None)
+            if reserva is not None or turno is None:
+                medida = diag.MedidaDaVoz(
+                    modelo=dialogo.reserva.modelo,
+                    via="http (reserva)",
+                    continuidade=diag.ERRO,
+                    erro=getattr(dialogo.sessao(), "ultimo_erro", "") or "diálogo indisponível",
+                )
+            else:
+                continuidade = diag.ATIVA if dialogo.continuidade else diag.DESATIVADA
+                medida = diag.medir_turno(turno, dialogo.modelo, continuidade)
+        else:
+            nucleo = _nucleo(voz)
+            if not isinstance(nucleo, VozElevenLabs):
+                return None
+            if not config.continuidade:
+                continuidade = diag.DESATIVADA
+            else:
+                continuidade = diag.ATIVA if nucleo.continuidade else diag.NAO_SUPORTADA
+            medida = diag.MedidaDaVoz(modelo=nucleo.modelo, via="http", continuidade=continuidade)
+        diag.registrar(conversa.config.pasta_dados, medida)
+        return medida
+    except Exception:
+        return None
+
+
+def resumo_da_voz(medida) -> str:
+    from nora.diagnostico_voz import resumo
+
+    return resumo(medida)
 
 
 def _observar_voz(conversa: Conversa, voz, tempos: Tempos, usou_reserva: bool) -> None:

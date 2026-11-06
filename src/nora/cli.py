@@ -168,6 +168,34 @@ def verificar(config: Config) -> list[str]:
         ]
         estado = "configurado" if not faltando else "falta " + " e ".join(faltando)
         linhas.append(f"  {'ElevenLabs':<24}{estado}")
+        linhas.extend(_diagnostico_elevenlabs(config))
+    return linhas
+
+
+def _diagnostico_elevenlabs(config: Config) -> list[str]:
+    """Modelo efetivo, continuidade e a última medida da voz (sem texto nem chave)."""
+    import importlib.util
+
+    from nora import diagnostico_voz as diag
+    from nora.elevenlabs_dialogo import e_modelo_de_dialogo
+
+    eleven = config.voz.elevenlabs
+    modelo, via = eleven.modelo, "http"
+    if e_modelo_de_dialogo(eleven.modelo):
+        if importlib.util.find_spec("websockets") is None:
+            modelo, via = eleven.modelo_reserva, "http (reserva: falta pip install websockets)"
+        else:
+            via = "diálogo em tempo real (WebSocket)"
+    continuidade = diag.ATIVA if eleven.continuidade else diag.DESATIVADA
+    ultima = diag.ler(config.pasta_dados)
+    if ultima is not None and ultima.continuidade in (diag.ERRO, diag.NAO_SUPORTADA):
+        continuidade = ultima.continuidade
+    linhas = [
+        f"  {'Modelo efetivo':<24}{modelo} ({via})",
+        f"  {'Continuidade ElevenLabs':<24}{continuidade}",
+    ]
+    if ultima is not None:
+        linhas.append(f"  {'Última fala':<24}{diag.resumo(ultima)} ({ultima.quando})")
     return linhas
 
 

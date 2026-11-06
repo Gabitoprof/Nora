@@ -192,7 +192,7 @@ def test_elevenlabs_monta_o_pedido_e_devolve_wav(criar_raiz, monkeypatch):
         config = config_com(
             criar_raiz,
             motor="elevenlabs",
-            extra='[voz.elevenlabs]\nvoz_id = "abc123"\n',
+            extra='[voz.elevenlabs]\nvoz_id = "abc123"\nmodelo = "eleven_flash_v2_5"\n',
             ambiente={"ELEVENLABS_API_KEY": "segredo"},
         )
         voz = criar_voz(config)
