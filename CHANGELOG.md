@@ -26,7 +26,7 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ### Adicionado (voz)
 
-- **ElevenLabs v4 como voz principal** (`modelo = "eleven_v4_turbo"`; `"eleven_v4"` opcional), pelo diálogo em tempo real (WebSocket do Text to Dialogue), porque o v4 não aceita o text-to-speech comum. Uma conexão por conversa, com `keep_alive`; o texto vai conforme o modelo escreve e o áudio toca conforme chega, sem um pedido por frase. Interromper fecha a conexão sem misturar áudio.
+- **ElevenLabs v4 como voz principal** (`modelo = "eleven_v4_turbo"`; `"eleven_v4"` opcional), pelo diálogo em tempo real (WebSocket do Text to Dialogue), porque o v4 não aceita o text-to-speech comum. Medido no Windows com o `eleven_v4_turbo`: primeiro áudio em ~1 s, sem silêncio entre trechos. Uma conexão por conversa, com `keep_alive`; o texto vai conforme o modelo escreve e o áudio toca conforme chega, sem um pedido por frase. Interromper fecha a conexão sem misturar áudio.
 - **Palavras alinhadas na HUD:** o tempo real de cada palavra vem do ElevenLabs (`precisao "alinhada"`); a estimativa fica só de reserva.
 - **Reserva no flash:** se o diálogo falhar, a resposta sai com o `eleven_flash_v2_5` pelo HTTP, com o motivo no aviso.
 - **Diagnóstico da voz** no `nora --verificar`, no `--medir` e no log: modelo efetivo, continuidade (ativa, desativada, não suportada, erro), tempo até o primeiro áudio e até tocar, e silêncio entre trechos. Sem texto da conversa nem chave.

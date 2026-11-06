@@ -85,7 +85,7 @@ Correções da revisão aplicadas e cobertas por testes automatizados (CI Window
 
 **Palavras em partículas.** Com o ElevenLabs v4 (padrão), o tempo de cada palavra vem do próprio ElevenLabs (`precisao "alinhada"`). Nas outras vozes, e se o alinhamento não vier, ele é estimado a partir do áudio que toca, e a HUD mostra "tempo estimado no áudio". O passo 7 do roteiro confere o v4 na sua conta.
 
-**ElevenLabs v4: testado sem rede, falta o real.** Os testes usam um servidor WebSocket falso (streaming numa conexão, alinhamento, `keep_alive`, barge-in, reserva no flash, diagnóstico). O formato das mensagens veio do SDK oficial, não de uma chamada real: o passo 7 confirma no seu PC.
+**ElevenLabs v4: aprovado no PC real.** Os testes automáticos usam um servidor WebSocket falso (streaming numa conexão, alinhamento, `keep_alive`, barge-in, reserva no flash, turno sem áudio, diagnóstico). No Windows, em 06/11/2026, o `eleven_v4_turbo` falou pelo diálogo em tempo real: primeiro áudio em 985 ms, tocando em 1555 ms, 0 ms de silêncio entre trechos, palavras alinhadas. Decisão do Gabriel: usar só o v4, sem comparar com outros modelos.
 
 ### 1. Automático (sem você): `scripts/homologacao_windows.ps1`
 
@@ -148,7 +148,7 @@ Antes: `git pull`, `.venv\Scripts\activate`, Ollama aberto, ElevenLabs como voz 
 | 4 | Fale por cima da Nora no meio da resposta | Ela para (barge-in) ou, se ainda não houver barge-in no seu modo, anote o que acontece | |
 | 5 | "Troque para a voz do Piper" e depois "volta pro ElevenLabs" | A confirmação aparece na HUD (texto e palavras) e a voz troca | |
 | 6 | "Modo jogo" → "sim, sair do modo jogo" | A HUD mostra o modo jogo; `ollama ps` sem o modelo carregado durante o jogo | |
-| 7 | ElevenLabs v4: com o mesmo roteiro, rode `nora falar --medir` com `modelo` = `eleven_v4_turbo`, depois `eleven_v4`, depois `eleven_flash_v2_5` | `nora --verificar` mostra o modelo efetivo e "Continuidade ElevenLabs: ativa". Anote de cada um: como soa, "primeiro áudio" e "tocando" do `[voz: ...]`, se as palavras da HUD acompanham a fala em português e os caracteres gastos no painel do ElevenLabs. Se aparecer `[voz reserva]`, anote o motivo | |
+| 7 | ElevenLabs v4: `nora --verificar` e uma resposta com `nora falar --medir` | "Modelo efetivo eleven_v4_turbo (diálogo...)", "Continuidade ElevenLabs ativa" e a linha `[voz: ...]` sem `[voz reserva]` | ✅ 06/11: 985 ms até o 1º áudio, 1555 ms tocando, 0 ms de silêncio, palavras alinhadas |
 | 8 | Diga um fato novo ("eu estudo com a Ana às quartas") e depois "mostre seu segundo cérebro" | A nota aparece no vault em até ~1 min, sem pausa na fala; o mapa abre | |
 | 9 | Durante tudo isso, com a HUD aberta | Alguma travada, eco ou pausa na fala? FPS (Edge/Chrome: F12 → Ctrl+Shift+P → "Show frame rate") | |
 

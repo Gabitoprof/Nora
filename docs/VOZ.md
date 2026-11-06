@@ -412,7 +412,7 @@ Precisa do pacote `websockets` (vem com `pip install -e ".[voz]"` e no `nora.exe
 
 Os números também vão para o log e para `data\diagnostico_voz.json`, sem o texto da conversa e sem a chave.
 
-**Comparar no seu PC.** Com o mesmo roteiro, troque o `modelo` entre `eleven_v4_turbo`, `eleven_v4` e `eleven_flash_v2_5` e anote: como soa, o "primeiro áudio" e o "tocando" do `--medir`, se as palavras da HUD acompanham a fala em português e quantos caracteres cada um gastou no painel do ElevenLabs.
+**Medido no PC do Gabriel (06/11/2026, `eleven_v4_turbo`):** primeiro áudio em 985 ms, tocando em 1555 ms, 0 ms de silêncio entre trechos e palavras alinhadas. A Nora usa só o v4; não há comparação planejada com outros modelos. O `eleven_flash_v2_5` fica apenas como reserva automática quando o diálogo falha.
 
 ## Ouvido entendendo errado
 
