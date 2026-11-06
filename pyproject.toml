@@ -7,7 +7,7 @@ name = "nora"
 dynamic = ["version"]
 description = "Assistente de IA pessoal por voz, em tempo real e local primeiro."
 readme = "README.md"
-license = "MIT"
+license = "LicenseRef-Proprietary"
 requires-python = ">=3.11"
 authors = [{ name = "Carlos Gabriel Moura Santiago" }]
 dependencies = []

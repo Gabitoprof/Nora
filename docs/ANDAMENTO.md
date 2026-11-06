@@ -4,7 +4,7 @@ Resumo do estado do projeto para uma revisão de código. Atualizado em 05/11/20
 
 ## O que é
 
-Assistente de voz pessoal em pt-BR, local primeiro, MIT. Python 3.11–3.13. Regras do projeto em `CLAUDE.md`; visão completa em `PROJETO_ASSISTENTE_IA.md`.
+Assistente de voz pessoal em pt-BR, local primeiro, todos os direitos reservados (até a v0.3.0, MIT). Python 3.11–3.13. Regras do projeto em `CLAUDE.md`; visão completa em `PROJETO_ASSISTENTE_IA.md`.
 
 ## Versões
 

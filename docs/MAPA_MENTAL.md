@@ -191,5 +191,5 @@ mindmap
     Uso 24h
       Só na v0.8.0
     Licença
-      MIT
+      Todos os direitos reservados
 ```

@@ -5,6 +5,10 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
+### Alterado
+
+- **Licença:** a partir de 06/11/2026, o código passa a ser de **todos os direitos reservados** (público só para consulta). As versões até a `v0.3.0` continuam em MIT.
+
 ### Adicionado (Second Brain, branch `feat/v0.3.1-second-brain`)
 
 - **Second Brain no Obsidian** (`[segundo_cerebro]`, desligado por padrão; guia em `docs/SEGUNDO_CEREBRO.md`):
