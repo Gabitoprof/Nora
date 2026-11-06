@@ -91,6 +91,23 @@ def test_na_conversa_por_voz_o_pedido_nao_vai_ao_cerebro(criar_raiz, monkeypatch
     assert "comando de voz" in conversa.historico.arquivo.read_text("utf-8")
 
 
+def test_confirmacao_da_troca_leva_o_texto_para_a_hud(criar_raiz, monkeypatch):
+    """Regressão: a confirmação ("agora falo com a voz do Piper") tocava sem contexto_fala, e a
+    HUD ficava sem o texto e sem as palavras nesse caminho. Tem que tocar dentro do contexto,
+    como o Locutor faz com as frases da resposta."""
+    from nora import hud_audio
+
+    voz, _ = trocavel(criar_raiz, monkeypatch)
+    conversa = nova_conversa(voz.config, cerebro=None, memoria=None)
+    textos = []
+    responder_falando(
+        conversa, voz, lambda wav: textos.append(getattr(hud_audio._contexto, "texto", "")),
+        "troque para a voz do piper", 0.0, 0.0, lambda *a, **k: None, False,
+    )  # fmt: skip
+    assert len(textos) == 1 and "agora falo com a voz do Piper" in textos[0]
+    assert getattr(hud_audio._contexto, "texto", "") == ""  # o contexto não vaza depois
+
+
 def test_no_modo_texto_avisa_que_nao_tem_voz(criar_raiz):
     config = carregar(criar_raiz(), ambiente={})
     respostas = iter(["troque para a voz do piper", "sair"])
