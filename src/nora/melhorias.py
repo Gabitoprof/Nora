@@ -457,14 +457,24 @@ class Melhorias:
             )
         return grupo, self.proposta(pid)
 
-    def decidir(self, proposta_id: int, acao: str, quem: str, motivo: str = "", dias: int = 7):
+    def decidir(
+        self,
+        proposta_id: int,
+        acao: str,
+        quem: str,
+        motivo: str = "",
+        dias: int = 7,
+        hoje: date | None = None,
+    ):
         """aprovar, recusar ou adiar. Aprovar gera a tarefa de desenvolvimento (um arquivo), mas
-        não muda o código. Devolve a proposta atualizada (ou None se não existe ou já foi)."""
+        não muda o código. "Adiar" conta `dias` a partir de `hoje` (padrão: o dia de hoje).
+        Devolve a proposta atualizada (ou None se não existe ou já foi)."""
         status = {"aprovar": "aprovada", "recusar": "recusada", "adiar": "adiada"}[acao]
         proposta = self.proposta(proposta_id)
         if proposta is None or proposta.status not in ABERTAS:
             return None
-        adiada_ate = (date.today() + timedelta(days=dias)).isoformat() if acao == "adiar" else ""
+        hoje = hoje or date.today()
+        adiada_ate = (hoje + timedelta(days=dias)).isoformat() if acao == "adiar" else ""
         with self._trava, self._db:
             self._db.execute(
                 "UPDATE propostas SET status = ?, atualizada = ?, contagem_na_decisao = ?, "

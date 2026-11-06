@@ -162,7 +162,8 @@ def test_decisoes_aprovar_recusar_adiar(criar_raiz):
     assert [a for _, a, _, _ in m.decisoes(aprovada.id)][0] == "aprovar"
 
     m.decidir(ids["timeout"], "recusar", "teste")
-    m.decidir(ids["resposta_vazia"], "adiar", "teste", dias=3)
+    # o adiamento conta do dia da decisão (no teste, o DIA simulado, não o relógio de verdade)
+    m.decidir(ids["resposta_vazia"], "adiar", "teste", dias=3, hoje=DIA.date())
     dia2 = DIA + timedelta(days=1)
     _eventos(m, "timeout", "Claude Sonnet 5.5", n=4, quando=dia2)  # pouca coisa nova
     _eventos(m, "resposta_vazia", "ChatGPT (gpt-5.5)", n=3, quando=dia2)
