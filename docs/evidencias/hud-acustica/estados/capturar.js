@@ -1,0 +1,28 @@
+const { chromium } = require('playwright');
+const { spawn } = require('child_process');
+const py = spawn('python3', [require('path').join(__dirname,'servidor_demo.py')], { cwd: __dirname });
+let buf = '', esperando = [];
+py.stdout.on('data', d => { buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { const l = buf.slice(0, i); buf = buf.slice(i + 1); linhas.push(l); esperando.splice(0).forEach(f => f(l)); } });
+py.stderr.on('data', d => process.stderr.write(d));
+const linhas = [];
+const proxima = (pref) => new Promise(r => { const ver = () => { const k = linhas.findIndex(l => l.startsWith(pref)); if (k >= 0) { r(linhas.splice(k, 1)[0]); } else esperando.push(ver); }; ver(); });
+const cmd = async c => { py.stdin.write(c + '\n'); await proxima('OK ' + c.split(' ')[0]); };
+(async () => {
+  const url = (await proxima('URL')).split(' ')[1];
+  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const p = await b.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
+  const erros = []; p.on('pageerror', e => erros.push(e.message)); p.on('console', m => { if (m.type() === 'error') erros.push(m.text()); });
+  await p.goto(url); await p.waitForTimeout(2500);
+  const T0=Date.now(); let tf=0; const painel = async () => ({t_fala_s: tf? +((Date.now()-tf)/1000).toFixed(2):null, ...await p.evaluate(() => ({ estado: document.getElementById('state')?.textContent, nivel: document.getElementById('level-label')?.textContent, palavra: document.getElementById('word-caption')?.textContent, modo: document.getElementById('render-mode')?.textContent }))});
+  const res = {};
+  await cmd('ociosa'); await p.waitForTimeout(1500); res.repouso = await painel(); await p.screenshot({ path: 'estado-repouso.jpg', type: 'jpeg', quality: 82 });
+  await cmd('ouvindo 0.012'); await p.waitForTimeout(1800); res.escuta_baixa = await painel(); await p.screenshot({ path: 'estado-escuta-fala-baixa.jpg', type: 'jpeg', quality: 82 });
+  await cmd('ouvindo 0.3'); await p.waitForTimeout(1500); res.escuta = await painel(); await p.screenshot({ path: 'estado-escuta.jpg', type: 'jpeg', quality: 82 });
+  await cmd('pensando'); await p.waitForTimeout(1200); res.processamento = await painel(); await p.screenshot({ path: 'estado-processamento.jpg', type: 'jpeg', quality: 82 });
+  await cmd('privacidade'); await p.waitForTimeout(400);
+  await cmd('falar'); tf=Date.now(); await p.waitForTimeout(1500); res.fala = await painel(); await p.screenshot({ path: 'estado-fala.jpg', type: 'jpeg', quality: 82 });
+  await p.waitForTimeout(Math.max(0, 3300-(Date.now()-tf))); res.fala_pausa = await painel(); await p.screenshot({ path: 'estado-fala-pausa.jpg', type: 'jpeg', quality: 82 });
+  await p.waitForTimeout(Math.max(0, 10000-(Date.now()-tf))); res.depois_da_fala = await painel();
+  console.log(JSON.stringify({ res, erros }, null, 1));
+  await b.close(); py.kill();
+})().catch(e => { console.error(e); py.kill(); process.exit(1); });

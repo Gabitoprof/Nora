@@ -207,7 +207,9 @@ descarte de dados atrasados e frequência de atualização limitada protegem o p
 voz; desconectar a HUD não deve interrompê-lo. Movimento reduzido, página oculta, modo
 jogo e qualidade Canvas continuam disponíveis.
 
-A paleta canônica mantém prata neutra, dourado para alegria/entusiasmo, rosa para carinho,
+O painel lateral "Sinal de áudio" mostra o mesmo sinal que move a onda central (a medida da fonte em uso: microfone enquanto escuta, voz enquanto fala), em escala de decibéis (−60 dBFS = 0%, 0 dBFS = 100%). Com sinal, nunca mostra "0%"; pensando ou em repouso, mostra "Em silêncio".
+
+A paleta fica num arquivo só, `hud/paleta.json`, lido pela HUD (`state.ts`) e pelo Python (`nora.paleta.cor("curiosa")`), para o Second Brain usar as mesmas cores sem copiá-las. A paleta canônica mantém prata neutra, dourado para alegria/entusiasmo, rosa para carinho,
 turquesa para calma, azul para seriedade, lavanda para tristeza e terracota para curiosidade.
 Os nomes de emoção são os do núcleo existente; não há outro classificador. As marcações
 amarela, roxa e rosa da referência não fazem parte da interface.

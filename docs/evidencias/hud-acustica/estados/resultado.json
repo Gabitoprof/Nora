@@ -1,0 +1,54 @@
+{
+ "res": {
+  "repouso": {
+   "t_fala_s": null,
+   "estado": "Em repouso",
+   "nivel": "Em silêncio",
+   "palavra": "",
+   "modo": ""
+  },
+  "escuta_baixa": {
+   "t_fala_s": null,
+   "estado": "Ouvindo você",
+   "nivel": "23%",
+   "palavra": "",
+   "modo": ""
+  },
+  "escuta": {
+   "t_fala_s": null,
+   "estado": "Ouvindo você",
+   "nivel": "57%",
+   "palavra": "",
+   "modo": ""
+  },
+  "processamento": {
+   "t_fala_s": null,
+   "estado": "Pensando",
+   "nivel": "Em silêncio",
+   "palavra": "",
+   "modo": ""
+  },
+  "fala": {
+   "t_fala_s": 1.5,
+   "estado": "Falando com você",
+   "nivel": "71%",
+   "palavra": "Daqui · tempo estimado no áudio",
+   "modo": ""
+  },
+  "fala_pausa": {
+   "t_fala_s": 6.8,
+   "estado": "Falando com você",
+   "nivel": "61%",
+   "palavra": "",
+   "modo": ""
+  },
+  "depois_da_fala": {
+   "t_fala_s": 14.98,
+   "estado": "Ouvindo você",
+   "nivel": "Em silêncio",
+   "palavra": "",
+   "modo": ""
+  }
+ },
+ "erros": []
+}

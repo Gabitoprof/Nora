@@ -9,6 +9,8 @@ Versão em desenvolvimento: `0.3.0.dev0`.
 
 ### Adicionado
 
+- HUD: o painel "Sinal de áudio" usa o mesmo sinal da onda central, em escala de decibéis. Antes mostrava "0%" com fala baixa (RMS 0,004) enquanto a onda já se mexia, e mantinha o último nível da escuta durante "Pensando". Com teste de regressão.
+- Paleta de emoções com uma fonte só (`hud/paleta.json`), lida também pelo Python (`nora.paleta`), para o Second Brain usar as mesmas cores.
 - HUD acústica em retomada: medidas derivadas do PCM, animações de ondas e partículas,
   palavras somente com temporização válida e integração com reprodução em streaming.
   Implementação validada por regressões e checklist em `docs/HOMOLOGACAO.md`.
