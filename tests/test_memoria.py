@@ -684,3 +684,20 @@ def test_ctrl_c_no_meio_vira_pendencia_na_hora(criar_raiz):
     assert m.contar_trocas() == 0 and not conversa.ocupada
     historico = conversa.historico.arquivo.read_text("utf-8")
     assert historico.count('"situacao": "cancelada"') == 1  # uma vez só, sem duplicar
+
+
+def test_busca_por_trecho_ignora_maiusculas_acentuadas_e_nao_usa_curingas(memoria):
+    """Issue #3: LIKE só ignora maiúsculas ASCII e trata _ e % como curingas."""
+    from datetime import date as Data
+
+    memoria.marcar(Data(2026, 11, 21), "prova de álgebra", False, "estudos")
+    memoria.marcar(Data(2026, 11, 22), "entregar prova 1", False, "estudos")
+    memoria.marcar(Data(2026, 11, 23), "meta de 50 por cento", False, "trabalho")
+    assert [e.texto for e in memoria.eventos_contendo("Álgebra")] == ["prova de álgebra"]
+    assert memoria.eventos_contendo("prova_1") == []  # "_" não é curinga
+    assert memoria.eventos_contendo("50%") == []  # "%" também não
+    memoria.lembrar("Ana estuda Álgebra Linear", area="estudos")
+    memoria.lembrar("Meta de 50% no trimestre", area="trabalho")
+    assert memoria.contar_contendo("álgebra") == 1
+    assert [f.texto for f in memoria.listar(contendo="50%")] == ["Meta de 50% no trimestre"]
+    assert memoria.contar_contendo("5_%") == 0

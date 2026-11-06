@@ -48,6 +48,7 @@ class Ouvido:
     motor: str
     url: str
     idioma: str
+    vocabulario: tuple[str, ...] = ()  # nomes e termos que o Whisper deve escrever certo
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,8 @@ class VozPiper:
 class VozElevenLabs:
     voz_id: str
     modelo: str
+    semente: int = -1  # mesma semente em todos os pedidos = tom mais constante; -1 = sorteia
+    continuidade: bool = True  # manda a frase anterior junto, para a entonação continuar
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,7 @@ class Voz:
     piper: VozPiper
     elevenlabs: VozElevenLabs
     comfyui: VozComfyUI
+    juntar_curta: int = 0  # pedido à voz com menos caracteres espera a próxima frase; 0 = não
 
 
 @dataclass(frozen=True)
@@ -418,6 +422,8 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
         elevenlabs=VozElevenLabs(
             voz_id=_campo(dados, "voz.elevenlabs", "voz_id", str).strip(),
             modelo=_campo(dados, "voz.elevenlabs", "modelo", str),
+            semente=_semente(dados),
+            continuidade=_campo(dados, "voz.elevenlabs", "continuidade", bool),
         ),
         comfyui=VozComfyUI(
             url=_campo(dados, "voz.comfyui", "url", str),
@@ -425,7 +431,34 @@ def _ler_voz(dados: dict[str, Any], raiz: Path) -> Voz:
             espera_s=_campo(dados, "voz.comfyui", "espera_s", float),
             campo=_campo(dados, "voz.comfyui", "campo", str).strip(),
         ),
+        juntar_curta=_juntar_curta(dados),
     )
+
+
+def _semente(dados: dict[str, Any]) -> int:
+    valor = _campo(dados, "voz.elevenlabs", "semente", int)
+    if not -1 <= valor <= 4_294_967_295:
+        raise ConfigError(
+            "[voz.elevenlabs] semente deve ficar entre 0 e 4294967295 (-1 = sorteia), "
+            f"veio {valor}."
+        )
+    return valor
+
+
+def _juntar_curta(dados: dict[str, Any]) -> int:
+    valor = _campo(dados, "voz", "juntar_curta", int)
+    if not 0 <= valor <= 300:
+        raise ConfigError(
+            f"[voz] juntar_curta deve ficar entre 0 e 300 (0 = não junta), veio {valor}."
+        )
+    return valor
+
+
+def _vocabulario(dados: dict[str, Any]) -> tuple[str, ...]:
+    valor = _campo(dados, "ouvido", "vocabulario", list)
+    if not all(isinstance(item, str) for item in valor):
+        raise ConfigError('[ouvido] vocabulario deve ser uma lista de textos, ex.: ["Obsidian"].')
+    return tuple(dict.fromkeys(item.strip() for item in valor if item.strip()))
 
 
 def _caminho(texto: str, raiz: Path) -> Path:
@@ -476,6 +509,7 @@ def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Confi
             motor=_campo(dados, "ouvido", "motor", str),
             url=_campo(dados, "ouvido", "url", str),
             idioma=_campo(dados, "ouvido", "idioma", str),
+            vocabulario=_vocabulario(dados),
         ),
         voz=_ler_voz(dados, raiz),
         escuta=Escuta(

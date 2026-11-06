@@ -3,6 +3,9 @@
 # Uso, na pasta do repositório:
 #   powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1
 # Depois, em outro terminal com o ambiente ativado: nora falar --medir
+# Ouvido mais preciso (baixe antes com instalar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0):
+#   powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0
+# -Feixe 5 testa 5 caminhos de transcrição em vez de 1 (busca em feixe): erra menos, demora mais.
 
 param(
     [string]$ModeloWhisper = "small",
@@ -10,7 +13,8 @@ param(
     [string]$Voz = "kokoro",
     [string]$VozPiper = "pt_BR-faber-medium",
     [int]$PortaWhisper = 8178,
-    [int]$PortaPiper = 5000
+    [int]$PortaPiper = 5000,
+    [int]$Feixe = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,9 +30,11 @@ if (-not (Test-Path $arquivoModelo)) { throw "Modelo $arquivoModelo não encontr
 
 $threads = [Math]::Max(1, [Environment]::ProcessorCount - 2)
 Write-Host "Iniciando o whisper-server na porta $PortaWhisper ($threads threads)..."
-Start-Process -FilePath $servidor.FullName -WorkingDirectory $servidor.DirectoryName -ArgumentList @(
+$argumentos = @(
     "-m", "`"$arquivoModelo`"", "-l", "pt", "-t", $threads, "--host", "127.0.0.1", "--port", $PortaWhisper
 )
+if ($Feixe -gt 1) { $argumentos += @("-bs", $Feixe) }
+Start-Process -FilePath $servidor.FullName -WorkingDirectory $servidor.DirectoryName -ArgumentList $argumentos
 
 # As vozes abrem numa janela do PowerShell que continua aberta se o servidor parar com erro,
 # para a mensagem ficar visível (antes a janela sumia junto com o erro).

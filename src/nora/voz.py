@@ -76,6 +76,12 @@ def em_partes(voz, texto: str) -> bytes | AudioEmPartes:
     return metodo(texto) if metodo is not None else voz.sintetizar(texto)
 
 
+# Até quantos segundos depois do último pedido a frase anterior ainda conta como contexto.
+CONTEXTO_VALE_S = 60.0
+# Quantos caracteres da frase anterior vão como contexto (o fim dela é o que importa).
+CONTEXTO_MAXIMO = 400
+
+
 @dataclass
 class VozHTTP:
     """Servidor local que recebe POST /synthesize com JSON e devolve WAV (Kokoro, Piper)."""
@@ -112,6 +118,19 @@ class VozElevenLabs:
     timeout: float = 60.0
     ultima_duracao: float = 0.0
     intensidade: float = 0.5  # da emoção ([emocao]); 0 = sem emoção
+    semente: int = -1  # -1 = não manda (a API sorteia)
+    continuidade: bool = True
+    relogio: object = field(default=time.monotonic, repr=False)
+    _anterior: str = field(default="", repr=False)
+    _quando: float = field(default=0.0, repr=False)
+
+    def _contexto(self) -> str:
+        """A frase anterior, se foi há pouco (mesma conversa): a voz continua a entonação."""
+        if not self.continuidade or not self._anterior:
+            return ""
+        if self.relogio() - self._quando > CONTEXTO_VALE_S:
+            return ""
+        return self._anterior[-CONTEXTO_MAXIMO:]
 
     def _preparar(self, texto: str) -> tuple[str, dict | None]:
         """O v3 entende audio tags; os outros modelos recebem a emoção como ajuste de voz."""
@@ -139,9 +158,19 @@ class VozElevenLabs:
             "model_id": self.modelo,
             "language_code": "pt",
             **({"voice_settings": ajustes} if ajustes else {}),
+            **({"seed": self.semente} if self.semente >= 0 else {}),
         }
+        anterior = self._contexto()
         inicio = time.perf_counter()
-        resposta = self._abrir(corpo)
+        try:
+            resposta = self._abrir({**corpo, "previous_text": anterior} if anterior else corpo)
+        except ServicoIndisponivel as erro:
+            # Se o modelo não aceitar a frase anterior, fala sem ela e não manda mais.
+            if not anterior or "previous_text" not in str(erro):
+                raise
+            self.continuidade = False
+            resposta = self._abrir(corpo)
+        self._anterior, self._quando = texto, self.relogio()
         return AudioEmPartes(self._ler(resposta, inicio), ELEVENLABS_TAXA)
 
     def _ler(self, resposta, inicio: float):
@@ -401,6 +430,8 @@ def _criar_motor_puro(config: Config, motor: str) -> VozHTTP | VozElevenLabs | V
         voz.elevenlabs.modelo,
         pronuncias,
         intensidade=intensidade,
+        semente=voz.elevenlabs.semente,
+        continuidade=voz.elevenlabs.continuidade,
     )
 
 

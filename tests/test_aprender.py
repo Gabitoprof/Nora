@@ -2,6 +2,7 @@
 
 import json
 
+import pytest
 from fake_servico import ServicoFalso
 from test_memoria import EmbeddingsFalsos, OllamaComMemoria
 
@@ -34,12 +35,34 @@ def test_curadoria_le_pronuncias_e_preferencias(criar_raiz):
 
     with ServicoFalso(ollama) as servidor:
         config = carregar(criar_raiz(), ambiente={"OLLAMA_HOST": servidor.url})
-        curadoria = curar(config, "você fala houje", "Desculpe!", "02/11/2026")
+        curadoria = curar(config, "você fala houje, e não repita", "Desculpe!", "02/11/2026")
     assert curadoria.pronuncias == [("hoje", "ôje")]
     assert curadoria.preferencias == ["Não repita a pergunta."]
     instrucao = json.loads(servidor.pedidos[0][2])["messages"][0]["content"]
     assert '"pronuncias"' in instrucao and '"preferencias"' in instrucao
     assert "segunda" in instrucao  # dia da semana de 02/11/2026
+
+
+@pytest.mark.parametrize(
+    ("fala", "fica"),
+    [
+        ("Aqui assim.", False),  # erro de transcrição: não vira preferência
+        ("seja mais direta", True),
+        ("kkkkkk", True),  # risada: reação ao tom
+        ("gostei muito do jeito que você respondeu agora", True),
+    ],
+)
+def test_preferencia_sem_base_na_fala_e_descartada(criar_raiz, fala, fica):
+    resposta = {"fatos": [], "pronuncias": [], "preferencias": ["Seja mais direta."]}
+
+    def ollama(*_):
+        conteudo = json.dumps(resposta)
+        return 200, "application/json", json.dumps({"message": {"content": conteudo}}).encode()
+
+    with ServicoFalso(ollama) as servidor:
+        config = carregar(criar_raiz(), ambiente={"OLLAMA_HOST": servidor.url})
+        curadoria = curar(config, fala, "Oi!", "05/11/2026")
+    assert curadoria.preferencias == (["Seja mais direta."] if fica else [])
 
 
 def test_memoria_guarda_pronuncias_e_preferencias(tmp_path):

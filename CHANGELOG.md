@@ -5,61 +5,78 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
-Versão em desenvolvimento: `0.3.0.dev0`.
-
-### Adicionado
+### Corrigido
 
 - HUD: o painel "Sinal de áudio" usa o mesmo sinal da onda central, em escala de decibéis. Antes mostrava "0%" com fala baixa (RMS 0,004) enquanto a onda já se mexia, e mantinha o último nível da escuta durante "Pensando". Com teste de regressão.
-- Paleta de emoções com uma fonte só (`hud/paleta.json`), lida também pelo Python (`nora.paleta`), para o Second Brain usar as mesmas cores.
-- HUD acústica em retomada: medidas derivadas do PCM, animações de ondas e partículas,
-  palavras somente com temporização válida e integração com reprodução em streaming.
-  Implementação validada por regressões e checklist em `docs/HOMOLOGACAO.md`.
+- HUD: navegação inicial por link externo/same-site deixa de retornar HTTP 403; APIs,
+  iframe, Host/Origin e confirmação por token permanecem protegidos, com regressões HTTP/browser.
+- Ferramentas da HUD: dependências de teste/lint atualizadas para corrigir alertas de auditoria,
+  com override limitado às versões vulneráveis de minimatch e testes de compatibilidade.
+- **Voz que mudava de tom e pausava depois de uma primeira frase curta** (ex.: "Hahaha, esse atchim!" no ElevenLabs v3):
+  - um pedido à voz com menos de `[voz] juntar_curta` caracteres (padrão 60) espera até 1,5 s pela próxima frase e vai junto com ela. Perguntas não esperam, e o fim da resposta libera na hora;
+  - o ElevenLabs recebe uma semente fixa (`[voz.elevenlabs] semente`, padrão 42) e a frase anterior (`previous_text`, `continuidade = true`), para a entonação continuar. Se o modelo recusar o campo, ela segue sem ele.
+- **Datas erradas em "daqui a N dias":** o modelo local errava o dia e o dia da semana. Agora as contas ("daqui a 23 dias", "e daqui a 24?", que usa a unidade da última pergunta que tinha uma, "há 2 semanas", "3 meses atrás", o dia da semana de "25/12") são feitas pelo código e vão prontas para o modelo.
+- **Preferências inventadas a partir de erro de transcrição:** uma fala curta e sem sentido ("Aqui assim.") virava preferência copiada dos exemplos da instrução ("Seja mais direta."). Agora a preferência só vale se a fala tiver relação com ela, for uma risada ou tiver 6 palavras ou mais, e a curadoria é avisada de que fala sem sentido é erro de transcrição.
+- **Ouvido errando nomes no `nora falar`:** a dica com o nome da assistente, que só ia no `nora ouvir`, agora vai também no `nora falar`.
+
+### Adicionado
 
 - **HUD v0.4.0 em desenvolvimento:** cliente web TypeScript com ondas e partículas conforme
   referência visual aprovada e ponte local opcional de eventos do núcleo. Não cria outro
   microfone ou TTS; conteúdo privado oculto por padrão. Guia: `docs/HUD.md`.
   Homologação integrada Windows/AMD pendente; sem lançamento v0.4.0.
+- HUD acústica em retomada: medidas derivadas do PCM, animações de ondas e partículas,
+  palavras somente com temporização válida e integração com reprodução em streaming.
+  Implementação validada por regressões e checklist em `docs/HOMOLOGACAO.md`.
+- Paleta de emoções com uma fonte só (`hud/paleta.json`), lida também pelo Python (`nora.paleta`), para o Second Brain usar as mesmas cores.
+- **Voz do ElevenLabs em streaming:** a fala começa a tocar com a primeira parte do áudio, sem esperar a frase inteira chegar. As vozes locais não mudam.
+- `[ouvido] vocabulario`: nomes e termos que o Whisper deve escrever certo, mandados como dica nos dois modos.
+- Os scripts de voz aceitam o modelo `large-v3-turbo-q5_0` (mais preciso em fala pouco clara) e `-Feixe N` (busca em feixe no `whisper-server`). Guia em `docs/VOZ.md`, "Ouvido entendendo errado".
 
+## [0.3.0] - 2026-11-05
+
+**Roteador de modelos.** A conversa do dia a dia continua no PC, e as perguntas difíceis vão para a nuvem e voltam com a mesma voz, a mesma persona e a mesma memória. Critério da etapa atingido nos testes automatizados: a pergunta difícil sobe para a API (ChatGPT, com o Claude de reserva) e a resposta volta falada pela voz da Nora. Junto vieram a emoção na voz, a troca de cérebro e de voz por comando, as notas do Obsidian, o esquecer e apagar de vez, as respostas pela metade recuperáveis e uma auto-melhoria supervisionada. Homologação no Windows com GPU AMD registrada em `docs/RELEASE_v0.3.0.md`.
+
+### Adicionado
+
+- **Roteador de modelos** (`[roteador]`, guia em `docs/CEREBRO.md`):
+  - o cérebro local (Ollama) conversa; as perguntas difíceis vão para a nuvem, na ordem **ChatGPT → Claude → local** (`[roteador] complexas`), com uma frase de espera na mesma voz;
+  - a nuvem é acionada pela triagem (código, contas, análises, planos, textos, perguntas longas), pelo `{pensar}` do modelo local e pela segunda chance quando você reclama;
+  - pedido direto: "pensa com calma", "pergunta pro ChatGPT ...", "use o Claude para ...". O pedido é respondido por quem foi chamado e o modo não muda;
+  - comandos falados: "use o cérebro local", "use o ChatGPT", "use o Claude", "modo automático", "modo jogo" (libera a placa de vídeo e responde pela nuvem) e "sair do modo jogo" (pede confirmação);
+  - reservas nos dois sentidos, com avisos `[cérebro]`. Uma resposta que caiu no meio não é emendada com a de outro cérebro;
+  - `--medir` e o histórico mostram quem respondeu;
+  - config `[modelos.openai]`, `[modelos.nuvem]` e `[roteador]`; extra `.[nuvem]` (SDKs `openai` e `anthropic`); o `--verificar` confere chaves, pacotes e conexão.
+- **Emoção na voz** (`[emocao]`): a Nora escolhe o tom de cada frase pelo contexto. No ElevenLabs v3 vira audio tag (ela ri, suspira, sussurra); no Flash, ajuste de tom; nas vozes locais, a marca é tirada. A curadoria aprende com as suas reações.
+- **Trocar a voz falando:** "troque para a voz do Piper", "volta pro ElevenLabs", "qual voz você está usando?". Perguntas e comparações sobre vozes não trocam nada.
+- **Notas do Obsidian** (`[notas] pasta`, guia em `docs/OBSIDIAN.md`): leitura incremental do vault, só leitura, com os trechos parecidos usados na resposta e citados pelo nome da nota. Comandos `nora notas ler | buscar | status`.
+- **Esquecer e apagar de vez** (guia em `docs/MEMORIA.md`):
+  - "esquece que eu disse X" deixa de usar o assunto, inclusive os trechos de conversas antigas e o `importar`;
+  - "apaga de vez X" (pela conversa, com "sim") ou `nora memoria apagar "X" --confirmar` tira da memória e do histórico, mostrando antes o que vai sair.
+- **Respostas pela metade viram pendências:** resposta que caiu, ficou sem resposta, foi cancelada (Ctrl+C) ou foi cortada pelo programa fechar fica guardada, nunca como fato. "Termina a resposta que ficou pela metade" responde de novo, inteira e identificada; `nora pendencias` lista e cancela.
 - **Auto-melhoria supervisionada** (`[auto_melhoria]`, guia em `docs/AUTO_MELHORIA.md`):
-  - um observador anota, sem o texto das conversas, as tentativas de cada cérebro, as falhas por categoria, os tempos de ouvido, cérebro e voz, as reclamações e os comandos;
-  - uma vez por dia (`hora_relatorio`, padrão 20:00), as regras agrupam o que se repetiu em propostas com evidência, causa provável, solução, impacto, risco e testes, num relatório em `data/auto_melhoria/relatorios`;
-  - o relatório aparece na próxima conversa e numa notificação do Windows que abre o arquivo;
-  - você aprova, recusa ou adia por número (`nora melhorias`, ou pela voz com confirmação). Aprovar gera a especificação para desenvolver; nada muda no código nem é publicado sem você.
-  - Sem internet e sem modelo nesta versão; com o PC desligado na hora, o relatório sai na próxima vez.
-- **Respostas pela metade viram pendências:** resposta que caiu, ficou sem resposta, foi cancelada (Ctrl+C) ou foi cortada pelo programa fechar fica guardada (nunca como fato). "Termina a resposta que ficou pela metade" responde de novo, inteira e identificada; `nora pendencias` lista e cancela.
-- **Sair do modo jogo pede confirmação** ("sim"); perguntar "como sair do modo jogo?" não muda nada.
-- O roteador anota cada tentativa (cérebro, resultado e tempo) e as falhas por categoria (`erro_provedor`, `timeout`, `resposta_vazia`, `stream_interrompido`).
-- **Roteador de modelos** (v0.3.0): o cérebro local (Ollama) conversa e, quando acha a pergunta difícil demais, passa para o **Claude** (API da Anthropic), com uma frase de espera na mesma voz; "pensa com calma" ou "usa o Claude" na pergunta vão direto. Comandos falados: "use o cérebro local", "use o Claude", "modo automático", "modo jogo" (libera a placa de vídeo e responde pela nuvem), "sair do modo jogo". Reserva nos dois sentidos (sem Ollama responde o Claude; sem Claude, o local), com aviso `[cérebro]`. O Claude recebe a mesma persona, memória, agenda, preferências e emoção. Config `[modelos.nuvem]` (modelos e esforço) e `[roteador]`; extra `.[nuvem]` (SDK `anthropic`); `--medir` e o histórico mostram quem respondeu. Guia em `docs/CEREBRO.md`.
-- **Apagar e corrigir pela conversa:** "apaga isso", "esquece que eu disse X" ou "não é X, é Y" agora tiram o fato errado da memória e da agenda (`[memória] esqueci: ...`) e, numa correção, guardam o certo; antes, a Nora dizia que tinha apagado, mas a memória regravava o fato e até anotava o pedido de apagar.
-- **Notas do Obsidian:** com `[notas] pasta` apontando para o seu vault, a Nora lê as notas (só leitura), divide em trechos por título e parágrafo e, antes de responder, usa os trechos parecidos com a pergunta, dizendo de qual nota veio. `nora notas ler | buscar | status`; ao abrir a conversa, lê em segundo plano só as notas novas ou alteradas e esquece as apagadas. Pastas ocultas (`.obsidian`, `.trash`) e as de `ignorar` ficam de fora. Índice em `data/notas.db` (sqlite-vec quando instalado). Guia em `docs/OBSIDIAN.md`.
-- **Trocar a voz falando:** "troque para a voz do Piper", "volta pro ElevenLabs", "usa o Kokoro", "volta para a voz normal" e "qual voz você está usando?" nos modos com voz. A confirmação já sai com a voz nova; se ela não responder, a Nora diz o motivo e continua com a de antes. Vale até fechar a Nora; no modo só texto, ela avisa que não tem voz em vez de fingir que trocou. Guia em `docs/VOZ.md`.
-- `.env.example` conferido por teste: toda variável lida pelo código precisa estar nele, sem chave preenchida.
-- **ChatGPT (API da OpenAI) como padrão das perguntas complexas:** as difíceis vão primeiro para o ChatGPT; se ele falhar, recusar ou não responder, a mesma pergunta vai para o Claude, e se os dois falharem, para o local (aviso `[cérebro] ... Pedi ao Claude.`). Uma resposta que caiu no meio não é repetida em outro cérebro. "pergunta pro ChatGPT" ou "usa o Claude" na pergunta escolhem quem responde; "use o ChatGPT" e "use o Claude" mandam a conversa toda. Sem a `OPENAI_API_KEY`, o Claude responde calado. Config `[modelos.openai]` e `[roteador] complexas` ("openai" ou "anthropic"); o extra `.[nuvem]` traz o SDK `openai`; `--verificar` confere a chave, o pacote e a conexão com o ChatGPT.
-- O pedido direto ao Claude também entende "utilize", "chama" e "consulta" ("utilize o Claude e me dê um plano").
-- **Triagem e segunda chance** (`[roteador] triagem`): perguntas com cara de pesadas (código, contas, análises, planos, textos para escrever, perguntas longas) vão direto para o Claude, sem depender do modelo local se julgar capaz; se o local respondeu e você reclamar ("tá errado", "explica melhor"), a pergunta vai para o Claude. Quando o Claude não está configurado, a Nora avisa uma vez o que falta, em vez de responder pelo local calada.
-
-- **Emoção na voz** (`[emocao]`): a Nora escolhe sozinha a emoção de cada frase (alegre, empolgada, carinhosa, calma, séria, triste, curiosa, sussurro, risada, suspiro) pelo contexto: o que você disse, o que ela lembra, a agenda e a hora. No ElevenLabs v3 vira audio tag (ela ri, suspira, sussurra); no Flash, ajuste de tom por frase (estabilidade, estilo, velocidade); nas vozes locais e na reserva, a marca só é tirada. A tela, o histórico e a memória nunca mostram as marcas. `intensidade` (0 a 1) e `reacoes_por_resposta` controlam o exagero.
-- **Aprende com as suas reações:** a curadoria vê o tom da resposta anterior e, quando você reage ("kkkk", "calma, menos", se abre depois de um tom carinhoso), guarda como preferência de tom, sem você precisar pedir.
+  - um observador anota, sem o texto das conversas, tentativas, falhas por categoria, tempos e reclamações;
+  - uma vez por dia, regras locais (sem internet e sem modelo) agrupam o que se repetiu em propostas com evidência, causa, solução, impacto, risco e testes;
+  - o relatório aparece sozinho, sem interromper uma resposta nem o modo jogo;
+  - você aprova, recusa ou adia (`nora melhorias`, ou pela voz com "sim"). Aprovar só gera a especificação; nada muda no código nem é publicado sem você.
+- Testes que mantêm o `.env.example` e o `docs/LICENCAS.md` em dia.
 
 ### Corrigido
 
-- HUD: navegação inicial por link externo/same-site deixa de retornar HTTP 403; APIs,
-  iframe, Host/Origin e confirmação por token permanecem protegidos, com regressões HTTP/browser.
-- Ferramentas da HUD: dependências de teste/lint atualizadas para corrigir alertas de auditoria,
-  com override limitado às versões vulneráveis de minimatch e testes de compatibilidade.
-
-- **Ctrl+C no meio de uma resposta** guarda a pendência na hora; antes, se a Nora estava esperando o cérebro, ela só aparecia na sessão seguinte.
-- **Retomar uma resposta** também conta como "ocupada": o relatório diário não fecha no meio da retomada.
-- **Privacidade do relatório diário:** ele não traz mais o texto das perguntas pendentes (só número, motivo e data); relatórios antigos são limpos ao abrir a Nora.
-- **Relatório diário aparece inteiro, sozinho:** abre o `.md` (ou mostra o texto na conversa, `[auto_melhoria] apresentar`), sem interromper uma resposta nem o modo jogo; só conta como mostrado depois de aparecer, e falhas da notificação ou da abertura ficam registradas para tentar de novo.
-- A proposta para "pedidos sem resposta" não sugere mais usar o cérebro local no modo jogo; ao sair do modo jogo, a Nora oferece retomar o que ficou sem resposta.
-- **Modo jogo:** se nenhuma nuvem responder, a Nora não volta a usar o cérebro local (que ocuparia a placa de vídeo liberada); ela avisa e sugere "sair do modo jogo".
-- **Comando com pedido:** "use o Claude para explicar fotossíntese" agora responde a pergunta pelo Claude, sem só trocar o modo; "use o cérebro local para ..." responde aquela pergunta no PC. Comandos sozinhos continuam trocando o modo.
-- **Resposta que cai no meio:** se o cérebro local parar depois de começar a falar, a Nora não emenda outra resposta da nuvem; avisa que ficou pela metade. Respostas interrompidas ficam marcadas no histórico (`"situacao"`) e não vão para a memória.
-- **Esquecer:** "esquece isso" também tira das buscas os trechos de conversas antigas sobre o assunto e impede o `importar` de trazê-lo de volta; o aviso diz que o registro da conversa continua no histórico. Novo `nora memoria apagar "assunto"` (com `--confirmar`) apaga de vez da memória e do histórico, falando antes o que vai sair.
-- **Apagar de vez pela conversa:** "apaga de vez a prova de cálculo" mostra o que sairia (fatos e trechos de conversa) e só apaga depois de "sim, pode apagar"; "não" cancela e mudar de assunto expira o pedido. O próprio pedido também sai do histórico.
-- **Troca de voz:** perguntas e comparações sobre vozes ("o Piper é melhor que o Kokoro?") não trocam mais a voz.
-- No `nora ouvir`, o texto digitado só era lido depois que o microfone detectava alguém falando (com o microfone captando sem parar, o laço nunca olhava o teclado). Agora é lido em até ~0,3 s.
+- **Enter no `nora falar` com a auto-melhoria ligada:**
+  - um erro ao apresentar o relatório podia deixar para trás a thread que lê o teclado, e ela engolia o Enter seguinte (o de parar de gravar);
+  - o modo `abrir` podia tirar o foco do terminal (o editor do `.md` ficava com o teclado no Windows; no Linux, o `xdg-open` herdava o terminal).
+  
+  Agora o relatório abre minimizado e sem foco, nem o programa aberto nem a notificação usam o teclado da sessão, e o prompt reaparece depois de um relatório.
+- **Áudio que não carrega:** quando o pacote de áudio está instalado mas não carrega (o caso comum é o `.venv` recriado com outra versão do Python), a Nora mostra a causa real, em vez de "Falta a parte de áudio".
+- **Busca por trecho na agenda e no `listar --contendo`** ([#3](https://github.com/Gabitoprof/Nora/issues/3)): "Álgebra" agora acha "álgebra", e `_` e `%` não funcionam mais como curingas.
+- **Modo jogo:** se nenhuma nuvem responder, a Nora não volta a usar o cérebro local (que ocuparia a placa de vídeo); a pergunta vira pendência e, ao sair do modo jogo, ela oferece retomar.
+- **Comando com pedido:** "use o Claude para explicar fotossíntese" responde a pergunta, em vez de só trocar o modo; "como sair do modo jogo?" é respondida, não executada.
+- **Resposta que cai no meio:** nada de duas respostas emendadas. A resposta fica marcada no histórico (`"situacao"`) e não vai para a memória.
+- **Ctrl+C** no meio de uma resposta guarda a pendência na hora; **retomar** uma resposta conta como "ocupada" para o relatório diário.
+- **Relatório diário:** não traz o texto das perguntas (relatórios antigos são limpos); só conta como mostrado depois de aparecer; arquivo ausente ou ilegível continua pendente e não derruba a conversa.
+- **Apagar pela conversa:** a memória não regrava mais o fato apagado nem anota o próprio pedido de apagar.
+- No `nora ouvir`, o texto digitado é lido mesmo com o microfone captando sem parar.
 
 ## [0.2.0] - 2026-11-02
 

@@ -10,8 +10,8 @@ Construir um **assistente de IA pessoal que conversa por voz em tempo real**, co
 ## O que ele precisa ser
 
 1. **Uma conversa natural, não um comando de voz.** Eu falo o nome dele, faço uma pergunta e ouço a resposta em menos de 2 segundos (a meta final é menos de 1 s). Posso interromper enquanto ele fala.
-2. **Local primeiro.** A conversa do dia a dia roda no meu PC, sem depender de internet nem pagar por uso. Só as tarefas pesadas vão para modelos externos (como o Claude), e a resposta volta com a mesma voz e personalidade.
-3. **Com memória que evolui.** Tudo o que conversamos fica guardado num banco local. Ele aprende meus fatos e preferências e reaproveita boas respostas. Com o tempo, depende menos da nuvem.
+2. **Local primeiro.** A conversa do dia a dia roda no meu PC, sem depender de internet nem pagar por uso. Só as tarefas pesadas vão para modelos externos (como o ChatGPT e o Claude), e a resposta volta com a mesma voz e personalidade.
+3. **Com memória que evolui.** Tudo o que conversamos fica guardado num banco local. Ele aprende meus fatos e preferências, esquece o que eu pedir e reaproveita boas respostas. Com o tempo, depende menos da nuvem, e propõe melhorias para si mesmo, que só entram com a minha aprovação.
 4. **Com iniciativa.** Ele não só responde: fala primeiro quando faz sentido, como num briefing da manhã, num lembrete ou quando percebe que cheguei.
 5. **Capaz de agir.** Por ferramentas no padrão MCP, ele controla o PC, consulta agenda e clima e, no futuro, a casa. Cada nova habilidade entra como um plugin, sem refazer o núcleo.
 6. **Com presença visual.** Uma interface em tela cheia, com um orbe que reage à voz e cartões com o conteúdo da conversa.

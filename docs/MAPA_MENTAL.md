@@ -45,11 +45,18 @@ mindmap
         Ollama
         Qwen 3.5 9B
         keep_alive libera VRAM
+      Roteador
+        Triagem e segunda chance
+        Pensar do local
+        Comandos de voz
       API
-        Claude e outros
+        ChatGPT primeiro
+        Claude de reserva
         Frase de espera
       Modo jogo
         Conversa vai para a API
+        Sair só com confirmação
+        Nunca volta ao local sozinho
     Memória
       SQLite e sqlite-vec
       Histórico bruto
@@ -58,8 +65,18 @@ mindmap
         Áreas por assunto
         Agenda de datas
         Aprende pronúncia e jeito de falar
+      Esquecer e apagar de vez
+      Respostas pela metade
+        Retomar depois
+      Notas do Obsidian
+        Índice só de leitura
       Conhecimento
       Futuro LoRA
+    Auto-melhoria
+      Observador sem texto
+      Relatório diário por regras
+      Aprovar recusar adiar
+      Pesquisa na web futura
     Extensões
       Padrão MCP
       Orquestrador persona
@@ -98,9 +115,7 @@ mindmap
         Reconhecimento facial local
         Privacidade
       Obsidian como segundo cérebro
-        Índice das notas
         Grafo no HUD
-      Trocar cérebro e voz por comando
       Palavras de partículas no HUD
       Criação de voz pelo ComfyUI
 ```
@@ -113,7 +128,7 @@ mindmap
 flowchart LR
   v00["v0.0.0 Fundação"]:::done --> v01["v0.1.0 Conversa por voz"]:::done
   v01 --> v02["v0.2.0 Memória"]:::done
-  v02 --> v03["v0.3.0 Roteador de modelos"]:::doing
+  v02 --> v03["v0.3.0 Roteador de modelos"]:::done
   v03 --> v04["v0.4.0 HUD"]:::doing
   v04 --> v05["v0.5.0 Ferramentas MCP"]:::pend
   v05 --> v06["v0.6.0 Rotinas e iniciativa"]:::pend
@@ -131,7 +146,7 @@ flowchart LR
 | v0.0.0 | Fundação | ✅ | Projeto roda o "hello world" e a config carrega |
 | v0.1.0 | Conversa por voz | ✅ | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
 | v0.2.0 | Memória | ✅ | Lembra de fatos entre sessões |
-| v0.3.0 | Roteador de modelos | 🔄 | Pergunta difícil vai para a API e volta com a mesma voz |
+| v0.3.0 | Roteador de modelos | ✅ | Pergunta difícil vai para a API e volta com a mesma voz |
 | v0.4.0 | HUD | 🔄 | Interface reage à voz em tempo real |
 | v0.5.0 | Ferramentas MCP | ⬜ | Executa ações por voz |
 | v0.6.0 | Rotinas e iniciativa | ⬜ | IA fala primeiro no horário e por presença |
@@ -148,10 +163,10 @@ flowchart LR
   mic(["Microfone"]) --> ww["Wake word"] --> vad["VAD"] --> stt["STT whisper.cpp"]
   stt --> orq{"Orquestrador"}
   orq -->|conversa| local["LLM local Ollama"]
-  orq -->|pesado| api["API Claude"]
+  orq -->|pesado| api["API ChatGPT, Claude de reserva"]
   orq -->|ação| mcp["Ferramentas MCP"]
   mem[("Memória SQLite")] <--> orq
-  local --> tts["TTS Piper"]
+  local --> tts["TTS ElevenLabs, Kokoro, Piper"]
   api --> tts
   mcp --> orq
   tts --> spk(["Alto-falante"])

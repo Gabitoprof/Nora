@@ -120,9 +120,25 @@ _DICA = (
 def _sounddevice():
     try:
         import sounddevice
+    except ModuleNotFoundError as erro:
+        if erro.name == "sounddevice":
+            raise RuntimeError(
+                'Falta a parte de áudio. Instale com: pip install -e ".[voz]"'
+            ) from erro
+        raise RuntimeError(_audio_nao_carregou(erro)) from erro
     except (ImportError, OSError) as erro:
-        raise RuntimeError('Falta a parte de áudio. Instale com: pip install -e ".[voz]"') from erro
+        raise RuntimeError(_audio_nao_carregou(erro)) from erro
     return sounddevice
+
+
+def _audio_nao_carregou(erro: BaseException) -> str:
+    """O pacote está lá, mas não carrega: mostra a causa real. O caso comum é o .venv recriado
+    com outra versão do Python, com os pacotes compilados para a versão antiga."""
+    return (
+        f"A parte de áudio está instalada, mas não carregou: {erro}. "
+        "Se o .venv foi recriado com outra versão do Python, reinstale nele: "
+        'python -m pip install --force-reinstall -e ".[voz]"'
+    )
 
 
 _PREFERENCIA_DE_API = ("Windows WASAPI", "Windows DirectSound", "Windows WDM-KS", "MME")

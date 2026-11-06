@@ -1,6 +1,6 @@
 # Andamento da Nora (para revisão)
 
-Resumo do estado do projeto para uma revisão de código. Atualizado em 04/11/2026 (depois da revisão consolidada P1/P2 e da auditoria), branch `Pull_code`.
+Resumo do estado do projeto para uma revisão de código. Atualizado em 05/11/2026 (preparação do release `v0.3.0`), branch `Pull_code`.
 
 ## O que é
 
@@ -9,7 +9,8 @@ Assistente de voz pessoal em pt-BR, local primeiro, MIT. Python 3.11–3.13. Reg
 ## Versões
 
 - `v0.2.0` lançada (tag): conversa por voz e memória.
-- `v0.3.0` em desenvolvimento (`0.3.0.dev0`): roteador de modelos. Itens planejados e correções da revisão (A1 a A6) no código e testados; falta a validação no PC real, a revisão completa da documentação e a tag.
+- `v0.3.0` lançada (05/11/2026): roteador de modelos. Release, qualidade e homologação em [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md).
+- Em andamento: `v0.3.1` (voz sem troca de tom entre frases e ouvido mais preciso; implementado no `Pull_code`, falta homologar no Windows). Depois: `v0.4.0` (HUD, no branch `feat/v0.4.0-hud`).
 
 ## Caminho de uma pergunta
 
@@ -86,7 +87,7 @@ Os cinco pontos foram conferidos no código e reproduzidos por teste antes da co
   - [ ] Ctrl+C enquanto ela ainda está pensando (antes de falar) → `nora pendencias` já mostra a pergunta, na mesma hora.
   - [ ] Modo jogo sem internet → uma pergunta → "sai do modo jogo" → "sim" → aparece a oferta de retomar.
   - [ ] Conferir com o bge-m3 real os limites `TROCA_ESQUECIDA` e os de latência em `[auto_melhoria]`.
-- Depois da validação: revisão completa da documentação (`CLAUDE.md`), versão `0.3.0` em `src/nora/__init__.py` e tag `v0.3.0`.
+- Feito em 05/11/2026: auditoria final, regressão do Enter no `nora falar` corrigida, issue #3 corrigida, documentação revisada e versão `0.3.0`. A lista atualizada de testes manuais, os riscos e os passos de homologação estão em [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md); merge, tag e release esperam a autorização do mantenedor.
 - Próximo (proposta, ainda não decidida): classificador com confiança no roteador, primeiro com bge-m3 e exemplos por rota; testar o `Mapika/decider-2b` (Apache-2.0, GGUF) como alternativa.
 - Roadmap: v0.4.0 HUD, v0.5.0 ferramentas MCP (com permissões), v0.6.0 rotinas, v0.7.0 agentes, v0.8.0 modo distribuído.
 

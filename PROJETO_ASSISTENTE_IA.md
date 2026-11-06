@@ -120,7 +120,7 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
 | **v0.0.0** | Fundação | ✅ | Repositório, licença, README, estrutura, `.gitignore`, `.env.example`, config de **nome, persona, voz e modelos** | Projeto roda o "hello world" e a config carrega |
 | **v0.1.0** | Conversa por voz | ✅ | Ativação pelo nome (transcrição), Silero VAD, whisper.cpp, Ollama (Qwen 3.5 9B), vozes Kokoro, Piper e ElevenLabs com reserva, mãos livres | Falar o nome, perguntar e ouvir a resposta em < 2 s |
 | **v0.2.0** | Memória | ✅ | SQLite + sqlite-vec: fatos por áreas, memória total (todas as trocas), agenda de datas, aprender pronúncia e jeito de falar; voz própria (dataset, verificador, treino do Piper) | Lembra de fatos entre sessões |
-| **v0.3.0** | Roteador de modelos | 🔄 | Escalonamento para Claude e outros, frase de espera, modo jogo, fallback, troca de cérebro e de voz por comando, índice das notas do Obsidian, **emoção na voz** (já entregue) | Pergunta difícil vai para a API e volta com a mesma voz |
+| **v0.3.0** | Roteador de modelos | ✅ | Roteador local → ChatGPT → Claude (triagem, `{pensar}`, segunda chance), frase de espera, modo jogo (com confirmação para sair), reservas sem emendar respostas, troca de cérebro e de voz por comando, índice das notas do Obsidian, emoção na voz, esquecer e apagar de vez, respostas pela metade recuperáveis, auto-melhoria supervisionada (relatório diário por regras, decisões pela pessoa) | Pergunta difícil vai para a API e volta com a mesma voz |
 | **v0.4.0** | HUD | 🔄 | Ondas e partículas reativas, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
 | **v0.5.0** | Ferramentas MCP | ⬜ | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
 | **v0.6.0** | Rotinas e iniciativa | ⬜ | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
@@ -186,14 +186,14 @@ Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
 ### 8.2 Obsidian como segundo cérebro
 *Origem: [Referência 01](docs/referencias/video-01-assistente-local.md).*
 
-- O assistente lê o **vault do Obsidian** (notas `.md`) como base de conhecimento, indexada no SQLite + sqlite-vec. Encaixe: **Etapa 3** (índice; saiu da Etapa 2 para ela não ficar grande demais).
+- ✅ **Feito na v0.3.0:** o assistente lê o **vault do Obsidian** (notas `.md`) como base de conhecimento, indexada no SQLite + sqlite-vec (`nora notas`).
 - O HUD desenha o **grafo das notas** e destaca as que foram usadas na resposta. Encaixe: **Etapa 4**.
-- Só pastas liberadas no config são lidas. Notas pessoais continuam fora do GitHub.
+- Pastas podem ser deixadas de fora no config (`[notas] ignorar`). Notas pessoais continuam fora do GitHub.
 
 ### 8.3 Troca de cérebro e de voz por comando
 *Origem: [Referência 01](docs/referencias/video-01-assistente-local.md).*
 
-- "Use o cérebro local", "troque para o Gemma", "mude sua voz para…": força o roteador para um modelo ou uma voz específica. Encaixe: **Etapa 3**.
+- ✅ **Feito na v0.3.0:** "use o cérebro local", "use o ChatGPT", "use o Claude", "troque para a voz do Piper". Escolher um modelo local específico pelo nome ("troque para o Gemma") ainda não existe.
 - O HUD mostra sempre o **modelo e a voz ativos** e a **origem** de cada resposta (qual ferramenta ou nota foi usada).
 
 ### 8.4 Palavras de partículas no HUD

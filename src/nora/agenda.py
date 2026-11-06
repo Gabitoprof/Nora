@@ -218,3 +218,94 @@ def ler_data(texto: str, hoje: date) -> date | None:
         pass
     achadas = datas_no_texto(texto, hoje)
     return achadas[0][0] if achadas else None
+
+
+# --- contas de data ---------------------------------------------------------------------------
+# O modelo recebe a data de hoje, mas erra a conta ("daqui a 23 dias" virava o dia e a semana
+# errados). Aqui a conta é feita pelo código e vai pronta para ele só falar.
+
+_NUMEROS = {
+    "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro": 4, "cinco": 5, "seis": 6,
+    "sete": 7, "oito": 8, "nove": 9, "dez": 10, "onze": 11, "doze": 12, "treze": 13,
+    "catorze": 14, "quatorze": 14, "quinze": 15, "dezesseis": 16, "dezessete": 17,
+    "dezoito": 18, "dezenove": 19, "vinte": 20, "trinta": 30, "quarenta": 40,
+    "cinquenta": 50, "sessenta": 60, "setenta": 70, "oitenta": 80, "noventa": 90, "cem": 100,
+    "cento": 100, "duzentos": 200, "trezentos": 300, "quatrocentos": 400, "quinhentos": 500,
+}  # fmt: skip
+_PALAVRA_NUMERO = "|".join(sorted(_NUMEROS, key=len, reverse=True))
+_NUMERO = rf"\d{{1,4}}|(?:{_PALAVRA_NUMERO})(?: e (?:{_PALAVRA_NUMERO}))*"
+_UNIDADE = r"dias?|semanas?|mes|meses|anos?"
+_FUTURO = re.compile(rf"\b(?:daqui a|daqui|dentro de|em)\s+({_NUMERO})\s+({_UNIDADE})\b")
+# "E daqui a 24?" logo depois de "daqui a 23 dias": a unidade vem da pergunta anterior.
+_SEM_UNIDADE = re.compile(rf"\b(?:daqui a|daqui|dentro de)\s+({_NUMERO})\s*(?:[?.!]|$)")
+_PASSADO = re.compile(
+    rf"\b(?:ha|faz)\s+({_NUMERO})\s+({_UNIDADE})\b|\b({_NUMERO})\s+({_UNIDADE})\s+atras\b"
+)
+
+
+def _numero(texto: str) -> int | None:
+    if texto.isdigit():
+        return int(texto)
+    partes = [_NUMEROS.get(parte) for parte in texto.split(" e ")]
+    return sum(partes) if partes and None not in partes else None
+
+
+def _somar(hoje: date, quantidade: int, unidade: str) -> date | None:
+    """`hoje` mais `quantidade` (negativa = para trás) dias, semanas, meses ou anos. Mês e ano
+    caem no último dia do mês quando o dia não existe (31/01 + 1 mês = 28 ou 29/02)."""
+    try:
+        if unidade.startswith("dia"):
+            return hoje + timedelta(days=quantidade)
+        if unidade.startswith("semana"):
+            return hoje + timedelta(weeks=quantidade)
+        meses = quantidade * (12 if unidade.startswith("ano") else 1)
+        indice = hoje.year * 12 + hoje.month - 1 + meses
+        ano, mes = divmod(indice, 12)
+        primeiro = date(ano, mes + 1, 1)
+        return primeiro.replace(day=min(hoje.day, _fim_do_mes(primeiro).day))
+    except (OverflowError, ValueError):
+        return None
+
+
+def _dia_por_extenso(data: date) -> str:
+    semana = NOMES_DOS_DIAS[data.weekday()]
+    semana += "" if data.weekday() >= 5 else "-feira"
+    return f"{semana}, {data.day} de {NOMES_DOS_MESES[data.month - 1]} de {data.year}"
+
+
+def _unidade(unidade: str) -> str:
+    return unidade.replace("mes", "mês") if unidade == "mes" else unidade
+
+
+def contas_de_data(texto: str, hoje: date, anterior: str | list[str] = "") -> list[str]:
+    """As contas de data que a pergunta pede, já feitas: "daqui a 24 dias", "há 2 semanas",
+    "3 meses atrás" e o dia da semana das datas citadas ("25/12", "29 de novembro"). Com
+    `anterior` (as perguntas de antes, da mais antiga para a mais nova), "e daqui a 24?" usa a
+    unidade da última que tinha uma ("daqui a 23 dias" → "e daqui a 24?" → "daqui a 50")."""
+    limpo = _texto(texto)
+    pedidos = [(achado.group(1), achado.group(2)) for achado in _FUTURO.finditer(limpo)]
+    if not pedidos:
+        anteriores = [anterior] if isinstance(anterior, str) else anterior
+        antes = next(
+            (a for a in map(_FUTURO.search, map(_texto, reversed(anteriores[-5:]))) if a), None
+        )
+        if antes:
+            unidade = antes.group(2)
+            pedidos = [(achado.group(1), unidade) for achado in _SEM_UNIDADE.finditer(limpo)]
+    linhas: list[str] = []
+    for numero, unidade in pedidos:
+        quantidade = _numero(numero)
+        data = _somar(hoje, quantidade, unidade) if quantidade else None
+        if data:
+            linhas.append(f"- daqui a {numero} {_unidade(unidade)}: {_dia_por_extenso(data)}")
+    for achado in _PASSADO.finditer(limpo):
+        numero, unidade = (
+            (achado.group(1), achado.group(2)) if achado.group(1) else achado.group(3, 4)
+        )
+        quantidade = _numero(numero)
+        data = _somar(hoje, -quantidade, unidade) if quantidade else None
+        if data:
+            linhas.append(f"- {numero} {_unidade(unidade)} atrás: {_dia_por_extenso(data)}")
+    for data, _ in datas_no_texto(texto, hoje):
+        linhas.append(f"- {data:%d/%m/%Y} cai num(a) {_dia_por_extenso(data)}")
+    return list(dict.fromkeys(linhas))
