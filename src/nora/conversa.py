@@ -15,7 +15,7 @@ from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
 from nora.confirmacao import confirmacao
 from nora.curadoria import curar
-from nora.emocao import FiltroDeTela, sem_emocoes
+from nora.emocao import FiltroDeTela, sem_emocoes, tom_predominante
 from nora.historico import Historico, apagar_do_historico
 from nora.melhorias import Melhorias, abrir_melhorias, ler_entrada
 from nora.melhorias import iniciar as iniciar_melhorias
@@ -160,6 +160,8 @@ class Conversa:
         self.observador = observador
         self.melhorias = melhorias
         self.ocupada = False  # respondendo agora: a auto-melhoria espera
+        self.falando = False  # a voz ainda está tocando a resposta: o Second Brain espera
+        self.segundo_cerebro = None  # o sincronizador das notas, se ligado ([segundo_cerebro])
         self._melhoria_pendente: tuple[str, int] | None = None  # (ação, nº) esperando o "sim"
         self.ultima_interacao = ""  # para a voz anotar os tempos dela na mesma interação
         self._anterior: tuple[str, str] = ("", "")  # (interação, quem respondeu), p/ reclamações
@@ -319,8 +321,9 @@ class Conversa:
             ]
         return [{"role": "system", "content": "\n".join(partes)}]
 
-    def _memorizar(self, pergunta: str, resposta: str, anterior: str = "") -> None:
-        """Guarda a troca inteira e anota os fatos novos (em segundo plano)."""
+    def _memorizar(self, pergunta: str, resposta: str, anterior: str = "", tom: str = "") -> None:
+        """Guarda a troca inteira e anota os fatos novos (em segundo plano). Ao terminar, avisa
+        o Second Brain (sem esperar): as notas do Obsidian são escritas depois, por ele."""
         try:
             agora = datetime.now()
             self.memoria.guardar_troca(
@@ -351,7 +354,7 @@ class Conversa:
                 )
             for fato in curadoria.fatos:
                 fato_id, novo = self.memoria.lembrar(
-                    fato.texto, origem=self.historico.sessao, area=fato.area
+                    fato.texto, origem=self.historico.sessao, area=fato.area, emocao=tom
                 )
                 area = self.memoria.normalizar_area(fato.area)
                 if fato.data:
@@ -361,6 +364,14 @@ class Conversa:
                 self._avisar(f"{'anotei' if novo else 'atualizei'}{onde}: {fato.texto}{na_agenda}")
         except Exception as erro:
             self._avisar(f"Não consegui atualizar a memória ({erro}).")
+        finally:
+            self.avisar_segundo_cerebro()
+
+    def avisar_segundo_cerebro(self) -> None:
+        """A memória mudou: o Second Brain sincroniza quando a Nora estiver livre. Só levanta um
+        sinal; nunca escreve notas nem espera nada aqui."""
+        if self.segundo_cerebro is not None:
+            self.segundo_cerebro.avisar()
 
     def atualizar_notas(self) -> None:
         try:
@@ -394,6 +405,9 @@ class Conversa:
         """Espera a memória terminar de anotar a conversa; devolve os avisos que sobraram."""
         if any(linha.is_alive() for linha in self._curadorias):
             self.esperar_memoria()
+        if self.segundo_cerebro is not None:  # última sincronização, já fora da conversa
+            self.segundo_cerebro.encerrar()
+            self.segundo_cerebro = None
         return self.avisos_pendentes()
 
     def esperar_memoria(self, timeout: float = 120.0) -> None:
@@ -458,6 +472,7 @@ class Conversa:
         # o próprio pedido também cita o assunto: sai do histórico junto
         apagar_do_historico(self.config.pasta_dados, feito.textos | falas_do_pedido)
         quanto = _contagem(len(feito.fatos), len(feito.trocas)) or "o que restava"
+        self.avisar_segundo_cerebro()  # a nota sai do vault na próxima rodada
         return self._responder_comando(texto, f"Pronto, apaguei de vez {quanto}.")
 
     def perguntar(self, texto: str):
@@ -513,6 +528,10 @@ class Conversa:
         if comando is not None:
             yield comando
             return
+        comando = self._mapa_pela_conversa(texto)
+        if comando is not None:
+            yield comando
+            return
         self.ocupada = True  # respondendo ou retomando: a auto-melhoria espera
         try:
             if pede_retomada(texto):
@@ -521,6 +540,31 @@ class Conversa:
                 yield from self._responder(texto)
         finally:
             self.ocupada = False
+
+    def _mapa_pela_conversa(self, texto: str) -> str | None:
+        """ "Mostre seu segundo cérebro", "abra o mapa da memória": abre o mapa já pronto (não
+        recalcula nada) no navegador. A resposta, ou None se a fala não é esse pedido."""
+        if not pede_o_mapa(texto):
+            return None
+        from nora.melhorias import abrir_arquivo
+        from nora.segundo_cerebro import caminho_do_mapa
+
+        if not self.config.segundo_cerebro.ativo:
+            resposta = (
+                "O segundo cérebro está desligado. Para ligar, ponha ativo = true em "
+                "[segundo_cerebro] no config/local.toml (veja docs/SEGUNDO_CEREBRO.md)."
+            )
+        elif not caminho_do_mapa(self.config).exists():
+            self.avisar_segundo_cerebro()
+            resposta = (
+                "O mapa ainda não ficou pronto: eu monto quando estiver livre. "
+                "Pede de novo daqui a pouco."
+            )
+        elif abrir_arquivo(caminho_do_mapa(self.config), na_frente=True):
+            resposta = "Abrindo o mapa da minha memória."
+        else:
+            resposta = f"Não consegui abrir o mapa. Ele está em {caminho_do_mapa(self.config)}."
+        return self._responder_comando(texto, resposta)
 
     def _melhorias_pela_conversa(self, texto: str) -> str | None:
         """ "Quais melhorias você sugeriu?" e "aprova/recusa/adia a melhoria 3" (com "sim")."""
@@ -759,10 +803,26 @@ class Conversa:
                 self._avisar(f"Não consegui atualizar as respostas pendentes ({erro}).")
         if self.memoria is not None and resposta and situacao == "completa":
             linha = threading.Thread(
-                target=self._memorizar, args=(texto, resposta, anterior), daemon=True
+                target=self._memorizar,
+                args=(texto, resposta, anterior, tom_predominante(crua)),
+                daemon=True,
             )
             linha.start()
             self._curadorias.append(linha)
+
+
+_PEDE_MAPA = re.compile(
+    r"\b(mostr\w*|abr[ea]\w*|abrir|visualiz\w*|ver|veja|exib\w*)\b.{0,30}"
+    r"\b(segundo cerebro|second brain|mapa da (sua )?memoria|suas conexoes|"
+    r"sua rede neural|rede neural da memoria)\b"
+)
+
+
+def pede_o_mapa(texto: str) -> bool:
+    """Se a fala pede para ver o Second Brain (e não pergunta o que ele é)."""
+    sem_acento = unicodedata.normalize("NFKD", texto.lower())
+    limpo = " ".join("".join(c for c in sem_acento if not unicodedata.combining(c)).split())
+    return bool(_PEDE_MAPA.search(limpo))
 
 
 def nova_conversa(
@@ -806,6 +866,10 @@ def nova_conversa(
     from nora.hud import anexar
 
     anexar(conversa)
+    if config.segundo_cerebro.ativo:
+        from nora.segundo_cerebro import iniciar as iniciar_segundo_cerebro
+
+        iniciar_segundo_cerebro(conversa)
     return conversa
 
 

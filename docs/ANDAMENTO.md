@@ -10,7 +10,7 @@ Assistente de voz pessoal em pt-BR, local primeiro, MIT. Python 3.11–3.13. Reg
 
 - `v0.2.0` lançada (tag): conversa por voz e memória.
 - `v0.3.0` lançada (05/11/2026): roteador de modelos. Release, qualidade e homologação em [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md).
-- Em andamento: `v0.3.1` (voz sem troca de tom entre frases e ouvido mais preciso; implementado no `Pull_code`, falta homologar no Windows). Depois: `v0.4.0` (HUD, no branch `feat/v0.4.0-hud`).
+- Em andamento: `v0.3.1`. No `Pull_code`: voz sem troca de tom, streaming do ElevenLabs, ouvido com vocabulário, contas de data. No branch `feat/v0.3.1-second-brain` (sobre o `Pull_code`): o Second Brain no Obsidian e o mapa da memória ([`SEGUNDO_CEREBRO.md`](SEGUNDO_CEREBRO.md)). Falta homologar no Windows. Depois: `v0.4.0` (HUD, no branch `feat/v0.4.0-hud`, separado).
 
 ## Caminho de uma pergunta
 
@@ -20,7 +20,8 @@ Assistente de voz pessoal em pt-BR, local primeiro, MIT. Python 3.11–3.13. Reg
 4. **Executar:** local Ollama (`cerebro.py`); nuvem ChatGPT (`cerebro_openai.py`, API Responses) → Claude (`cerebro_nuvem.py`) → local. Sem trocar de cérebro se a resposta já começou a sair.
 5. **Falar:** marcas de emoção (`emocao.py`) → voz (`voz.py`: ElevenLabs, Kokoro, Piper, ComfyUI, com reserva). Troca de voz por comando em `troca_voz.py`.
 6. **Registrar:** histórico JSONL (`historico.py`) e curadoria em segundo plano (`curadoria.py`), que anota, corrige e esquece fatos. Respostas que não terminaram vão para `respostas_pendentes` (`memoria.py`).
-7. **Observar e propor:** `observador.py` anota métricas e categorias (sem texto); `melhorias.py` fecha o dia, gera propostas e o relatório e guarda as decisões.
+7. **Second Brain (v0.3.1, opcional):** `segundo_cerebro.py` leva a memória para notas do Obsidian numa linha própria, depois da resposta, e grava o grafo e o mapa (`mapa_memoria.py`). Contrato em `segundo_cerebro_contrato.json`.
+8. **Observar e propor:** `observador.py` anota métricas e categorias (sem texto); `melhorias.py` fecha o dia, gera propostas e o relatório e guarda as decisões.
 
 ## Feito na v0.3.0 (commits desde a v0.2.0)
 

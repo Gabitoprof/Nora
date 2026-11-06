@@ -772,12 +772,17 @@ def notificar(titulo: str, texto: str, caminho: Path) -> bool:
 SW_SHOWMINNOACTIVE = 7
 
 
-def abrir_arquivo(caminho: Path) -> bool:
+SW_SHOWNORMAL = 1
+
+
+def abrir_arquivo(caminho: Path, na_frente: bool = False) -> bool:
     """Abre o relatório no programa padrão sem roubar o teclado da sessão: no Windows, a janela
-    abre minimizada e sem foco; fora dele, o programa não herda o terminal (stdin) da Nora."""
+    abre minimizada e sem foco; fora dele, o programa não herda o terminal (stdin) da Nora.
+    `na_frente`: a pessoa pediu para ver (ex.: o mapa da memória), então a janela aparece."""
     try:
         if sys.platform == "win32":
-            os.startfile(caminho, "open", show_cmd=SW_SHOWMINNOACTIVE)  # noqa: S606
+            modo = SW_SHOWNORMAL if na_frente else SW_SHOWMINNOACTIVE
+            os.startfile(caminho, "open", show_cmd=modo)  # noqa: S606
         else:
             subprocess.Popen(
                 ["xdg-open", str(caminho)],

@@ -89,6 +89,8 @@ Já vem ligada. Ela anota sozinha o que vale lembrar e mostra `[memória] anotei
 
 Se uma resposta ficar pela metade, diga "termina a resposta que ficou pela metade". Tudo em [docs/MEMORIA.md](docs/MEMORIA.md). Para a Nora ler as suas notas do Obsidian: `[notas] pasta` no `config/local.toml` e `nora notas ler` (veja [docs/OBSIDIAN.md](docs/OBSIDIAN.md)).
 
+**Second Brain (v0.3.1, opcional):** com `[segundo_cerebro] ativo = true`, as memórias consolidadas viram notas ligadas no seu vault (`Nora Brain/`), e "Nora, mostre seu segundo cérebro" abre o mapa da memória. As notas são escritas depois da resposta: a fala não espera por isso. Guia em [docs/SEGUNDO_CEREBRO.md](docs/SEGUNDO_CEREBRO.md).
+
 ### 4. Nuvem (opcional)
 
 Com `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY` no `.env` e `pip install -e ".[nuvem]"`, as perguntas difíceis vão para o ChatGPT, com o Claude de reserva. Sem chave nenhuma, tudo fica no PC. Comandos e ajustes em [docs/CEREBRO.md](docs/CEREBRO.md).
@@ -153,6 +155,7 @@ Detalhes em [docs/AUTO_MELHORIA.md](docs/AUTO_MELHORIA.md).
 - [Treinar uma voz própria (Piper)](docs/TREINAR_VOZ.md)
 - [Teste de GPU](docs/TESTE_GPU.md)
 - [Obsidian: o projeto como vault e a Nora lendo as suas notas](docs/OBSIDIAN.md)
+- [Second Brain: as memórias da Nora no Obsidian e o mapa da memória](docs/SEGUNDO_CEREBRO.md)
 - [Licenças de terceiros](docs/LICENCAS.md)
 - [Histórico de versões](CHANGELOG.md)
 
