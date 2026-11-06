@@ -84,6 +84,8 @@ class DialogoFalso:
                     )
                 )
                 return
+            if self.modo in ("mudo", "calado"):
+                return
             texto = mensagem["inputs"][0]["text"]
             pcm = pcm_de(texto)
             corte = len(pcm) // self.pedacos // 2 * 2
@@ -99,7 +101,7 @@ class DialogoFalso:
                 ws.send(json.dumps(envio))
                 if self.atraso:
                     time.sleep(self.atraso)
-        elif mensagem.get("flush") and self.modo != "sem_fim":
+        elif mensagem.get("flush") and self.modo not in ("sem_fim", "calado"):
             ws.send(json.dumps({"is_final_audio_for_turn": True}))
 
 
@@ -397,6 +399,38 @@ def test_erro_do_dialogo_cai_no_flash_por_http_e_guarda_o_motivo(v4):
     assert {c["model_id"] for c in corpos} == {"eleven_flash_v2_5"}
     assert " ".join(c["text"] for c in corpos).split() == ["Oi.", "Tudo", "bem?"]
     assert tocados and not locutor.tempos.erros
+
+
+@pytest.mark.parametrize(
+    "modo,motivo",
+    [("mudo", "recebi: is_final_audio_for_turn"), ("calado", "recebi: nenhuma mensagem")],
+)
+def test_turno_sem_audio_e_falha_e_cai_no_flash(v4, modo, motivo):
+    pcm = b"\x01\x00" * 2205
+    with (
+        DialogoFalso(modo=modo) as servidor,
+        ServicoFalso(lambda *_: (200, "audio/pcm", pcm)) as nuvem,
+    ):
+        _, voz, dialogo, transformar = v4(servidor, http=nuvem)
+        dialogo.sessao().fim_do_turno_s = 0.5
+        tocados = []
+        locutor = falar(dialogo, transformar, voz, ["Oi."], tocados)
+    assert locutor.reserva is not None and motivo in locutor.motivo_reserva
+    assert "Oi." not in locutor.motivo_reserva  # o motivo não leva o texto
+    assert len(nuvem.pedidos) == 1 and tocados  # a resposta saiu pelo flash
+
+
+def test_sessao_reabre_depois_de_um_turno_que_falhou():
+    with DialogoFalso(modo="calado") as servidor:
+        sessao = SessaoDialogo(
+            CHAVE, "v", "eleven_v4_turbo", url=servidor.url, primeiro_audio_s=0.5
+        )
+        turno = sessao.novo_turno()
+        turno.enviar("Oi.")
+        assert turno.terminado.wait(3) and "em 0 s" not in str(turno.erro)
+        assert "não mandou áudio" in str(turno.erro)
+        sessao.novo_turno().cancelar()
+    assert len(servidor.conexoes) == 2
 
 
 def test_sem_conexao_cai_no_flash_desde_o_inicio(v4):

@@ -96,6 +96,7 @@ class Turno:
         self.terminado = threading.Event()
         self.recebido_ms = 0.0
         self.recebeu_alinhamento = False
+        self.recebidas: list[str] = []  # tipos de mensagem do servidor (diagnóstico, sem texto)
         self._caracteres: list[tuple[str, float, float]] = []
 
     @property
@@ -165,6 +166,17 @@ class Turno:
     def _concluir(self, erro: Exception | None = None) -> None:
         if self.terminado.is_set():
             return
+        if (
+            erro is None
+            and not self.cancelado
+            and self.pedido is not None
+            and not self.recebeu_audio
+        ):
+            # Texto enviado e nenhum áudio: é falha (cai na reserva), não uma resposta muda.
+            vistas = ", ".join(dict.fromkeys(self.recebidas)) or "nenhuma mensagem"
+            erro = ServicoIndisponivel(f"O ElevenLabs não mandou áudio (recebi: {vistas}).")
+            self.sessao.ultimo_erro = f"sem áudio (recebi: {vistas})"
+            log.warning("ElevenLabs v4: %s", self.sessao.ultimo_erro)
         if erro is not None and self.erro is None:
             self.erro = erro
         self.terminado.set()
@@ -185,12 +197,14 @@ class SessaoDialogo:
         ociosa_s: float = 120.0,
         fim_do_turno_s: float = 4.0,
         timeout: float = 10.0,
+        primeiro_audio_s: float = 10.0,
     ) -> None:
         self.chave, self.voz_id, self.modelo = chave, voz_id, modelo
         self.estabilidade = estabilidade
         self.url = url or URL
         self.manter_viva_s, self.ociosa_s = manter_viva_s, ociosa_s
         self.fim_do_turno_s, self.timeout = fim_do_turno_s, timeout
+        self.primeiro_audio_s = primeiro_audio_s
         self._trava = threading.RLock()
         self._ws = None
         self._turno: Turno | None = None
@@ -247,8 +261,11 @@ class SessaoDialogo:
         """Começa uma resposta. Abre a conexão se ainda não estiver aberta (dá para chamar antes
         do modelo começar a escrever: a conexão fica pronta enquanto ele pensa)."""
         with self._trava:
-            if self._turno is not None and not self._turno.terminado.is_set():
-                self._turno.cancelar()
+            anterior = self._turno
+            if anterior is not None and not anterior.terminado.is_set():
+                anterior.cancelar()
+            elif anterior is not None and anterior.erro is not None:
+                self._fechar_ws()  # a resposta anterior falhou: começa numa conexão limpa
             if self._ws is None:
                 self._abrir()
             self._turno = Turno(self)
@@ -311,6 +328,10 @@ class SessaoDialogo:
         except (TypeError, ValueError):
             return
         turno = self._turno
+        if turno is not None:
+            for tipo in mensagem if not mensagem.get("audio") else ["audio"]:
+                if tipo not in turno.recebidas and len(turno.recebidas) < 10:
+                    turno.recebidas.append(str(tipo)[:40])
         if mensagem.get("error") or ("message" in mensagem and "code" in mensagem):
             # Erro do ElevenLabs: guarda só o identificador e o código (sem texto da conversa).
             self.ultimo_erro = f"{mensagem.get('error', 'erro')} ({mensagem.get('code', '?')})"
@@ -339,6 +360,19 @@ class SessaoDialogo:
                 return False
             turno = self._turno
             ativo = turno is not None and not turno.terminado.is_set()
+            if (
+                ativo
+                and turno.pedido is not None
+                and not turno.recebeu_audio
+                and time.perf_counter() - turno.pedido > self.primeiro_audio_s
+            ):
+                turno._concluir(
+                    ServicoIndisponivel(
+                        f"O ElevenLabs não mandou áudio em {self.primeiro_audio_s:g} s."
+                    )
+                )
+                self.ultimo_erro = "sem áudio (tempo esgotado)"
+                ativo = False
             if ativo and turno.finalizado_em is not None:
                 ultimo = max(turno.finalizado_em, turno.ultimo_audio)
                 if agora - ultimo > self.fim_do_turno_s:
