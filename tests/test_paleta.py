@@ -43,3 +43,24 @@ def test_paleta_fica_no_pacote_e_nao_tem_copia():
     copias = [p for p in raiz.glob("hud/**/paleta*.json") if "node_modules" not in p.parts]
     assert copias == []
     assert '"../../src/nora/paleta.json"' in (raiz / "hud/src/state.ts").read_text("utf-8")
+
+
+def test_aliases_revisados():
+    # Serenidade é calma; sussurro e suspiro são jeitos de falar, não tristeza: ficam na calma.
+    for nome in ("serenidade", "sussurro", "suspiro"):
+        assert grupo(nome) == "calma", nome
+    # Preocupação é um tom sério, não curiosidade.
+    for nome in ("preocupacao", "preocupação", "preocupada"):
+        assert grupo(nome) == "seriedade", nome
+    # Tabela aprovada: cada grupo com a sua cor principal.
+    cores = paleta()["cores"]
+    assert cores == {
+        "neutra": "#C9C9C9",  # prata
+        "alegria": "#F0C66A",  # dourado
+        "carinho": "#E3A4BD",  # rosa suave
+        "calma": "#66D4CB",  # turquesa
+        "seriedade": "#80A8F6",  # azul
+        "tristeza": "#AA9ACF",  # lavanda
+        "curiosidade": "#DF876A",  # terracota
+    }
+    assert grupo("triste") == "tristeza" and grupo("curiosa") == "curiosidade"

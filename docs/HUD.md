@@ -211,10 +211,19 @@ jogo e qualidade Canvas continuam disponíveis.
 
 O painel lateral "Sinal de áudio" mostra o mesmo sinal que move a onda central (a medida da fonte em uso: microfone enquanto escuta, voz enquanto fala), em escala de decibéis (−60 dBFS = 0%, 0 dBFS = 100%). Com sinal, nunca mostra "0%"; pensando ou em repouso, mostra "Em silêncio".
 
-A paleta fica num arquivo só, `src/nora/paleta.json` (dentro do pacote Python, vai junto na instalação), lido pela HUD (`state.ts`) e pelo Python (`nora.paleta.cor("curiosa")`), para o Second Brain usar as mesmas cores sem copiá-las. A paleta canônica mantém prata neutra, dourado para alegria/entusiasmo, rosa para carinho,
-turquesa para calma, azul para seriedade, lavanda para tristeza e terracota para curiosidade.
-Os nomes de emoção são os do núcleo existente; não há outro classificador. As marcações
-amarela, roxa e rosa da referência não fazem parte da interface.
+A paleta fica num arquivo só, `src/nora/paleta.json` (dentro do pacote Python, vai junto na instalação), lido pela HUD (`state.ts`) e pelo Python (`nora.paleta.cor("curiosa")`), para o Second Brain usar as mesmas cores sem copiá-las. A paleta segue a tabela aprovada:
+
+| Grupo | Cor | Nomes que caem nele |
+|---|---|---|
+| Neutra | prata `#C9C9C9` | neutra, neutro (e qualquer nome desconhecido) |
+| Alegria e entusiasmo | dourado `#F0C66A` | alegre, empolgada, risada, alegria, entusiasmo |
+| Carinho | rosa suave `#E3A4BD` | carinhosa, carinho, acolhimento |
+| Calma | turquesa `#66D4CB` | calma, serenidade, sussurro, suspiro |
+| Seriedade | azul `#80A8F6` | séria, seriedade, confiante, confiança, preocupada, preocupação |
+| Tristeza | lavanda `#AA9ACF` | triste, tristeza |
+| Curiosidade | terracota `#DF876A` | curiosa, curiosidade |
+
+Escolhas: **serenidade** é calma. **Sussurro** e **suspiro** são jeitos de falar, não emoções, e a HUD não recebe a emoção de fundo da frase; por isso ficam na calma, que combina com voz baixa, em vez da tristeza. **Preocupação** é um tom sério, então fica na seriedade, e não na curiosidade. Os nomes de emoção são os do núcleo existente; não há outro classificador. As marcações amarela, roxa e rosa da referência não fazem parte da interface.
 
 As evidências atuais, seus tipos de simulação e limitações estão em
 [QA acústica](evidencias/hud-acustica/README.md). Resultados históricos acima continuam

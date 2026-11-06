@@ -27,14 +27,14 @@
     "confiante": "seriedade",
     "tristeza": "tristeza",
     "triste": "tristeza",
-    "serenidade": "tristeza",
-    "sussurro": "tristeza",
-    "suspiro": "tristeza",
+    "serenidade": "calma",
+    "sussurro": "calma",
+    "suspiro": "calma",
     "curiosidade": "curiosidade",
     "curiosa": "curiosidade",
-    "preocupacao": "curiosidade",
-    "preocupação": "curiosidade",
-    "preocupada": "curiosidade"
+    "preocupacao": "seriedade",
+    "preocupação": "seriedade",
+    "preocupada": "seriedade"
   },
   "dinamica": {
     "neutra": 1,
