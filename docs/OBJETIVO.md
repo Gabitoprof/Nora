@@ -22,7 +22,7 @@ Construir um **assistente de IA pessoal que conversa por voz em tempo real**, co
 - **Por etapas**, cada uma entregando uma versão que funciona de verdade (v0.0.0 → v1.0.0).
 - **Documentado no repositório** e acompanhado no mapa mental, que é atualizado a cada etapa.
 - **Pensado para o meu hardware** (GPU AMD RX 9060 XT), mas com peças trocáveis (Vulkan, ROCm, CUDA e CPU) para rodar em outras máquinas.
-- **Open source:** no fim, qualquer pessoa pode instalar e criar o seu próprio assistente, com o nome e a voz que quiser.
+- **Para outras pessoas:** no fim, quem tiver a Nora pode criar o seu próprio assistente, com o nome e a voz que quiser. O código é de todos os direitos reservados (até a v0.3.0, MIT), pensando na comercialização.
 
 ## O que NÃO é o objetivo (por enquanto)
 

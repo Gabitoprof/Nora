@@ -102,12 +102,12 @@ mindmap
       Ryzen 7 9800X3D
       32 GB DDR5
       NVMe para modelos e banco
-    Open source
+    Licença e distribuição
       Dados fora do Git
       env.example
       Sem marca Marvel
       Nome configurável
-      MIT ou Apache-2.0
+      Todos os direitos reservados, até a v0.3.0 MIT
       Conferir licenças de modelos e vozes
     Banco de ideias
       Câmera

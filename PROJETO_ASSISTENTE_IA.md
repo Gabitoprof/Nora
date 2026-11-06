@@ -12,7 +12,7 @@ Criar uma **IA de conversação por voz em tempo real**, com **nome, voz e ident
 
 - **Foco:** a IA conversando em tempo real. Uma mesa touch com projetor **não é prioridade**.
 - **Desenvolvimento:** por etapas, cada uma gerando uma versão funcional.
-- **Objetivo futuro:** publicar como **open source no GitHub**.
+- **Distribuição:** repositório público só para consulta, com todos os direitos reservados (até a v0.3.0, MIT), pensando na comercialização. O que for aberto no futuro sai num repositório separado.
 
 ### O que gera a imersão
 - Voz natural e resposta rápida.
@@ -143,7 +143,7 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
 
 ---
 
-## 6. Diretrizes de open source
+## 6. Repositório público e licenças
 
 - **Nada pessoal no repositório:**
   - chaves de API só em `.env` (ignorado pelo Git), com um `.env.example` de modelo;
@@ -166,7 +166,7 @@ Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite 
 - **V.E.G.A.:** Vigilância, Execução e Gestão Autônoma.
 - **A.U.R.A.:** Assistente Universal de Rotina e Automação.
 
-> Ainda a decidir: o **nome do projeto open source** e o **nome do assistente pessoal** do Gabriel podem ser diferentes.
+> Ainda a decidir: o **nome do produto** e o **nome do assistente pessoal** do Gabriel podem ser diferentes.
 
 ---
 

@@ -25,7 +25,7 @@
 | pytest | MIT | `dev` | Testes |
 | ruff | MIT | `dev` | Formatação e lint |
 
-**Sobre o GPL do espeak-ng:** o Kokoro roda num processo separado (`nora servidor-kokoro`), e a Nora só fala com ele por HTTP. O código da Nora não importa nada GPL, por isso não fica sujeito à GPL. Quem redistribuir um pacote com o extra `kokoro` instalado precisa cumprir a GPL-3.0 dessa parte.
+**Sobre o GPL do espeak-ng:** o Kokoro (que usa o espeak-ng, GPL-3.0) roda num processo separado (`nora servidor-kokoro`) e é instalado à parte, pelo extra `kokoro`. Distribuir a Nora junto com ele exige cumprir a GPL-3.0.
 
 ## HUD web (`hud/package-lock.json`)
 
