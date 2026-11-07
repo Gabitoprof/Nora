@@ -45,9 +45,10 @@ let atual: Modelo = { ...inicial };
 let visivel = false;
 let ultimaProposta: { id: number; acao: string } | undefined;
 const palavras=new PalavrasParticulas(el<HTMLCanvasElement>("word-particles"),el("word-caption"));
+// Marca no alfabeto geométrico próprio (geometric-glyphs.ts), formada só por partículas.
 const marca = new CampoParticulasTexto(el<HTMLCanvasElement>("brand-particles"), {
-  largura: 960, altura: 180, maximo: 2200, tamanhoFonte: 132,
-  fonte: "'Arial', 'Segoe UI', sans-serif",
+  largura: 960, altura: 180, maximo: 1500, estilo: "geometrico", espessura: 0.12, brilho: 0.3,
+  escalaParticula: 1.7,
 });
 let nomeMarca = "";
 const movimentoReduzido=matchMedia("(prefers-reduced-motion: reduce)");

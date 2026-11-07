@@ -1,4 +1,5 @@
 import { aleatorio } from "./scene-math";
+import { desenharGeometrico, temGlifos } from "./geometric-glyphs";
 
 export type FaseParticulas = "poeira" | "formando" | "retendo" | "dispersando";
 /** Pool fixo: identidade, posição e velocidade sobrevivem às trocas de palavra. */
@@ -96,6 +97,14 @@ export interface OpcoesCampoTexto {
   maximo?: number;
   fonte?: string;
   tamanhoFonte?: number;
+  /** "geometrico": alfabeto próprio da Nora (marca); "fonte": a fonte do sistema. */
+  estilo?: "geometrico" | "fonte";
+  /** Grossura do traço do alfabeto geométrico, em frações da altura da letra. */
+  espessura?: number;
+  /** Halo suave em volta de cada partícula (brilho da poeira). */
+  brilho?: number;
+  /** Multiplica o tamanho das partículas (canvas que a tela reduz precisa de pontos maiores). */
+  escalaParticula?: number;
 }
 /** Canvas desenha os corpos da simulação; a máscara só define seus destinos. Sem RAF próprio. */
 export class CampoParticulasTexto {
@@ -105,6 +114,10 @@ export class CampoParticulasTexto {
   private fonte: string;
   private tamanhoFonte: number;
   private texto = "";
+  private estilo: "geometrico" | "fonte";
+  private espessura: number;
+  private halo: number;
+  private escala: number;
   constructor(private canvas: HTMLCanvasElement, opcoes: OpcoesCampoTexto = {}) {
     canvas.width = opcoes.largura ?? 1200; canvas.height = opcoes.altura ?? 140;
     this.nuvem = new NuvemLetras(opcoes.maximo ?? 1800, canvas.width, canvas.height);
@@ -113,6 +126,10 @@ export class CampoParticulasTexto {
     this.mascara.width = canvas.width; this.mascara.height = canvas.height;
     this.fonte = opcoes.fonte ?? "'Segoe UI', Arial, sans-serif";
     this.tamanhoFonte = opcoes.tamanhoFonte ?? 84;
+    this.estilo = opcoes.estilo ?? "fonte";
+    this.espessura = opcoes.espessura ?? 0.13;
+    this.halo = opcoes.brilho ?? 0;
+    this.escala = opcoes.escalaParticula ?? 1;
   }
   definirTexto(texto: string, agora: number, imediato = false) {
     if (texto === this.texto && this.nuvem.fase !== "poeira" && this.nuvem.fase !== "dispersando") return;
@@ -120,23 +137,18 @@ export class CampoParticulasTexto {
     const m = this.mascara.getContext("2d", { willReadFrequently: true });
     if (!m || !texto.trim()) { this.limpar(); return; }
     const w = this.mascara.width, h = this.mascara.height;
-    m.clearRect(0, 0, w, h); m.fillStyle = "#fff"; m.textAlign = "center"; m.textBaseline = "middle";
-    m.font = `500 ${this.tamanhoFonte}px ${this.fonte}`;
-    const medida = m.measureText(texto).width;
-    const tamanho = Math.min(this.tamanhoFonte, this.tamanhoFonte * w * .9 / Math.max(1, medida));
-    m.font = `500 ${tamanho}px ${this.fonte}`;
-    m.fillText(texto, w / 2, h / 2);
-    const pixels = m.getImageData(0, 0, w, h).data;
-    // A alocação ocorre só na troca de glifo; os quadros reutilizam o pool fixo.
-    const candidatos: number[] = [];
-    for (let y = 4; y < h - 4; y += 2) for (let x = 4; x < w - 4; x += 2)
-      if (pixels[(y * w + x) * 4 + 3] > 100) candidatos.push(x, y);
-    const numero = Math.min(this.nuvem.maximo - 36, candidatos.length / 2);
-    const alvos = new Float32Array(numero * 2);
-    for (let i = 0; i < numero; i++) {
-      const j = Math.floor(i * candidatos.length / (numero * 2)) * 2;
-      alvos[i * 2] = candidatos[j]; alvos[i * 2 + 1] = candidatos[j + 1];
+    m.clearRect(0, 0, w, h); m.fillStyle = "#fff"; m.strokeStyle = "#fff";
+    if (this.estilo === "geometrico" && temGlifos(texto)) {
+      desenharGeometrico(m, texto, w, h, { espessura: this.espessura });
+    } else {
+      m.textAlign = "center"; m.textBaseline = "middle";
+      m.font = `500 ${this.tamanhoFonte}px ${this.fonte}`;
+      const medida = m.measureText(texto).width;
+      const tamanho = Math.min(this.tamanhoFonte, this.tamanhoFonte * w * .9 / Math.max(1, medida));
+      m.font = `500 ${tamanho}px ${this.fonte}`;
+      m.fillText(texto, w / 2, h / 2);
     }
+    const alvos = amostrarMascara(m.getImageData(0, 0, w, h).data, w, h, this.nuvem.maximo - 36);
     this.nuvem.definirAlvos(alvos, agora, imediato);
     m.clearRect(0, 0, w, h);
   }
@@ -151,12 +163,42 @@ export class CampoParticulasTexto {
     this.nuvem.passo(agora, delta, reduzido);
     c.clearRect(0, 0, this.canvas.width, this.canvas.height);
     c.fillStyle = cor;
-    for (let i = 0; i < this.nuvem.quantidade; i++) {
-      if (this.nuvem.alpha[i] < .012) continue;
-      c.globalAlpha = this.nuvem.alpha[i];
-      const r = this.nuvem.tamanho[i];
-      c.fillRect(this.nuvem.x[i] - r / 2, this.nuvem.y[i] - r / 2, r, r);
+    const n = this.nuvem;
+    if (this.halo > 0 && !reduzido) {
+      // Halo: um quadrado maior e quase transparente por partícula (brilho sem filtro de blur).
+      for (let i = 0; i < n.quantidade; i++) {
+        if (n.alpha[i] < .05) continue;
+        c.globalAlpha = n.alpha[i] * this.halo;
+        const r = n.tamanho[i] * this.escala * 3.2;
+        c.fillRect(n.x[i] - r / 2, n.y[i] - r / 2, r, r);
+      }
+    }
+    for (let i = 0; i < n.quantidade; i++) {
+      if (n.alpha[i] < .012) continue;
+      c.globalAlpha = n.alpha[i];
+      const r = n.tamanho[i] * this.escala;
+      c.fillRect(n.x[i] - r / 2, n.y[i] - r / 2, r, r);
     }
     c.globalAlpha = 1;
   }
+}
+
+/**
+ * Escolhe até `maximo` destinos dentro da máscara (alfa > 100), espalhados por igual e com um
+ * pequeno deslocamento fixo por ponto, para não formar listras da varredura. Determinístico.
+ */
+export function amostrarMascara(pixels: ArrayLike<number>, w: number, h: number, maximo: number): Float32Array {
+  const candidatos: number[] = [];
+  for (let y = 3; y < h - 3; y += 2) for (let x = 3; x < w - 3; x += 2)
+    if (pixels[(y * w + x) * 4 + 3] > 100) candidatos.push(x, y);
+  const total = candidatos.length / 2;
+  const numero = Math.max(0, Math.min(maximo, total));
+  const alvos = new Float32Array(numero * 2);
+  // A alocação ocorre só na troca de glifo; os quadros reutilizam o pool fixo.
+  for (let i = 0; i < numero; i++) {
+    const j = Math.min(total - 1, Math.floor((i + aleatorio(i + 77) * .999) * total / numero));
+    alvos[i * 2] = candidatos[j * 2] + (aleatorio(i + 501) - .5) * 1.6;
+    alvos[i * 2 + 1] = candidatos[j * 2 + 1] + (aleatorio(i + 907) - .5) * 1.6;
+  }
+  return alvos;
 }
