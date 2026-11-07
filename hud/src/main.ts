@@ -3,6 +3,7 @@ import { Ponte } from "./client";
 import { Cena } from "./scene";
 import { PalavrasParticulas } from "./word-particles";
 import { CampoParticulasTexto } from "./text-particle-field";
+import { misturar } from "./state";
 import {
   inicial,
   leituraDoPainel,
@@ -58,8 +59,10 @@ let nomeMarca = "";
 const movimentoReduzido=matchMedia("(prefers-reduced-motion: reduce)");
 cena.aoDesenhar=({agora,delta,cor,reduzido,energia})=>{
   document.documentElement.style.setProperty("--accent",cor);
-  marca.desenhar(agora,delta,cor,reduzido,energia);
-  palavras.desenhar(agora,cor,reduzido,delta,energia);
+  // Letras mais claras que a cena (branco-prateado com ciano), como na referência aprovada.
+  const luz=misturar(cor.toUpperCase(),"#EEF9FF",.55);
+  marca.desenhar(agora,delta,luz,reduzido,energia);
+  palavras.desenhar(agora,luz,reduzido,delta,energia);
 };
 const ponte = new Ponte((modelo, evento) => {
   atual = modelo;

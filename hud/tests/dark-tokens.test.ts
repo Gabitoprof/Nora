@@ -30,3 +30,19 @@ describe("identidade dark compartilhada e cadência", () => {
     expect(faixaAcustica(2,.5,1,SILENCIO)).toBe(0);
   });
 });
+
+import { brilhoInferior, ondaInferior } from "../src/scene-audio";
+describe("onda inferior viva e reativa", () => {
+  const amplitude = (sinal: typeof SILENCIO) => { let m = 0; for (let x = -6; x <= 6; x += .1) m = Math.max(m, Math.abs(ondaInferior(x, .5, 2, sinal))); return m; };
+  it("em repouso ondula (não é uma linha reta) e some nas bordas", () => {
+    expect(amplitude(SILENCIO)).toBeGreaterThan(.1);
+    expect(Math.abs(ondaInferior(9.6, .5, 2, SILENCIO))).toBeLessThan(.001);
+  });
+  it("a voz levanta a onda", () => {
+    const voz = { ...SILENCIO, fonte: "voz" as const, rms: .4, envelope: .6, pico: .7, bandas: [.2, .3, .4, .3, .2, .1] };
+    expect(amplitude(voz)).toBeGreaterThan(amplitude(SILENCIO) * 1.8);
+  });
+  it("os pontos do centro são mais claros que os das bordas", () => {
+    expect(brilhoInferior(0)).toBeGreaterThan(brilhoInferior(8) * 3);
+  });
+});

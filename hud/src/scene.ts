@@ -1,7 +1,15 @@
 import * as THREE from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { onda, aleatorio } from "./scene-math";
 import { cores, inicial, expressaoEmocional, type Modelo } from "./state";
-import { EnvelopeVisual, SILENCIO, aproximar, cadenciaVisual, faixaAcustica, type Dinamica } from "./scene-audio";
+import { EnvelopeVisual, SILENCIO, aproximar, brilhoInferior, cadenciaVisual, ondaInferior, type Dinamica } from "./scene-audio";
+/** Brilho (bloom) da qualidade Detalhada: força em repouso e quanto a voz soma. */
+export const BRILHO = { forca: .7, raio: .28, limiar: .42, voz: .45 };
+/** Ciano discreto dos realces (pontos de luz no anel e na poeira). */
+const CIANO = 0x9fe6ff;
 /** `energia`: o mesmo sinal que move o anel (voz quando fala, microfone quando escuta), 0–1. */
 export interface QuadroVisual { agora: number; delta: number; reduzido: boolean; cor: string; energia: number; }
 type Qualidade = "alta" | "baixa" | "canvas";
@@ -34,6 +42,8 @@ export class Cena {
   private parar = false;
   private sprite?: THREE.CanvasTexture;
   private brilhos?: THREE.Points;
+  private composer?: EffectComposer;
+  private bloom?: UnrealBloomPass;
   private aoAmbiente = () => {
     if(this.frame!==undefined) cancelAnimationFrame(this.frame);
     this.frame=undefined;this.anterior=0;
@@ -87,6 +97,10 @@ export class Cena {
       this.brilhos = undefined;
     }
     this.sprite?.dispose();
+    this.bloom?.dispose();
+    this.composer?.dispose();
+    this.bloom = undefined;
+    this.composer = undefined;
     this.scene.clear();
     this.linhas = [];
     this.faixas = [];
@@ -117,7 +131,16 @@ export class Cena {
           powerPreference: "low-power",
         });
         this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-        this.renderer.setClearColor(0x000000, 0);
+        // Fundo preto opaco + `mix-blend-mode: screen` no CSS: o preto some sobre o fundo da
+        // página e só a luz (com o brilho) soma.
+        this.renderer.setClearColor(0x000000, 1);
+        if (this.densidade === "alta") {
+          this.composer = new EffectComposer(this.renderer);
+          this.composer.addPass(new RenderPass(this.scene, this.camera));
+          this.bloom = new UnrealBloomPass(new THREE.Vector2(512, 288), BRILHO.forca, BRILHO.raio, BRILHO.limiar);
+          this.composer.addPass(this.bloom);
+          this.composer.addPass(new OutputPass());
+        }
         const numero = this.densidade === "alta" ? 38 : 22;
         for (let i = 0; i < numero; i++) {
           const geo = new THREE.BufferGeometry();
@@ -131,7 +154,7 @@ export class Cena {
             color: 0xdedede,
             transparent: true,
             opacity:
-              0.14 + 0.45 * Math.pow(Math.sin((i / numero) * Math.PI), 5),
+              0.16 + 0.55 * Math.pow(Math.sin((i / numero) * Math.PI), 5),
             blending: THREE.AdditiveBlending,
             depthWrite: false,
           });
@@ -141,7 +164,7 @@ export class Cena {
         }
         for(let i=0;i<5;i++) {
           const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.BufferAttribute(new Float32Array(241*3),3).setUsage(THREE.DynamicDrawUsage));
-          const linha=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xc9c9c9,transparent:true,opacity:i===2?.24:.11,blending:THREE.AdditiveBlending,depthWrite:false}));
+          const linha=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xc9c9c9,transparent:true,opacity:i===2?.42:.16,blending:THREE.AdditiveBlending,depthWrite:false}));
           this.faixas.push(linha);this.scene.add(linha);
         }
         this.positions = new Float32Array(numeroPontos * 3);
@@ -154,7 +177,8 @@ export class Cena {
         );
         const coresParticulas = new Float32Array(numeroPontos * 3);
         for (let i = 0; i < numeroPontos; i++) {
-          const brilho = 0.2 + aleatorio(i + 5) * 0.8;
+          // Os pontos da onda inferior (i % 5 == 0) ficam mais claros no centro.
+          const brilho = (0.25 + aleatorio(i + 5) * 0.75) * (i % 5 === 0 ? brilhoInferior((this.sementes[i * 6] - .5) * 20) * 1.35 : 1);
           coresParticulas.set([brilho, brilho, brilho], i * 3);
         }
         geo.setAttribute(
@@ -174,11 +198,11 @@ export class Cena {
         this.particulas = new THREE.Points(
           geo,
           new THREE.PointsMaterial({
-            size: 0.028,
+            size: 0.036,
             map: this.sprite,
             vertexColors: true,
             transparent: true,
-            opacity: 0.74,
+            opacity: 0.82,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
             sizeAttenuation: true,
@@ -193,9 +217,9 @@ export class Cena {
         this.brilhos = new THREE.Points(
           brilhoGeo,
           new THREE.PointsMaterial({
-            size: 0.13,
+            size: 0.2,
             map: this.sprite,
-            color: 0xffffff,
+            color: CIANO,
             transparent: true,
             opacity: 0.6,
             blending: THREE.AdditiveBlending,
@@ -234,7 +258,12 @@ export class Cena {
     this.camera.top = altura / 2;
     this.camera.bottom = -altura / 2;
     this.camera.updateProjectionMatrix();
-    if (this.renderer) this.renderer.setSize(w, h);
+    if (this.renderer) {
+      this.renderer.setSize(w, h);
+      // Brilho em meia resolução: mesmo efeito, um quarto do custo.
+      this.composer?.setSize(w, h);
+      this.bloom?.resolution.set(Math.max(1, w / 2), Math.max(1, h / 2));
+    }
     else {
       this.canvas.width = w * Math.min(devicePixelRatio, 1.5);
       this.canvas.height = h * Math.min(devicePixelRatio, 1.5);
@@ -246,7 +275,7 @@ export class Cena {
     if(i%5===0) {
       const x=(a-.5)*20;
       destino[offset]=x;
-      destino[offset+1]=-3.55+Math.sin(x*.55+tempo*.025+b*6)*(.035+sinal.envelope*.09)+b*.16+faixaAcustica(x,b,tempo,sinal);
+      destino[offset+1]=-3.72+ondaInferior(x,b,tempo,sinal)+(b-.5)*.05;
       destino[offset+2]=-.5;return;
     }
     const t=a*Math.PI*2+tempo*.009,r=4.4+(b-.5)*.72;
@@ -266,7 +295,7 @@ export class Cena {
     this.cor.lerp(this.alvoCor,reduzido?1:aproximar(0,1,delta,550));
     const cor=this.cor;
     this.expressao=reduzido?expressaoEmocional(this.modelo.emocao):aproximar(this.expressao,expressaoEmocional(this.modelo.emocao),delta,550);
-    this.corParticulas.set(0xeeeeee).lerp(cor,.28);
+    this.corParticulas.set(0xeef8fb).lerp(cor,.28);
     if (this.renderer) {
       this.linhas.forEach((linha, i) => {
         const coords = linha.geometry.getAttribute(
@@ -289,7 +318,7 @@ export class Cena {
       });
       this.faixas.forEach((linha,i)=>{
         const coords=linha.geometry.getAttribute("position") as THREE.BufferAttribute;
-        for(let j=0;j<=240;j++){const x=j/240*20-10;coords.setXYZ(j,x,-3.5+(i-2)*.022+faixaAcustica(x,i/4,tempo,voz),-.4);}
+        for(let j=0;j<=240;j++){const x=j/240*20-10;coords.setXYZ(j,x,-3.72+ondaInferior(x,i/4,tempo,voz),-.4);}
         coords.needsUpdate=true;(linha.material as THREE.LineBasicMaterial).color.copy(cor);
       });
       if (this.particulas && this.positions) {
@@ -302,11 +331,14 @@ export class Cena {
         const pontos = this.brilhos.geometry.getAttribute("position");
         for (let i = 0; i < 4; i++)
           {const k=[124,319,2481,4768][i]%Math.floor(this.sementes.length/6);this.ponto(k,tempo,voz,this.saida);pontos.setXYZ(i,...this.saida);}
-        (this.brilhos.material as THREE.PointsMaterial).color.copy(cor);
-        (this.brilhos.material as THREE.PointsMaterial).opacity=.5+voz.envelope*.12*this.expressao;
+        (this.brilhos.material as THREE.PointsMaterial).color.set(CIANO).lerp(cor,.25);
+        (this.brilhos.material as THREE.PointsMaterial).opacity=.7+voz.envelope*.3*this.expressao;
         pontos.needsUpdate = true;
       }
-      this.renderer.render(this.scene, this.camera);
+      if (this.composer && this.bloom) {
+        this.bloom.strength = BRILHO.forca + Math.min(1, Math.max(voz.rms, voz.envelope)) * BRILHO.voz * this.expressao;
+        this.composer.render();
+      } else this.renderer.render(this.scene, this.camera);
     } else if (this.contexto) {
       const c = this.contexto,
         w = this.canvas.width,
@@ -336,7 +368,7 @@ export class Cena {
         c.stroke();
       }
       for(let i=0;i<5;i++) {
-        c.beginPath();for(let j=0;j<=240;j++){const x=j/240*20-10,y=-3.5+(i-2)*.022+faixaAcustica(x,i/4,tempo,voz);if(!j)c.moveTo(x,y);else c.lineTo(x,y);}
+        c.beginPath();for(let j=0;j<=240;j++){const x=j/240*20-10,y=-3.72+ondaInferior(x,i/4,tempo,voz);if(!j)c.moveTo(x,y);else c.lineTo(x,y);}
         c.strokeStyle=`#${cor.getHexString()}`;c.lineWidth=.008;c.globalAlpha=i===2?.24:.11;c.stroke();
       }
       const pontos = this.densidade === "baixa" ? 1900 : 4200;

@@ -66,3 +66,21 @@ export function faixaAcustica(x:number, faixa:number, tempo:number, sinal:Dinami
   const portadora=Math.sin(x*(2+sinal.centroide*.8)-tempo*4+faixa*1.4)+Math.sin(x*(4.2+sinal.centroide*3)+tempo*2.5)*sinal.fluxo*.28;
   return portadora*amplitude*janela;
 }
+
+/**
+ * Onda inferior (faixa de pontos na base da tela): ondulação com o pico no centro que se apaga
+ * nas bordas, sempre viva em repouso; a energia do áudio (voz ou microfone) a levanta.
+ * `faixa` (0–1) separa os fios da fita, com fase e altura um pouco diferentes.
+ */
+export function ondaInferior(x: number, faixa: number, tempo: number, sinal: Dinamica) {
+  const janela = Math.max(0, 1 - (x / 9.6) ** 2);
+  const centro = Math.exp(-(x * x) / 30);
+  const fase = faixa * .55;
+  const forma = Math.sin(x * .92 - tempo * .8 + fase) * .62 + Math.sin(x * 1.9 + tempo * .5 + 1.3 + fase) * .24;
+  const amplitude = .3 + sinal.envelope * .42 + sinal.rms * .26;
+  return (faixa - .5) * .06 + forma * amplitude * (.35 + .65 * centro) * janela + faixaAcustica(x, faixa, tempo, sinal);
+}
+/** Brilho fixo de um ponto da onda inferior conforme a posição: mais claro no centro. */
+export function brilhoInferior(x: number) {
+  return .25 + .75 * Math.exp(-(x * x) / 18);
+}

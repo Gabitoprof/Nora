@@ -170,6 +170,8 @@ button:hover {
   position: absolute;
   inset: 0;
   z-index: 0;
+  /* A cena é desenhada sobre preto: em "screen" o preto some e só a luz soma ao fundo. */
+  mix-blend-mode: screen;
 }
 .scene canvas {
   display: block;
@@ -1288,3 +1290,8 @@ button:hover {
 .word-stage {top:5.5%;width:min(66vw,1060px);}
 .word-stage #word-caption {font-size:12px;color:#d5dfe4;}
 @media(max-width:800px){.word-stage{top:12%;width:calc(100% - 56px)}#brand-particles{margin-bottom:14px}.word-stage #word-caption{font-size:12px}}
+
+/* Brilho das letras de partículas (a cena WebGL tem bloom; os canvas 2D, este halo leve). */
+#brand-particles {filter:drop-shadow(0 0 3px rgba(190,240,255,.65)) drop-shadow(0 0 14px rgba(120,215,255,.28));}
+#word-particles {filter:drop-shadow(0 0 3px rgba(190,240,255,.55)) drop-shadow(0 0 10px rgba(120,215,255,.22));}
+@media (prefers-reduced-motion: reduce) {#brand-particles,#word-particles{filter:none;}}
