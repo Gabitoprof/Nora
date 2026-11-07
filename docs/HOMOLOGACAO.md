@@ -285,9 +285,26 @@ Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC d
 | 2 | Reserva no meio da fala | Implementado: antes do áudio / depois (continua do limite) / sem limite (para e permite repetir) / sem alinhamento (segue tocando) | `tests/test_voz_v4.py` (servidor que cai no meio, cancelar e retomar sem palavras repetidas) |
 | 3 | Diagnóstico (`--verificar`, `--medir`, log) | Modelo efetivo, continuidade, motivo de cada reserva, gerações por resposta, tempos (pedido, 1º PCM, reprodução, silêncio entre trechos) nos dois caminhos | `tests/test_voz_v4.py` (diagnóstico com reserva no meio, HTTP, arquivo antigo; sem texto nem chave) |
 | 4 | Retenção nas pausas | Palavra até a próxima começar, teto `TETO_PAUSA_MS` = 1,5 s; some na hora em `reproducao_encerrada`, cancelamento e Privado | `hud/tests/text-particles.test.ts` |
+| 5 | Relógio da fala | Medido e ajustado: 450/400 ms e recuos < 60 ms ignorados (tabela abaixo) | `hud/tests/relogio-medicao.test.ts` |
 
 Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
 (`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o
 tipo do diálogo não descreve. O código aceita as duas referências e fixa a escolhida no turno.
 **Pendente no PC:** confirmar com o v4 real (a linha `[voz: ...]` e a HUD mostram as palavras no
 tempo certo em respostas longas, de vários trechos).
+
+### Item 5: medição do relógio da fala
+
+Simulação determinística (`hud/tests/relogio-medicao.test.ts`): 60 s de fala, palavras de 260 ms a
+cada 300 ms, amostras do backend a cada 50 ms, atraso de rede de 5 a 45 ms, engasgos (nenhuma
+amostra) de 150 a 450 ms em 0%, 1% ou 3% das amostras, desenho a 60 FPS.
+
+| Idade máx. / extrapolação | Engasgos | Atraso som→palavra p50 / p95 / pior | Palavras perdidas | Recuos |
+|---|---|---|---|---|
+| 300 / 250 (antes) | 3% | 33 / 50 / 217 ms | 1 | ~140 (antes da tolerância) |
+| **450 / 400 (agora)** | 3% | 33 / 50 / 100 ms | 0 | 0 |
+| 600 / 500 | 3% | 33 / 50 / 83 ms | 0 | 0 |
+
+Escolha: 450/400. Extrapolar mais (600/500) ganha pouco e adianta palavras quando a rede atrasa de
+verdade (o backend não publica amostras durante falta de áudio). O atraso medido não inclui a
+latência real da saída de áudio do Windows: **pendente no PC** (roteiro abaixo).

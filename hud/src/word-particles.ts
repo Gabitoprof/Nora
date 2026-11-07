@@ -4,6 +4,17 @@ import { CampoParticulasTexto, type OpcoesCampoTexto } from "./text-particle-fie
 
 /** Relógio da mídia: estado e chegada da timeline não fazem a locução avançar. */
 export class RelogioFala {
+  /**
+   * `idadeMaxima`: amostra mais velha que isso (ms) não vale (a palavra some);
+   * `extrapolacaoMaxima`: quanto o relógio avança sozinho desde a última amostra (ms).
+   */
+  // Medido em tests/relogio-medicao.test.ts (docs/HOMOLOGACAO.md): 450/400 não perde palavras
+  // com engasgos de até 450 ms e mantém o atraso p95 em 50 ms.
+  constructor(readonly idadeMaxima = 450, readonly extrapolacaoMaxima = 400) {}
+  /** Recuos menores que isso (ms) são ruído de rede: a posição não volta (sem piscar). */
+  static readonly TOLERANCIA_RECUO = 60;
+  private ultimaPosicao = -1;
+  private ultimoId = -1;
   private amostra: Acustica | null = null;
   private recebida = -Infinity;
   private encerrado = -1;
@@ -19,13 +30,16 @@ export class RelogioFala {
     this.amostra = amostra; this.recebida = agora;
     if (!amostra.ativo) this.encerrado = amostra.reproducao_id;
   }
-  limpar() { this.amostra = null; this.recebida = -Infinity; this.encerrado = -1; this.resultado.palavra = { texto: "", inicio_ms: 0, fim_ms: 0, destaque: false }; this.resultado.posicao = 0; }
+  limpar() { this.ultimaPosicao = -1; this.ultimoId = -1; this.amostra = null; this.recebida = -Infinity; this.encerrado = -1; this.resultado.palavra = { texto: "", inicio_ms: 0, fim_ms: 0, destaque: false }; this.resultado.posicao = 0; }
   palavra(fala: FalaTemporizada | null, agora: number) {
     const a = this.amostra;
     // RAF pode preceder a chegada SSE dentro do mesmo frame: jamais voltar o relógio.
     const decorrido = Math.max(0, agora - this.recebida);
-    if (!a?.ativo || !fala || fala.id !== a.reproducao_id || decorrido > 300 || a.rms < .002) return null;
-    const posicao = Math.min(a.duracao_ms || fala.duracao_ms, a.posicao_ms + Math.min(decorrido, 250));
+    if (!a?.ativo || !fala || fala.id !== a.reproducao_id || decorrido > this.idadeMaxima || a.rms < .002) return null;
+    let posicao = Math.min(a.duracao_ms || fala.duracao_ms, a.posicao_ms + Math.min(decorrido, this.extrapolacaoMaxima));
+    // Amostra nova chega com o atraso da rede e "puxa" a posição alguns ms para trás: ignora.
+    if (a.reproducao_id === this.ultimoId && posicao < this.ultimaPosicao && this.ultimaPosicao - posicao < RelogioFala.TOLERANCIA_RECUO) posicao = this.ultimaPosicao;
+    this.ultimaPosicao = posicao; this.ultimoId = a.reproducao_id;
     let inicio = 0, fim = fala.palavras.length - 1;
     while (inicio <= fim) {
       const meio = (inicio + fim) >>> 1, palavra = fala.palavras[meio];
@@ -38,7 +52,7 @@ export class RelogioFala {
   /** Há amostra recente da reprodução desta fala (entre palavras ou numa pausa curta). */
   ativo(fala: FalaTemporizada | null, agora: number) {
     const a = this.amostra;
-    return !!(a?.ativo && fala && fala.id === a.reproducao_id && agora - this.recebida <= 300);
+    return !!(a?.ativo && fala && fala.id === a.reproducao_id && agora - this.recebida <= this.idadeMaxima);
   }
 }
 
