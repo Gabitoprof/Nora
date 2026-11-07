@@ -1,3 +1,4 @@
+import paleta from "../../src/nora/paleta.json";
 import { describe, expect, it } from "vitest";
 import { EnvelopeVisual, SILENCIO, aproximar, cadenciaVisual, energiaBanda, faixaAcustica, type Acustica } from "../src/scene-audio";
 import { onda } from "../src/scene-math";
@@ -27,7 +28,8 @@ describe("contrato acústico e privacidade",()=>{
     m=reduzir(m,evento("acustica",amostra({ativo:false}),4));expect(m.fala_temporizada).toBeNull();
   });
   it("paleta canônica contém as cores emocionais e aliases reais",()=>{
-    expect(cores.calma).toBe("#66D4CB");expect(cores.triste).toBe("#AA9ACF");expect(cores.curiosa).toBe("#DF876A");
+    expect(cores.calma).toBe(paleta.cores.calma);expect(cores.triste).toBe(paleta.cores.tristeza);expect(cores.curiosa).toBe(paleta.cores.curiosidade);
+    for (const valor of Object.values(paleta.cores)) { const canais=valor.slice(1).match(/../g)!.map(v=>parseInt(v,16)); expect(Math.max(...canais)-Math.min(...canais)).toBeLessThanOrEqual(45); }
     for(const [a,b] of [["neutra","neutro"],["alegre","empolgada"],["seria","confiante"],["carinhosa","carinho"]])expect(cores[a]).toBe(cores[b]);
   });
 });
@@ -51,7 +53,7 @@ describe("áudio derivado controla geometria",()=>{
     expect(a.voz.envelope).toBeCloseTo(b.voz.envelope,10);
     let c=0,d=0;for(let i=0;i<30;i++)c=aproximar(c,1,1000/30,550);for(let i=0;i<60;i++)d=aproximar(d,1,1000/60,550);expect(c).toBeCloseTo(d,10);
   });
-  it("faixa só reage à voz e bandas não criam saltos de energia ou fase",()=>{
+  it("faixa usa a fonte escolhida e bandas não criam saltos de energia ou fase",()=>{
     const baixo={...SILENCIO,fonte:"voz" as const,rms:.5,envelope:.6,pico:.7,bandas:[1,.1,0,0,0,0]},alto={...baixo,bandas:[0,0,0,0,.1,1]};
     expect(faixaAcustica(-6,0,1,baixo)).not.toBe(faixaAcustica(-6,0,1,alto));
     expect(faixaAcustica(2,0,1,SILENCIO)).toBe(0);

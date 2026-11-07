@@ -57,7 +57,7 @@ export class Cena {
   }
   configurar(qualidade: Qualidade, fps: number) {
     this.densidade = qualidade;
-    this.fps = fps === 60 ? 60 : 30;
+    this.fps = fps === 120 ? 120 : fps === 60 ? 60 : 30;
     this.preparar();
     this.redimensionar();
   }
@@ -260,7 +260,7 @@ export class Cena {
     if(!reduzido)this.envelope.passo(delta,agora);
     const nivel=0;
     const sinal=reduzido?SILENCIO:this.modelo.estado === "falando"?this.envelope.voz:this.envelope.microfone;
-    const voz=reduzido?SILENCIO:this.envelope.voz;
+    const voz=sinal;
     this.alvoCor.set(cores[this.modelo.emocao]??cores.neutro);
     this.cor.lerp(this.alvoCor,reduzido?1:aproximar(0,1,delta,550));
     const cor=this.cor;

@@ -24,7 +24,7 @@ export interface Dinamica {
 export const SILENCIO: Dinamica = { fonte: "microfone", rms: 0, pico: 0, envelope: 0, bandas: [0,0,0,0,0,0], centroide: 0, fluxo: 0 };
 export const PRAZO_AUDIO_MS = 300;
 export const aproximar = (atual: number, alvo: number, delta: number, constante: number) => atual + (alvo-atual)*(1-Math.exp(-Math.max(0,delta)/constante));
-export function cadenciaVisual(fps: number, jogo: boolean, reduzido: boolean, oculta: boolean) { return oculta || reduzido ? 0 : jogo ? 8 : fps === 60 ? 60 : 30; }
+export function cadenciaVisual(fps: number, jogo: boolean, reduzido: boolean, oculta: boolean) { return oculta || reduzido ? 0 : jogo ? 8 : fps === 120 ? 120 : fps === 60 ? 60 : 30; }
 /** Os dois envelopes permanecem independentes; ouvir não reutiliza a cauda do TTS. */
 export class EnvelopeVisual {
   readonly voz: Dinamica = { ...SILENCIO, fonte: "voz", bandas: [0,0,0,0,0,0] };
@@ -59,7 +59,6 @@ export function energiaBanda(bandas: readonly number[], posicao: number) {
   return bandas[i]*(1-suave)+bandas[Math.min(5,i+1)]*suave;
 }
 export function faixaAcustica(x:number, faixa:number, tempo:number, sinal:Dinamica) {
-  if(sinal.fonte!=="voz") return 0;
   const janela=Math.max(0,1-Math.abs(x)/10)**0.6;
   const energia=energiaBanda(sinal.bandas,(x+10)/20);
   const amplitude=(sinal.rms*.27+sinal.envelope*.2+sinal.pico*.06)*(.3+energia*.7);

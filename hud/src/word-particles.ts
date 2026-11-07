@@ -1,94 +1,138 @@
 import type { Acustica } from "./scene-audio";
-import type { FalaTemporizada, Modelo, PalavraTemporizada } from "./state";
-import { aleatorio } from "./scene-math";
-/** Relógio da mídia, nunca do estado `falando` nem do tamanho do texto. */
+import type { Evento, FalaTemporizada, Modelo, PalavraTemporizada } from "./state";
+import { CampoParticulasTexto } from "./text-particle-field";
+
+/** Relógio da mídia: estado e chegada da timeline não fazem a locução avançar. */
 export class RelogioFala {
   private amostra: Acustica | null = null;
   private recebida = -Infinity;
   private encerrado = -1;
+  private resultado: { palavra: PalavraTemporizada; posicao: number } = {
+    palavra: { texto: "", inicio_ms: 0, fim_ms: 0, destaque: false }, posicao: 0,
+  };
   atualizar(amostra: Acustica | null, agora: number) {
-    if(amostra?.fonte === "voz") {
-      if(amostra.reproducao_id<=this.encerrado || this.amostra && amostra.reproducao_id<this.amostra.reproducao_id)return;
-      this.amostra=amostra;this.recebida=agora;
-      if(!amostra.ativo)this.encerrado=amostra.reproducao_id;
-    }
+    if (amostra?.fonte !== "voz") return;
+    if (amostra.reproducao_id <= this.encerrado) return;
+    const antiga = this.amostra;
+    if (antiga && (amostra.reproducao_id < antiga.reproducao_id ||
+      amostra.reproducao_id === antiga.reproducao_id && amostra.ativo && amostra.posicao_ms < antiga.posicao_ms)) return;
+    this.amostra = amostra; this.recebida = agora;
+    if (!amostra.ativo) this.encerrado = amostra.reproducao_id;
   }
-  limpar() { this.amostra=null; this.recebida=-Infinity; this.encerrado=-1; }
-  palavra(fala:FalaTemporizada|null, agora:number): { palavra:PalavraTemporizada; posicao:number } | null {
-    const a=this.amostra;
-    // RAF entrega o timestamp do início do frame: pode preceder a chegada SSE.
-    const decorrido=Math.max(0,agora-this.recebida);
-    if(!a?.ativo||!fala||fala.id!==a.reproducao_id||decorrido>300||a.rms<.002) return null;
-    const posicao=Math.min(a.duracao_ms || fala.duracao_ms, a.posicao_ms+Math.min(decorrido,250));
-    const palavra=fala.palavras.find(p=>posicao>=p.inicio_ms&&posicao<p.fim_ms);
-    return palavra ? {palavra,posicao} : null;
+  limpar() { this.amostra = null; this.recebida = -Infinity; this.encerrado = -1; this.resultado.palavra = { texto: "", inicio_ms: 0, fim_ms: 0, destaque: false }; this.resultado.posicao = 0; }
+  palavra(fala: FalaTemporizada | null, agora: number) {
+    const a = this.amostra;
+    // RAF pode preceder a chegada SSE dentro do mesmo frame: jamais voltar o relógio.
+    const decorrido = Math.max(0, agora - this.recebida);
+    if (!a?.ativo || !fala || fala.id !== a.reproducao_id || decorrido > 300 || a.rms < .002) return null;
+    const posicao = Math.min(a.duracao_ms || fala.duracao_ms, a.posicao_ms + Math.min(decorrido, 250));
+    let inicio = 0, fim = fala.palavras.length - 1;
+    while (inicio <= fim) {
+      const meio = (inicio + fim) >>> 1, palavra = fala.palavras[meio];
+      if (posicao < palavra.inicio_ms) fim = meio - 1;
+      else if (posicao >= palavra.fim_ms) inicio = meio + 1;
+      else { this.resultado.palavra = palavra; this.resultado.posicao = posicao; return this.resultado; }
+    }
+    return null;
   }
 }
+
+/** Validação temporal do fim natural; cancelamento nunca oferece uma última palavra. */
+export function ultimaPalavraDevida(fala: FalaTemporizada | null, id: number, posicao: number, duracao: number, interrompida: boolean) {
+  if (interrompida || !fala || fala.id !== id || posicao < duracao - 30 || posicao > duracao + 30) return null;
+  const ultima = fala.palavras[fala.palavras.length - 1];
+  return ultima && ultima.inicio_ms <= posicao && ultima.fim_ms <= duracao + 1 ? ultima : null;
+}
+
+/** Um único glifo semântico por vez; as mesmas partículas fazem a transição e a dissolução. */
 export class PalavrasParticulas {
-  private relogio=new RelogioFala();
-  private ultimaAmostra: Acustica|null=null;
-  private fala:FalaTemporizada|null=null;
-  private ativa=false;
-  private chave="";
-  private pontos: number[]=[];
-  private contexto:CanvasRenderingContext2D|null;
-  private mascara=document.createElement("canvas");
-  constructor(private canvas:HTMLCanvasElement, private legenda:HTMLElement) {
-    canvas.width=1200;canvas.height=140;
-    this.mascara.width=1200;this.mascara.height=140;
-    this.contexto=canvas.getContext("2d");
+  private relogio = new RelogioFala();
+  private ultimaAmostra: Acustica | null = null;
+  private fala: FalaTemporizada | null = null;
+  private ultimaFala: FalaTemporizada | null = null;
+  private ativa = false;
+  private reduzido = false;
+  private chave = "";
+  private anterior = 0;
+  private maiorId = 0;
+  private encerrado = 0;
+  private final: { palavra: PalavraTemporizada; id: number; ate: number; precisao: string } | null = null;
+  readonly campo: CampoParticulasTexto;
+  constructor(private canvas: HTMLCanvasElement, private legenda: HTMLElement) {
+    this.campo = new CampoParticulasTexto(canvas, { maximo: 1800 });
   }
-  atualizar(modelo:Modelo, habilitada:boolean, reduzido:boolean, agora=performance.now()) {
-    this.ativa=habilitada&&!reduzido&&!modelo.privacidade&&modelo.conectado;
-    if(!this.ativa) { this.limpar(); this.ultimaAmostra=modelo.acustica; return; }
-    this.fala=modelo.fala_temporizada;
-    if(modelo.acustica!==this.ultimaAmostra) {
-      this.ultimaAmostra=modelo.acustica;
-      this.relogio.atualizar(modelo.acustica,agora);
+  receberEvento(evento: Evento, agora = performance.now()) {
+    if (["conectado", "desconectado", "recuperando"].includes(evento.tipo)) { this.limpar(); return; }
+    if (evento.tipo !== "reproducao_encerrada") return;
+    const d = evento.dados;
+    if (typeof d.id !== "number" || typeof d.posicao_ms !== "number" || typeof d.duracao_ms !== "number" || typeof d.interrompida !== "boolean") return;
+    if (d.id < this.maiorId || d.id <= this.encerrado) return;
+    this.encerrado = d.id;
+    const ultima = this.ativa ? ultimaPalavraDevida(this.ultimaFala, d.id, d.posicao_ms, d.duracao_ms, d.interrompida) : null;
+    if (!ultima) { this.apagar(); this.fala = this.ultimaFala = null; this.final = null; return; }
+    // Só o último glifo já devido, com retenção curta; não reproduzir palavras perdidas.
+    this.final = { palavra: ultima, id: d.id, ate: agora + 120, precisao: this.ultimaFala!.precisao };
+    this.fala = null;
+  }
+  atualizar(modelo: Modelo, habilitada: boolean, reduzido: boolean, agora = performance.now()) {
+    this.ativa = habilitada && !modelo.privacidade && modelo.conectado;
+    if (reduzido !== this.reduzido) { this.chave = ""; this.campo.limpar(); }
+    this.reduzido = reduzido;
+    if (!this.ativa) { this.limpar(); this.ultimaAmostra = modelo.acustica; return; }
+    const proxima = modelo.fala_temporizada;
+    if (proxima && proxima.id > this.maiorId) {
+      this.apagar(); this.final = null; this.ultimaFala = null; this.maiorId = proxima.id;
     }
-    if(!this.fala) { this.apagar(); return; }
-    if(modelo.acustica?.fonte==="voz"&&!modelo.acustica.ativo) this.apagar();
+    if (proxima && proxima.id >= this.maiorId && proxima.id > this.encerrado) {
+      this.fala = this.ultimaFala = proxima;
+    } else this.fala = null;
+    if (modelo.acustica !== this.ultimaAmostra) {
+      this.ultimaAmostra = modelo.acustica;
+      this.relogio.atualizar(modelo.acustica, agora);
+      if (modelo.acustica?.fonte === "voz" && modelo.acustica.reproducao_id > this.maiorId) {
+        this.maiorId = modelo.acustica.reproducao_id; this.final = null; this.fala = null; this.apagar();
+      }
+    }
+    if (!this.fala && !this.final && ["erro", "recuperando"].includes(modelo.estado)) this.apagar();
+    if (reduzido) this.desenhar(agora, "#d8e1e5", true, 0);
   }
   private apagar() {
-    this.canvas.hidden=true;this.legenda.hidden=true;
-    this.legenda.textContent="";this.canvas.removeAttribute("aria-label");
-    this.contexto?.clearRect(0,0,1200,140);
-    this.chave="";this.pontos=[];
+    this.canvas.hidden = true; this.legenda.hidden = true; this.legenda.textContent = "";
+    this.canvas.removeAttribute("aria-label"); this.canvas.removeAttribute("data-fase");
+    this.campo.limpar(); this.chave = "";
   }
-  limpar() { this.relogio.limpar();this.ultimaAmostra=null;this.fala=null;this.apagar(); }
-  desenhar(agora:number,cor:string,reduzido:boolean) {
-    const alvo=this.ativa&&!reduzido?this.relogio.palavra(this.fala,agora):null;
-    const c=this.contexto;
-    if(!alvo||!c) { if(!this.canvas.hidden) this.apagar();return; }
-    const {palavra,posicao}=alvo;
-    const chave=`${this.fala!.id}:${palavra.inicio_ms}:${palavra.texto}`;
-    if(chave!==this.chave) {
-      this.chave=chave;
-      const m=this.mascara.getContext("2d",{willReadFrequently:true});
-      if(!m)return;
-      m.clearRect(0,0,1200,140);m.fillStyle="#fff";m.textAlign="center";m.textBaseline="middle";
-      m.font="500 84px 'Segoe UI', sans-serif";
-      const largura=m.measureText(palavra.texto).width;
-      if(largura>1080)m.font=`500 ${84*1080/largura}px 'Segoe UI', sans-serif`;
-      m.fillText(palavra.texto,600,70);
-      const pixels=m.getImageData(0,0,1200,140).data;
-      this.pontos=[];
-      for(let y=8;y<132;y+=3)for(let x=20;x<1180;x+=3)if(pixels[(y*1200+x)*4+3]>90)this.pontos.push(x,y);
-      if(this.pontos.length>3200) { const origem=this.pontos;this.pontos=[];const passo=origem.length/3200;for(let i=0;i<1600;i++){const j=Math.floor(i*passo/2)*2;this.pontos.push(origem[j],origem[j+1]);} }
-      const estimada=this.fala!.precisao==="estimada";
-      this.legenda.textContent=`${palavra.texto} · ${estimada?"tempo estimado no áudio":"tempo alinhado ao áudio"}`;
-      this.canvas.setAttribute("aria-label",`Palavra atual: ${palavra.texto}`);
+  limpar() {
+    this.relogio.limpar(); this.ultimaAmostra = null;
+    this.fala = this.ultimaFala = null; this.final = null;
+    this.maiorId = this.encerrado = 0; this.anterior = 0; this.apagar();
+  }
+  desenhar(agora: number, cor: string, reduzido: boolean, delta?: number) {
+    const dt = delta ?? (this.anterior === 0 ? 1000 / 30 : Math.max(0, agora - this.anterior)); this.anterior = agora;
+    if (!this.ativa) return;
+    const amostra = this.relogio.palavra(this.fala, agora);
+    const final = this.final && agora <= this.final.ate ? this.final : null;
+    const palavra = final?.palavra ?? amostra?.palavra;
+    if (palavra) {
+      const id = final?.id ?? this.fala!.id;
+      const chave = `${id}:${palavra.inicio_ms}:${palavra.texto}`;
+      if (chave !== this.chave) {
+        this.chave = chave;
+        if (!reduzido) this.campo.definirTexto(palavra.texto, agora);
+        const precisao = final?.precisao ?? this.fala!.precisao;
+        this.legenda.textContent = `${palavra.texto} · ${precisao === "estimada" ? "tempo estimado no áudio" : "tempo alinhado ao áudio"}`;
+        this.canvas.setAttribute("aria-label", `Palavra atual: ${palavra.texto}`);
+      }
+      this.canvas.hidden = reduzido;
+      this.legenda.hidden = false;
+    } else {
+      if (this.chave) { this.campo.dispersar(agora); this.chave = ""; }
+      this.legenda.hidden = true; this.legenda.textContent = ""; this.canvas.removeAttribute("aria-label");
+      if (this.final && agora > this.final.ate) { this.final = null; this.ultimaFala = null; }
     }
-    this.canvas.hidden=false;this.legenda.hidden=false;
-    c.clearRect(0,0,1200,140);c.fillStyle=cor;
-    const montagem=Math.max(0,Math.min(1,(posicao-palavra.inicio_ms)/75,(palavra.fim_ms-posicao)/65));
-    const suave=montagem*montagem*(3-2*montagem);
-    for(let i=0;i<this.pontos.length;i+=2) {
-      const x=this.pontos[i], y=this.pontos[i+1], a=aleatorio(i)*Math.PI*2;
-      const arco=(1-suave)*26;
-      c.globalAlpha=.5+.5*suave;
-      c.beginPath();c.arc(x+Math.cos(a+posicao*.002)*arco,y+Math.sin(a)*arco*.5,palavra.destaque?1.35:1.15,0,Math.PI*2);c.fill();
-    }
-    c.globalAlpha=1;
+    this.campo.desenhar(agora, dt, cor, reduzido);
+    this.canvas.dataset.fase = this.campo.nuvem.fase;
+    if (this.campo.nuvem.fase === "poeira") this.canvas.hidden = true;
+    // Ao trocar a preferência não conservar a máscara de uma animação anterior.
+    if (this.reduzido && this.campo.nuvem.quantidade > 0) this.campo.limpar();
   }
 }

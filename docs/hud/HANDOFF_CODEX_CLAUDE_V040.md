@@ -15,8 +15,8 @@
 
 Imagem dark fornecida nesta conversa: coroa assimétrica de filamentos, poeira externa,
 marca NORA e palavras materialmente feitas de partículas; painel inferior horizontal.
-O vídeo citado no prompt não foi anexado/localizado nesta retomada. Não alegar comparação
-quadro a quadro com vídeo externo. Não há fonte Nasalization licenciada no checkout:
+Vídeo posteriormente anexado e visto: 30,785 s, 576×288, 30 FPS. Referência de movimento
+(poeira → formação de glifos → retenção → dispersão); não copiar cores ou conteúdo do vídeo. Não há fonte Nasalization licenciada no checkout:
 usar infraestrutura de máscaras com fallback do sistema, sem baixar/redistribuir fonte.
 
 ## Plano e responsabilidade
@@ -38,3 +38,21 @@ Ler CLAUDE.md, docs/ANDAMENTO.md e este arquivo; conferir `git status`, log e he
 Manter cada fatia testável, executar verificações proporcionais, commitar e enviar.
 Confirmar o SHA via `git ls-remote` após cada push; commits/ZIP locais não bastam.
 Não implementar novos recursos se faltar orçamento para validar e preservar o checkpoint.
+
+## Checkpoint B — partículas e UI
+
+- Primeiro checkpoint remoto confirmado: `e2d7395233306912978f525f55cdca5ee8dbd937`.
+- Motor reutilizável de partículas com IDs/pool estáveis, posição/velocidade e mola amortecida.
+  A máscara fornece destinos; o canvas desenha corpos móveis, não uma imagem estática.
+- Marca central usa o motor com fallback Arial do sistema (Nasalization ausente).
+  Somente heading acessível permanece em HTML. Slogans/ornamentos retirados; funções preservadas.
+- Cabeçalho usa relógio de mídia, modo reduzido mostra alternativa estática autorizada.
+- Paleta compartilhada `src/nora/paleta.json`: aliases preservados, tons dark frios contidos.
+  Faixa inferior responde mic/voz; limite 120 FPS adicionado sem elevar jogo (8 FPS).
+- Frontend: lint/typecheck/47 testes/build aprovados. Biblioteca Three separada em chunk
+  estável, sem aumentar limite de avisos. Baseline Python:465 aprovados/2 ignorados;
+  um dos ignorados era o módulo v4 por websockets ausente. Dependência já declarada
+  está sendo instalada para validação final; CI passa a instalá-la explicitamente.
+- Próximo checkpoint C: regressões reproduzidas de alinhamento/padding, fragmentos,
+  metadados finais e fim natural vs cancelamento; benchmark achou overhead na base
+  ainda em correção. Não declarar meta p95≤5% até medir o resultado.
