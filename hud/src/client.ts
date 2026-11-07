@@ -70,7 +70,7 @@ export class Ponte {
     this.token = sessao.token;
   }
   async comando(
-    caminho: "decisao" | "privacidade",
+    caminho: "decisao" | "privacidade" | "diagnostico",
     dados: Record<string, unknown>,
   ) {
     if (!this.token) await this.sessao();

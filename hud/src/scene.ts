@@ -42,6 +42,11 @@ export class Cena {
   private parar = false;
   private sprite?: THREE.CanvasTexture;
   private brilhos?: THREE.Points;
+  /** Contextos WebGL criados e perdidos (telemetria da homologação). */
+  contextosCriados = 0;
+  contextosPerdidos = 0;
+  /** ms de JavaScript do último quadro desenhado. */
+  ultimoTrabalho = 0;
   private largura = 1;
   private altura = 1;
   private ultimoTempo = 0;
@@ -134,6 +139,7 @@ export class Cena {
           antialias: true,
           powerPreference: "low-power",
         });
+        this.contextosCriados++;
         this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
         // Fundo preto opaco + `mix-blend-mode: screen` no CSS: o preto some sobre o fundo da
         // página e só a luz (com o brilho) soma.
@@ -235,6 +241,7 @@ export class Cena {
           "webglcontextlost",
           (e) => {
             e.preventDefault();
+            this.contextosPerdidos++;
             this.configurar("canvas", this.fps);
           },
           { once: true },
@@ -414,7 +421,7 @@ export class Cena {
     const fps=cadenciaVisual(this.fps,this.modelo.jogo||this.modelo.estado==="modo_jogo",this.reduzido.matches,document.hidden);
     if(this.parar||fps===0)return;
     const intervalo=1000/fps,delta=this.anterior===0?intervalo:agora-this.anterior;
-    if(delta>=intervalo-.25){this.anterior=agora;this.desenhar(agora,Math.min(delta,250));}
+    if(delta>=intervalo-.25){this.anterior=agora;const t0=performance.now();this.desenhar(agora,Math.min(delta,250));this.ultimoTrabalho=performance.now()-t0;}
     this.agendar();
   };
   fechar() {

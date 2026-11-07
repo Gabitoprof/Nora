@@ -289,6 +289,7 @@ Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC d
 | 6 | Testes de estado (`reproducao_encerrada`) | Ordem, duplicidade, reconexão, privacidade e mensagem atrasada depois do Privado | `hud/tests/state.test.ts` |
 | 7 | Privacidade no backend | Palavras só publicadas com a tela autorizada; revogar invalida a fala em curso (época) e esvazia as filas; Privado nem guarda as palavras. Leitura sem segredo de sessão: proposta abaixo | `tests/test_hud.py`, `tests/test_hud_acustica.py` |
 | 8 | QA visual | Palavras longas e acentos legíveis em 1920×1080 (faixa de 1060 px) e 1366×768 (902 px); legível em ~116 ms | `docs/evidencias/palavras-1920x1080.jpg`, `palavras-1366x768.jpg`; `hud/tests/text-particles.test.ts` |
+| 9 | Medição no PC (preparada) | Telemetria na HUD + `homologacao_windows.ps1` (base × HUD, contínuo) | **Pendente: Gabriel roda** |
 
 Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
 (`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o
@@ -348,3 +349,29 @@ Acentos (ç, ã, é, ú) e pontuação aparecem. As palavras já ditas ficam ent
 legíveis, mas discretas de propósito. **Tempo até ficar legível** (90% dos pontos a menos de 3 px
 da letra, saindo da poeira longe): antes ~380 ms; agora ~116 ms (meta ≤ 150 ms).
 **Pendente no PC:** a mesma conferência na HUD inteira, com a fala real e na tela do Gabriel.
+
+### Item 9: medição no PC do Gabriel (preparado; ele executa)
+
+Tudo com a Nora real: Qwen, Whisper e ElevenLabs ligados ao mesmo tempo.
+
+1. Terminal 1 (em `B:\Nora`): `scripts\iniciar_voz_windows.ps1 -Voz nenhuma` (o ouvido).
+2. Terminal 2, com o `.venv` ativado: `nora ouvir --hud`. Na HUD: **Visível**, qualidade
+   **Detalhada**, **60 FPS**, "Palavras em partículas" marcado.
+3. Terminal 3, com o `.venv` ativado:
+   `powershell -ExecutionPolicy Bypass -File scripts\homologacao_windows.ps1 -SoMedir -Continuo`
+   - fase 1 (60 s): ele pede para **fechar a aba da HUD** (base);
+   - fase 2 (60 s): ele pede para **abrir a HUD e conversar** usando o roteiro do item 10;
+   - depois, o teste contínuo de 25 min: deixe a HUD aberta e converse de vez em quando.
+4. Mande o arquivo `data\homologacao\AAAA-MM-DD_HHMM.txt` e a planilha `..._continuo.csv`.
+
+| Medida | Onde sai | Meta |
+|---|---|---|
+| Tempo de quadro p50 / p95 / pior | HUD (`diagnostico_hud.json`) | p95 ≤ 33,3 ms |
+| Atraso som → palavra p50 / p95 | HUD | p95 ≤ 100 ms |
+| CPU a mais da HUD | script (com HUD − base) | ≤ 10 pontos percentuais |
+| VRAM a mais da HUD | script | ≤ 256 MB |
+| Memória, VRAM, quadro e contextos WebGL no início × fim (25 min) | script `-Continuo` | sem subida contínua; contextos estáveis |
+
+Os mesmos números aparecem nos Ajustes da HUD (linha "Quadro p50 / p95 / pior"). O atraso som →
+palavra é medido pela própria HUD (quanto do áudio da palavra já tinha tocado quando ela apareceu);
+não inclui a latência da placa de som.

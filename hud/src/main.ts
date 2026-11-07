@@ -2,6 +2,7 @@ import "./style.css";
 import { Ponte } from "./client";
 import { Cena } from "./scene";
 import { PalavrasParticulas, VIDA_PALAVRAS } from "./word-particles";
+import { Telemetria } from "./telemetria";
 import { CampoParticulasTexto, type Camada } from "./text-particle-field";
 import { misturar } from "./state";
 import {
@@ -31,7 +32,7 @@ app.innerHTML = `
     <aside class="side-panel context-panel" aria-labelledby="context-heading"><p class="panel-index">02 <span>CONTEXTO</span></p><h2 id="context-heading">Tudo no seu tempo</h2><svg class="mini-constellation" viewBox="0 0 220 70" aria-hidden="true"><defs><pattern id="dust" width="9" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="3" r="0.7" fill="currentColor"/></pattern></defs><path d="M0 55Q65 80 105 30T220 17V46Q155 25 110 50T0 65Z" fill="url(#dust)"/></svg><div class="context-row"><span class="small-dot"></span><div><strong id="report-label">Relatórios</strong><span id="report-status">Aguardando o núcleo</span></div><button id="open-improvements" class="text-button" aria-label="Ver melhorias supervisionadas">↗</button></div><div class="context-row"><span class="small-dot"></span><div><strong>Notas conectadas</strong><span id="notes-status">Conteúdo protegido</span></div><button id="open-notes" class="text-button" aria-label="Ver notas usadas na conversa">↗</button></div><p class="local-note">PRESENÇA LOCAL · CONTEÚDO PROTEGIDO</p></aside>
     <section class="response-card" aria-label="Resposta da Nora" hidden><div class="response-heading"><span>NA CONVERSA</span><span id="response-origin"></span></div><p id="response-text"></p></section>
     <footer class="bottom-bar"><div class="session-status"><span class="small-dot"></span><span id="session-label">Aguardando a Nora</span></div><div class="clock"><time id="clock">—</time><span id="date">—</span></div></footer>
-    <section id="settings" class="settings floating-panel" aria-label="Ajustes visuais" hidden><h2>Ajustes da presença</h2><label>Qualidade<select id="quality"><option value="alta">Detalhada · WebGL</option><option value="baixa">Econômica · WebGL</option><option value="canvas">Leve · Canvas</option></select></label><label>Limite de quadros<select id="fps"><option value="30">30 FPS</option><option value="60">60 FPS</option><option value="120">120 FPS</option></select></label><label class="check-label"><input id="words" type="checkbox" autocomplete="off" checked/> Palavras em partículas</label><p>Palavras acompanham a reprodução. O tempo é estimado pela duração do áudio quando não há alinhamento. Com movimento reduzido, a palavra aparece sem animação.</p><p id="render-mode"></p><p id="versao" class="versao"></p></section>
+    <section id="settings" class="settings floating-panel" aria-label="Ajustes visuais" hidden><h2>Ajustes da presença</h2><label>Qualidade<select id="quality"><option value="alta">Detalhada · WebGL</option><option value="baixa">Econômica · WebGL</option><option value="canvas">Leve · Canvas</option></select></label><label>Limite de quadros<select id="fps"><option value="30">30 FPS</option><option value="60">60 FPS</option><option value="120">120 FPS</option></select></label><label class="check-label"><input id="words" type="checkbox" autocomplete="off" checked/> Palavras em partículas</label><p>Palavras acompanham a reprodução. O tempo é estimado pela duração do áudio quando não há alinhamento. Com movimento reduzido, a palavra aparece sem animação.</p><p id="render-mode"></p><p id="diagnostico" class="versao"></p><p id="versao" class="versao"></p></section>
     <dialog id="context-dialog" class="dialog floating-panel"><div class="dialog-header"><h2 id="dialog-title">Contexto</h2><button id="close-dialog" class="icon-button" aria-label="Fechar painel">×</button></div><div id="dialog-content"></div></dialog>
     <dialog id="confirm-dialog" class="dialog floating-panel"><h2>Confirmar decisão</h2><p id="confirm-description"></p><p>Aprovar gera apenas uma tarefa. Código e publicação continuam sob sua decisão.</p><div class="dialog-actions"><button id="cancel-decision" class="secondary-button">Cancelar</button><button id="confirm-decision" class="primary-button">Confirmar</button></div></dialog>
     <p id="feedback" class="feedback" role="status" hidden></p>
@@ -84,7 +85,10 @@ const marca = new CampoParticulasTexto(el<HTMLCanvasElement>("brand-particles"),
 });
 let nomeMarca = "";
 const movimentoReduzido=matchMedia("(prefers-reduced-motion: reduce)");
+const telemetria = new Telemetria();
+palavras.aoMostrar = atraso => telemetria.palavra(atraso);
 cena.aoDesenhar=({agora,delta,cor,reduzido,energia})=>{
+  telemetria.quadro(delta, cena.ultimoTrabalho);
   document.documentElement.style.setProperty("--accent",cor);
   // Letras mais claras que a cena (branco-prateado com ciano), como na referência aprovada.
   const luz=misturar(cor.toUpperCase(),"#EEF9FF",.55);
@@ -401,10 +405,23 @@ el("confirm-decision").addEventListener("click", async () => {
 });
 clock();
 const clockTimer = setInterval(clock, 1000);
+// Telemetria (só números): nos Ajustes a cada 2 s e para o núcleo a cada 10 s, que a grava em
+// data/diagnostico_hud.json para o roteiro de homologação ler. Falha aqui nunca afeta a HUD.
+const telemetriaTimer = setInterval(() => {
+  telemetria.contextos = cena.contextosCriados;
+  telemetria.perdidos = cena.contextosPerdidos;
+  telemetria.fpsLimite = Number(el<HTMLSelectElement>("fps").value);
+  if (!el("settings").hidden) texto("diagnostico", telemetria.linha());
+}, 2000);
+const diagnosticoTimer = setInterval(() => {
+  if (atual.conectado) ponte.comando("diagnostico", { ...telemetria.resumo() }).catch(() => {});
+}, 10000);
 renderizar();
 void ponte.iniciar();
 window.addEventListener("pagehide", () => {
   clearInterval(clockTimer);
+  clearInterval(telemetriaTimer);
+  clearInterval(diagnosticoTimer);
   palavras.limpar();
   marca.limpar();
   movimentoReduzido.removeEventListener("change",particulasPalavra);

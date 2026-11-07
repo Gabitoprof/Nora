@@ -517,9 +517,32 @@ def preparar_reproducao(amostras: bytes | None, taxa: int, canais: int):
         return None
 
 
+# Telemetria da HUD (homologação): só estes números, gravados em <dados>/diagnostico_hud.json.
+CAMPOS_DIAGNOSTICO = {
+    "janela_s", "quadros", "intervalo_p50", "intervalo_p95", "intervalo_pior", "trabalho_p95",
+    "palavras", "atraso_palavra_p50", "atraso_palavra_p95", "contextos_webgl",
+    "contextos_perdidos", "memoria_js_mb", "fps_limite",
+}  # fmt: skip
+
+
+def diagnostico_valido(dados) -> bool:
+    return (
+        isinstance(dados, dict)
+        and dados.keys() == CAMPOS_DIAGNOSTICO
+        and all(_numero(v, 0, 10**7) for v in dados.values())
+    )
+
+
 class ServidorHUD:
-    def __init__(self, ponte: PonteHUD, porta: int = 8765, pasta: Path | None = None) -> None:
+    def __init__(
+        self,
+        ponte: PonteHUD,
+        porta: int = 8765,
+        pasta: Path | None = None,
+        dados: Path | None = None,
+    ) -> None:
         self.ponte, self.token = ponte, secrets.token_urlsafe(32)
+        self.dados = dados  # onde gravar a telemetria da HUD (None = não grava)
         self._pedidos: list[float] = []
         self._trava_pedidos = threading.Lock()
         from nora.caminhos import build_da_hud
@@ -700,6 +723,9 @@ class ServidorHUD:
                     elif self.path == "/api/privacidade" and type(dados.get("visivel")) is bool:
                         ponte.privacidade(dados["visivel"])
                         self.responder(200, ponte.snapshot())
+                    elif self.path == "/api/diagnostico" and diagnostico_valido(dados):
+                        dono.gravar_diagnostico(dados)
+                        self.responder(200, {"ok": True})
                     else:
                         self.responder(404, {"erro": "Rota inexistente"})
                 except (ValueError, TypeError, OSError):
@@ -733,6 +759,19 @@ class ServidorHUD:
         self.parado = threading.Event()
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
 
+    def gravar_diagnostico(self, dados: dict) -> None:
+        """Último resumo de telemetria da HUD (números), com a hora; nunca derruba a HUD."""
+        if self.dados is None:
+            return
+        try:
+            self.dados.mkdir(parents=True, exist_ok=True)
+            registro = {**dados, "quando": time.strftime("%Y-%m-%dT%H:%M:%S")}
+            (self.dados / "diagnostico_hud.json").write_text(
+                json.dumps(registro, ensure_ascii=False), encoding="utf-8"
+            )
+        except OSError:
+            pass
+
     def iniciar(self) -> ServidorHUD:
         self.thread.start()
         return self
@@ -753,7 +792,7 @@ def executar(config, ouvir: bool = False, porta: int = 8765, **opcoes) -> int:
     global _ponte
     ponte = PonteHUD(config.assistente.nome)
     try:
-        servidor = ServidorHUD(ponte, porta).iniciar()
+        servidor = ServidorHUD(ponte, porta, dados=config.pasta_dados).iniciar()
     except (OSError, OverflowError, ValueError):
         print("[HUD] Porta indisponível; seguindo sem a interface visual.")
         if ouvir:

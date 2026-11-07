@@ -46,3 +46,22 @@ describe("onda inferior viva e reativa", () => {
     expect(brilhoInferior(0)).toBeGreaterThan(brilhoInferior(8) * 3);
   });
 });
+
+import { Telemetria } from "../src/telemetria";
+describe("telemetria da HUD (homologação)", () => {
+  it("calcula p50/p95/pior do quadro e o atraso das palavras, só com números", () => {
+    const t = new Telemetria();
+    for (let i = 0; i < 95; i++) t.quadro(33.3, 4);
+    for (let i = 0; i < 5; i++) t.quadro(60, 9);
+    t.palavra(20); t.palavra(40); t.palavra(-5);
+    const r = t.resumo();
+    expect(r.quadros).toBe(100); expect(r.intervalo_p50).toBe(33.3); expect(r.intervalo_pior).toBe(60);
+    expect(r.intervalo_p95).toBe(33.3); expect(r.palavras).toBe(3); expect(r.atraso_palavra_p95).toBe(40);
+    for (const v of Object.values(r)) expect(typeof v).toBe("number");
+    expect(t.linha()).toContain("p95 33.3");
+  });
+  it("ignora valores absurdos (aba em segundo plano, relógio maluco)", () => {
+    const t = new Telemetria(); t.quadro(9000, -1); t.palavra(NaN);
+    expect(t.resumo().quadros).toBe(0); expect(t.resumo().palavras).toBe(0);
+  });
+});

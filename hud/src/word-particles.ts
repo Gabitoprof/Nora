@@ -78,6 +78,8 @@ export class PalavrasParticulas {
   private anterior = 0;
   private maiorId = 0;
   private encerrado = 0;
+  /** Avisado quando uma palavra aparece: quanto do áudio dela já tinha tocado (ms). */
+  aoMostrar?: (atrasoMs: number) => void;
   /** Teto da retenção nas pausas (ms); configurável. */
   tetoPausa = TETO_PAUSA_MS;
   /** Palavras já ditas desta fala (só as que já tocaram; nunca as próximas). */
@@ -150,6 +152,7 @@ export class PalavrasParticulas {
         if (id !== this.idAnteriores) { this.anteriores = []; this.idAnteriores = id; this.palavraAtual = ""; }
         if (this.palavraAtual) this.anteriores = [...this.anteriores, this.palavraAtual].slice(-ANTERIORES);
         this.palavraAtual = palavra.texto;
+        this.aoMostrar?.(amostra!.posicao - palavra.inicio_ms);
         if (!reduzido) this.campo.definirTexto(palavra.texto, agora, false, this.anteriores);
         const precisao = this.fala!.precisao;
         this.legenda.textContent = `${palavra.texto} · ${precisao === "estimada" ? "tempo estimado no áudio" : "tempo alinhado ao áudio"}`;

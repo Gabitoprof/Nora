@@ -257,7 +257,7 @@ def test_porta_ocupada_nao_interrompe_escuta(criar_raiz, monkeypatch):
     from nora import maos_livres
     from nora.config import carregar
 
-    def indisponivel(*args):
+    def indisponivel(*args, **kwargs):
         raise OSError("porta ocupada")
 
     chamadas = []
@@ -432,3 +432,41 @@ def test_outra_pagina_nao_le_eventos_nem_estado(servidor, rota, headers):
     """Uma página de outro site (ou DNS rebinding) não lê a fala nem o estado da HUD."""
     _, http = servidor
     assert pedido(http, rota, headers=headers)[0] == 403
+
+
+def test_telemetria_da_hud_grava_so_numeros(tmp_path):
+    from nora.hud import CAMPOS_DIAGNOSTICO, PonteHUD, ServidorHUD
+
+    servidor = ServidorHUD(PonteHUD(), 0, pasta=tmp_path, dados=tmp_path / "dados")
+    resumo = {campo: 1.5 for campo in CAMPOS_DIAGNOSTICO}
+    servidor.gravar_diagnostico(resumo)
+    gravado = json.loads((tmp_path / "dados" / "diagnostico_hud.json").read_text(encoding="utf-8"))
+    assert {k: v for k, v in gravado.items() if k != "quando"} == resumo
+
+
+@pytest.mark.parametrize(
+    "corpo",
+    [
+        {"texto": "segredo"},
+        "lista",
+        None,
+    ],
+)
+def test_telemetria_recusa_texto_ou_formato_errado(corpo):
+    from nora.hud import CAMPOS_DIAGNOSTICO, diagnostico_valido
+
+    base = dict.fromkeys(CAMPOS_DIAGNOSTICO, 1)
+    assert diagnostico_valido(base)
+    assert not diagnostico_valido({**base, "intervalo_p95": "33"})
+    assert not diagnostico_valido({**base, "intervalo_p95": float("nan")})
+    assert not diagnostico_valido(corpo if not isinstance(corpo, dict) else {**base, **corpo})
+
+
+def test_telemetria_pela_api_exige_token(servidor):
+    _, http = servidor
+    from nora.hud import CAMPOS_DIAGNOSTICO
+
+    corpo = dict.fromkeys(CAMPOS_DIAGNOSTICO, 2)
+    assert pedido(http, "/api/diagnostico", corpo)[0] == 403
+    token = json.loads(pedido(http, "/api/sessao")[1])["token"]
+    assert pedido(http, "/api/diagnostico", corpo, {"X-Nora-Token": token})[0] == 200
