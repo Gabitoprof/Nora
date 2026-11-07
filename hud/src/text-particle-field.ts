@@ -2,6 +2,15 @@ import { aleatorio } from "./scene-math";
 import { desenharGeometrico, temGlifos } from "./geometric-glyphs";
 
 export type FaseParticulas = "poeira" | "formando" | "retendo" | "dispersando";
+/**
+ * "Vida" das partículas enquanto a letra está formada: sem ela, a letra fica parada.
+ * - tremor: raio (px) do movimento de cada ponto em volta do seu lugar na letra;
+ * - fluxo: fração do tempo em que cada ponto se solta para a poeira e volta (troca contínua);
+ * - poeira: brilho da poeira livre em volta das letras; extras: quantos pontos de poeira livre.
+ * A energia do áudio (voz ou microfone) aumenta tremor, fluxo e brilho.
+ */
+export interface Vida { tremor: number; fluxo: number; poeira: number; extras: number }
+export const SEM_VIDA: Vida = { tremor: 0, fluxo: 0, poeira: .025, extras: 36 };
 /** Pool fixo: identidade, posição e velocidade sobrevivem às trocas de palavra. */
 export class NuvemLetras {
   readonly ids: Uint16Array;
@@ -22,6 +31,18 @@ export class NuvemLetras {
   alvos = 0;
   fase: FaseParticulas = "poeira";
   private inicio = 0;
+  vida: Vida = SEM_VIDA;
+  /** Energia do áudio agora (0–1): voz quando ela fala, microfone quando escuta. */
+  energia = 0;
+  // Parâmetros fixos de cada ponto (frequências, fases, direção e período do fluxo).
+  private readonly freqA: Float32Array;
+  private readonly freqB: Float32Array;
+  private readonly faseA: Float32Array;
+  private readonly faseB: Float32Array;
+  private readonly dirX: Float32Array;
+  private readonly dirY: Float32Array;
+  private readonly periodo: Float32Array;
+  private readonly alcance: Float32Array;
   constructor(readonly maximo = 1800, readonly largura = 1200, readonly altura = 140) {
     this.ids = new Uint16Array(maximo);
     this.x = new Float32Array(maximo); this.y = new Float32Array(maximo);
@@ -31,7 +52,17 @@ export class NuvemLetras {
     this.livreX = new Float32Array(maximo); this.livreY = new Float32Array(maximo);
     this.brilho = new Float32Array(maximo);
     this.peso = new Float32Array(maximo).fill(1);
+    this.freqA = new Float32Array(maximo); this.freqB = new Float32Array(maximo);
+    this.faseA = new Float32Array(maximo); this.faseB = new Float32Array(maximo);
+    this.dirX = new Float32Array(maximo); this.dirY = new Float32Array(maximo);
+    this.periodo = new Float32Array(maximo); this.alcance = new Float32Array(maximo);
     for (let i = 0; i < maximo; i++) {
+      this.freqA[i] = .7 + aleatorio(i + 1501) * 1.6; this.freqB[i] = .6 + aleatorio(i + 1709) * 1.7;
+      this.faseA[i] = aleatorio(i + 2203) * Math.PI * 2; this.faseB[i] = aleatorio(i + 2411) * Math.PI * 2;
+      const angulo = aleatorio(i + 2617) * Math.PI * 2;
+      this.dirX[i] = Math.cos(angulo); this.dirY[i] = Math.sin(angulo);
+      this.periodo[i] = 3.5 + aleatorio(i + 2803) * 5.5;
+      this.alcance[i] = 30 + aleatorio(i + 3011) * 70;
       this.ids[i] = i;
       this.x[i] = this.livreX[i] = largura * (.04 + aleatorio(i + 8101) * .92);
       this.y[i] = this.livreY[i] = altura * (.09 + aleatorio(i + 1244) * .82);
@@ -41,7 +72,7 @@ export class NuvemLetras {
   }
   definirAlvos(coordenadas: ArrayLike<number>, agora: number, imediato = false, pesos?: ArrayLike<number>) {
     this.alvos = Math.min(this.maximo, Math.floor(coordenadas.length / 2));
-    this.quantidade = Math.min(this.maximo, Math.max(this.quantidade, this.alvos + 36));
+    this.quantidade = Math.min(this.maximo, Math.max(this.quantidade, this.alvos + this.vida.extras));
     this.inicio = agora;
     this.fase = imediato ? "retendo" : "formando";
     for (let i = 0; i < this.quantidade; i++) {
@@ -73,10 +104,35 @@ export class NuvemLetras {
     const omega = retendo ? 48 : 4.2;
     const amortecimento = Math.exp(-omega * dt);
     const fade = Math.exp(-dt / (retendo ? .075 : .135));
+    const vida = this.vida, t = agora / 1000, energia = Math.max(0, Math.min(1, this.energia));
+    const viva = retendo && (vida.tremor > 0 || vida.fluxo > 0);
+    const tremor = vida.tremor * (1 + energia * 4);
+    const fluxo = Math.min(.35, vida.fluxo * (1 + energia * 1.5));
     for (let i = 0; i < this.quantidade; i++) {
       const glifo = retendo && i < this.alvos;
-      const tx = glifo ? this.alvoX[i] : this.livreX[i];
-      const ty = glifo ? this.alvoY[i] : this.livreY[i];
+      let tx = glifo ? this.alvoX[i] : this.livreX[i];
+      let ty = glifo ? this.alvoY[i] : this.livreY[i];
+      let realce = 1;
+      if (viva && !reduzido) {
+        const ondaA = Math.sin(t * this.freqA[i] + this.faseA[i]), ondaB = Math.cos(t * this.freqB[i] + this.faseB[i]);
+        if (glifo) {
+          tx += tremor * ondaA; ty += tremor * ondaB;
+          if (fluxo > 0) {
+            // Cada ponto passa uma fração do seu período solto na poeira e volta para a letra.
+            const ciclo = (t / this.periodo[i] + this.faseA[i] / (Math.PI * 2)) % 1;
+            if (ciclo < fluxo) {
+              const s = Math.sin(Math.PI * ciclo / fluxo);
+              const longe = this.alcance[i] * s * (1 + energia);
+              tx += this.dirX[i] * longe; ty += this.dirY[i] * longe * .55;
+              realce = 1 - .7 * s;
+            }
+          }
+          // Cintilar leve; com a voz, a letra brilha mais.
+          realce *= (.82 + .18 * ondaB) * (1 + .35 * energia);
+        } else {
+          tx += 16 * ondaA; ty += 7 * ondaB; // poeira livre circulando
+        }
+      }
       if (reduzido) {
         this.x[i] = tx; this.y[i] = ty; this.vx[i] = this.vy[i] = 0;
         this.alpha[i] = glifo ? this.brilho[i] * this.peso[i] : 0; continue;
@@ -88,7 +144,7 @@ export class NuvemLetras {
       this.y[i] = ty + (dy + by * dt) * amortecimento;
       this.vx[i] = (this.vx[i] - omega * bx * dt) * amortecimento;
       this.vy[i] = (this.vy[i] - omega * by * dt) * amortecimento;
-      const alvoAlpha = glifo ? this.brilho[i] * this.peso[i] : retendo ? .025 : 0;
+      const alvoAlpha = glifo ? Math.min(1, this.brilho[i] * this.peso[i] * realce) : retendo ? (viva ? vida.poeira : .025) : 0;
       this.alpha[i] = alvoAlpha + (this.alpha[i] - alvoAlpha) * fade;
     }
     if (!retendo && agora - this.inicio > 700) this.limpar();
@@ -110,6 +166,8 @@ export interface OpcoesCampoTexto {
   /** Fontes instaladas no computador para a marca, em ordem (ex.: Nasalization). Se nenhuma
    * estiver instalada, vale o alfabeto geométrico próprio. Nenhum arquivo de fonte é embutido. */
   fontesInstaladas?: string[];
+  /** Movimento enquanto a letra está formada (ver `Vida`); sem isso, ela fica parada. */
+  vida?: Partial<Vida>;
   /** Multiplica o tamanho das partículas (canvas que a tela reduz precisa de pontos maiores). */
   escalaParticula?: number;
 }
@@ -131,6 +189,7 @@ export class CampoParticulasTexto {
   constructor(private canvas: HTMLCanvasElement, opcoes: OpcoesCampoTexto = {}) {
     canvas.width = opcoes.largura ?? 1200; canvas.height = opcoes.altura ?? 140;
     this.nuvem = new NuvemLetras(opcoes.maximo ?? 1800, canvas.width, canvas.height);
+    this.nuvem.vida = { ...SEM_VIDA, ...opcoes.vida };
     this.contexto = canvas.getContext("2d");
     this.mascara = document.createElement("canvas");
     this.mascara.width = canvas.width; this.mascara.height = canvas.height;
@@ -214,8 +273,9 @@ export class CampoParticulasTexto {
     this.contexto?.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.mascara.getContext("2d")?.clearRect(0, 0, this.mascara.width, this.mascara.height);
   }
-  desenhar(agora: number, delta: number, cor: string, reduzido = false) {
+  desenhar(agora: number, delta: number, cor: string, reduzido = false, energia = 0) {
     const c = this.contexto; if (!c) return;
+    this.nuvem.energia = energia;
     this.nuvem.passo(agora, delta, reduzido);
     c.clearRect(0, 0, this.canvas.width, this.canvas.height);
     c.fillStyle = cor;

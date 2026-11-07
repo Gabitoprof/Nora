@@ -186,3 +186,34 @@ describe("contrato do fim da reprodução",()=>{
     expect(depois.sequencia).toBe(5);expect(depois.estado).toBe("falando");
   });
 });
+
+describe("marca viva: a letra formada não fica parada",()=>{
+  const forma=new Float32Array(Array.from({length:400},(_,i)=>i%2?60+(i%7):100+i));
+  const viva=(energia=0)=>{const n=new NuvemLetras(800,960,180);n.vida={tremor:1.1,fluxo:.07,poeira:.16,extras:320};n.energia=energia;n.definirAlvos(forma,0,true);return n;};
+  const desvio=(n:NuvemLetras)=>{let soma=0,soltos=0;for(let i=0;i<n.alvos;i++){const d=Math.hypot(n.x[i]-n.alvoX[i],n.y[i]-n.alvoY[i]);soma+=d;if(d>15)soltos++;}return {medio:soma/n.alvos,soltos:soltos/n.alvos};};
+  const rodar=(n:NuvemLetras,ate:number)=>{for(let t=16;t<=ate;t+=16)n.passo(t,16);};
+  it("os pontos se mexem em volta da letra e continuam legíveis",()=>{
+    const n=viva();rodar(n,3000);const x=Float32Array.from(n.x);n.passo(3016,16);
+    expect(n.x.some((v,i)=>v!==x[i])).toBe(true);
+    const {medio,soltos}=desvio(n);expect(medio).toBeGreaterThan(.3);expect(soltos).toBeLessThan(.2);
+  });
+  it("uns pontos se soltam para a poeira e voltam (troca contínua)",()=>{
+    const n=viva();const vistos=new Set<number>();
+    for(let t=16;t<=12000;t+=16){n.passo(t,16);for(let i=0;i<n.alvos;i++)if(Math.hypot(n.x[i]-n.alvoX[i],n.y[i]-n.alvoY[i])>15)vistos.add(i);}
+    expect(vistos.size/n.alvos).toBeGreaterThan(.5);expect(desvio(n).soltos).toBeLessThan(.2);
+    // poeira livre em volta, visível
+    expect(n.quantidade).toBe(n.alvos+320);expect(n.alpha[n.alvos+5]).toBeGreaterThan(.1);
+  });
+  it("a voz aumenta o movimento",()=>{
+    const calma=viva(0),falando=viva(.8);rodar(calma,2000);rodar(falando,2000);
+    expect(desvio(falando).medio).toBeGreaterThan(desvio(calma).medio*1.5);
+  });
+  it("movimento reduzido: parada, exatamente na letra",()=>{
+    const n=viva(.8);n.passo(500,16,true);
+    for(let i=0;i<n.alvos;i++){expect(n.x[i]).toBe(n.alvoX[i]);expect(n.y[i]).toBe(n.alvoY[i]);}
+  });
+  it("sem vida (padrão), a letra assenta parada como antes",()=>{
+    const n=new NuvemLetras(800,960,180);n.definirAlvos(forma,0,true);rodar(n,1000);
+    expect(desvio(n).medio).toBeLessThan(.01);
+  });
+});

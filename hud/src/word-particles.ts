@@ -74,7 +74,11 @@ export class PalavrasParticulas {
   private semPalavra = 0;
   readonly campo: CampoParticulasTexto;
   constructor(private canvas: HTMLCanvasElement, private legenda: HTMLElement) {
-    this.campo = new CampoParticulasTexto(canvas, { maximo: 2000, brilho: .22, escalaParticula: 1.35 });
+    this.campo = new CampoParticulasTexto(canvas, {
+      maximo: 2000, brilho: .22, escalaParticula: 1.35,
+      // Palavras: só um tremor leve (soltar pontos atrapalharia a leitura).
+      vida: { tremor: .45 },
+    });
   }
   receberEvento(evento: Evento, agora = performance.now()) {
     if (["conectado", "desconectado", "recuperando"].includes(evento.tipo)) { this.limpar(); return; }
@@ -122,7 +126,7 @@ export class PalavrasParticulas {
     this.fala = this.ultimaFala = null; this.final = null;
     this.maiorId = this.encerrado = 0; this.anterior = 0; this.apagar();
   }
-  desenhar(agora: number, cor: string, reduzido: boolean, delta?: number) {
+  desenhar(agora: number, cor: string, reduzido: boolean, delta?: number, energia = 0) {
     const dt = delta ?? (this.anterior === 0 ? 1000 / 30 : Math.max(0, agora - this.anterior)); this.anterior = agora;
     if (!this.ativa) return;
     const amostra = this.relogio.palavra(this.fala, agora);
@@ -157,7 +161,7 @@ export class PalavrasParticulas {
         if (this.final && agora > this.final.ate) { this.final = null; this.ultimaFala = null; }
       }
     }
-    this.campo.desenhar(agora, dt, cor, reduzido);
+    this.campo.desenhar(agora, dt, cor, reduzido, energia);
     this.canvas.dataset.fase = this.campo.nuvem.fase;
     if (this.campo.nuvem.fase === "poeira") this.canvas.hidden = true;
     // Ao trocar a preferência não conservar a máscara de uma animação anterior.

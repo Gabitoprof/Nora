@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { onda, aleatorio } from "./scene-math";
 import { cores, inicial, expressaoEmocional, type Modelo } from "./state";
 import { EnvelopeVisual, SILENCIO, aproximar, cadenciaVisual, faixaAcustica, type Dinamica } from "./scene-audio";
-export interface QuadroVisual { agora: number; delta: number; reduzido: boolean; cor: string; }
+/** `energia`: o mesmo sinal que move o anel (voz quando fala, microfone quando escuta), 0–1. */
+export interface QuadroVisual { agora: number; delta: number; reduzido: boolean; cor: string; energia: number; }
 type Qualidade = "alta" | "baixa" | "canvas";
 export class Cena {
   private modelo: Modelo = inicial;
@@ -348,7 +349,7 @@ export class Cena {
       }
       c.restore();
     }
-    this.aoDesenhar?.({agora,delta,reduzido,cor:`#${cor.getHexString()}`});
+    this.aoDesenhar?.({agora,delta,reduzido,cor:`#${cor.getHexString()}`,energia:reduzido?0:Math.min(1,Math.max(sinal.rms,sinal.envelope))});
   }
   private agendar() {
     if(!this.parar&&!document.hidden&&!this.reduzido.matches&&this.frame===undefined)this.frame=requestAnimationFrame(this.animar);

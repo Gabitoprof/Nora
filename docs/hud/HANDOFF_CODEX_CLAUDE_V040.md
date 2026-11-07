@@ -139,3 +139,15 @@ Branch `refino/hud-v040`, criada a partir de `codex/hud-v040-particles-final`. S
 - [x] Linha da fala: decisão do Gabriel (07/11) — só as palavras já ditas, nunca as próximas.
 - [x] Merge autorizado pelo Gabriel (07/11): `refino/hud-v040` avançou `integracao/v0.4.0` até
       `f89d89d` (fast-forward, sem commit de merge).
+
+### Homologação do Gabriel (06/11, noite) e ajustes
+
+- Primeira abertura no Windows mostrou a HUD antiga (build `3eeba77`): uma Nora antiga ocupava
+  a porta. Depois de encerrar os processos e refazer o build, carregou `93f870f`.
+- Achados no Windows: a marca formada ficava **parada** e não interagia com a poeira; a opção
+  "Palavras em partículas" apareceu desmarcada (estado de formulário restaurado pelo navegador).
+- Correção: `Vida` em `text-particle-field.ts` (tremor, fluxo para a poeira e volta, poeira livre
+  em volta) e energia do áudio (`QuadroVisual.energia`, o mesmo sinal do anel) aumentando
+  movimento e brilho; palavras com tremor leve; `autocomplete="off"` na opção das palavras.
+  Movimento reduzido continua parado. Vídeo: `docs/hud/evidencias/marca-viva.mp4`
+  (0–4 s repouso, 4–8 s com voz simulada).
