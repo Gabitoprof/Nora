@@ -11,6 +11,7 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ### Corrigido (roadmap "Imagem para as falas", fases 0 e 1)
 
+- **Voz que cai no meio da resposta (v4):** antes do 1º áudio, a reserva fala tudo; depois de começar, a reserva (flash) continua do último limite de palavra que o alinhamento cobriu, sem repetir o que já foi ouvido e só depois que o áudio recebido termina de tocar; sem alinhamento, a fala para com aviso claro e "repete a resposta que caiu" fala a resposta inteira de novo, sem perguntar ao cérebro. Áudio sem alinhamento continua tocando (as palavras viram estimativa).
 - **Alinhamento das palavras do ElevenLabs v4:** a referência dos tempos (relativa ao trecho de áudio ou ao turno) é decidida uma vez por turno e não muda no meio da fala; cada palavra fica na posição real do PCM. O silêncio inicial configurável (`[audio] silencio_inicial_ms`) agora desloca as palavras junto com o som.
 
 ### Corrigido (revisão da v0.4.0, branch `integracao/v0.4.0`)

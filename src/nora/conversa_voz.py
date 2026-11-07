@@ -19,7 +19,7 @@ from typing import TextIO
 from nora import audio
 from nora.cerebro import CerebroIndisponivel, CerebroLocal
 from nora.config import Config
-from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa
+from nora.conversa import COMANDOS_SAIR, Conversa, nova_conversa, pede_retomada
 from nora.emocao import FiltroDeTela, emocoes_em
 from nora.frases import SeparadorDeFrases
 from nora.hud import emitir
@@ -164,12 +164,53 @@ class Locutor:
                 item = self._audios.get()
 
 
+def texto_restante(frases: list[str], alinhados: list[str]) -> str | None:
+    """O que falta falar depois do que o áudio já cobriu, cortado num limite de palavra.
+
+    `alinhados` são os caracteres que o alinhamento do ElevenLabs já cobriu (áudio recebido, que
+    vai tocar inteiro). A contagem usa só letras e números, sem as etiquetas de emoção ({calma}) e
+    as audio tags ([happy]). Uma palavra pela metade é pulada (melhor que repetir o que já se
+    ouviu). Devolve None se não houver limite confiável (sem alinhamento, ou contagem maior que o
+    texto)."""
+
+    def letras(texto: str):
+        dentro = ""
+        for i, c in enumerate(texto):
+            if dentro:
+                if c == dentro:
+                    dentro = ""
+                continue
+            if c in "{[":
+                dentro = "}" if c == "{" else "]"
+                continue
+            if c.isalnum():
+                yield i
+
+    cobertas = sum(1 for _ in letras("".join(alinhados)))
+    if cobertas == 0:
+        return None
+    texto = " ".join(frases)
+    posicoes = list(letras(texto))
+    if cobertas > len(posicoes):
+        return None
+    if cobertas == len(posicoes):
+        return ""
+    corte = posicoes[cobertas - 1] + 1
+    while corte < len(texto) and texto[corte].isalnum():  # termina a palavra começada
+        corte += 1
+    return texto[corte:].lstrip(" ,.;:!?")
+
+
 class LocutorDialogo:
     """ElevenLabs v4 (diálogo): uma conexão só; cada frase vai assim que o cérebro a termina e o
     áudio toca conforme chega, numa reprodução contínua (sem um pedido nem um toque por frase).
 
-    Mesma interface do `Locutor`. Se o diálogo falhar antes de qualquer som, a resposta inteira
-    vai para a reserva (HTTP, frase por frase) e o motivo fica em `motivo_reserva`."""
+    Mesma interface do `Locutor`. Se o diálogo falhar, o motivo fica em `motivo_reserva` e:
+    - antes do 1º áudio: a reserva (HTTP, frase por frase) fala a resposta inteira;
+    - depois de começar: a reserva continua do último limite de palavra que o alinhamento cobriu,
+      sem repetir o que já foi ouvido, e só depois que o áudio recebido acabar de tocar;
+    - sem limite confiável (sem alinhamento): a fala para de modo claro, `cortada` fica True e a
+      resposta inteira pode ser repetida a pedido ("repete a resposta que caiu")."""
 
     def __init__(
         self,
@@ -190,6 +231,8 @@ class LocutorDialogo:
         self.emocao = ""
         self.turno = None
         self._toque: threading.Thread | None = None
+        self.cortada = False  # caiu no meio sem limite confiável: a resposta pode ser repetida
+        self.reservas: list[str] = []  # motivo de cada troca para a reserva (diagnóstico)
         try:
             # Abre (ou reaproveita) a conexão já, enquanto o cérebro ainda pensa.
             self.turno = dialogo.novo_turno()
@@ -200,9 +243,18 @@ class LocutorDialogo:
             self._toque.start()
 
     def falar(self, frase: str) -> None:
-        if self.reserva is None and self.turno.erro is not None and not self.turno.recebeu_audio:
-            self._para_reserva(self.turno.erro, repetir=True)
+        if (
+            self.reserva is None
+            and not self.cortada
+            and self.turno.erro is not None
+            and not self.turno.cancelado
+        ):
+            self._seguir_na_reserva(self.turno.erro)
+        if self.cortada:
+            self.frases.append(frase)  # não fala mais; guarda para poder repetir
+            return
         if self.reserva is not None:
+            self.frases.append(frase)
             self.reserva.falar(frase)
             return
         if not self.frases:
@@ -218,23 +270,54 @@ class LocutorDialogo:
             self.turno.cancelar()
 
     def terminar(self) -> None:
-        if self.turno is not None and self.reserva is None:
+        if self.turno is not None and self.reserva is None and not self.cortada:
             self.turno.finalizar()
             if self._toque is not None:
                 self._toque.join()
-            turno = self.turno
-            if turno.erro is not None and not turno.cancelado:
-                if not turno.recebeu_audio:
-                    self._para_reserva(turno.erro, repetir=True)
-                else:
-                    self.tempos.erros.append(f"A voz parou no meio da frase: {turno.erro}")
+            if self.turno.erro is not None and not self.turno.cancelado:
+                self._seguir_na_reserva(self.turno.erro)
         if self.reserva is not None:
             self.reserva.terminar()
 
-    def _para_reserva(self, erro: Exception, repetir: bool = False) -> None:
+    @property
+    def texto(self) -> str:
+        return " ".join(self.frases)
+
+    def _seguir_na_reserva(self, erro: Exception) -> None:
+        """O diálogo falhou: decide entre repetir tudo, continuar do limite ou parar."""
+        if not self.turno.recebeu_audio:
+            self._para_reserva(erro, repetir=True)
+            return
+        restante = texto_restante(self.frases, [c for c, _, _ in self.turno._caracteres])
+        if restante is None:
+            self.motivo_reserva = str(erro)
+            self.reservas.append(f"{erro} (sem limite confiável: fala encerrada)")
+            self.dialogo.usar_reserva(erro)
+            self.cortada = True
+            self.tempos.erros.append(
+                "A voz caiu no meio da resposta e não dá para saber até onde você ouviu. "
+                'Diga "repete a resposta que caiu" para ouvir de novo.'
+            )
+            return
+        self._para_reserva(erro, depois_do_que_tocou=True)
+        if restante:
+            self.reserva.falar(restante)
+
+    def _para_reserva(
+        self, erro: Exception, repetir: bool = False, depois_do_que_tocou: bool = False
+    ) -> None:
         self.motivo_reserva = str(erro)
+        self.reservas.append(str(erro))
         self.dialogo.usar_reserva(erro)
-        self.reserva = Locutor(self.voz, self.tocar, self.inicio, self.abafar, juntar=self.juntar)
+        tocar = self.tocar
+        if depois_do_que_tocou and self._toque is not None:
+            toque, tocar_agora = self._toque, self.tocar
+
+            def tocar(som, toque=toque, tocar_agora=tocar_agora):  # noqa: F811
+                toque.join()  # o áudio do v4 já recebido termina antes; nada se sobrepõe
+                tocar_agora(som)
+
+        self.reserva = Locutor(self.voz, tocar, self.inicio, self.abafar, juntar=self.juntar)
         self.reserva.tempos = self.tempos
         if repetir:
             for frase in self.frases:
@@ -287,6 +370,12 @@ def _responder_falando(
     pedido = pedido_de_voz(texto)
     if pedido:
         return trocar_de_voz(conversa, voz, tocar, texto, pedido, escrever)
+    # "Repete a resposta que caiu": a última resposta cuja voz caiu sem limite confiável volta
+    # a ser falada inteira, sem perguntar de novo ao cérebro.
+    cortada = getattr(conversa, "fala_cortada", "")
+    repetir = bool(cortada) and pede_retomada(texto)
+    if repetir:
+        conversa.fala_cortada = ""
     dialogo, transformar = achar_dialogo(voz)
     if dialogo is not None:  # ElevenLabs v4: diálogo em tempo real, uma conexão por conversa
         locutor = LocutorDialogo(
@@ -309,7 +398,7 @@ def _responder_falando(
 
     tela = FiltroDeTela()  # a tela não mostra as etiquetas de emoção; a voz recebe tudo
     try:
-        for pedaco in conversa.perguntar(texto):
+        for pedaco in [cortada] if repetir else conversa.perguntar(texto):
             escrever(tela.alimentar(pedaco), fim="")
             falar(separador.alimentar(pedaco))
         escrever(tela.finalizar(), fim="")
@@ -322,6 +411,8 @@ def _responder_falando(
         audio.parar_audio()
     escrever()
     locutor.terminar()
+    if getattr(locutor, "cortada", False):
+        conversa.fala_cortada = locutor.texto
 
     tempos = locutor.tempos
     medida = _diagnosticar(conversa, voz, locutor, dialogo)

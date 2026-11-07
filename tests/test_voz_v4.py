@@ -72,6 +72,11 @@ class DialogoFalso:
 
     def _reagir(self, ws, mensagem):
         if "inputs" in mensagem:
+            self.entradas = getattr(self, "entradas", 0) + 1
+            if self.modo in ("cai_no_meio", "cai_sem_alinhamento") and self.entradas >= 2:
+                time.sleep(0.05)
+                ws.close(code=1011)  # o servidor cai depois da 1ª frase já ter áudio
+                return
             if self.modo == "erro":
                 ws.send(
                     json.dumps(
@@ -102,7 +107,7 @@ class DialogoFalso:
                             "char_start_times_ms": [10 * j for j in range(len(palavras[i]) + 1)],
                             "char_durations_ms": [10] * (len(palavras[i]) + 1),
                         }
-                elif i == 0 and self.modo != "sem_alinhamento":
+                elif i == 0 and self.modo not in ("sem_alinhamento", "cai_sem_alinhamento"):
                     envio["alignment"] = {
                         "chars": list(texto),
                         "char_start_times_ms": [MS_POR_CARACTERE * j for j in range(len(texto))],
@@ -573,3 +578,129 @@ def test_servidor_falso_com_varios_trechos_de_offsets_conhecidos(v4):
     pcm_total = len(pcm_de("abc def "))
     primeiro_ms = (pcm_total // 3 // 2 * 2) / 2 / TAXA * 1000
     assert palavras[1]["inicio_ms"] == pytest.approx(primeiro_ms, abs=1)
+
+
+# --- reserva no meio da fala ----------------------------------------------------------------------
+
+
+def _flash(pedidos_texto):
+    def responder(caminho, cabecalhos, corpo):
+        pedidos_texto.append(json.loads(corpo)["text"])
+        return 200, "audio/pcm", b"\x01\x00" * 2205
+
+    return responder
+
+
+def test_falha_depois_do_audio_continua_na_reserva_sem_repetir(v4):
+    ditos = []
+    with DialogoFalso(modo="cai_no_meio") as servidor, ServicoFalso(_flash(ditos)) as nuvem:
+        _, voz, dialogo, transformar = v4(servidor, http=nuvem)
+        tocados, ordem = [], []
+        locutor = None
+
+        def tocar(som):
+            ordem.append("v4" if som is locutor.turno.audio else "flash")
+            tocados.append(som if isinstance(som, bytes) else b"".join(som.partes()))
+
+        locutor = LocutorDialogo(dialogo, transformar, voz, tocar, time.perf_counter())
+        locutor.falar("Primeira frase inteira.")
+        assert locutor.turno.audio.primeira.wait(3)
+        time.sleep(0.2)
+        locutor.falar("Segunda frase.")
+        time.sleep(0.4)
+        locutor.falar("Terceira frase.")
+        locutor.terminar()
+    assert tocados[0] == pcm_de("Primeira frase inteira. ")  # o que já tinha chegado tocou inteiro
+    # a reserva continua da 2ª frase: nada da 1ª se repete, e na ordem
+    assert " ".join(ditos).split() == ["Segunda", "frase.", "Terceira", "frase."]
+    assert ordem[0] == "v4" and set(ordem[1:]) == {"flash"}
+    assert locutor.reservas and "eleven_flash_v2_5" in dialogo.aviso
+    assert not locutor.cortada and not locutor.tempos.erros
+
+
+def test_falha_sem_alinhamento_para_de_modo_claro_e_permite_repetir(v4):
+    ditos = []
+    with DialogoFalso(modo="cai_sem_alinhamento") as servidor, ServicoFalso(_flash(ditos)) as nuvem:
+        _, voz, dialogo, transformar = v4(servidor, http=nuvem)
+        tocados = []
+        locutor = LocutorDialogo(
+            dialogo, transformar, voz, tocar_tudo(tocados), time.perf_counter()
+        )
+        locutor.falar("Uma frase.")
+        assert locutor.turno.audio.primeira.wait(3)
+        time.sleep(0.2)
+        locutor.falar("Outra frase.")
+        time.sleep(0.4)
+        locutor.falar("Mais uma.")
+        locutor.terminar()
+    assert locutor.cortada and not ditos  # sem limite confiável: não chuta onde continuar
+    assert any("repete a resposta que caiu" in e for e in locutor.tempos.erros)
+    assert locutor.texto == "Uma frase. Outra frase. Mais uma."
+
+
+def test_texto_restante_corta_em_palavra_e_ignora_etiquetas():
+    from nora.conversa_voz import texto_restante
+
+    frases = ["{alegre} Oi, Gabriel!", "Tudo certo por aqui."]
+    assert texto_restante(frases, list("[happy] Oi, Gabriel! ")) == "Tudo certo por aqui."
+    assert texto_restante(frases, list("Oi, Gabriel! Tu")) == "certo por aqui."  # pula a palavra
+    assert texto_restante(frases, list("Oi Gabriel Tudo certo por aqui")) == ""
+    assert texto_restante(frases, []) is None
+    assert texto_restante(frases, list("x" * 200)) is None
+
+
+def test_audio_sem_alinhamento_continua_tocando_sem_reserva(v4):
+    with DialogoFalso(modo="sem_alinhamento") as servidor:
+        _, voz, dialogo, transformar = v4(servidor)
+        tocados = []
+        locutor = falar(dialogo, transformar, voz, ["Sem tempo das palavras."], tocados)
+    assert tocados == [pcm_de("Sem tempo das palavras. ")]
+    assert locutor.reserva is None and not locutor.tempos.erros
+    assert not locutor.turno.recebeu_alinhamento
+
+
+def test_cancelar_e_retomar_nao_repete_nem_embaralha_palavras(v4):
+    with DialogoFalso(pedacos=20, atraso=0.05) as servidor:
+        _, voz, dialogo, transformar = v4(servidor)
+        locutor = LocutorDialogo(dialogo, transformar, voz, tocar_tudo([]), time.perf_counter())
+        locutor.falar("Palavras velhas da resposta cortada.")
+        assert locutor.turno.audio.primeira.wait(3)
+        locutor.cancelar()
+        locutor.terminar()
+        nova = LocutorDialogo(dialogo, transformar, voz, tocar_tudo([]), time.perf_counter())
+        nova.falar("Agora a nova resposta.")
+        nova.terminar()
+        palavras = [p["texto"] for p in nova.turno.audio.palavras]
+    assert palavras == ["Agora", "a", "nova", "resposta."]  # sem sobras, na ordem
+
+
+def test_repete_a_resposta_que_caiu_sem_chamar_o_cerebro(criar_raiz):
+    from nora.conversa import nova_conversa
+    from nora.conversa_voz import responder_falando
+
+    class CerebroQueNaoPodeSerChamado:
+        situacao = "completa"
+
+        def responder(self, mensagens):
+            raise AssertionError("não devia perguntar de novo ao cérebro")
+
+    config = carregar(
+        criar_raiz(local='[voz]\nmotor = "piper"\nreserva = ""\n[memoria]\nativa = false\n'),
+        ambiente={"OLLAMA_HOST": "http://127.0.0.1:9"},
+    )
+    conversa = nova_conversa(
+        config, CerebroQueNaoPodeSerChamado(), memoria=None, notas=None, observador=None
+    )
+    conversa.fala_cortada = "Resposta que tinha caído."
+
+    class VozEco:
+        def sintetizar(self, frase):
+            return frase.encode()
+
+    tocados, saida = [], []
+    responder_falando(
+        conversa, VozEco(), tocados.append, "repete a resposta que caiu", time.perf_counter(), 0.0,
+        lambda *a, **k: saida.append(a[0] if a else ""), False,
+    )  # fmt: skip
+    assert b"".join(tocados).decode() == "Resposta que tinha caído."
+    assert conversa.fala_cortada == ""
