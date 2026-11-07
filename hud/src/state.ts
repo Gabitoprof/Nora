@@ -78,6 +78,8 @@ export interface Modelo {
   latencia_ms?: number;
   acustica: Acustica | null;
   fala_temporizada: FalaTemporizada | null;
+  /** Maior id de reprodução já encerrada: fala desse id (ou anterior) que chegar atrasada é ignorada. */
+  encerrada: number;
   jogo: boolean;
 }
 export const inicial: Modelo = {
@@ -97,6 +99,7 @@ export const inicial: Modelo = {
   relatorio: null,
   acustica: null,
   fala_temporizada: null,
+  encerrada: 0,
   jogo: false,
 };
 export function objeto(dado: unknown): dado is Dados {
@@ -155,6 +158,8 @@ export function snapshot(dados: unknown, anterior: Modelo = inicial): Modelo {
     privacidade: privado,
     acustica: dados.conectado === true ? lerAcustica(dados.acustica) : null,
     fala_temporizada: privado || dados.conectado !== true ? null : lerFala(dados.fala_temporizada),
+    // Reconexão: o estado do servidor é a verdade (pode ter reiniciado e voltado os ids a 1).
+    encerrada: 0,
     jogo: dados.jogo === true,
     nivel_audio:
       typeof dados.nivel_audio === "number" &&
@@ -201,8 +206,18 @@ export function reduzir(anterior: Modelo, evento: unknown): Modelo {
       proximo.nivel_audio=proximo.acustica?.ativo?proximo.acustica.rms:0;
       if(proximo.acustica?.fonte === "voz" && !proximo.acustica.ativo) proximo.fala_temporizada=null;
       break;
-    case "fala_temporizada":
-      if(!proximo.privacidade && proximo.conectado) proximo.fala_temporizada=lerFala(d);
+    case "fala_temporizada": {
+      const fala=lerFala(d);
+      // Só com a tela autorizada, e nunca de uma reprodução que já acabou (mensagem atrasada).
+      if(!proximo.privacidade && proximo.conectado && fala && fala.id>anterior.encerrada) proximo.fala_temporizada=fala;
+      break;
+    }
+    case "reproducao_encerrada":
+      if(typeof d.id==="number"&&Number.isSafeInteger(d.id)&&d.id>anterior.encerrada) {
+        proximo.encerrada=d.id;
+        if(proximo.fala_temporizada&&proximo.fala_temporizada.id<=d.id) proximo.fala_temporizada=null;
+        if(proximo.acustica?.fonte==="voz"&&proximo.acustica.reproducao_id<=d.id){proximo.acustica={...proximo.acustica,ativo:false};proximo.nivel_audio=0;}
+      }
       break;
     case "modo_jogo_ativo":
       proximo.jogo=d.ativo===true;
@@ -276,6 +291,7 @@ export function desconectar(anterior: Modelo): Modelo {
     nivel_audio: 0,
     acustica: null,
     fala_temporizada: null,
+    encerrada: 0,
   };
 }
 export const nomesEstado: Record<Estado, string> = {

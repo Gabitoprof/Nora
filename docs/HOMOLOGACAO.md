@@ -286,6 +286,7 @@ Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC d
 | 3 | Diagnóstico (`--verificar`, `--medir`, log) | Modelo efetivo, continuidade, motivo de cada reserva, gerações por resposta, tempos (pedido, 1º PCM, reprodução, silêncio entre trechos) nos dois caminhos | `tests/test_voz_v4.py` (diagnóstico com reserva no meio, HTTP, arquivo antigo; sem texto nem chave) |
 | 4 | Retenção nas pausas | Palavra até a próxima começar, teto `TETO_PAUSA_MS` = 1,5 s; some na hora em `reproducao_encerrada`, cancelamento e Privado | `hud/tests/text-particles.test.ts` |
 | 5 | Relógio da fala | Medido e ajustado: 450/400 ms e recuos < 60 ms ignorados (tabela abaixo) | `hud/tests/relogio-medicao.test.ts` |
+| 6 | Testes de estado (`reproducao_encerrada`) | Ordem, duplicidade, reconexão, privacidade e mensagem atrasada depois do Privado | `hud/tests/state.test.ts` |
 
 Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
 (`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o

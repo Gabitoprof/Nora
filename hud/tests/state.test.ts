@@ -157,3 +157,55 @@ describe("geometria e paleta visual", () => {
       expect(cores[emocao]).toMatch(/^#[A-Fa-f0-9]{6}$/);
   });
 });
+
+describe("reproducao_encerrada no estado da HUD", () => {
+  const fala = (id: number) => ({ id, duracao_ms: 1000, precisao: "alinhada", palavras: [{ texto: "oi", inicio_ms: 0, fim_ms: 200, destaque: false }] });
+  const voz = (id: number, ativo = true) => ({ fonte: "voz", rms: .2, pico: .3, envelope: .2, bandas: [0, 0, 0, 0, 0, 0], centroide: 0, fluxo: 0, ativo, reproducao_id: id, posicao_ms: 100, duracao_ms: 1000 });
+  const fim = (id: number, seq: number, interrompida = false) => evento("reproducao_encerrada", { id, posicao_ms: 1000, duracao_ms: 1000, interrompida }, seq);
+  const visivel = () => {
+    let m = reduzir(inicial, evento("conectado", { conectado: true, privacidade: false }, 1));
+    m = reduzir(m, evento("acustica", voz(4), 2));
+    return reduzir(m, evento("fala_temporizada", fala(4), 3));
+  };
+  it("o fim apaga a fala daquela reprodução e o sinal da voz", () => {
+    const m = reduzir(visivel(), fim(4, 4));
+    expect(m.fala_temporizada).toBeNull(); expect(m.encerrada).toBe(4);
+    expect(m.acustica?.ativo).toBe(false); expect(m.nivel_audio).toBe(0);
+  });
+  it("ordem: fim de uma reprodução antiga não apaga a fala atual; fora de ordem é ignorado", () => {
+    let m = reduzir(visivel(), fim(3, 4));
+    expect(m.fala_temporizada?.id).toBe(4);
+    m = reduzir(m, fim(4, 2)); // sequência velha
+    expect(m.fala_temporizada?.id).toBe(4);
+  });
+  it("duplicidade: o mesmo fim repetido não muda nada", () => {
+    const a = reduzir(visivel(), fim(4, 4));
+    const b = reduzir(a, fim(4, 5));
+    expect(b.encerrada).toBe(4); expect(b.fala_temporizada).toBeNull();
+    expect(reduzir(a, fim(4, 4))).toBe(a);
+  });
+  it("mensagem atrasada não reintroduz a fala de uma reprodução encerrada", () => {
+    let m = reduzir(visivel(), fim(4, 4));
+    m = reduzir(m, evento("fala_temporizada", fala(4), 5));
+    expect(m.fala_temporizada).toBeNull();
+    m = reduzir(m, evento("fala_temporizada", fala(5), 6)); // a próxima resposta aparece
+    expect(m.fala_temporizada?.id).toBe(5);
+  });
+  it("reconexão: o servidor pode ter reiniciado, os ids voltam a valer", () => {
+    let m = reduzir(visivel(), fim(4, 4));
+    m = reduzir(m, evento("conectado", { conectado: true, privacidade: false }, 1));
+    expect(m.encerrada).toBe(0);
+    m = reduzir(m, evento("fala_temporizada", fala(1), 2));
+    expect(m.fala_temporizada?.id).toBe(1);
+  });
+  it("Privado: mensagem atrasada não reintroduz texto depois de ocultar", () => {
+    let m = reduzir(visivel(), evento("privacidade", { privacidade: true }, 4));
+    expect(m.fala_temporizada).toBeNull();
+    m = reduzir(m, evento("fala_temporizada", fala(4), 5));
+    m = reduzir(m, evento("texto_visivel", { texto: "segredo", acumular: false }, 6));
+    m = reduzir(m, evento("notas", { notas: [{ titulo: "nota" }] }, 7));
+    expect(m.fala_temporizada).toBeNull(); expect(m.texto).toBe(""); expect(m.notas).toEqual([]);
+    m = reduzir(m, fim(4, 8)); // o fim chega depois: continua tudo limpo
+    expect(m.fala_temporizada).toBeNull();
+  });
+});
