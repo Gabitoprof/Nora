@@ -288,6 +288,7 @@ Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC d
 | 5 | Relógio da fala | Medido e ajustado: 450/400 ms e recuos < 60 ms ignorados (tabela abaixo) | `hud/tests/relogio-medicao.test.ts` |
 | 6 | Testes de estado (`reproducao_encerrada`) | Ordem, duplicidade, reconexão, privacidade e mensagem atrasada depois do Privado | `hud/tests/state.test.ts` |
 | 7 | Privacidade no backend | Palavras só publicadas com a tela autorizada; revogar invalida a fala em curso (época) e esvazia as filas; Privado nem guarda as palavras. Leitura sem segredo de sessão: proposta abaixo | `tests/test_hud.py`, `tests/test_hud_acustica.py` |
+| 8 | QA visual | Palavras longas e acentos legíveis em 1920×1080 (faixa de 1060 px) e 1366×768 (902 px); legível em ~116 ms | `docs/evidencias/palavras-1920x1080.jpg`, `palavras-1366x768.jpg`; `hud/tests/text-particles.test.ts` |
 
 Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
 (`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o
@@ -332,3 +333,18 @@ mesmo computador: ele pode ler os eventos e até pegar o token em `/api/sessao`.
 
 Custo: favoritos antigos para a HUD param de funcionar; o atalho e o terminal passam a mostrar o
 link com o token. Decisão do Gabriel.
+
+### Item 8: QA visual das palavras
+
+Renderizadas com o código real da faixa (`CampoParticulasTexto`), na largura que a faixa ocupa em
+cada resolução (`min(66vw, 1060px)`), com palavras já ditas à esquerda:
+
+| Resolução | Faixa | Altura da palavra atual | Palavra de 27 letras |
+|---|---|---|---|
+| 1920×1080 | 1060 px | ~70 px | 54 px, legível |
+| 1366×768 | 902 px | ~60 px | 46 px, legível |
+
+Acentos (ç, ã, é, ú) e pontuação aparecem. As palavras já ditas ficam entre 13 e 16 px:
+legíveis, mas discretas de propósito. **Tempo até ficar legível** (90% dos pontos a menos de 3 px
+da letra, saindo da poeira longe): antes ~380 ms; agora ~116 ms (meta ≤ 150 ms).
+**Pendente no PC:** a mesma conferência na HUD inteira, com a fala real e na tela do Gabriel.

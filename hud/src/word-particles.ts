@@ -58,6 +58,12 @@ export class RelogioFala {
 
 /** A palavra fica até a próxima começar, inclusive nas pausas, até este teto (silêncio longo). */
 export const TETO_PAUSA_MS = 1500;
+/**
+ * Movimento das palavras: tremor leve (soltar pontos atrapalharia a leitura) e chegada rápida da
+ * poeira. Medido em tests/text-particles.test.ts: legível (90% dos pontos a < 3 px) em ~116 ms,
+ * meta ≤ 150 ms.
+ */
+export const VIDA_PALAVRAS = { tremor: .45, chegada: 30, rigidezChegada: 80 };
 /** Quantas palavras já ditas ficam visíveis à esquerda da atual. */
 export const ANTERIORES = 3;
 
@@ -83,8 +89,7 @@ export class PalavrasParticulas {
   constructor(private canvas: HTMLCanvasElement, private legenda: HTMLElement, extras: OpcoesCampoTexto = {}) {
     this.campo = new CampoParticulasTexto(canvas, {
       maximo: 2000, brilho: .34, escalaParticula: 1.35,
-      // Palavras: só um tremor leve (soltar pontos atrapalharia a leitura).
-      vida: { tremor: .45 },
+      vida: VIDA_PALAVRAS,
       ...extras,
     });
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NuvemLetras, SEM_VIDA } from "../src/text-particle-field";
-import { RelogioFala, TETO_PAUSA_MS } from "../src/word-particles";
+import { RelogioFala, TETO_PAUSA_MS, VIDA_PALAVRAS } from "../src/word-particles";
 import type { Acustica } from "../src/scene-audio";
 import type { FalaTemporizada } from "../src/state";
 const alvos = new Float32Array([200,50,205,55,210,60,215,65,220,70,225,75]);
@@ -259,5 +259,23 @@ describe("letras feitas da poeira da cena (origem)",()=>{
     expect(media).toBeLessThan(300);
     for(let t=666;t<=900;t+=16)n.passo(t,16);
     expect(n.fase).toBe("poeira");
+  });
+});
+
+describe("palavra legível depressa (meta: ≤ 150 ms)",()=>{
+  it("com os parâmetros reais das palavras, 90% dos pontos chegam à letra a tempo",()=>{
+    const forma=new Float32Array(Array.from({length:1600},(_,i)=>i%2?40+(i%40):300+i/4));
+    const n=new NuvemLetras(2000,1200,140);
+    n.vida={...SEM_VIDA,...VIDA_PALAVRAS,extras:0};
+    n.origem=(i,s)=>{s[0]=600+Math.cos(i)*700;s[1]=-300+Math.sin(i)*200;return true;}; // poeira longe
+    n.passo(0,16);n.definirAlvos(forma,0);
+    let legivel=-1;
+    for(let t=16;t<=400;t+=1000/60){
+      n.passo(t,1000/60);
+      let perto=0;for(let i=0;i<n.alvos;i++)if(Math.hypot(n.x[i]-n.alvoX[i],n.y[i]-n.alvoY[i])<3)perto++;
+      if(perto/n.alvos>=.9){legivel=t;break;}
+    }
+    console.log(`palavra legível (90% dos pontos a < 3 px) em ${legivel.toFixed(0)} ms`);
+    expect(legivel).toBeGreaterThan(0);expect(legivel).toBeLessThanOrEqual(150);
   });
 });

@@ -1,7 +1,7 @@
 import "./style.css";
 import { Ponte } from "./client";
 import { Cena } from "./scene";
-import { PalavrasParticulas } from "./word-particles";
+import { PalavrasParticulas, VIDA_PALAVRAS } from "./word-particles";
 import { CampoParticulasTexto, type Camada } from "./text-particle-field";
 import { misturar } from "./state";
 import {
@@ -66,7 +66,7 @@ const palcoPalavras = el("word-stage");
 const palavras=new PalavrasParticulas(el<HTMLCanvasElement>("word-particles"),el("word-caption"),{
   camada, origemTela, semente: 3,
   // As palavras vêm da poeira depressa (uma palavra dura poucas centenas de ms).
-  vida: { tremor: .45, chegada: 110, rigidezChegada: 26 },
+  vida: VIDA_PALAVRAS,
   retangulo: () => {
     const r = palcoPalavras.getBoundingClientRect(), d = camada.deslocamento();
     return { left: r.left - d.left, top: r.top - d.top, width: r.width };
