@@ -42,6 +42,10 @@ export class Cena {
   private parar = false;
   private sprite?: THREE.CanvasTexture;
   private brilhos?: THREE.Points;
+  private largura = 1;
+  private altura = 1;
+  private ultimoTempo = 0;
+  private ultimoSinal: Dinamica = SILENCIO;
   private composer?: EffectComposer;
   private bloom?: UnrealBloomPass;
   private aoAmbiente = () => {
@@ -251,6 +255,7 @@ export class Cena {
   private redimensionar() {
     const w = this.container.clientWidth,
       h = this.container.clientHeight;
+    this.largura = Math.max(1, w); this.altura = Math.max(1, h);
     const aspecto = w / Math.max(h, 1);
     const altura = aspecto < 1 ? 12 : 9.5;
     this.camera.left = (-altura * aspecto) / 2;
@@ -291,6 +296,7 @@ export class Cena {
     const nivel=0;
     const sinal=reduzido?SILENCIO:this.modelo.estado === "falando"?this.envelope.voz:this.envelope.microfone;
     const voz=sinal;
+    this.ultimoTempo=tempo;this.ultimoSinal=sinal;
     this.alvoCor.set(cores[this.modelo.emocao]??cores.neutro);
     this.cor.lerp(this.alvoCor,reduzido?1:aproximar(0,1,delta,550));
     const cor=this.cor;
@@ -382,6 +388,23 @@ export class Cena {
       c.restore();
     }
     this.aoDesenhar?.({agora,delta,reduzido,cor:`#${cor.getHexString()}`,energia:reduzido?0:Math.min(1,Math.max(sinal.rms,sinal.envelope))});
+  }
+  /**
+   * Posição na tela (px CSS, relativa ao container da cena) de um grão da poeira em órbita,
+   * no quadro atual. É de onde saem (e para onde voltam) os pontos das letras.
+   */
+  poeiraNaTela(indice: number, saida: [number, number]): boolean {
+    const total = this.sementes.length / 6;
+    if (!total) return false;
+    let k = Math.abs(Math.floor(indice)) % total;
+    if (k % 5 === 0) k = (k + 1) % total; // só a órbita, não a onda inferior
+    let x: number, y: number;
+    if (this.positions && this.renderer) { x = this.positions[k * 3]; y = this.positions[k * 3 + 1]; }
+    else { this.ponto(k, this.ultimoTempo, this.ultimoSinal, this.saida); x = this.saida[0]; y = this.saida[1]; }
+    const cam = this.camera;
+    saida[0] = (x - cam.left) / (cam.right - cam.left) * this.largura;
+    saida[1] = (cam.top - y) / (cam.top - cam.bottom) * this.altura;
+    return true;
   }
   private agendar() {
     if(!this.parar&&!document.hidden&&!this.reduzido.matches&&this.frame===undefined)this.frame=requestAnimationFrame(this.animar);

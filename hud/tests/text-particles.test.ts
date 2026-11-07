@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NuvemLetras } from "../src/text-particle-field";
+import { NuvemLetras, SEM_VIDA } from "../src/text-particle-field";
 import { RelogioFala, ultimaPalavraDevida } from "../src/word-particles";
 import type { Acustica } from "../src/scene-audio";
 import type { FalaTemporizada } from "../src/state";
@@ -69,7 +69,7 @@ import { inicial, type Evento, type Modelo } from "../src/state";
 class CanvasDeTeste {
   width=1200; height=140; hidden=true; dataset:Record<string,string>={}; attrs=new Map<string,string>();
   limpezas=0;
-  contexto={clearRect:()=>{this.limpezas++;},fillRect:()=>{},fillText:()=>{},measureText:(t:string)=>({width:Math.max(40,t.length*30)}),getImageData:()=>{
+  contexto={clearRect:()=>{this.limpezas++;},fillRect:()=>{},fillText:()=>{},beginPath:()=>{},moveTo:()=>{},lineTo:()=>{},stroke:()=>{},measureText:(t:string)=>({width:Math.max(40,t.length*30)}),getImageData:()=>{
     const data=new Uint8ClampedArray(this.width*this.height*4);for(let y=40;y<80;y+=2)for(let x=350;x<450;x+=2)data[(y*this.width+x)*4+3]=255;return {data};
   }};
   getContext(){return this.contexto;}
@@ -189,7 +189,7 @@ describe("contrato do fim da reprodução",()=>{
 
 describe("marca viva: a letra formada não fica parada",()=>{
   const forma=new Float32Array(Array.from({length:400},(_,i)=>i%2?60+(i%7):100+i));
-  const viva=(energia=0)=>{const n=new NuvemLetras(800,960,180);n.vida={tremor:1.1,fluxo:.07,poeira:.16,extras:320};n.energia=energia;n.definirAlvos(forma,0,true);return n;};
+  const viva=(energia=0)=>{const n=new NuvemLetras(800,960,180);n.vida={...SEM_VIDA,tremor:1.1,fluxo:.07,poeira:.16,extras:320};n.energia=energia;n.definirAlvos(forma,0,true);return n;};
   const desvio=(n:NuvemLetras)=>{let soma=0,soltos=0;for(let i=0;i<n.alvos;i++){const d=Math.hypot(n.x[i]-n.alvoX[i],n.y[i]-n.alvoY[i]);soma+=d;if(d>15)soltos++;}return {medio:soma/n.alvos,soltos:soltos/n.alvos};};
   const rodar=(n:NuvemLetras,ate:number)=>{for(let t=16;t<=ate;t+=16)n.passo(t,16);};
   it("os pontos se mexem em volta da letra e continuam legíveis",()=>{
@@ -215,5 +215,38 @@ describe("marca viva: a letra formada não fica parada",()=>{
   it("sem vida (padrão), a letra assenta parada como antes",()=>{
     const n=new NuvemLetras(800,960,180);n.definirAlvos(forma,0,true);rodar(n,1000);
     expect(desvio(n).medio).toBeLessThan(.01);
+  });
+});
+
+describe("letras feitas da poeira da cena (origem)",()=>{
+  const forma=new Float32Array(Array.from({length:200},(_,i)=>i%2?90:300+i));
+  const criar=()=>{
+    const n=new NuvemLetras(400,960,180);
+    n.vida={...SEM_VIDA,chegada:1000,rigidezChegada:7,extras:0};
+    // poeira girando longe da letra
+    n.origem=(i,s)=>{s[0]=-400+Math.cos(i)*50;s[1]=900+Math.sin(i)*50;return true;};
+    return n;
+  };
+  it("cada ponto parte do seu grão de poeira, em fluxo (escalonado), e chega à letra",()=>{
+    const n=criar();n.passo(0,16);n.definirAlvos(forma,0);
+    n.passo(16,16);
+    const longe=(i:number)=>Math.hypot(n.x[i]-n.alvoX[i],n.y[i]-n.alvoY[i]);
+    // no começo todos estão na poeira, longe da letra
+    for(let i=0;i<n.alvos;i++)expect(longe(i)).toBeGreaterThan(300);
+    for(let t=32;t<=600;t+=16)n.passo(t,16);
+    // a meio caminho: uns já saíram, outros ainda esperam a vez
+    const saiu=[...Array(n.alvos).keys()].filter(i=>longe(i)<600).length;
+    expect(saiu).toBeGreaterThan(0);expect(saiu).toBeLessThan(n.alvos);
+    for(let t=616;t<=3000;t+=16)n.passo(t,16);
+    expect(n.fase).toBe("retendo");
+    for(let i=0;i<n.alvos;i++)expect(longe(i)).toBeLessThan(3);
+  });
+  it("ao dispersar, os pontos voltam para a poeira e somem",()=>{
+    const n=criar();n.passo(0,16);n.definirAlvos(forma,0,true);n.dispersar(100);
+    for(let t=116;t<=650;t+=16)n.passo(t,16);
+    const media=[...Array(n.alvos).keys()].reduce((s,i)=>s+Math.hypot(n.x[i]-(-400+Math.cos(i)*50),n.y[i]-(900+Math.sin(i)*50)),0)/n.alvos;
+    expect(media).toBeLessThan(300);
+    for(let t=666;t<=900;t+=16)n.passo(t,16);
+    expect(n.fase).toBe("poeira");
   });
 });

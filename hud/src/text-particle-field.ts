@@ -9,8 +9,16 @@ export type FaseParticulas = "poeira" | "formando" | "retendo" | "dispersando";
  * - poeira: brilho da poeira livre em volta das letras; extras: quantos pontos de poeira livre.
  * A energia do áudio (voz ou microfone) aumenta tremor, fluxo e brilho.
  */
-export interface Vida { tremor: number; fluxo: number; poeira: number; extras: number }
-export const SEM_VIDA: Vida = { tremor: 0, fluxo: 0, poeira: .025, extras: 36 };
+export interface Vida {
+  tremor: number; fluxo: number; poeira: number; extras: number;
+  /** Escalonamento da chegada (ms): os pontos saem da poeira um a um, em fluxo. 0 = todos juntos. */
+  chegada: number;
+  /** Rigidez da mola na chegada (maior = mais rápido). */
+  rigidezChegada: number;
+}
+export const SEM_VIDA: Vida = { tremor: 0, fluxo: 0, poeira: .025, extras: 36, chegada: 0, rigidezChegada: 48 };
+/** Posição atual (no sistema do campo) do grão de poeira ligado ao ponto `i`; false se não houver. */
+export type Origem = (i: number, saida: [number, number]) => boolean;
 /** Pool fixo: identidade, posição e velocidade sobrevivem às trocas de palavra. */
 export class NuvemLetras {
   readonly ids: Uint16Array;
@@ -32,6 +40,10 @@ export class NuvemLetras {
   fase: FaseParticulas = "poeira";
   private inicio = 0;
   vida: Vida = SEM_VIDA;
+  /** Se definida, a poeira livre é a poeira da cena: os pontos saem dela e voltam para ela. */
+  origem?: Origem;
+  private readonly atraso: Float32Array;
+  private readonly tmp: [number, number] = [0, 0];
   /** Energia do áudio agora (0–1): voz quando ela fala, microfone quando escuta. */
   energia = 0;
   // Parâmetros fixos de cada ponto (frequências, fases, direção e período do fluxo).
@@ -56,6 +68,7 @@ export class NuvemLetras {
     this.faseA = new Float32Array(maximo); this.faseB = new Float32Array(maximo);
     this.dirX = new Float32Array(maximo); this.dirY = new Float32Array(maximo);
     this.periodo = new Float32Array(maximo); this.alcance = new Float32Array(maximo);
+    this.atraso = new Float32Array(maximo);
     for (let i = 0; i < maximo; i++) {
       this.freqA[i] = .7 + aleatorio(i + 1501) * 1.6; this.freqB[i] = .6 + aleatorio(i + 1709) * 1.7;
       this.faseA[i] = aleatorio(i + 2203) * Math.PI * 2; this.faseB[i] = aleatorio(i + 2411) * Math.PI * 2;
@@ -63,6 +76,7 @@ export class NuvemLetras {
       this.dirX[i] = Math.cos(angulo); this.dirY[i] = Math.sin(angulo);
       this.periodo[i] = 3.5 + aleatorio(i + 2803) * 5.5;
       this.alcance[i] = 30 + aleatorio(i + 3011) * 70;
+      this.atraso[i] = aleatorio(i + 4001);
       this.ids[i] = i;
       this.x[i] = this.livreX[i] = largura * (.04 + aleatorio(i + 8101) * .92);
       this.y[i] = this.livreY[i] = altura * (.09 + aleatorio(i + 1244) * .82);
@@ -76,6 +90,8 @@ export class NuvemLetras {
     this.inicio = agora;
     this.fase = imediato ? "retendo" : "formando";
     for (let i = 0; i < this.quantidade; i++) {
+      // Com origem, o ponto parte de onde o seu grão de poeira está agora.
+      if (this.origem && this.origem(i, this.tmp)) { this.livreX[i] = this.tmp[0]; this.livreY[i] = this.tmp[1]; }
       if (i < this.alvos) {
         this.alvoX[i] = coordenadas[i * 2]; this.alvoY[i] = coordenadas[i * 2 + 1];
         this.peso[i] = pesos?.[i] ?? 1;
@@ -98,18 +114,31 @@ export class NuvemLetras {
   }
   passo(agora: number, delta: number, reduzido = false) {
     if (this.fase === "poeira") return;
-    if (this.fase === "formando" && agora - this.inicio >= 130) this.fase = "retendo";
-    const retendo = this.fase === "retendo" || this.fase === "formando";
+    const chegada = this.vida.chegada;
+    if (this.fase === "formando" && agora - this.inicio >= (chegada > 0 ? chegada + 450 : 130)) this.fase = "retendo";
+    const formando = this.fase === "formando";
+    const retendo = this.fase === "retendo" || formando;
     const dt = Math.max(0, Math.min(100, delta)) / 1000;
-    const omega = retendo ? 48 : 4.2;
-    const amortecimento = Math.exp(-omega * dt);
-    const fade = Math.exp(-dt / (retendo ? .075 : .135));
+    const origem = this.origem;
+    if (origem) {
+      // A poeira da cena se move: os lugares livres acompanham cada grão ligado a um ponto.
+      for (let i = 0; i < this.quantidade; i++)
+        if (origem(i, this.tmp)) { this.livreX[i] = this.tmp[0]; this.livreY[i] = this.tmp[1]; }
+    }
+    const omegaFixo = retendo ? 48 : origem ? 6.5 : 4.2;
+    const amortecimentoFixo = Math.exp(-omegaFixo * dt);
+    // Voltando para a poeira da cena, o ponto se apaga mais devagar: dá para ver a viagem.
+    const fade = Math.exp(-dt / (retendo ? .075 : this.origem ? .3 : .135));
     const vida = this.vida, t = agora / 1000, energia = Math.max(0, Math.min(1, this.energia));
     const viva = retendo && (vida.tremor > 0 || vida.fluxo > 0);
     const tremor = vida.tremor * (1 + energia * 4);
     const fluxo = Math.min(.35, vida.fluxo * (1 + energia * 1.5));
     for (let i = 0; i < this.quantidade; i++) {
-      const glifo = retendo && i < this.alvos;
+      // Na chegada escalonada, cada ponto espera a sua vez na poeira antes de partir.
+      const partiu = !formando || chegada <= 0 || agora - this.inicio >= this.atraso[i] * chegada;
+      const glifo = retendo && i < this.alvos && partiu;
+      const omega = formando && chegada > 0 && glifo ? this.vida.rigidezChegada : omegaFixo;
+      const amortecimento = omega === omegaFixo ? amortecimentoFixo : Math.exp(-omega * dt);
       let tx = glifo ? this.alvoX[i] : this.livreX[i];
       let ty = glifo ? this.alvoY[i] : this.livreY[i];
       let realce = 1;
@@ -122,14 +151,20 @@ export class NuvemLetras {
             const ciclo = (t / this.periodo[i] + this.faseA[i] / (Math.PI * 2)) % 1;
             if (ciclo < fluxo) {
               const s = Math.sin(Math.PI * ciclo / fluxo);
-              const longe = this.alcance[i] * s * (1 + energia);
-              tx += this.dirX[i] * longe; ty += this.dirY[i] * longe * .55;
-              realce = 1 - .7 * s;
+              if (origem) {
+                // Vai até o seu grão na órbita e volta para a letra.
+                tx += (this.livreX[i] - tx) * s; ty += (this.livreY[i] - ty) * s;
+                realce = 1 - .5 * s;
+              } else {
+                const longe = this.alcance[i] * s * (1 + energia);
+                tx += this.dirX[i] * longe; ty += this.dirY[i] * longe * .55;
+                realce = 1 - .7 * s;
+              }
             }
           }
           // Cintilar leve; com a voz, a letra brilha mais.
           realce *= (.82 + .18 * ondaB) * (1 + .35 * energia);
-        } else {
+        } else if (!origem) {
           tx += 16 * ondaA; ty += 7 * ondaB; // poeira livre circulando
         }
       }
@@ -144,10 +179,11 @@ export class NuvemLetras {
       this.y[i] = ty + (dy + by * dt) * amortecimento;
       this.vx[i] = (this.vx[i] - omega * bx * dt) * amortecimento;
       this.vy[i] = (this.vy[i] - omega * by * dt) * amortecimento;
-      const alvoAlpha = glifo ? Math.min(1, this.brilho[i] * this.peso[i] * realce) : retendo ? (viva ? vida.poeira : .025) : 0;
+      // Com origem, fora da letra o ponto é a própria poeira da cena (que já aparece): some aqui.
+      const alvoAlpha = glifo ? Math.min(1, this.brilho[i] * this.peso[i] * realce) : origem ? (formando && i < this.alvos ? .18 : 0) : retendo ? (viva ? vida.poeira : .025) : 0;
       this.alpha[i] = alvoAlpha + (this.alpha[i] - alvoAlpha) * fade;
     }
-    if (!retendo && agora - this.inicio > 700) this.limpar();
+    if (!retendo && agora - this.inicio > (origem ? 750 : 700)) this.limpar();
   }
 }
 
@@ -168,9 +204,23 @@ export interface OpcoesCampoTexto {
   fontesInstaladas?: string[];
   /** Movimento enquanto a letra está formada (ver `Vida`); sem isso, ela fica parada. */
   vida?: Partial<Vida>;
+  /**
+   * Camada compartilhada (canvas sobre a HUD inteira): o campo desenha nela, na posição do seu
+   * canvas âncora, e os pontos podem sair dos limites dele (vêm da poeira da cena).
+   */
+  camada?: Camada;
+  /** Posição na tela (px da camada) do grão de poeira `indice` da cena. */
+  origemTela?: (indice: number, saida: [number, number]) => boolean;
+  /** Retângulo (na camada) que o campo ocupa; padrão: o do próprio canvas. */
+  retangulo?: () => { left: number; top: number; width: number };
+  /** Semente para escolher grãos de poeira diferentes em cada campo. */
+  semente?: number;
   /** Multiplica o tamanho das partículas (canvas que a tela reduz precisa de pontos maiores). */
   escalaParticula?: number;
 }
+/** Canvas transparente sobre a HUD, limpo uma vez por quadro por quem o possui. */
+export interface Camada { contexto: CanvasRenderingContext2D | null; escala: number; deslocamento: () => { left: number; top: number } }
+
 /** Canvas desenha os corpos da simulação; a máscara só define seus destinos. Sem RAF próprio. */
 export class CampoParticulasTexto {
   readonly nuvem: NuvemLetras;
@@ -184,6 +234,10 @@ export class CampoParticulasTexto {
   private halo: number;
   private escala: number;
   private fontesInstaladas: string[];
+  private camada?: Camada;
+  private retangulo: () => { left: number; top: number; width: number };
+  private ret = { left: 0, top: 0, width: 1 };
+  private readonly tela: [number, number] = [0, 0];
   /** A fonte instalada em uso na marca, ou "" (alfabeto próprio). */
   fonteEmUso = "";
   constructor(private canvas: HTMLCanvasElement, opcoes: OpcoesCampoTexto = {}) {
@@ -200,6 +254,21 @@ export class CampoParticulasTexto {
     this.halo = opcoes.brilho ?? 0;
     this.escala = opcoes.escalaParticula ?? 1;
     this.fontesInstaladas = opcoes.fontesInstaladas ?? [];
+    this.camada = opcoes.camada;
+    this.retangulo = opcoes.retangulo ?? (() => {
+      const r = canvas.getBoundingClientRect(), d = this.camada?.deslocamento() ?? { left: 0, top: 0 };
+      return { left: r.left - d.left, top: r.top - d.top, width: r.width };
+    });
+    const origemTela = opcoes.origemTela, semente = opcoes.semente ?? 0;
+    if (this.camada && origemTela) {
+      this.nuvem.origem = (i, saida) => {
+        // Cada ponto fica ligado a um grão fixo da poeira (espalhado por toda a órbita).
+        if (!origemTela(i * 7919 + semente, this.tela)) return false;
+        const k = canvas.width / Math.max(1, this.ret.width);
+        saida[0] = (this.tela[0] - this.ret.left) * k; saida[1] = (this.tela[1] - this.ret.top) * k;
+        return true;
+      };
+    }
   }
   /**
    * Forma `texto` com as partículas. `anteriores` (palavras já ditas) entram menores e mais
@@ -274,10 +343,15 @@ export class CampoParticulasTexto {
     this.mascara.getContext("2d")?.clearRect(0, 0, this.mascara.width, this.mascara.height);
   }
   desenhar(agora: number, delta: number, cor: string, reduzido = false, energia = 0) {
-    const c = this.contexto; if (!c) return;
+    const c = this.camada ? this.camada.contexto : this.contexto; if (!c) return;
+    if (this.camada) this.ret = this.retangulo();
     this.nuvem.energia = energia;
     this.nuvem.passo(agora, delta, reduzido);
-    c.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if (this.camada) {
+      // Coordenadas do campo → camada: escala do canvas âncora na tela e densidade de pixels.
+      const k = this.ret.width / this.canvas.width * this.camada.escala;
+      c.setTransform(k, 0, 0, k, this.ret.left * this.camada.escala, this.ret.top * this.camada.escala);
+    } else c.clearRect(0, 0, this.canvas.width, this.canvas.height);
     c.fillStyle = cor;
     const n = this.nuvem;
     if (this.halo > 0 && !reduzido) {
@@ -289,6 +363,19 @@ export class CampoParticulasTexto {
         c.fillRect(n.x[i] - r / 2, n.y[i] - r / 2, r, r);
       }
     }
+    if (!reduzido) {
+      // Rastro: os pontos em viagem (da poeira para a letra e de volta) deixam um traço curto
+      // na direção do movimento, todos num único traçado.
+      c.beginPath();
+      let algum = false;
+      for (let i = 0; i < n.quantidade; i++) {
+        if (n.alpha[i] < .05) continue;
+        const vx = n.vx[i], vy = n.vy[i];
+        if (vx * vx + vy * vy < 160 * 160) continue;
+        c.moveTo(n.x[i], n.y[i]); c.lineTo(n.x[i] - vx * .045, n.y[i] - vy * .045); algum = true;
+      }
+      if (algum) { c.strokeStyle = cor; c.lineWidth = this.escala * .9; c.globalAlpha = .35; c.stroke(); }
+    }
     for (let i = 0; i < n.quantidade; i++) {
       if (n.alpha[i] < .012) continue;
       c.globalAlpha = n.alpha[i];
@@ -296,6 +383,7 @@ export class CampoParticulasTexto {
       c.fillRect(n.x[i] - r / 2, n.y[i] - r / 2, r, r);
     }
     c.globalAlpha = 1;
+    if (this.camada) c.setTransform(1, 0, 0, 1, 0, 0);
   }
 }
 

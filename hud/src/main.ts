@@ -2,7 +2,7 @@ import "./style.css";
 import { Ponte } from "./client";
 import { Cena } from "./scene";
 import { PalavrasParticulas } from "./word-particles";
-import { CampoParticulasTexto } from "./text-particle-field";
+import { CampoParticulasTexto, type Camada } from "./text-particle-field";
 import { misturar } from "./state";
 import {
   inicial,
@@ -23,9 +23,10 @@ app.innerHTML = `
       <div class="header-actions"><button id="privacy" class="icon-button" aria-pressed="false" title="Mostrar texto e notas nesta tela" aria-label="Mostrar texto e notas nesta tela"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg><span id="privacy-label">Privado</span></button><button id="fullscreen" class="icon-button" aria-label="Alternar tela cheia" title="Alternar tela cheia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg></button><button id="settings-button" class="icon-button" aria-label="Ajustes da interface" aria-expanded="false" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg></button></div>
     </header>
     <div id="scene" class="scene" aria-hidden="true"></div>
+    <canvas id="letras" class="letras" aria-hidden="true"></canvas>
     <div class="calibration" aria-hidden="true"><div class="outer-ring"></div><div class="ticks"></div><div class="ring-arc arc-one"></div><div class="ring-arc arc-two"></div><span class="axis axis-top"></span><span class="axis axis-bottom"></span><span class="axis axis-left"></span><span class="axis axis-right"></span></div>
     <section class="presence" aria-labelledby="assistant-name"><h1 id="assistant-name" class="sr-only">Nora</h1><canvas id="brand-particles" width="960" height="180" aria-hidden="true"></canvas><div class="state-label"><span class="state-line"></span><span id="state" role="status">Aguardando conexão</span><span class="state-line"></span></div></section>
-    <div class="word-stage"><canvas id="word-particles" width="1200" height="140" aria-hidden="true" hidden></canvas><span id="word-caption" hidden></span></div>
+    <div id="word-stage" class="word-stage"><canvas id="word-particles" width="1200" height="140" aria-hidden="true" hidden></canvas><span id="word-caption" hidden></span></div>
     <aside class="side-panel system-panel" aria-labelledby="system-heading"><p class="panel-index">01 <span>SISTEMA</span></p><h2 id="system-heading">Conexão com o núcleo</h2><svg class="mini-wave" viewBox="0 0 220 70" aria-hidden="true"><g fill="none" stroke="currentColor"><path d="M0 38 Q30 10 58 38 T110 38 T160 38 T220 38"/><path d="M0 38 Q40 68 70 38 T140 38 T220 38"/><path d="M0 38 Q50 -6 80 38 T155 38 T220 38"/><path d="M0 38 Q30 52 65 38 T140 38 T220 38"/></g></svg><dl class="telemetry"><div><dt>Cérebro</dt><dd id="origin">—</dd></div><div><dt>Modelo</dt><dd id="model">—</dd></div><div><dt>Voz</dt><dd id="voice">—</dd></div><div><dt>Latência</dt><dd id="latency">—</dd></div></dl><div class="signal"><div class="signal-orbit" aria-hidden="true"><i></i><b></b></div><div><span class="micro-label">SINAL DE ÁUDIO</span><strong id="level-label">Sem dados</strong><div class="level-track" role="meter" aria-label="Nível de áudio real" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="level"></span></div></div></div></aside>
     <aside class="side-panel context-panel" aria-labelledby="context-heading"><p class="panel-index">02 <span>CONTEXTO</span></p><h2 id="context-heading">Tudo no seu tempo</h2><svg class="mini-constellation" viewBox="0 0 220 70" aria-hidden="true"><defs><pattern id="dust" width="9" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="3" r="0.7" fill="currentColor"/></pattern></defs><path d="M0 55Q65 80 105 30T220 17V46Q155 25 110 50T0 65Z" fill="url(#dust)"/></svg><div class="context-row"><span class="small-dot"></span><div><strong id="report-label">Relatórios</strong><span id="report-status">Aguardando o núcleo</span></div><button id="open-improvements" class="text-button" aria-label="Ver melhorias supervisionadas">↗</button></div><div class="context-row"><span class="small-dot"></span><div><strong>Notas conectadas</strong><span id="notes-status">Conteúdo protegido</span></div><button id="open-notes" class="text-button" aria-label="Ver notas usadas na conversa">↗</button></div><p class="local-note">PRESENÇA LOCAL · CONTEÚDO PROTEGIDO</p></aside>
     <section class="response-card" aria-label="Resposta da Nora" hidden><div class="response-heading"><span>NA CONVERSA</span><span id="response-origin"></span></div><p id="response-text"></p></section>
@@ -45,13 +46,39 @@ texto("versao", `Nora ${__VERSAO_NORA__} · commit ${__COMMIT_NORA__}`);
 let atual: Modelo = { ...inicial };
 let visivel = false;
 let ultimaProposta: { id: number; acao: string } | undefined;
-const palavras=new PalavrasParticulas(el<HTMLCanvasElement>("word-particles"),el("word-caption"));
+// Camada das letras: um canvas sobre a HUD inteira. Os pontos da marca e das palavras saem da
+// poeira em órbita da cena (cena.poeiraNaTela), formam a letra e voltam para ela.
+const telaLetras = el<HTMLCanvasElement>("letras");
+const camada: Camada = {
+  contexto: telaLetras.getContext("2d"),
+  escala: 1,
+  deslocamento: () => { const r = telaLetras.getBoundingClientRect(); return { left: r.left, top: r.top }; },
+};
+function ajustarCamada() {
+  camada.escala = Math.min(devicePixelRatio || 1, 1.5);
+  telaLetras.width = Math.round(telaLetras.clientWidth * camada.escala);
+  telaLetras.height = Math.round(telaLetras.clientHeight * camada.escala);
+}
+ajustarCamada();
+new ResizeObserver(ajustarCamada).observe(telaLetras);
+const origemTela = (indice: number, saida: [number, number]) => cena.poeiraNaTela(indice, saida);
+const palcoPalavras = el("word-stage");
+const palavras=new PalavrasParticulas(el<HTMLCanvasElement>("word-particles"),el("word-caption"),{
+  camada, origemTela, semente: 3,
+  // As palavras vêm da poeira depressa (uma palavra dura poucas centenas de ms).
+  vida: { tremor: .45, chegada: 110, rigidezChegada: 26 },
+  retangulo: () => {
+    const r = palcoPalavras.getBoundingClientRect(), d = camada.deslocamento();
+    return { left: r.left - d.left, top: r.top - d.top, width: r.width };
+  },
+});
 // Marca no alfabeto geométrico próprio (geometric-glyphs.ts), formada só por partículas.
 const marca = new CampoParticulasTexto(el<HTMLCanvasElement>("brand-particles"), {
-  largura: 960, altura: 180, maximo: 1500, estilo: "geometrico", espessura: 0.12, brilho: 0.3,
+  camada, origemTela, semente: 11,
+  largura: 960, altura: 180, maximo: 1500, estilo: "geometrico", espessura: 0.12, brilho: 0.42,
   escalaParticula: 1.7,
   // Viva: os pontos tremem, uns se soltam para a poeira e voltam; a voz aumenta tudo isso.
-  vida: { tremor: 1.1, fluxo: .07, poeira: .16, extras: 320 },
+  vida: { tremor: 1.1, fluxo: .05, extras: 0, chegada: 1600, rigidezChegada: 7 },
   // Nasalization só se estiver instalada no Windows; senão, o alfabeto próprio (geometric-glyphs).
   fontesInstaladas: ["Nasalization", "Nasalization Rg", "Nasalization Regular"],
 });
@@ -61,6 +88,7 @@ cena.aoDesenhar=({agora,delta,cor,reduzido,energia})=>{
   document.documentElement.style.setProperty("--accent",cor);
   // Letras mais claras que a cena (branco-prateado com ciano), como na referência aprovada.
   const luz=misturar(cor.toUpperCase(),"#EEF9FF",.55);
+  camada.contexto?.clearRect(0,0,telaLetras.width,telaLetras.height);
   marca.desenhar(agora,delta,luz,reduzido,energia);
   palavras.desenhar(agora,luz,reduzido,delta,energia);
 };

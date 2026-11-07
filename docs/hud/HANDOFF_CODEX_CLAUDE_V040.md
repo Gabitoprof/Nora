@@ -151,3 +151,18 @@ Branch `refino/hud-v040`, criada a partir de `codex/hud-v040-particles-final`. S
   movimento e brilho; palavras com tremor leve; `autocomplete="off"` na opção das palavras.
   Movimento reduzido continua parado. Vídeo: `docs/hud/evidencias/marca-viva.mp4`
   (0–4 s repouso, 4–8 s com voz simulada).
+
+### Segunda rodada no Windows: "muito simplista" (07/11)
+
+Comparado com a imagem aprovada, faltavam luz, a onda inferior e a ligação das letras com a poeira.
+
+- `d191bc7`: bloom (UnrealBloomPass) na qualidade Detalhada, cena sobre preto misturada com
+  `mix-blend-mode: screen` (o fundo da página continua); anel, poeira e realces ciano mais
+  claros; onda inferior viva (`ondaInferior`, pico no centro, reage à voz/microfone).
+- Este lote: `Camada` (canvas `#letras` sobre a HUD) e `Cena.poeiraNaTela`. Cada ponto da marca
+  e das palavras fica ligado a um grão da poeira em órbita: sai dele em fluxo escalonado (marca:
+  1,6 s; palavras: 110 ms), com rastro, forma a letra, de vez em quando volta ao grão e retorna, e
+  ao dispersar volta para a órbita. Vídeo com o código real da camada e órbita simulada:
+  `docs/hud/evidencias/letras-da-poeira.mp4`.
+- Desempenho: sem filtro CSS na camada de tela cheia (era muito caro); halo desenhado no canvas.
+  Medir FPS no Windows.

@@ -1,6 +1,6 @@
 import type { Acustica } from "./scene-audio";
 import type { Evento, FalaTemporizada, Modelo, PalavraTemporizada } from "./state";
-import { CampoParticulasTexto } from "./text-particle-field";
+import { CampoParticulasTexto, type OpcoesCampoTexto } from "./text-particle-field";
 
 /** Relógio da mídia: estado e chegada da timeline não fazem a locução avançar. */
 export class RelogioFala {
@@ -73,11 +73,12 @@ export class PalavrasParticulas {
   private palavraAtual = "";
   private semPalavra = 0;
   readonly campo: CampoParticulasTexto;
-  constructor(private canvas: HTMLCanvasElement, private legenda: HTMLElement) {
+  constructor(private canvas: HTMLCanvasElement, private legenda: HTMLElement, extras: OpcoesCampoTexto = {}) {
     this.campo = new CampoParticulasTexto(canvas, {
-      maximo: 2000, brilho: .22, escalaParticula: 1.35,
+      maximo: 2000, brilho: .34, escalaParticula: 1.35,
       // Palavras: só um tremor leve (soltar pontos atrapalharia a leitura).
       vida: { tremor: .45 },
+      ...extras,
     });
   }
   receberEvento(evento: Evento, agora = performance.now()) {
