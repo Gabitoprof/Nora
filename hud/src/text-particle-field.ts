@@ -163,7 +163,8 @@ export class CampoParticulasTexto {
       const maiusculo = texto.toLocaleUpperCase("pt-BR");
       m.textAlign = "center"; m.textBaseline = "middle";
       m.font = `400 100px "${instalada}"`;
-      const tamanho = Math.min(h * .62, 100 * w * .9 / Math.max(1, m.measureText(maiusculo).width));
+      // Só maiúsculas: a letra pode ocupar quase toda a altura do canvas.
+      const tamanho = Math.min(h * .82, 100 * w * .9 / Math.max(1, m.measureText(maiusculo).width));
       m.font = `400 ${tamanho}px "${instalada}"`;
       m.fillText(maiusculo, w / 2, h / 2);
       alvos = amostrarMascara(m.getImageData(0, 0, w, h).data, w, h, orcamento);

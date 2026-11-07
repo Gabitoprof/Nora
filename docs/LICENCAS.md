@@ -112,7 +112,7 @@ O projeto não usa nomes, logos nem referências visuais de personagens ou marca
 ## Fontes
 
 - **Marca NORA na HUD:** alfabeto geométrico próprio, desenhado em código (`hud/src/geometric-glyphs.ts`). Não é uma fonte de terceiros; nada a licenciar.
-- **Nasalization (Typodermic Fonts):** a HUD usa **só se estiver instalada no computador** de quem usa (detecção pela largura medida no navegador). O arquivo da fonte **não** vai no repositório, no build da HUD nem no `nora.exe`. É distribuída gratuitamente pela Typodermic; a licença atual (uso em app e redistribuição) ainda precisa ser conferida no site da Typodermic antes de qualquer embutimento.
+- **Nasalization (Typodermic Fonts):** a HUD usa **só se estiver instalada no computador** de quem usa (detecção pela largura medida no navegador). O arquivo da fonte **não** vai no repositório, no build da HUD nem no `nora.exe`. O arquivo da fonte (versão 5.000) traz copyright da Typodermic Fonts, "Nasalization" como marca registrada deles e permissão de embutir só para "pré-visualização e impressão" (fsType 4): **não pode ser embutida** no repositório, no build da HUD nem no `nora.exe`. Uso pessoal, instalada no próprio Windows, funciona.
 
 ## Ao adicionar algo novo
 

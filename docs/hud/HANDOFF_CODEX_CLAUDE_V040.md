@@ -133,8 +133,9 @@ Branch `refino/hud-v040`, criada a partir de `codex/hud-v040-particles-final`. S
       real, onda inferior, FPS; comparar com a imagem aprovada.
 - [ ] Medir no Windows o início da reprodução com e sem a HUD (p50/p95) e o atraso áudio→palavra.
 - [x] Nasalization: a marca usa a fonte **se estiver instalada no Windows** (`fontesInstaladas` em
-      `main.ts`); sem ela, o alfabeto próprio. Nenhum arquivo de fonte é embutido. Conferir a
-      licença na Typodermic antes de qualquer embutimento.
+      `main.ts`); sem ela, o alfabeto próprio. O arquivo (Typodermic, fsType 4 "pré-visualização e
+      impressão") não pode ser embutido. Testado na nuvem com a fonte instalada fora do repositório:
+      `docs/hud/evidencias/hud-repouso-nasalization-instalada.jpg`.
 - [x] Linha da fala: decisão do Gabriel (07/11) — só as palavras já ditas, nunca as próximas.
 - [x] Merge autorizado pelo Gabriel (07/11): `refino/hud-v040` avançou `integracao/v0.4.0` até
       `f89d89d` (fast-forward, sem commit de merge).
