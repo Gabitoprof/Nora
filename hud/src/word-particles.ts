@@ -35,7 +35,17 @@ export class RelogioFala {
     }
     return null;
   }
+  /** Há amostra recente da reprodução desta fala (entre palavras ou numa pausa curta). */
+  ativo(fala: FalaTemporizada | null, agora: number) {
+    const a = this.amostra;
+    return !!(a?.ativo && fala && fala.id === a.reproducao_id && agora - this.recebida <= 300);
+  }
 }
+
+/** Quanto a palavra segura entre uma e outra (pausa curta) antes de se desfazer. */
+export const SEGURAR_MS = 320;
+/** Quantas palavras já ditas ficam visíveis à esquerda da atual. */
+export const ANTERIORES = 3;
 
 /** Validação temporal do fim natural; cancelamento nunca oferece uma última palavra. */
 export function ultimaPalavraDevida(fala: FalaTemporizada | null, id: number, posicao: number, duracao: number, interrompida: boolean) {
@@ -57,9 +67,14 @@ export class PalavrasParticulas {
   private maiorId = 0;
   private encerrado = 0;
   private final: { palavra: PalavraTemporizada; id: number; ate: number; precisao: string } | null = null;
+  /** Palavras já ditas desta fala (só as que já tocaram; nunca as próximas). */
+  private anteriores: string[] = [];
+  private idAnteriores = 0;
+  private palavraAtual = "";
+  private semPalavra = 0;
   readonly campo: CampoParticulasTexto;
   constructor(private canvas: HTMLCanvasElement, private legenda: HTMLElement) {
-    this.campo = new CampoParticulasTexto(canvas, { maximo: 1800 });
+    this.campo = new CampoParticulasTexto(canvas, { maximo: 2000, brilho: .22, escalaParticula: 1.35 });
   }
   receberEvento(evento: Evento, agora = performance.now()) {
     if (["conectado", "desconectado", "recuperando"].includes(evento.tipo)) { this.limpar(); return; }
@@ -100,6 +115,7 @@ export class PalavrasParticulas {
     this.canvas.hidden = true; this.legenda.hidden = true; this.legenda.textContent = "";
     this.canvas.removeAttribute("aria-label"); this.canvas.removeAttribute("data-fase");
     this.campo.limpar(); this.chave = "";
+    this.anteriores = []; this.palavraAtual = ""; this.semPalavra = 0;
   }
   limpar() {
     this.relogio.limpar(); this.ultimaAmostra = null;
@@ -115,9 +131,13 @@ export class PalavrasParticulas {
     if (palavra) {
       const id = final?.id ?? this.fala!.id;
       const chave = `${id}:${palavra.inicio_ms}:${palavra.texto}`;
+      this.semPalavra = 0;
       if (chave !== this.chave) {
         this.chave = chave;
-        if (!reduzido) this.campo.definirTexto(palavra.texto, agora);
+        if (id !== this.idAnteriores) { this.anteriores = []; this.idAnteriores = id; this.palavraAtual = ""; }
+        if (this.palavraAtual) this.anteriores = [...this.anteriores, this.palavraAtual].slice(-ANTERIORES);
+        this.palavraAtual = palavra.texto;
+        if (!reduzido) this.campo.definirTexto(palavra.texto, agora, false, this.anteriores);
         const precisao = final?.precisao ?? this.fala!.precisao;
         this.legenda.textContent = `${palavra.texto} · ${precisao === "estimada" ? "tempo estimado no áudio" : "tempo alinhado ao áudio"}`;
         this.canvas.setAttribute("aria-label", `Palavra atual: ${palavra.texto}`);
@@ -125,9 +145,17 @@ export class PalavrasParticulas {
       this.canvas.hidden = reduzido;
       this.legenda.hidden = false;
     } else {
-      if (this.chave) { this.campo.dispersar(agora); this.chave = ""; }
-      this.legenda.hidden = true; this.legenda.textContent = ""; this.canvas.removeAttribute("aria-label");
-      if (this.final && agora > this.final.ate) { this.final = null; this.ultimaFala = null; }
+      // Entre palavras, com a fala ainda tocando, a palavra segura um instante: sem piscar.
+      if (this.chave && !this.final && this.relogio.ativo(this.fala, agora)) {
+        if (!this.semPalavra) this.semPalavra = agora;
+      }
+      const segurando = this.semPalavra > 0 && agora - this.semPalavra <= SEGURAR_MS && !this.final && this.relogio.ativo(this.fala, agora);
+      if (!segurando) {
+        if (this.chave) { this.campo.dispersar(agora); this.chave = ""; }
+        this.anteriores = []; this.palavraAtual = ""; this.semPalavra = 0;
+        this.legenda.hidden = true; this.legenda.textContent = ""; this.canvas.removeAttribute("aria-label");
+        if (this.final && agora > this.final.ate) { this.final = null; this.ultimaFala = null; }
+      }
     }
     this.campo.desenhar(agora, dt, cor, reduzido);
     this.canvas.dataset.fase = this.campo.nuvem.fase;

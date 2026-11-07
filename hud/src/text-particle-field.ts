@@ -16,6 +16,8 @@ export class NuvemLetras {
   private readonly livreX: Float32Array;
   private readonly livreY: Float32Array;
   private readonly brilho: Float32Array;
+  /** Peso do brilho de cada destino (palavras já ditas ficam mais apagadas que a atual). */
+  readonly peso: Float32Array;
   quantidade = 0;
   alvos = 0;
   fase: FaseParticulas = "poeira";
@@ -28,6 +30,7 @@ export class NuvemLetras {
     this.alvoX = new Float32Array(maximo); this.alvoY = new Float32Array(maximo);
     this.livreX = new Float32Array(maximo); this.livreY = new Float32Array(maximo);
     this.brilho = new Float32Array(maximo);
+    this.peso = new Float32Array(maximo).fill(1);
     for (let i = 0; i < maximo; i++) {
       this.ids[i] = i;
       this.x[i] = this.livreX[i] = largura * (.04 + aleatorio(i + 8101) * .92);
@@ -36,7 +39,7 @@ export class NuvemLetras {
       this.tamanho[i] = .68 + aleatorio(i + 9981) * .52;
     }
   }
-  definirAlvos(coordenadas: ArrayLike<number>, agora: number, imediato = false) {
+  definirAlvos(coordenadas: ArrayLike<number>, agora: number, imediato = false, pesos?: ArrayLike<number>) {
     this.alvos = Math.min(this.maximo, Math.floor(coordenadas.length / 2));
     this.quantidade = Math.min(this.maximo, Math.max(this.quantidade, this.alvos + 36));
     this.inicio = agora;
@@ -44,9 +47,10 @@ export class NuvemLetras {
     for (let i = 0; i < this.quantidade; i++) {
       if (i < this.alvos) {
         this.alvoX[i] = coordenadas[i * 2]; this.alvoY[i] = coordenadas[i * 2 + 1];
+        this.peso[i] = pesos?.[i] ?? 1;
         // Partículas apagadas voltam como poeira, jamais nascem já sobre o glifo.
         if (this.alpha[i] < .01) { this.x[i] = this.livreX[i]; this.y[i] = this.livreY[i]; this.alpha[i] = .1; }
-        if (imediato) { this.x[i] = this.alvoX[i]; this.y[i] = this.alvoY[i]; this.vx[i] = this.vy[i] = 0; this.alpha[i] = this.brilho[i]; }
+        if (imediato) { this.x[i] = this.alvoX[i]; this.y[i] = this.alvoY[i]; this.vx[i] = this.vy[i] = 0; this.alpha[i] = this.brilho[i] * this.peso[i]; }
       }
     }
   }
@@ -75,7 +79,7 @@ export class NuvemLetras {
       const ty = glifo ? this.alvoY[i] : this.livreY[i];
       if (reduzido) {
         this.x[i] = tx; this.y[i] = ty; this.vx[i] = this.vy[i] = 0;
-        this.alpha[i] = glifo ? this.brilho[i] : 0; continue;
+        this.alpha[i] = glifo ? this.brilho[i] * this.peso[i] : 0; continue;
       }
       // Solução analítica da mola criticamente amortecida, estável em 30/60/120 FPS.
       const dx = this.x[i] - tx, dy = this.y[i] - ty;
@@ -84,7 +88,7 @@ export class NuvemLetras {
       this.y[i] = ty + (dy + by * dt) * amortecimento;
       this.vx[i] = (this.vx[i] - omega * bx * dt) * amortecimento;
       this.vy[i] = (this.vy[i] - omega * by * dt) * amortecimento;
-      const alvoAlpha = glifo ? this.brilho[i] : retendo ? .025 : 0;
+      const alvoAlpha = glifo ? this.brilho[i] * this.peso[i] : retendo ? .025 : 0;
       this.alpha[i] = alvoAlpha + (this.alpha[i] - alvoAlpha) * fade;
     }
     if (!retendo && agora - this.inicio > 700) this.limpar();
@@ -131,25 +135,58 @@ export class CampoParticulasTexto {
     this.halo = opcoes.brilho ?? 0;
     this.escala = opcoes.escalaParticula ?? 1;
   }
-  definirTexto(texto: string, agora: number, imediato = false) {
-    if (texto === this.texto && this.nuvem.fase !== "poeira" && this.nuvem.fase !== "dispersando") return;
-    this.texto = texto;
+  /**
+   * Forma `texto` com as partículas. `anteriores` (palavras já ditas) entram menores e mais
+   * apagadas à esquerda, na mesma nuvem: a troca de palavra vira um deslizar da linha.
+   */
+  definirTexto(texto: string, agora: number, imediato = false, anteriores: readonly string[] = []) {
+    const chave = anteriores.length ? `${anteriores.join(" ")}\u0000${texto}` : texto;
+    if (chave === this.texto && this.nuvem.fase !== "poeira" && this.nuvem.fase !== "dispersando") return;
+    this.texto = chave;
     const m = this.mascara.getContext("2d", { willReadFrequently: true });
     if (!m || !texto.trim()) { this.limpar(); return; }
     const w = this.mascara.width, h = this.mascara.height;
     m.clearRect(0, 0, w, h); m.fillStyle = "#fff"; m.strokeStyle = "#fff";
+    const orcamento = this.nuvem.maximo - 36;
+    let alvos: Float32Array, pesos: Float32Array | undefined;
     if (this.estilo === "geometrico" && temGlifos(texto)) {
       desenharGeometrico(m, texto, w, h, { espessura: this.espessura });
+      alvos = amostrarMascara(m.getImageData(0, 0, w, h).data, w, h, orcamento);
     } else {
       m.textAlign = "center"; m.textBaseline = "middle";
       m.font = `500 ${this.tamanhoFonte}px ${this.fonte}`;
       const medida = m.measureText(texto).width;
-      const tamanho = Math.min(this.tamanhoFonte, this.tamanhoFonte * w * .9 / Math.max(1, medida));
+      // Com palavras anteriores, a atual ocupa no máximo 60% da largura (o resto é contexto).
+      const limite = anteriores.length ? .6 : .9;
+      const tamanho = Math.min(this.tamanhoFonte, this.tamanhoFonte * w * limite / Math.max(1, medida));
       m.font = `500 ${tamanho}px ${this.fonte}`;
       m.fillText(texto, w / 2, h / 2);
+      const atual = amostrarMascara(m.getImageData(0, 0, w, h).data, w, h, anteriores.length ? Math.round(orcamento * .78) : orcamento);
+      alvos = atual; pesos = undefined;
+      if (anteriores.length) {
+        const larguraAtual = Math.min(medida * tamanho / this.tamanhoFonte, w * limite);
+        const pequeno = Math.max(20, tamanho * .46);
+        const direita = w / 2 - larguraAtual / 2 - tamanho * .32;
+        m.clearRect(0, 0, w, h);
+        m.font = `500 ${pequeno}px ${this.fonte}`; m.textAlign = "right";
+        // Só as palavras que cabem à esquerda, as mais recentes primeiro.
+        const cabem: string[] = [];
+        for (let i = anteriores.length - 1; i >= 0; i--) {
+          const tentativa = [anteriores[i], ...cabem].join(" ");
+          if (m.measureText(tentativa).width > direita - 8) break;
+          cabem.unshift(anteriores[i]);
+        }
+        if (cabem.length) {
+          m.fillText(cabem.join(" "), direita, h / 2 + tamanho * .08);
+          const contexto = amostrarMascara(m.getImageData(0, 0, w, h).data, w, h, orcamento - atual.length / 2);
+          alvos = new Float32Array(atual.length + contexto.length);
+          alvos.set(atual); alvos.set(contexto, atual.length);
+          pesos = new Float32Array(alvos.length / 2).fill(1);
+          pesos.fill(.55, atual.length / 2);
+        }
+      }
     }
-    const alvos = amostrarMascara(m.getImageData(0, 0, w, h).data, w, h, this.nuvem.maximo - 36);
-    this.nuvem.definirAlvos(alvos, agora, imediato);
+    this.nuvem.definirAlvos(alvos, agora, imediato, pesos);
     m.clearRect(0, 0, w, h);
   }
   dispersar(agora: number) { this.nuvem.dispersar(agora); this.texto = ""; }
@@ -189,7 +226,7 @@ export class CampoParticulasTexto {
  */
 export function amostrarMascara(pixels: ArrayLike<number>, w: number, h: number, maximo: number): Float32Array {
   const candidatos: number[] = [];
-  for (let y = 3; y < h - 3; y += 2) for (let x = 3; x < w - 3; x += 2)
+  for (let y = 4; y < h - 4; y += 2) for (let x = 4; x < w - 4; x += 2)
     if (pixels[(y * w + x) * 4 + 3] > 100) candidatos.push(x, y);
   const total = candidatos.length / 2;
   const numero = Math.max(0, Math.min(maximo, total));

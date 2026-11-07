@@ -69,7 +69,7 @@ import { inicial, type Evento, type Modelo } from "../src/state";
 class CanvasDeTeste {
   width=1200; height=140; hidden=true; dataset:Record<string,string>={}; attrs=new Map<string,string>();
   limpezas=0;
-  contexto={clearRect:()=>{this.limpezas++;},fillRect:()=>{},fillText:()=>{},measureText:()=>({width:300}),getImageData:()=>{
+  contexto={clearRect:()=>{this.limpezas++;},fillRect:()=>{},fillText:()=>{},measureText:(t:string)=>({width:Math.max(40,t.length*30)}),getImageData:()=>{
     const data=new Uint8ClampedArray(this.width*this.height*4);for(let y=40;y<80;y+=2)for(let x=350;x<450;x+=2)data[(y*this.width+x)*4+3]=255;return {data};
   }};
   getContext(){return this.contexto;}
@@ -123,5 +123,55 @@ describe("controlador: privacidade, último glifo e acessibilidade",()=>{
     p.atualizar({...m,emocao:"calma"},true,false,600);p.desenhar(610,"#d8e1e5",false,30);
     expect(legenda.textContent).toBe("");expect(canvas.attrs.has("aria-label")).toBe(false);
     p.atualizar({...m,privacidade:true},true,true,620);expect(legenda.textContent).toBe("");
+  });
+});
+
+describe("faixa superior: linha da fala sem piscar e sem adiantar palavras",()=>{
+  beforeEach(()=>vi.stubGlobal("document",{createElement:()=>new CanvasDeTeste()}));
+  afterEach(()=>vi.unstubAllGlobals());
+  const linha:FalaTemporizada={id:7,duracao_ms:1600,precisao:"alinhada",palavras:[
+    {texto:"um",inicio_ms:0,fim_ms:200,destaque:false},{texto:"dois",inicio_ms:280,fim_ms:500,destaque:false},
+    {texto:"tres",inicio_ms:1200,fim_ms:1400,destaque:false}]};
+  const criar=()=>{
+    const canvas=new CanvasDeTeste(),legenda={hidden:true,textContent:""};
+    const p=new PalavrasParticulas(canvas as unknown as HTMLCanvasElement,legenda as unknown as HTMLElement);
+    const m:Modelo={...inicial,conectado:true,privacidade:false,estado:"falando",fala_temporizada:linha};
+    return {p,canvas,legenda,m};
+  };
+  const tocar=(p:PalavrasParticulas,m:Modelo,pos:number,agora:number)=>{p.atualizar({...m,acustica:audio(pos,7)},true,false,agora);p.desenhar(agora,"#d8e1e5",false,16);};
+  it("pausa curta entre palavras: a palavra segura, sem dispersar",()=>{
+    const {p,canvas,m}=criar();
+    tocar(p,m,100,0);expect(canvas.attrs.get("aria-label")).toContain("um");
+    tocar(p,m,240,140);expect(canvas.dataset.fase).not.toBe("dispersando");expect(canvas.attrs.get("aria-label")).toContain("um");
+    tocar(p,m,300,200);expect(canvas.attrs.get("aria-label")).toContain("dois");
+  });
+  it("pausa longa: depois do limite a linha se desfaz",()=>{
+    const {p,canvas,m}=criar();
+    tocar(p,m,300,0);
+    for(let t=50,pos=550;t<=500;t+=50,pos+=50)tocar(p,m,pos,t);
+    expect(canvas.dataset.fase).toBe("dispersando");expect(canvas.attrs.has("aria-label")).toBe(false);
+  });
+  it("palavras já ditas entram apagadas na mesma nuvem; as próximas nunca aparecem antes",()=>{
+    const {p,m}=criar();
+    const chamadas:{texto:string;anteriores:readonly string[]}[]=[];
+    const original=p.campo.definirTexto.bind(p.campo);
+    p.campo.definirTexto=(texto,agora,imediato,anteriores=[])=>{chamadas.push({texto,anteriores:[...anteriores]});original(texto,agora,imediato,anteriores);};
+    tocar(p,m,100,0);tocar(p,m,300,200);
+    expect(chamadas.map(c=>c.texto)).toEqual(["um","dois"]);
+    expect(chamadas[1].anteriores).toEqual(["um"]);
+    for(const c of chamadas)expect(c.anteriores).not.toContain("tres");
+    // os destinos da palavra anterior têm peso menor (mais apagados)
+    const pesos=Array.from(p.campo.nuvem.peso.subarray(0,p.campo.nuvem.alvos));
+    expect(Math.min(...pesos)).toBeLessThan(1);expect(Math.max(...pesos)).toBe(1);
+  });
+  it("fala nova começa a linha do zero",()=>{
+    const {p,m}=criar();
+    const vistos:(readonly string[])[]=[];
+    const original=p.campo.definirTexto.bind(p.campo);
+    p.campo.definirTexto=(texto,agora,imediato,anteriores=[])=>{vistos.push([...anteriores]);original(texto,agora,imediato,anteriores);};
+    tocar(p,m,100,0);tocar(p,m,300,200);
+    const nova={...linha,id:8};
+    p.atualizar({...m,fala_temporizada:nova,acustica:audio(100,8)},true,false,260);p.desenhar(260,"#d8e1e5",false,16);
+    expect(vistos[vistos.length-1]).toEqual([]);
   });
 });
