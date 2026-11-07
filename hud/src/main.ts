@@ -49,6 +49,8 @@ const palavras=new PalavrasParticulas(el<HTMLCanvasElement>("word-particles"),el
 const marca = new CampoParticulasTexto(el<HTMLCanvasElement>("brand-particles"), {
   largura: 960, altura: 180, maximo: 1500, estilo: "geometrico", espessura: 0.12, brilho: 0.3,
   escalaParticula: 1.7,
+  // Nasalization só se estiver instalada no Windows; senão, o alfabeto próprio (geometric-glyphs).
+  fontesInstaladas: ["Nasalization", "Nasalization Rg", "Nasalization Regular"],
 });
 let nomeMarca = "";
 const movimentoReduzido=matchMedia("(prefers-reduced-motion: reduce)");

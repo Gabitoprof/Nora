@@ -109,6 +109,11 @@ Na dúvida, mantenha a voz treinada **para uso pessoal** e fora do Git (`models/
 
 O projeto não usa nomes, logos nem referências visuais de personagens ou marcas registradas (por exemplo, "Jarvis" ou Marvel). O nome do assistente vem da config.
 
+## Fontes
+
+- **Marca NORA na HUD:** alfabeto geométrico próprio, desenhado em código (`hud/src/geometric-glyphs.ts`). Não é uma fonte de terceiros; nada a licenciar.
+- **Nasalization (Typodermic Fonts):** a HUD usa **só se estiver instalada no computador** de quem usa (detecção pela largura medida no navegador). O arquivo da fonte **não** vai no repositório, no build da HUD nem no `nora.exe`. É distribuída gratuitamente pela Typodermic; a licença atual (uso em app e redistribuição) ainda precisa ser conferida no site da Typodermic antes de qualquer embutimento.
+
 ## Ao adicionar algo novo
 
 Toda dependência, programa, modelo ou voz nova entra nesta página, com a licença conferida na fonte, no mesmo commit que a adiciona. Um teste (`tests/test_licencas.py`) falha se um pacote do `pyproject.toml` não estiver listado aqui.

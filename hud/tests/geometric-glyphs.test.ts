@@ -90,3 +90,20 @@ describe("amostragem da máscara: as partículas pousam sobre a letra", () => {
     expect(amostrarMascara(new Uint8ClampedArray(w * h * 4), w, h, 100)).toHaveLength(0);
   });
 });
+
+import { escolherFonteInstalada, fonteInstalada } from "../src/text-particle-field";
+describe("Nasalization só quando instalada no computador",()=>{
+  // Contexto falso: a "fonte instalada" muda a largura medida; as outras caem na genérica.
+  const contexto=(instaladas:string[])=>{
+    const ctx={font:"",measureText(t:string){const instalada=instaladas.some(n=>this.font.includes(`"${n}"`));return {width:t.length*(instalada?71:60)};}};
+    return ctx as unknown as CanvasRenderingContext2D;
+  };
+  it("detecta pela largura medida, sem baixar fonte",()=>{
+    expect(fonteInstalada(contexto(["Nasalization"]),"Nasalization")).toBe(true);
+    expect(fonteInstalada(contexto([]),"Nasalization")).toBe(false);
+  });
+  it("escolhe a primeira instalada; sem nenhuma, volta ao alfabeto próprio",()=>{
+    expect(escolherFonteInstalada(contexto(["Nasalization Rg"]),["Nasalization","Nasalization Rg"])).toBe("Nasalization Rg");
+    expect(escolherFonteInstalada(contexto([]),["Nasalization","Nasalization Rg"])).toBe("");
+  });
+});

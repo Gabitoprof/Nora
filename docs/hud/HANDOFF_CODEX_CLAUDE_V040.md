@@ -132,8 +132,9 @@ Branch `refino/hud-v040`, criada a partir de `codex/hud-v040-particles-final`. S
 - [ ] Homologação visual no Windows com a RX 9060 XT: marca, linha da fala com o ElevenLabs v4
       real, onda inferior, FPS; comparar com a imagem aprovada.
 - [ ] Medir no Windows o início da reprodução com e sem a HUD (p50/p95) e o atraso áudio→palavra.
-- [ ] Se o Gabriel tiver a licença da Nasalization para uso em app, trocar o alfabeto próprio pela
-      fonte (só a máscara muda: `CampoParticulasTexto`, opção `estilo`).
-- [ ] Decidir se a linha da fala deve mostrar também as próximas palavras (a imagem aprovada
-      mostra a frase inteira; hoje só as já ditas aparecem, para não adiantar o texto).
-- [ ] Merge de `refino/hud-v040` em `integracao/v0.4.0`: só com autorização do Gabriel.
+- [x] Nasalization: a marca usa a fonte **se estiver instalada no Windows** (`fontesInstaladas` em
+      `main.ts`); sem ela, o alfabeto próprio. Nenhum arquivo de fonte é embutido. Conferir a
+      licença na Typodermic antes de qualquer embutimento.
+- [x] Linha da fala: decisão do Gabriel (07/11) — só as palavras já ditas, nunca as próximas.
+- [x] Merge autorizado pelo Gabriel (07/11): `refino/hud-v040` avançou `integracao/v0.4.0` até
+      `f89d89d` (fast-forward, sem commit de merge).

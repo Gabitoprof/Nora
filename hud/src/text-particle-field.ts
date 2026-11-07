@@ -107,6 +107,9 @@ export interface OpcoesCampoTexto {
   espessura?: number;
   /** Halo suave em volta de cada partícula (brilho da poeira). */
   brilho?: number;
+  /** Fontes instaladas no computador para a marca, em ordem (ex.: Nasalization). Se nenhuma
+   * estiver instalada, vale o alfabeto geométrico próprio. Nenhum arquivo de fonte é embutido. */
+  fontesInstaladas?: string[];
   /** Multiplica o tamanho das partículas (canvas que a tela reduz precisa de pontos maiores). */
   escalaParticula?: number;
 }
@@ -122,6 +125,9 @@ export class CampoParticulasTexto {
   private espessura: number;
   private halo: number;
   private escala: number;
+  private fontesInstaladas: string[];
+  /** A fonte instalada em uso na marca, ou "" (alfabeto próprio). */
+  fonteEmUso = "";
   constructor(private canvas: HTMLCanvasElement, opcoes: OpcoesCampoTexto = {}) {
     canvas.width = opcoes.largura ?? 1200; canvas.height = opcoes.altura ?? 140;
     this.nuvem = new NuvemLetras(opcoes.maximo ?? 1800, canvas.width, canvas.height);
@@ -134,6 +140,7 @@ export class CampoParticulasTexto {
     this.espessura = opcoes.espessura ?? 0.13;
     this.halo = opcoes.brilho ?? 0;
     this.escala = opcoes.escalaParticula ?? 1;
+    this.fontesInstaladas = opcoes.fontesInstaladas ?? [];
   }
   /**
    * Forma `texto` com as partículas. `anteriores` (palavras já ditas) entram menores e mais
@@ -149,7 +156,18 @@ export class CampoParticulasTexto {
     m.clearRect(0, 0, w, h); m.fillStyle = "#fff"; m.strokeStyle = "#fff";
     const orcamento = this.nuvem.maximo - 36;
     let alvos: Float32Array, pesos: Float32Array | undefined;
-    if (this.estilo === "geometrico" && temGlifos(texto)) {
+    const instalada = this.estilo === "geometrico" ? escolherFonteInstalada(m, this.fontesInstaladas) : "";
+    this.fonteEmUso = instalada;
+    if (instalada) {
+      // Fonte do computador (ex.: Nasalization): só desenha a máscara; as partículas formam a letra.
+      const maiusculo = texto.toLocaleUpperCase("pt-BR");
+      m.textAlign = "center"; m.textBaseline = "middle";
+      m.font = `400 100px "${instalada}"`;
+      const tamanho = Math.min(h * .62, 100 * w * .9 / Math.max(1, m.measureText(maiusculo).width));
+      m.font = `400 ${tamanho}px "${instalada}"`;
+      m.fillText(maiusculo, w / 2, h / 2);
+      alvos = amostrarMascara(m.getImageData(0, 0, w, h).data, w, h, orcamento);
+    } else if (this.estilo === "geometrico" && temGlifos(texto)) {
       desenharGeometrico(m, texto, w, h, { espessura: this.espessura });
       alvos = amostrarMascara(m.getImageData(0, 0, w, h).data, w, h, orcamento);
     } else {
@@ -238,4 +256,24 @@ export function amostrarMascara(pixels: ArrayLike<number>, w: number, h: number,
     alvos[i * 2 + 1] = candidatos[j * 2 + 1] + (aleatorio(i + 907) - .5) * 1.6;
   }
   return alvos;
+}
+
+/**
+ * Se uma fonte está instalada no computador: compara a largura de um texto com a fonte pedida
+ * e só com as genéricas. Sem baixar nada (nenhuma fonte é embutida na HUD).
+ */
+export function fonteInstalada(ctx: CanvasRenderingContext2D, nome: string): boolean {
+  const amostra = "NORA mwWiIl 0123";
+  for (const generica of ["monospace", "serif", "sans-serif"]) {
+    ctx.font = `100px ${generica}`;
+    const base = ctx.measureText(amostra).width;
+    ctx.font = `100px "${nome}", ${generica}`;
+    if (Math.abs(ctx.measureText(amostra).width - base) > 0.5) return true;
+  }
+  return false;
+}
+
+/** A primeira das fontes que está instalada, ou "". */
+export function escolherFonteInstalada(ctx: CanvasRenderingContext2D, nomes: readonly string[]): string {
+  return nomes.find(nome => fonteInstalada(ctx, nome)) ?? "";
 }
