@@ -85,6 +85,12 @@
     ],
     "modo_jogo_ativo": [
       "ativo"
+    ],
+    "reproducao_encerrada": [
+      "id",
+      "posicao_ms",
+      "duracao_ms",
+      "interrompida"
     ]
   },
   "acustica": {

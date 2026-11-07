@@ -64,6 +64,18 @@ def _acustica_valida(dados):
     )
 
 
+def _encerrada_valida(dados):
+    """Fim de uma reprodução: só números e o motivo, nunca texto."""
+    return (
+        dados.keys() == CAMPOS["reproducao_encerrada"]
+        and type(dados["id"]) is int
+        and 1 <= dados["id"] <= 2**53 - 1
+        and type(dados["interrompida"]) is bool
+        and _numero(dados["duracao_ms"], 0, CONTRATO["acustica"]["max_duracao_ms"])
+        and _numero(dados["posicao_ms"], 0, dados["duracao_ms"])
+    )
+
+
 def _fala_valida(dados):
     if dados.keys() != CAMPOS["fala_temporizada"]:
         return False
@@ -191,6 +203,9 @@ class PonteHUD:
                 self.estado["nivel_audio"] = dados["rms"] if dados["ativo"] else 0.0
                 if fonte == "voz" and not dados["ativo"]:
                     self.estado["fala_temporizada"] = None
+            elif tipo == "reproducao_encerrada":
+                if not _encerrada_valida(dados) or dados["id"] != self._id_reproducao:
+                    return False
             elif tipo == "fala_temporizada":
                 if (
                     not _fala_valida(dados)
@@ -405,10 +420,22 @@ def atualizar_notas() -> None:
             registrar("hud.notas", erro)
 
 
-def reproducao(ativa: bool) -> None:
+def reproducao(ativa: bool, fim: tuple[float, float, bool] | None = None) -> None:
+    """Começo (True) ou fim (False) do som na saída. No fim, `fim` = (posição tocada em ms,
+    duração em ms, interrompida): a HUD só mostra a última palavra num fim natural."""
     if _ponte is None:
         return
     try:
+        if not ativa and fim is not None and _ponte._reproduzindo and _ponte._id_reproducao > 0:
+            posicao, duracao, interrompida = fim
+            duracao = round(max(0.0, min(duracao, CONTRATO["acustica"]["max_duracao_ms"])), 3)
+            emitir(
+                "reproducao_encerrada",
+                id=_ponte._id_reproducao,
+                posicao_ms=round(max(0.0, min(posicao, duracao)), 3),
+                duracao_ms=duracao,
+                interrompida=bool(interrompida),
+            )
         if not ativa and _ponte._audio is not None and _ponte._audio.reproducao is not None:
             _ponte._audio.reproducao.encerrar()
         _ponte._reproduzindo = ativa

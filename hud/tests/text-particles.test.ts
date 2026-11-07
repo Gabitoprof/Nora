@@ -175,3 +175,14 @@ describe("faixa superior: linha da fala sem piscar e sem adiantar palavras",()=>
     expect(vistos[vistos.length-1]).toEqual([]);
   });
 });
+
+import contrato from "../../src/nora/hud_contrato.json";
+import { reduzir } from "../src/state";
+describe("contrato do fim da reprodução",()=>{
+  it("o backend e a HUD conhecem reproducao_encerrada, só com números e o motivo",()=>{
+    expect(contrato.campos.reproducao_encerrada).toEqual(["id","posicao_ms","duracao_ms","interrompida"]);
+    const m:Modelo={...inicial,conectado:true,sequencia:3,estado:"falando"};
+    const depois=reduzir(m,{...evFim(),sequencia:5});
+    expect(depois.sequencia).toBe(5);expect(depois.estado).toBe("falando");
+  });
+});

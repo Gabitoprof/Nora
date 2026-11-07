@@ -370,7 +370,8 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
     finally:
         from nora.hud import reproducao
 
-        reproducao(False)
+        por_ms = bytes_por_quadro * taxa / 1000
+        reproducao(False, (posicao / por_ms, len(amostras) / por_ms, posicao < len(amostras)))
 
 
 _avisos_de_saida: list[str] = []
@@ -607,7 +608,11 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
             while not terminou.wait(0.1):
                 pass
     finally:
-        reproducao(False)
+        with trava:
+            restante = len(buffer) // bytes_por_quadro
+        natural = chegou.is_set() and restante == 0 and not audio.cancelado.is_set()
+        quadros_ms = saida_taxa[0] / 1000
+        reproducao(False, (posicao / quadros_ms, (posicao + restante) / quadros_ms, not natural))
 
 
 def tocar_partes(audio: AudioEmPartes, alto_falante=None, silencio_ms: int = 0) -> None:

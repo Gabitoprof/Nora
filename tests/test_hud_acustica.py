@@ -424,3 +424,72 @@ def test_registro_de_falha_nunca_levanta(monkeypatch):
 
     monkeypatch.setattr(falhas_hud, "_contagem", None)  # até o contador quebrado
     falhas_hud.registrar("qualquer", RuntimeError("x"))
+
+
+# --- fim da reprodução (reproducao_encerrada) ---------------------------------------------------
+
+
+def _eventos(fila, tipo):
+    return [e["dados"] for e in list(fila.queue) if e["tipo"] == tipo]
+
+
+def test_fim_natural_avisa_a_hud_com_posicao_igual_a_duracao(ponte):
+    fila = ponte.assinar()
+    som = tom(segundos=0.2)
+    audio._tocar_partes(SaidaFalsa(), audio.AudioEmPartes(iter([som]), 16000), 0, None)
+    fim = _eventos(fila, "reproducao_encerrada")
+    assert len(fim) == 1 and fim[0]["interrompida"] is False
+    assert fim[0]["posicao_ms"] == fim[0]["duracao_ms"] == pytest.approx(200, abs=1)
+    assert fim[0]["id"] == ponte._id_reproducao
+    assert set(fim[0]) == {"id", "posicao_ms", "duracao_ms", "interrompida"}  # sem texto
+
+
+def test_barge_in_avisa_interrompida_antes_do_fim(ponte):
+    fila = ponte.assinar()
+    som, por, fechar = audio.AudioEmPartes.de_fila(16000)
+    por(tom(segundos=0.3))
+
+    class Cortar(SaidaFalsa):
+        def RawOutputStream(self, callback, finished_callback, channels, **_):  # noqa: N802
+            chamadas = [0]
+
+            def cortar(saida, quadros, tempo, status):
+                chamadas[0] += 1
+                if chamadas[0] == 3:
+                    som.cancelar()
+                return callback(saida, quadros, tempo, status)
+
+            return SaidaFalsa.RawOutputStream(self, cortar, finished_callback, channels)
+
+    threading.Timer(0.5, fechar).start()
+    audio._tocar_partes(Cortar(), som, 0, None)
+    fim = _eventos(fila, "reproducao_encerrada")
+    assert len(fim) == 1 and fim[0]["interrompida"] is True
+    assert fim[0]["posicao_ms"] < fim[0]["duracao_ms"]
+
+
+def test_wav_inteiro_e_natural(ponte):
+    fila = ponte.assinar()
+    audio._tocar(SaidaFalsa(), tom(segundos=0.1), 16000, 1, None)
+    fim = _eventos(fila, "reproducao_encerrada")
+    assert len(fim) == 1 and fim[0]["interrompida"] is False
+    assert fim[0]["posicao_ms"] == fim[0]["duracao_ms"]
+
+
+def test_contrato_rejeita_fim_invalido_ou_antigo(ponte):
+    hud.preparar_reproducao(tom(segundos=0.1), 16000, 1)
+    hud.reproducao(True)
+    atual = ponte._id_reproducao
+    valido = {"id": atual, "posicao_ms": 10.0, "duracao_ms": 20.0, "interrompida": False}
+    assert not ponte.publicar("reproducao_encerrada", **{**valido, "posicao_ms": 30.0})
+    assert not ponte.publicar("reproducao_encerrada", **{**valido, "interrompida": 1})
+    assert not ponte.publicar("reproducao_encerrada", **{**valido, "texto": "oi"})
+    assert not ponte.publicar("reproducao_encerrada", **{**valido, "id": atual + 1})
+    assert ponte.publicar("reproducao_encerrada", **valido)
+    hud.reproducao(False)
+
+
+def test_sem_som_nao_avisa_fim(ponte):
+    fila = ponte.assinar()
+    hud.reproducao(False, (0.0, 0.0, False))  # nunca começou a tocar
+    assert not _eventos(fila, "reproducao_encerrada")
