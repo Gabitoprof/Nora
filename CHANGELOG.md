@@ -9,6 +9,10 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 - **Licença:** a partir de 06/11/2026, o código passa a ser de **todos os direitos reservados** (público só para consulta). As versões até a `v0.3.0` continuam em MIT.
 
+### Corrigido (roadmap "Imagem para as falas", fases 0 e 1)
+
+- **Alinhamento das palavras do ElevenLabs v4:** a referência dos tempos (relativa ao trecho de áudio ou ao turno) é decidida uma vez por turno e não muda no meio da fala; cada palavra fica na posição real do PCM. O silêncio inicial configurável (`[audio] silencio_inicial_ms`) agora desloca as palavras junto com o som.
+
 ### Corrigido (revisão da v0.4.0, branch `integracao/v0.4.0`)
 
 - **Paleta dentro do pacote:** `src/nora/paleta.json`, lido pela HUD e pelo Second Brain. Antes ficava em `hud/` e uma instalação por wheel quebrava ao importar o Second Brain.

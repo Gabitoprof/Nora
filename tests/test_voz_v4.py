@@ -92,7 +92,17 @@ class DialogoFalso:
             for i in range(self.pedacos):
                 parte = pcm[i * corte : (i + 1) * corte if i < self.pedacos - 1 else None]
                 envio = {"audio": base64.b64encode(parte).decode()}
-                if i == 0 and self.modo != "sem_alinhamento":
+                if self.modo == "trechos":
+                    # alinhamento repartido: cada trecho traz as palavras do seu áudio, com
+                    # tempos relativos ao próprio trecho
+                    palavras = texto.split()
+                    if i < len(palavras):
+                        envio["alignment"] = {
+                            "chars": list(palavras[i] + " "),
+                            "char_start_times_ms": [10 * j for j in range(len(palavras[i]) + 1)],
+                            "char_durations_ms": [10] * (len(palavras[i]) + 1),
+                        }
+                elif i == 0 and self.modo != "sem_alinhamento":
                     envio["alignment"] = {
                         "chars": list(texto),
                         "char_start_times_ms": [MS_POR_CARACTERE * j for j in range(len(texto))],
@@ -493,3 +503,73 @@ def test_verificar_mostra_flash_e_continuidade_desativada(criar_raiz):
         "Modelo efetivo" in linha and "eleven_flash_v2_5 (http)" in linha for linha in linhas
     )
     assert any("Continuidade ElevenLabs" in linha and "desativada" in linha for linha in linhas)
+
+
+# --- referência dos tempos do alinhamento ---------------------------------------------------------
+
+
+def _turno_com(trechos):
+    """Turno que recebe (pcm_ms, chars, inicios) em sequência; devolve as palavras finais."""
+    sessao = SessaoDialogo("x", "v", "eleven_v4_turbo")
+    turno = elevenlabs_dialogo.Turno(sessao)
+    for duracao_ms, chars, inicios in trechos:
+        pcm = b"\x00\x00" * round(duracao_ms / 1000 * TAXA)
+        alinhar = {
+            "chars": list(chars),
+            "char_start_times_ms": inicios,
+            "char_durations_ms": [50] * len(chars),
+        }
+        turno._receber(pcm, alinhar)
+    return turno
+
+
+def test_alinhamento_relativo_ao_trecho_vira_posicao_no_pcm():
+    # 3 trechos de 500 ms; cada um traz "ab " com tempos a partir de 0 (relativos ao trecho)
+    turno = _turno_com(
+        [(500, "um ", [0, 60, 120]), (500, "do ", [0, 60, 120]), (500, "tr", [0, 60])]
+    )
+    inicios = [p["inicio_ms"] for p in turno.audio.palavras]
+    assert inicios == [0.0, 500.0, 1000.0]  # cada palavra onde o seu áudio está no PCM
+    assert turno.referencia == "trecho"
+
+
+def test_alinhamento_absoluto_no_turno_nao_soma_de_novo():
+    turno = _turno_com(
+        [(500, "um ", [0, 60, 120]), (500, "do ", [500, 560, 620]), (500, "tr", [1000, 1060])]
+    )
+    assert [p["inicio_ms"] for p in turno.audio.palavras] == [0.0, 500.0, 1000.0]
+    assert turno.referencia == "turno"
+
+
+def test_referencia_decidida_uma_vez_nao_salta_no_meio_da_fala():
+    # 2º trecho decide "trecho"; o 3º vem com tempo grande (parece absoluto), mas continua relativo
+    turno = _turno_com(
+        [(500, "um ", [0, 60, 120]), (500, "do ", [0, 60, 120]), (500, "tr", [700, 760])]
+    )
+    inicios = [p["inicio_ms"] for p in turno.audio.palavras]
+    assert inicios == sorted(inicios) and inicios[-1] == 1700.0
+
+
+def test_silencio_inicial_desloca_as_palavras_junto_com_o_som():
+    from nora.audio import _deslocar
+
+    palavras = [{"texto": "oi", "inicio_ms": 0.0, "fim_ms": 100.0, "destaque": False}]
+    assert _deslocar(palavras, 200)[0]["inicio_ms"] == 200.0
+    assert _deslocar(palavras, 0) == palavras
+
+
+def test_servidor_falso_com_varios_trechos_de_offsets_conhecidos(v4):
+    """Vários trechos de áudio por frase, alinhamento relativo a cada trecho: as palavras ficam na
+    posição real do PCM (a soma das durações dos trechos anteriores)."""
+    with DialogoFalso(pedacos=3, modo="trechos") as servidor:
+        _, voz, dialogo, transformar = v4(servidor)
+        turno = dialogo.novo_turno()
+        turno.enviar("abc def")
+        turno.finalizar()
+        assert turno.terminado.wait(5)
+        palavras = turno.audio.palavras
+    assert [p["texto"] for p in palavras] == ["abc", "def"]
+    # "def" começa no 2º trecho: posição = duração do 1º trecho
+    pcm_total = len(pcm_de("abc def "))
+    primeiro_ms = (pcm_total // 3 // 2 * 2) / 2 / TAXA * 1000
+    assert palavras[1]["inicio_ms"] == pytest.approx(primeiro_ms, abs=1)

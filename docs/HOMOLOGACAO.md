@@ -274,3 +274,17 @@ voz, dispositivos e GPU ainda não foram homologados.
 - Auditoria npm completa: **0 vulnerabilidades**; auditoria somente produção: **0**.
   Os avisos anteriores de instalação não foram usados para explicar o HTTP 403: as duas
   causas foram investigadas e corrigidas separadamente. Nenhuma política Windows foi alterada.
+
+## Roadmap "Imagem para as falas": fases 0 e 1 (validar e corrigir)
+
+Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC do Gabriel está marcado.
+
+| # | Item | Estado | Evidência |
+|---|---|---|---|
+| 1 | Offsets do alinhamento v4 | Corrigido e testado com servidor falso (vários trechos, offsets conhecidos) | `tests/test_voz_v4.py` (referência por turno, trechos, silêncio inicial) |
+
+Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
+(`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o
+tipo do diálogo não descreve. O código aceita as duas referências e fixa a escolhida no turno.
+**Pendente no PC:** confirmar com o v4 real (a linha `[voz: ...]` e a HUD mostram as palavras no
+tempo certo em respostas longas, de vários trechos).

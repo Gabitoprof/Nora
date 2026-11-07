@@ -498,6 +498,16 @@ class AudioEmPartes:
 PRE_CARGA_S = 0.15
 
 
+def _deslocar(palavras: list[dict], atraso_ms: float) -> list[dict]:
+    """As palavras alinhadas na posição real do áudio tocado (depois do silêncio inicial)."""
+    if not atraso_ms:
+        return list(palavras)
+    return [
+        {**p, "inicio_ms": p["inicio_ms"] + atraso_ms, "fim_ms": p["fim_ms"] + atraso_ms}
+        for p in palavras
+    ]
+
+
 def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> None:
     """Toca o áudio conforme ele chega. Se a saída recusar a taxa, converte cada parte."""
     import threading
@@ -513,6 +523,8 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
     posicao = 0
     iniciou = False
     buraco = [0.0]  # silêncio seguido por falta de dados (o maior vira diagnóstico)
+    # O silêncio inicial (fones Bluetooth) vem antes do PCM da voz: as palavras andam junto.
+    atraso_ms = float(max(0, silencio_ms))
 
     def observar(metodo, *args):
         if observador is not None:
@@ -533,7 +545,7 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
             observar("receber_pcm", parte)
             if audio.versao_palavras != versao:  # alinhamento real da voz: palavras para a HUD
                 versao = audio.versao_palavras
-                observar("alinhar", list(audio.palavras))
+                observar("alinhar", _deslocar(audio.palavras, atraso_ms))
             with trava:
                 buffer.extend(parte)
         if audio.texto and not audio.palavras:

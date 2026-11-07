@@ -98,6 +98,9 @@ class Turno:
         self.recebeu_alinhamento = False
         self.recebidas: list[str] = []  # tipos de mensagem do servidor (diagnóstico, sem texto)
         self._caracteres: list[tuple[str, float, float]] = []
+        # Referência dos tempos do alinhamento, decidida uma vez por turno e fixa dali em diante:
+        # "trecho" (cada mensagem começa perto de 0) ou "turno" (contados desde o início da fala).
+        self.referencia: str | None = None
 
     @property
     def recebeu_audio(self) -> bool:
@@ -147,13 +150,14 @@ class Turno:
         if alinhamento and alinhamento.get("chars"):
             inicios = alinhamento.get("char_start_times_ms") or []
             duracoes = alinhamento.get("char_durations_ms") or []
-            # O tempo pode vir relativo ao pedaço (começa perto de 0) ou à fala toda: se vier
-            # relativo, soma o áudio que já chegou.
-            base = (
-                self.recebido_ms
-                if inicios and self.recebido_ms > 0 and inicios[0] < self.recebido_ms - 50
-                else 0.0
-            )
+            # O SDK oficial documenta, no WebSocket de TTS, tempos relativos ao trecho devolvido.
+            # O do diálogo não diz; então a referência é decidida no primeiro alinhamento que
+            # chega depois de algum áudio e não muda mais no turno (um servidor que alternasse
+            # entre as duas não desloca as palavras no meio da fala).
+            if self.referencia is None and inicios and self.recebido_ms > 0:
+                self.referencia = "trecho" if inicios[0] < self.recebido_ms - 50 else "turno"
+            # Base = posição, no PCM deste turno, em que começa o áudio desta mensagem.
+            base = self.recebido_ms if self.referencia == "trecho" else 0.0
             for caractere, comeco, duracao in zip(
                 alinhamento["chars"], inicios, duracoes, strict=False
             ):
