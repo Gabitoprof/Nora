@@ -2,7 +2,7 @@ import paleta from "../../src/nora/paleta.json";
 import { describe, expect, it } from "vitest";
 import { EnvelopeVisual, SILENCIO, aproximar, cadenciaVisual, energiaBanda, faixaAcustica, type Acustica } from "../src/scene-audio";
 import { onda } from "../src/scene-math";
-import { cores, desconectar, inicial, leituraDoPainel, lerAcustica, lerFala, nivelPerceptivo, reduzir, snapshot, type FalaTemporizada } from "../src/state";
+import { cores, coresDaEmocao, misturar, MATIZ_EMOCAO, PRATA, desconectar, inicial, leituraDoPainel, lerAcustica, lerFala, nivelPerceptivo, reduzir, snapshot, type FalaTemporizada } from "../src/state";
 import { RelogioFala } from "../src/word-particles";
 const amostra=(alteracoes:Partial<Acustica>={}):Acustica=>({fonte:"voz",rms:.45,pico:.8,envelope:.65,bandas:[.7,.4,.3,.15,.1,.05],centroide:.2,fluxo:.25,ativo:true,reproducao_id:1,posicao_ms:50,duracao_ms:1000,...alteracoes});
 const fala:FalaTemporizada={id:1,duracao_ms:1000,precisao:"estimada",palavras:[{texto:"Olá",inicio_ms:0,fim_ms:300,destaque:false},{texto:"Nora",inicio_ms:500,fim_ms:1000,destaque:true}]};
@@ -28,8 +28,8 @@ describe("contrato acústico e privacidade",()=>{
     m=reduzir(m,evento("acustica",amostra({ativo:false}),4));expect(m.fala_temporizada).toBeNull();
   });
   it("paleta canônica contém as cores emocionais e aliases reais",()=>{
-    expect(cores.calma).toBe(paleta.cores.calma);expect(cores.triste).toBe(paleta.cores.tristeza);expect(cores.curiosa).toBe(paleta.cores.curiosidade);
-    for (const valor of Object.values(paleta.cores)) { const canais=valor.slice(1).match(/../g)!.map(v=>parseInt(v,16)); expect(Math.max(...canais)-Math.min(...canais)).toBeLessThanOrEqual(45); }
+    expect(coresDaEmocao.calma).toBe(paleta.cores.calma);expect(coresDaEmocao.triste).toBe(paleta.cores.tristeza);expect(coresDaEmocao.curiosa).toBe(paleta.cores.curiosidade);
+    expect(cores.calma).toBe(misturar(PRATA,paleta.cores.calma,MATIZ_EMOCAO));
     for(const [a,b] of [["neutra","neutro"],["alegre","empolgada"],["seria","confiante"],["carinhosa","carinho"]])expect(cores[a]).toBe(cores[b]);
   });
 });

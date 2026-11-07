@@ -1,12 +1,12 @@
 {
   "cores": {
-    "neutra": "#C9D1D5",
-    "alegria": "#DCE8ED",
-    "carinho": "#CFDCE2",
-    "calma": "#BCD9E2",
-    "seriedade": "#C4D3DF",
-    "tristeza": "#BAC8D0",
-    "curiosidade": "#C9E3EA"
+    "neutra": "#C9C9C9",
+    "alegria": "#F0C66A",
+    "carinho": "#E3A4BD",
+    "calma": "#66D4CB",
+    "seriedade": "#80A8F6",
+    "tristeza": "#AA9ACF",
+    "curiosidade": "#DF876A"
   },
   "aliases": {
     "neutro": "neutra",

@@ -291,8 +291,20 @@ export const nomesEstado: Record<Estado, string> = {
   erro: "Atenção necessária",
   recuperando: "Reconectando",
 };
-/** Fonte única, dentro do pacote Python: src/nora/paleta.json (o Second Brain lê o mesmo). */
-export const cores: Record<string,string> = Object.fromEntries(Object.entries(paleta.aliases).map(([nome,grupo])=>[nome,paleta.cores[grupo as keyof typeof paleta.cores]]));
+/** Base da identidade dark: branco-prateado com ciano discreto. */
+export const PRATA = "#C9D6DC";
+/** Quanto da cor da emoção entra no prata (o resto é prata): a emoção vira um matiz, não a cor. */
+export const MATIZ_EMOCAO = 0.2;
+/** Mistura linear de duas cores hex (#RRGGBB). */
+export function misturar(base: string, cor: string, peso: number): string {
+  const canal = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  return "#" + [0, 1, 2].map(i => Math.round(canal(base, i) * (1 - peso) + canal(cor, i) * peso)
+    .toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+/** Cores das emoções vêm da fonte única (src/nora/paleta.json, a mesma do Second Brain); na HUD
+ * elas aparecem contidas no prata, para manter o visual dark aprovado. */
+export const coresDaEmocao: Record<string,string> = Object.fromEntries(Object.entries(paleta.aliases).map(([nome,grupo])=>[nome,paleta.cores[grupo as keyof typeof paleta.cores]]));
+export const cores: Record<string,string> = Object.fromEntries(Object.entries(coresDaEmocao).map(([nome,cor])=>[nome,misturar(PRATA,cor,MATIZ_EMOCAO)]));
 
 /** RMS linear (0–1) em escala de decibéis: −60 dBFS = 0, 0 dBFS = 1. Fala comum (RMS 0,005 a
  * 0,1) fica entre 23% e 67%, em vez de 0% a 10% na escala linear. */

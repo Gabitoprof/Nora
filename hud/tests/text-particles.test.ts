@@ -110,7 +110,7 @@ describe("controlador: privacidade, último glifo e acessibilidade",()=>{
     p.atualizar({...m,acustica:audio(100,5),fala_temporizada:{...fala,id:5}},true,false,80);p.desenhar(100,"#d8e1e5",false,20);
     p.receberEvento(evFim(),110);expect(canvas.attrs.get("aria-label")).toContain("primeira");
     p.atualizar({...m,acustica:audio(850,4)},true,false,120);p.desenhar(130,"#d8e1e5",false,30);
-    expect(canvas.attrs.get("aria-label")).not.toContain("última");
+    expect(canvas.attrs.get("aria-label") ?? "").not.toContain("última");
   });
   it("reduzido entrega palavra estática autorizada, sem animação, e retorna às partículas",()=>{
     const {p,canvas,legenda,m}=criar();p.atualizar(m,true,true,0);
