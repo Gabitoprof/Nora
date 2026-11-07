@@ -290,6 +290,7 @@ Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC d
 | 7 | Privacidade no backend | Palavras só publicadas com a tela autorizada; revogar invalida a fala em curso (época) e esvazia as filas; Privado nem guarda as palavras. Leitura sem segredo de sessão: proposta abaixo | `tests/test_hud.py`, `tests/test_hud_acustica.py` |
 | 8 | QA visual | Palavras longas e acentos legíveis em 1920×1080 (faixa de 1060 px) e 1366×768 (902 px); legível em ~116 ms | `docs/evidencias/palavras-1920x1080.jpg`, `palavras-1366x768.jpg`; `hud/tests/text-particles.test.ts` |
 | 9 | Medição no PC (preparada) | Telemetria na HUD + `homologacao_windows.ps1` (base × HUD, contínuo) | **Pendente: Gabriel roda** |
+| 10 | Roteiro de falas e vídeo | 30 casos (curtas, longas, pausas, interrupção, privacidade, falhas) + gravação a 60 FPS | **Pendente: Gabriel roda** |
 
 Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
 (`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o
@@ -375,3 +376,52 @@ Tudo com a Nora real: Qwen, Whisper e ElevenLabs ligados ao mesmo tempo.
 Os mesmos números aparecem nos Ajustes da HUD (linha "Quadro p50 / p95 / pior"). O atraso som →
 palavra é medido pela própria HUD (quanto do áudio da palavra já tinha tocado quando ela apareceu);
 não inclui a latência da placa de som.
+
+### Item 10: roteiro de falas (30 casos) e vídeo a 60 FPS
+
+**Antes:** a HUD em **Visível**, Detalhada, 60 FPS. Grave a tela a 60 FPS: no Windows, em
+**Configurações → Jogos → Capturas**, ponha "Taxa de quadros do vídeo" em **60 fps**; depois
+**Win+Alt+R** começa e para a gravação (o navegador precisa estar em foco). Rode `nora ouvir --hud`
+com `--medir` para ter a linha `[voz: ...]` de cada resposta.
+
+Para cada caso, marque: ✅ ok, ✂️ cortada, 🔇 muda, ⏸️ tela vazia numa pausa curta,
+🔁 palavra repetida ou fora de ordem, ⏱️ palavra atrasada em relação à voz.
+
+| # | Tipo | O que dizer (comece com "Nora,") | O que conferir |
+|---|---|---|---|
+| 1 | Curta | "que horas são?" | resposta inteira; a palavra aparece com a voz |
+| 2 | Curta | "bom dia" | idem |
+| 3 | Curta | "obrigado" | idem; some no fim |
+| 4 | Curta | "qual é a capital da França?" | idem |
+| 5 | Curta | "me dá um número de 1 a 10" | algarismos legíveis |
+| 6 | Longa | "me conta uma história curta sobre um farol" | fala contínua (silêncio entre trechos ~0 ms); palavras acompanham até o fim |
+| 7 | Longa | "explica como funciona um arco-íris" | idem; palavras longas legíveis |
+| 8 | Longa | "descreve o seu dia ideal em detalhes" | idem |
+| 9 | Longa | "lista cinco frutas e uma característica de cada" | idem; pausas entre itens sem tela vazia |
+| 10 | Longa | "fala sobre a história do café no Brasil" | acentos (ç, ã, é) legíveis |
+| 11 | Pausas | "conta até cinco devagar, com pausa entre os números" | a palavra fica na pausa; some só se o silêncio passar de ~1,5 s |
+| 12 | Pausas | "fala uma frase, espera, e fala outra" | idem |
+| 13 | Pausas | "recita um poema curto com pausas" | idem |
+| 14 | Pausas | "soletra a palavra coração" | letras e acentos |
+| 15 | Pausas | "diz 'hum…' e depois responde se vai chover" | reticências não deixam a tela vazia |
+| 16 | Interrupção | Pergunta longa (#6) e fale por cima no meio | a voz para; as palavras somem na hora |
+| 17 | Interrupção | Interrompa e pergunte outra coisa | a resposta nova começa limpa, sem palavras da anterior |
+| 18 | Interrupção | Interrompa logo no começo (1ª palavra) | nada da resposta antiga reaparece |
+| 19 | Interrupção | Interrompa duas vezes seguidas | idem |
+| 20 | Interrupção | Interrompa na última frase | some na hora; nada fica preso |
+| 21 | Privacidade | Durante uma resposta longa, clique em **Privado** | as palavras somem na hora e não voltam até o fim da resposta |
+| 22 | Privacidade | Com Privado, faça uma pergunta | a voz fala; nenhuma palavra na tela |
+| 23 | Privacidade | Volte para Visível no meio de uma resposta | só a **próxima** resposta mostra palavras |
+| 24 | Privacidade | Alterne Visível/Privado 3 vezes rápido | nada de palavra perdida aparecendo depois |
+| 25 | Privacidade | Recarregue a página (Ctrl+F5) no meio de uma resposta | a HUD volta sem palavras antigas |
+| 26 | Falha | Desligue a internet **antes** de perguntar | a reserva fala a resposta inteira; aparece `[voz reserva]` com o motivo |
+| 27 | Falha | Desligue a internet **no meio** de uma resposta longa | a reserva continua de onde parou, sem repetir; ou a fala para com aviso e "repete a resposta que caiu" repete tudo |
+| 28 | Falha | Feche o whisper-server e fale | aviso claro; a HUD não trava |
+| 29 | Retomada | Depois do #27 com aviso, diga "repete a resposta que caiu" | a resposta inteira volta, sem perguntar de novo ao modelo |
+| 30 | Contínuo | Converse normalmente por 5 min | nenhum caso cortado ou mudo; FPS estável nos Ajustes |
+
+**Metas da fase:** 0 respostas cortadas ou mudas nos 30 casos; silêncio entre trechos com p95 ≤ 150 ms
+(linha `[voz: ...]`); nenhuma tela vazia em pausas abaixo de 500 ms; limpeza imediata em 100% dos
+cancelamentos e trocas de privacidade; atraso som → palavra p95 ≤ 100 ms (Ajustes).
+
+**Mande:** a tabela marcada, o vídeo (ou os trechos com problema) e os arquivos do item 9.
