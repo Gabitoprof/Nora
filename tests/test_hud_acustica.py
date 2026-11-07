@@ -493,3 +493,17 @@ def test_sem_som_nao_avisa_fim(ponte):
     fila = ponte.assinar()
     hud.reproducao(False, (0.0, 0.0, False))  # nunca começou a tocar
     assert not _eventos(fila, "reproducao_encerrada")
+
+
+def test_privado_nao_guarda_palavras_alinhadas_no_backend(ponte):
+    palavras = [{"texto": "segredo", "inicio_ms": 0.0, "fim_ms": 100.0, "destaque": False}]
+    ponte.privacidade(False)  # Privado
+    obs = hud.preparar_reproducao(None, 16000, 1)
+    obs.alinhar(palavras)
+    assert obs.tempos is None
+    ponte.privacidade(True)  # liberou depois que a fala começou: época antiga, continua sem
+    obs.alinhar(palavras)
+    assert obs.tempos is None
+    novo = hud.preparar_reproducao(None, 16000, 1)  # fala nova, já liberada
+    novo.alinhar(palavras)
+    assert novo.tempos["precisao"] == "alinhada"

@@ -417,3 +417,18 @@ def test_token_valido_nao_autoriza_mutacao_vinda_de_link_externo(servidor):
         "Sec-Fetch-Dest": "document",
     }
     assert pedido(http, "/api/privacidade", {"visivel": True}, headers)[0] == 403
+
+
+@pytest.mark.parametrize("rota", ["/api/eventos", "/api/estado", "/api/notas", "/api/propostas"])
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Origin": "https://hostil.example"},
+        {"Host": "hostil.example"},
+        {"Sec-Fetch-Site": "cross-site"},
+    ],
+)
+def test_outra_pagina_nao_le_eventos_nem_estado(servidor, rota, headers):
+    """Uma página de outro site (ou DNS rebinding) não lê a fala nem o estado da HUD."""
+    _, http = servidor
+    assert pedido(http, rota, headers=headers)[0] == 403

@@ -103,6 +103,13 @@ class ReproducaoHUD:
         estimativa. Saem na HUD só com o conteúdo visível (a privacidade é checada ao publicar)."""
         if self.encerrada or not palavras:
             return
+        # Privado (ou opt-in revogado depois que esta fala começou): as palavras nem ficam
+        # guardadas no backend, não só deixam de ser publicadas.
+        if (
+            self.dono.ponte.estado["privacidade"]
+            or self.dono.ponte._epoca_privacidade != self.epoca
+        ):
+            return
         self.envelope_temporal = None
         self.texto_pendente = ""
         fim = max(p["fim_ms"] for p in palavras)

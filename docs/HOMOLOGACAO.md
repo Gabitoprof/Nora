@@ -287,6 +287,7 @@ Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC d
 | 4 | Retenção nas pausas | Palavra até a próxima começar, teto `TETO_PAUSA_MS` = 1,5 s; some na hora em `reproducao_encerrada`, cancelamento e Privado | `hud/tests/text-particles.test.ts` |
 | 5 | Relógio da fala | Medido e ajustado: 450/400 ms e recuos < 60 ms ignorados (tabela abaixo) | `hud/tests/relogio-medicao.test.ts` |
 | 6 | Testes de estado (`reproducao_encerrada`) | Ordem, duplicidade, reconexão, privacidade e mensagem atrasada depois do Privado | `hud/tests/state.test.ts` |
+| 7 | Privacidade no backend | Palavras só publicadas com a tela autorizada; revogar invalida a fala em curso (época) e esvazia as filas; Privado nem guarda as palavras. Leitura sem segredo de sessão: proposta abaixo | `tests/test_hud.py`, `tests/test_hud_acustica.py` |
 
 Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
 (`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o
@@ -309,3 +310,25 @@ amostra) de 150 a 450 ms em 0%, 1% ou 3% das amostras, desenho a 60 FPS.
 Escolha: 450/400. Extrapolar mais (600/500) ganha pouco e adianta palavras quando a rede atrasa de
 verdade (o backend não publica amostras durante falta de áudio). O atraso medido não inclui a
 latência real da saída de áudio do Windows: **pendente no PC** (roteiro abaixo).
+
+### Item 7: a ponte da HUD exige segredo de sessão?
+
+**Achado:** só para **alterar** (privacidade, decisões): cabeçalho `X-Nora-Token`. A **leitura**
+(`/api/eventos`, `/api/estado`, `/api/notas`, `/api/propostas`) é protegida por outras barreiras:
+`Host` precisa ser `127.0.0.1:porta` (bloqueia DNS rebinding), `Origin` de outro site é recusada e
+`Sec-Fetch-Site` cross-site/same-site é recusado. Contra **páginas da web** isso basta (o navegador
+sempre informa a origem; testado). O ponto fraco é outro **programa local** (não navegador) no
+mesmo computador: ele pode ler os eventos e até pegar o token em `/api/sessao`.
+
+**Proposta (não aplicada: muda como a HUD é aberta):**
+
+1. A Nora gera o token e abre a HUD com ele no **fragmento** do endereço
+   (`http://127.0.0.1:8765/#sessao=TOKEN`): o fragmento não vai ao servidor nem aos logs.
+2. A página guarda o token em `sessionStorage` e o manda em toda leitura (`X-Nora-Token`; nos
+   eventos, num primeiro pedido que troca o token por um bilhete de uso único, porque o
+   `EventSource` não manda cabeçalhos).
+3. `/api/sessao` deixa de existir. Abrir `http://127.0.0.1:8765/` sem o token mostra só a página
+   pedindo para abrir pela Nora (atalho do menu Iniciar ou o link que `nora ouvir --hud` imprime).
+
+Custo: favoritos antigos para a HUD param de funcionar; o atalho e o terminal passam a mostrar o
+link com o token. Decisão do Gabriel.
