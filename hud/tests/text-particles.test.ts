@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NuvemLetras, SEM_VIDA } from "../src/text-particle-field";
-import { RelogioFala, ultimaPalavraDevida } from "../src/word-particles";
+import { RelogioFala, TETO_PAUSA_MS } from "../src/word-particles";
 import type { Acustica } from "../src/scene-audio";
 import type { FalaTemporizada } from "../src/state";
 const alvos = new Float32Array([200,50,205,55,210,60,215,65,220,70,225,75]);
@@ -53,13 +53,6 @@ describe("agenda usa somente playback e protege final/alinhamento",()=>{
     expect(r.palavra(fala,10)?.palavra.texto).toBe("primeira");expect(r.palavra(fala,320)).toBeNull();
     r.atualizar(audio(820),400);expect(r.palavra(fala,400)?.palavra.texto).toBe("última");
   });
-  it("fim natural protege a última palavra, cancelamento não a ressuscita",()=>{
-    expect(ultimaPalavraDevida(fala,4,1000,1000,false)?.texto).toBe("última");
-    expect(ultimaPalavraDevida(fala,4,850,1000,false)).toBeNull();
-    expect(ultimaPalavraDevida(fala,4,1000,1000,true)).toBeNull();
-    expect(ultimaPalavraDevida(fala,3,1000,1000,false)).toBeNull();
-    expect(ultimaPalavraDevida(null,4,1000,1000,false)).toBeNull();
-  });
 });
 
 // DOM mínimo para exercitar o controlador Canvas sem introduzir outra dependência.
@@ -93,22 +86,23 @@ describe("controlador: privacidade, último glifo e acessibilidade",()=>{
     expect(canvas.hidden).toBe(true);expect(legenda.textContent).toBe("");expect(canvas.attrs.has("aria-label")).toBe(false);
     expect(p.campo.nuvem.quantidade).toBe(0);expect(p.campo.nuvem.alvoX.every(v=>v===0)).toBe(true);
   });
-  it("fim natural oferece último glifo devido e dissolve sem reaparecer por atualização de estado",()=>{
-    const {p,canvas,m}=criar();p.atualizar({...m,acustica:audio(850)},true,false,0);p.desenhar(10,"#d8e1e5",false,10);
-    p.receberEvento(evFim(),20);
+  it("fim da reprodução apaga a palavra na hora, sem segurar, e ela não reaparece",()=>{
+    const {p,canvas,legenda,m}=criar();p.atualizar({...m,acustica:audio(850)},true,false,0);p.desenhar(10,"#d8e1e5",false,10);
+    expect(canvas.attrs.get("aria-label")).toContain("última");
+    p.receberEvento(evFim());
+    expect(canvas.hidden).toBe(true);expect(legenda.textContent).toBe("");expect(p.campo.nuvem.quantidade).toBe(0);
     const terminado={...m,fala_temporizada:null,estado:"ouvindo" as const,acustica:{...audio(1000),ativo:false}};
     p.atualizar(terminado,true,false,20);p.desenhar(50,"#d8e1e5",false,30);
-    expect(canvas.attrs.get("aria-label")).toContain("última");
-    p.desenhar(160,"#d8e1e5",false,100);expect(canvas.dataset.fase).toBe("dispersando");
-    p.atualizar(terminado,true,false,180);p.desenhar(190,"#d8e1e5",false,30);
-    expect(canvas.dataset.fase).toBe("dispersando");expect(canvas.attrs.has("aria-label")).toBe(false);
+    // aviso repetido ou atrasado da mesma fala não muda nada
+    p.receberEvento(evFim());p.atualizar({...m,acustica:audio(900)},true,false,60);p.desenhar(70,"#d8e1e5",false,10);
+    expect(canvas.attrs.has("aria-label")).toBe(false);expect(p.campo.nuvem.quantidade).toBe(0);
   });
   it("interrupção, desconexão e resposta nova eliminam conteúdo anterior imediatamente",()=>{
     const {p,canvas,m}=criar();p.atualizar(m,true,false,0);p.desenhar(50,"#d8e1e5",false,50);
-    p.receberEvento(evFim(true),60);expect(canvas.hidden).toBe(true);
-    p.receberEvento({...evFim(),tipo:"conectado",dados:{}},70);expect(p.campo.nuvem.quantidade).toBe(0);
+    p.receberEvento(evFim(true));expect(canvas.hidden).toBe(true);
+    p.receberEvento({...evFim(),tipo:"conectado",dados:{}});expect(p.campo.nuvem.quantidade).toBe(0);
     p.atualizar({...m,acustica:audio(100,5),fala_temporizada:{...fala,id:5}},true,false,80);p.desenhar(100,"#d8e1e5",false,20);
-    p.receberEvento(evFim(),110);expect(canvas.attrs.get("aria-label")).toContain("primeira");
+    p.receberEvento(evFim());expect(canvas.attrs.get("aria-label")).toContain("primeira");
     p.atualizar({...m,acustica:audio(850,4)},true,false,120);p.desenhar(130,"#d8e1e5",false,30);
     expect(canvas.attrs.get("aria-label") ?? "").not.toContain("última");
   });
@@ -138,18 +132,35 @@ describe("faixa superior: linha da fala sem piscar e sem adiantar palavras",()=>
     const m:Modelo={...inicial,conectado:true,privacidade:false,estado:"falando",fala_temporizada:linha};
     return {p,canvas,legenda,m};
   };
-  const tocar=(p:PalavrasParticulas,m:Modelo,pos:number,agora:number)=>{p.atualizar({...m,acustica:audio(pos,7)},true,false,agora);p.desenhar(agora,"#d8e1e5",false,16);};
+  const tocar=(p:PalavrasParticulas,m:Modelo,pos:number,agora:number)=>{p.atualizar({...m,acustica:{...audio(pos,7),duracao_ms:6000}},true,false,agora);p.desenhar(agora,"#d8e1e5",false,16);};
   it("pausa curta entre palavras: a palavra segura, sem dispersar",()=>{
     const {p,canvas,m}=criar();
     tocar(p,m,100,0);expect(canvas.attrs.get("aria-label")).toContain("um");
     tocar(p,m,240,140);expect(canvas.dataset.fase).not.toBe("dispersando");expect(canvas.attrs.get("aria-label")).toContain("um");
     tocar(p,m,300,200);expect(canvas.attrs.get("aria-label")).toContain("dois");
   });
-  it("pausa longa: depois do limite a linha se desfaz",()=>{
+  it("pausa longa (até o teto): a palavra fica até a próxima começar, sem tela vazia",()=>{
     const {p,canvas,m}=criar();
-    tocar(p,m,300,0);
-    for(let t=50,pos=550;t<=500;t+=50,pos+=50)tocar(p,m,pos,t);
+    tocar(p,m,300,0); // "dois" (280–500); a próxima, "tres", começa em 1200
+    for(let t=50,pos=350;pos<1200;t+=50,pos+=50){tocar(p,m,pos,t);expect(canvas.attrs.get("aria-label")).toContain("dois");}
+    tocar(p,m,1210,900);expect(canvas.attrs.get("aria-label")).toContain("tres");
+  });
+  it("silêncio maior que o teto: a palavra se desfaz",()=>{
+    const {p,canvas,m}=criar();
+    const longa:FalaTemporizada={...linha,palavras:[linha.palavras[0],{texto:"depois",inicio_ms:5000,fim_ms:5200,destaque:false}]};
+    const mm={...m,fala_temporizada:longa};
+    tocar(p,mm,100,0);
+    for(let t=50,pos=150;t<=TETO_PAUSA_MS+200;t+=50,pos+=50)tocar(p,mm,pos,t);
     expect(canvas.dataset.fase).toBe("dispersando");expect(canvas.attrs.has("aria-label")).toBe(false);
+  });
+  it("cancelamento e Privado limpam na hora, mesmo no meio de uma pausa",()=>{
+    const {p,canvas,m}=criar();
+    tocar(p,m,300,0);tocar(p,m,700,400); // segurando "dois" na pausa
+    p.receberEvento({...evFim(true),dados:{id:7,posicao_ms:700,duracao_ms:1600,interrompida:true}});
+    expect(canvas.hidden).toBe(true);expect(p.campo.nuvem.quantidade).toBe(0);
+    const b=criar();tocar(b.p,b.m,300,0);tocar(b.p,b.m,700,400);
+    b.p.atualizar({...b.m,privacidade:true,fala_temporizada:null},true,false,410);
+    expect(b.canvas.hidden).toBe(true);expect(b.legenda.textContent).toBe("");expect(b.p.campo.nuvem.quantidade).toBe(0);
   });
   it("palavras já ditas entram apagadas na mesma nuvem; as próximas nunca aparecem antes",()=>{
     const {p,m}=criar();

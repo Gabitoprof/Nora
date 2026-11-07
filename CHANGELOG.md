@@ -13,6 +13,7 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 - **Voz que cai no meio da resposta (v4):** antes do 1º áudio, a reserva fala tudo; depois de começar, a reserva (flash) continua do último limite de palavra que o alinhamento cobriu, sem repetir o que já foi ouvido e só depois que o áudio recebido termina de tocar; sem alinhamento, a fala para com aviso claro e "repete a resposta que caiu" fala a resposta inteira de novo, sem perguntar ao cérebro. Áudio sem alinhamento continua tocando (as palavras viram estimativa).
 - **Diagnóstico da voz:** além do modelo efetivo, da continuidade e dos tempos, registra o número de gerações (pedidos de síntese) por resposta e o motivo de cada troca para a reserva; o caminho HTTP também mede pedido → primeiro áudio, início da reprodução e silêncio entre trechos. Sem texto da conversa nem chaves.
+- **Palavras nas pausas (HUD):** a palavra fica até a próxima começar, inclusive nas pausas, com teto de 1,5 s para silêncios longos (antes sumia depois de 320 ms). No fim da reprodução, no cancelamento e ao passar para "Privado", some na hora.
 - **Alinhamento das palavras do ElevenLabs v4:** a referência dos tempos (relativa ao trecho de áudio ou ao turno) é decidida uma vez por turno e não muda no meio da fala; cada palavra fica na posição real do PCM. O silêncio inicial configurável (`[audio] silencio_inicial_ms`) agora desloca as palavras junto com o som.
 
 ### Corrigido (revisão da v0.4.0, branch `integracao/v0.4.0`)

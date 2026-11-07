@@ -42,31 +42,24 @@ export class RelogioFala {
   }
 }
 
-/** Quanto a palavra segura entre uma e outra (pausa curta) antes de se desfazer. */
-export const SEGURAR_MS = 320;
+/** A palavra fica até a próxima começar, inclusive nas pausas, até este teto (silêncio longo). */
+export const TETO_PAUSA_MS = 1500;
 /** Quantas palavras já ditas ficam visíveis à esquerda da atual. */
 export const ANTERIORES = 3;
-
-/** Validação temporal do fim natural; cancelamento nunca oferece uma última palavra. */
-export function ultimaPalavraDevida(fala: FalaTemporizada | null, id: number, posicao: number, duracao: number, interrompida: boolean) {
-  if (interrompida || !fala || fala.id !== id || posicao < duracao - 30 || posicao > duracao + 30) return null;
-  const ultima = fala.palavras[fala.palavras.length - 1];
-  return ultima && ultima.inicio_ms <= posicao && ultima.fim_ms <= duracao + 1 ? ultima : null;
-}
 
 /** Um único glifo semântico por vez; as mesmas partículas fazem a transição e a dissolução. */
 export class PalavrasParticulas {
   private relogio = new RelogioFala();
   private ultimaAmostra: Acustica | null = null;
   private fala: FalaTemporizada | null = null;
-  private ultimaFala: FalaTemporizada | null = null;
   private ativa = false;
   private reduzido = false;
   private chave = "";
   private anterior = 0;
   private maiorId = 0;
   private encerrado = 0;
-  private final: { palavra: PalavraTemporizada; id: number; ate: number; precisao: string } | null = null;
+  /** Teto da retenção nas pausas (ms); configurável. */
+  tetoPausa = TETO_PAUSA_MS;
   /** Palavras já ditas desta fala (só as que já tocaram; nunca as próximas). */
   private anteriores: string[] = [];
   private idAnteriores = 0;
@@ -81,18 +74,15 @@ export class PalavrasParticulas {
       ...extras,
     });
   }
-  receberEvento(evento: Evento, agora = performance.now()) {
+  receberEvento(evento: Evento) {
     if (["conectado", "desconectado", "recuperando"].includes(evento.tipo)) { this.limpar(); return; }
     if (evento.tipo !== "reproducao_encerrada") return;
     const d = evento.dados;
     if (typeof d.id !== "number" || typeof d.posicao_ms !== "number" || typeof d.duracao_ms !== "number" || typeof d.interrompida !== "boolean") return;
-    if (d.id < this.maiorId || d.id <= this.encerrado) return;
+    if (d.id < this.maiorId || d.id <= this.encerrado) return; // aviso antigo ou repetido
+    // Fim da reprodução (natural ou interrompida): a palavra some na hora, sem segurar.
     this.encerrado = d.id;
-    const ultima = this.ativa ? ultimaPalavraDevida(this.ultimaFala, d.id, d.posicao_ms, d.duracao_ms, d.interrompida) : null;
-    if (!ultima) { this.apagar(); this.fala = this.ultimaFala = null; this.final = null; return; }
-    // Só o último glifo já devido, com retenção curta; não reproduzir palavras perdidas.
-    this.final = { palavra: ultima, id: d.id, ate: agora + 120, precisao: this.ultimaFala!.precisao };
-    this.fala = null;
+    this.apagar(); this.fala = null;
   }
   atualizar(modelo: Modelo, habilitada: boolean, reduzido: boolean, agora = performance.now()) {
     this.ativa = habilitada && !modelo.privacidade && modelo.conectado;
@@ -101,19 +91,19 @@ export class PalavrasParticulas {
     if (!this.ativa) { this.limpar(); this.ultimaAmostra = modelo.acustica; return; }
     const proxima = modelo.fala_temporizada;
     if (proxima && proxima.id > this.maiorId) {
-      this.apagar(); this.final = null; this.ultimaFala = null; this.maiorId = proxima.id;
+      this.apagar(); this.maiorId = proxima.id;
     }
     if (proxima && proxima.id >= this.maiorId && proxima.id > this.encerrado) {
-      this.fala = this.ultimaFala = proxima;
+      this.fala = proxima;
     } else this.fala = null;
     if (modelo.acustica !== this.ultimaAmostra) {
       this.ultimaAmostra = modelo.acustica;
       this.relogio.atualizar(modelo.acustica, agora);
       if (modelo.acustica?.fonte === "voz" && modelo.acustica.reproducao_id > this.maiorId) {
-        this.maiorId = modelo.acustica.reproducao_id; this.final = null; this.fala = null; this.apagar();
+        this.maiorId = modelo.acustica.reproducao_id; this.fala = null; this.apagar();
       }
     }
-    if (!this.fala && !this.final && ["erro", "recuperando"].includes(modelo.estado)) this.apagar();
+    if (!this.fala && ["erro", "recuperando"].includes(modelo.estado)) this.apagar();
     if (reduzido) this.desenhar(agora, "#d8e1e5", true, 0);
   }
   private apagar() {
@@ -124,17 +114,16 @@ export class PalavrasParticulas {
   }
   limpar() {
     this.relogio.limpar(); this.ultimaAmostra = null;
-    this.fala = this.ultimaFala = null; this.final = null;
+    this.fala = null;
     this.maiorId = this.encerrado = 0; this.anterior = 0; this.apagar();
   }
   desenhar(agora: number, cor: string, reduzido: boolean, delta?: number, energia = 0) {
     const dt = delta ?? (this.anterior === 0 ? 1000 / 30 : Math.max(0, agora - this.anterior)); this.anterior = agora;
     if (!this.ativa) return;
     const amostra = this.relogio.palavra(this.fala, agora);
-    const final = this.final && agora <= this.final.ate ? this.final : null;
-    const palavra = final?.palavra ?? amostra?.palavra;
+    const palavra = amostra?.palavra;
     if (palavra) {
-      const id = final?.id ?? this.fala!.id;
+      const id = this.fala!.id;
       const chave = `${id}:${palavra.inicio_ms}:${palavra.texto}`;
       this.semPalavra = 0;
       if (chave !== this.chave) {
@@ -143,23 +132,22 @@ export class PalavrasParticulas {
         if (this.palavraAtual) this.anteriores = [...this.anteriores, this.palavraAtual].slice(-ANTERIORES);
         this.palavraAtual = palavra.texto;
         if (!reduzido) this.campo.definirTexto(palavra.texto, agora, false, this.anteriores);
-        const precisao = final?.precisao ?? this.fala!.precisao;
+        const precisao = this.fala!.precisao;
         this.legenda.textContent = `${palavra.texto} · ${precisao === "estimada" ? "tempo estimado no áudio" : "tempo alinhado ao áudio"}`;
         this.canvas.setAttribute("aria-label", `Palavra atual: ${palavra.texto}`);
       }
       this.canvas.hidden = reduzido;
       this.legenda.hidden = false;
     } else {
-      // Entre palavras, com a fala ainda tocando, a palavra segura um instante: sem piscar.
-      if (this.chave && !this.final && this.relogio.ativo(this.fala, agora)) {
-        if (!this.semPalavra) this.semPalavra = agora;
-      }
-      const segurando = this.semPalavra > 0 && agora - this.semPalavra <= SEGURAR_MS && !this.final && this.relogio.ativo(this.fala, agora);
+      // Entre palavras e nas pausas, com a reprodução ainda ativa, a palavra fica até a próxima
+      // começar (sem tela vazia), até o teto de silêncio longo.
+      const ativo = this.relogio.ativo(this.fala, agora);
+      if (this.chave && ativo && !this.semPalavra) this.semPalavra = agora;
+      const segurando = ativo && this.semPalavra > 0 && agora - this.semPalavra <= this.tetoPausa;
       if (!segurando) {
         if (this.chave) { this.campo.dispersar(agora); this.chave = ""; }
         this.anteriores = []; this.palavraAtual = ""; this.semPalavra = 0;
         this.legenda.hidden = true; this.legenda.textContent = ""; this.canvas.removeAttribute("aria-label");
-        if (this.final && agora > this.final.ate) { this.final = null; this.ultimaFala = null; }
       }
     }
     this.campo.desenhar(agora, dt, cor, reduzido, energia);
