@@ -283,6 +283,7 @@ Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC d
 |---|---|---|---|
 | 1 | Offsets do alinhamento v4 | Corrigido e testado com servidor falso (vários trechos, offsets conhecidos) | `tests/test_voz_v4.py` (referência por turno, trechos, silêncio inicial) |
 | 2 | Reserva no meio da fala | Implementado: antes do áudio / depois (continua do limite) / sem limite (para e permite repetir) / sem alinhamento (segue tocando) | `tests/test_voz_v4.py` (servidor que cai no meio, cancelar e retomar sem palavras repetidas) |
+| 3 | Diagnóstico (`--verificar`, `--medir`, log) | Modelo efetivo, continuidade, motivo de cada reserva, gerações por resposta, tempos (pedido, 1º PCM, reprodução, silêncio entre trechos) nos dois caminhos | `tests/test_voz_v4.py` (diagnóstico com reserva no meio, HTTP, arquivo antigo; sem texto nem chave) |
 
 Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
 (`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o

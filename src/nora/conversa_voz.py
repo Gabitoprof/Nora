@@ -82,6 +82,14 @@ class Locutor:
         self.inicio = inicio
         self.abafar = abafar
         self.tempos = Tempos()
+        # Diagnóstico (sem texto): pedidos de síntese e tempos do caminho HTTP.
+        self.geracoes = 0
+        self.primeiro_pedido: float | None = None
+        self.primeiro_audio: float | None = None
+        self.inicio_som: float | None = None
+        self.silencio_ms = 0.0
+        self.maior_silencio_ms = 0.0
+        self._fim_anterior: float | None = None
         self._frases: queue.Queue = queue.Queue()
         self._audios: queue.Queue = queue.Queue(maxsize=2)
         self._sintese = threading.Thread(target=self._sintetizar, daemon=True)
@@ -136,7 +144,12 @@ class Locutor:
                 anterior.baixado.wait()
             try:
                 texto = " ".join(lote)
+                if self.primeiro_pedido is None:
+                    self.primeiro_pedido = time.perf_counter()
+                self.geracoes += 1
                 anterior = em_partes(self.voz, texto)
+                if self.primeiro_audio is None and not isinstance(anterior, audio.AudioEmPartes):
+                    self.primeiro_audio = time.perf_counter()
                 self._audios.put((anterior, texto))
             except ServicoIndisponivel as erro:
                 self.tempos.erros.append(str(erro))
@@ -152,13 +165,28 @@ class Locutor:
                 em_streaming = isinstance(wav, audio.AudioEmPartes)
                 if em_streaming:
                     wav.primeira.wait()
+                    if self.primeiro_audio is None:
+                        self.primeiro_audio = time.perf_counter()
                 if not self.tempos.comeco_da_voz:
                     self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
+                comeco = time.perf_counter()
+                if self._fim_anterior is not None:  # silêncio entre um trecho e o próximo
+                    buraco = (comeco - self._fim_anterior) * 1000
+                    self.silencio_ms += buraco
+                    self.maior_silencio_ms = max(self.maior_silencio_ms, buraco)
                 try:
                     with contexto_fala(texto):
                         self.tocar(wav)
                 except Exception as erro:  # um problema no alto-falante não derruba a conversa
                     self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
+                if self.inicio_som is None:
+                    self.inicio_som = (
+                        (getattr(wav, "inicio_som", None) or comeco) if em_streaming else comeco
+                    )
+                if em_streaming:
+                    self.silencio_ms += wav.silencio_ms
+                    self.maior_silencio_ms = max(self.maior_silencio_ms, wav.maior_silencio_ms)
+                self._fim_anterior = time.perf_counter()
                 if em_streaming and wav.erro is not None:
                     self.tempos.erros.append(f"A voz parou no meio da frase: {wav.erro}")
                 item = self._audios.get()
@@ -464,16 +492,25 @@ def _diagnosticar(conversa: Conversa, voz, locutor, dialogo):
         if dialogo is not None:
             turno = getattr(locutor, "turno", None)
             reserva = getattr(locutor, "reserva", None)
-            if reserva is not None or turno is None:
-                medida = diag.MedidaDaVoz(
-                    modelo=dialogo.reserva.modelo,
-                    via="http (reserva)",
-                    continuidade=diag.ERRO,
-                    erro=getattr(dialogo.sessao(), "ultimo_erro", "") or "diálogo indisponível",
+            erro = getattr(dialogo.sessao(), "ultimo_erro", "") or "diálogo indisponível"
+            if turno is None or (reserva is not None and not turno.recebeu_audio):
+                # Tudo pela reserva (o diálogo falhou antes do 1º áudio).
+                medida = diag.medir_locutor(
+                    reserva, dialogo.reserva.modelo, "http (reserva)", diag.ERRO
                 )
+                medida.erro = erro
             else:
                 continuidade = diag.ATIVA if dialogo.continuidade else diag.DESATIVADA
                 medida = diag.medir_turno(turno, dialogo.modelo, continuidade)
+                if reserva is not None:  # começou no v4 e terminou na reserva
+                    medida.via = "dialogo + http (reserva)"
+                    medida.continuidade = diag.ERRO
+                    medida.erro = erro
+                    medida.geracoes += reserva.geracoes
+                elif getattr(locutor, "cortada", False):
+                    medida.continuidade = diag.ERRO
+                    medida.erro = erro
+            medida.reservas = list(getattr(locutor, "reservas", []))
         else:
             nucleo = _nucleo(voz)
             if not isinstance(nucleo, VozElevenLabs):
@@ -482,7 +519,9 @@ def _diagnosticar(conversa: Conversa, voz, locutor, dialogo):
                 continuidade = diag.DESATIVADA
             else:
                 continuidade = diag.ATIVA if nucleo.continuidade else diag.NAO_SUPORTADA
-            medida = diag.MedidaDaVoz(modelo=nucleo.modelo, via="http", continuidade=continuidade)
+            medida = diag.medir_locutor(locutor, nucleo.modelo, "http", continuidade)
+            if getattr(voz, "aviso", ""):
+                medida.reservas.append(voz.aviso)
         diag.registrar(conversa.config.pasta_dados, medida)
         return medida
     except Exception:

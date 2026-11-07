@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from pathlib import Path
 
@@ -34,12 +34,33 @@ class MedidaDaVoz:
     alinhamento: bool = False  # chegou alinhamento por caractere (palavras reais na HUD)
     erro: str = ""  # tipo/código do erro, sem texto pessoal
     quando: str = ""
+    geracoes: int = 0  # pedidos de síntese nesta resposta (v4: 1 turno; HTTP: 1 por lote)
+    reservas: list[str] = field(default_factory=list)  # motivo de cada troca para a reserva
 
 
 def _ms(inicio: float | None, fim: float | None) -> int | None:
     if inicio is None or fim is None:
         return None
     return max(0, round((fim - inicio) * 1000))
+
+
+def _curto(motivo: str) -> str:
+    """Motivo de reserva para o log: uma linha curta (as mensagens não levam texto da conversa)."""
+    return " ".join(str(motivo).split())[:160]
+
+
+def medir_locutor(locutor, modelo: str, via: str, continuidade: str) -> MedidaDaVoz:
+    """A medida de uma resposta falada pelo caminho HTTP (frase por frase)."""
+    return MedidaDaVoz(
+        modelo=modelo,
+        via=via,
+        continuidade=continuidade,
+        pedido_ate_primeiro_pcm_ms=_ms(locutor.primeiro_pedido, locutor.primeiro_audio),
+        pedido_ate_reproducao_ms=_ms(locutor.primeiro_pedido, locutor.inicio_som),
+        silencio_entre_trechos_ms=round(locutor.silencio_ms),
+        maior_silencio_ms=round(locutor.maior_silencio_ms),
+        geracoes=locutor.geracoes,
+    )
 
 
 def medir_turno(turno, modelo: str, continuidade: str, erro: str = "") -> MedidaDaVoz:
@@ -55,6 +76,7 @@ def medir_turno(turno, modelo: str, continuidade: str, erro: str = "") -> Medida
         maior_silencio_ms=round(audio.maior_silencio_ms),
         alinhamento=turno.recebeu_alinhamento,
         erro=erro,
+        geracoes=1,
     )
 
 
@@ -63,7 +85,7 @@ def registrar(pasta_dados: Path, medida: MedidaDaVoz) -> None:
     medida.quando = datetime.now().isoformat(timespec="seconds")
     log.info(
         "voz: modelo=%s via=%s continuidade=%s primeiro_pcm=%sms reproducao=%sms "
-        "silencio=%sms (maior %sms) alinhamento=%s%s",
+        "silencio=%sms (maior %sms) alinhamento=%s geracoes=%s%s%s",
         medida.modelo,
         medida.via,
         medida.continuidade,
@@ -72,7 +94,9 @@ def registrar(pasta_dados: Path, medida: MedidaDaVoz) -> None:
         medida.silencio_entre_trechos_ms,
         medida.maior_silencio_ms,
         "sim" if medida.alinhamento else "não",
+        medida.geracoes,
         f" erro={medida.erro}" if medida.erro else "",
+        "".join(f" reserva={_curto(m)!r}" for m in medida.reservas),
     )
     try:
         pasta_dados.mkdir(parents=True, exist_ok=True)
@@ -86,7 +110,8 @@ def registrar(pasta_dados: Path, medida: MedidaDaVoz) -> None:
 def ler(pasta_dados: Path) -> MedidaDaVoz | None:
     try:
         dados = json.loads((pasta_dados / ARQUIVO).read_text(encoding="utf-8"))
-        return MedidaDaVoz(**dados)
+        conhecidos = {f.name for f in fields(MedidaDaVoz)}  # arquivo de versão anterior
+        return MedidaDaVoz(**{k: v for k, v in dados.items() if k in conhecidos})
     except (OSError, ValueError, TypeError):
         return None
 
@@ -103,6 +128,10 @@ def resumo(medida: MedidaDaVoz) -> str:
         f"(maior {medida.maior_silencio_ms} ms)"
     )
     partes.append("palavras alinhadas" if medida.alinhamento else "palavras estimadas")
+    if medida.geracoes:
+        partes.append(f"{medida.geracoes} {'geração' if medida.geracoes == 1 else 'gerações'}")
     if medida.erro:
         partes.append(f"erro: {medida.erro}")
+    for motivo in medida.reservas:
+        partes.append(f"reserva: {_curto(motivo)}")
     return ", ".join(partes)

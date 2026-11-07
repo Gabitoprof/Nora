@@ -704,3 +704,65 @@ def test_repete_a_resposta_que_caiu_sem_chamar_o_cerebro(criar_raiz):
     )  # fmt: skip
     assert b"".join(tocados).decode() == "Resposta que tinha caído."
     assert conversa.fala_cortada == ""
+
+
+def test_diagnostico_da_resposta_que_trocou_para_a_reserva_no_meio(criar_raiz, monkeypatch):
+    resposta = "Primeira parte da resposta. Segunda parte. Terceira parte."
+    ditos = []
+    with (
+        OllamaFalso([resposta]) as ollama,
+        DialogoFalso(modo="cai_no_meio") as servidor,
+        ServicoFalso(_flash(ditos)) as nuvem,
+    ):
+        monkeypatch.setattr(elevenlabs_dialogo, "URL", servidor.url)
+        monkeypatch.setattr("nora.voz.ELEVENLABS_API", f"{nuvem.url}/v1/text-to-speech")
+        config = config_v4(criar_raiz, ambiente={"OLLAMA_HOST": ollama.host})
+        saida = io.StringIO()
+        comandos = iter(["pergunta pessoal secreta", "sair"])
+        conversar_por_voz(
+            config, entrada=lambda _: next(comandos), saida=saida, medir=True, tocar=tocar_tudo([])
+        )
+    medida = diagnostico_voz.ler(config.pasta_dados)
+    assert medida.via == "dialogo + http (reserva)" and medida.continuidade == diagnostico_voz.ERRO
+    assert medida.geracoes >= 2 and medida.reservas
+    assert "Primeira" not in " ".join(ditos)  # a reserva não repetiu o que já tocou
+    bruto = (config.pasta_dados / diagnostico_voz.ARQUIVO).read_text(encoding="utf-8")
+    for proibido in (CHAVE, "secreta", "Primeira", "Segunda"):
+        assert proibido not in bruto
+    assert "gerações" in saida.getvalue() and "reserva:" in saida.getvalue()
+
+
+def test_diagnostico_http_conta_geracoes_e_tempos(criar_raiz, monkeypatch):
+    with (
+        OllamaFalso(
+            ["Uma frase longa o bastante para ir sozinha. E outra frase também longa aqui."]
+        ) as ollama,
+        ServicoFalso(_flash([])) as nuvem,
+    ):
+        monkeypatch.setattr("nora.voz.ELEVENLABS_API", f"{nuvem.url}/v1/text-to-speech")
+        config = config_v4(
+            criar_raiz, modelo="eleven_flash_v2_5", ambiente={"OLLAMA_HOST": ollama.host}
+        )
+        comandos = iter(["oi", "sair"])
+        conversar_por_voz(
+            config,
+            entrada=lambda _: next(comandos),
+            saida=io.StringIO(),
+            medir=True,
+            tocar=tocar_tudo([]),
+        )
+    medida = diagnostico_voz.ler(config.pasta_dados)
+    assert medida.via == "http" and medida.geracoes >= 1
+    assert (
+        medida.pedido_ate_primeiro_pcm_ms is not None
+        and medida.pedido_ate_reproducao_ms is not None
+    )
+
+
+def test_diagnostico_le_arquivo_de_versao_anterior(tmp_path):
+    (tmp_path / diagnostico_voz.ARQUIVO).write_text(
+        json.dumps({"modelo": "m", "via": "http", "continuidade": "ativa", "campo_velho": 1}),
+        encoding="utf-8",
+    )
+    medida = diagnostico_voz.ler(tmp_path)
+    assert medida.modelo == "m" and medida.geracoes == 0 and medida.reservas == []
