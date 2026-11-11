@@ -1,8 +1,8 @@
-"""Servidor de voz local com o Kokoro-82M (pesos Apache-2.0), no mesmo formato do Piper:
-POST /synthesize com JSON {"text", "voice"?, "speed"?} devolve um WAV.
+"""Local voice server with Kokoro-82M (Apache-2.0 weights), in the same format as Piper:
+POST /synthesize with JSON {"text", "voice"?, "speed"?} returns a WAV.
 
-Roda como processo separado (`nora servidor-kokoro`) e só é importado aqui: o kokoro-onnx usa o
-phonemizer e o espeak-ng, que são GPL-3.0, e por isso ficam fora do núcleo da Nora.
+Runs as a separate process (`nora servidor-kokoro`) and is only imported here: kokoro-onnx uses
+phonemizer and espeak-ng, which are GPL-3.0, so they stay out of Nora's core.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ VOZES = "voices-v1.0.bin"
 
 
 def ler_receita(receita: str) -> list[tuple[str, float]]:
-    """'pf_dora:0.7 + af_heart:0.3' -> [('pf_dora', 0.7), ('af_heart', 0.3)], com os pesos
-    somando 1. Uma voz sozinha ('pf_dora') vale peso 1."""
+    """'pf_dora:0.7 + af_heart:0.3' -> [('pf_dora', 0.7), ('af_heart', 0.3)], with the weights
+    summing to 1. A single voice ('pf_dora') has weight 1."""
     partes = []
     for parte in receita.split("+"):
         parte = parte.strip()
@@ -53,7 +53,7 @@ def achar_modelo(pasta: Path) -> Path:
 
 
 class Sintetizador:
-    """Carrega o Kokoro uma vez e gera WAV de 16 bits."""
+    """Loads Kokoro once and generates 16-bit WAV."""
 
     def __init__(self, pasta: Path, voz: str, velocidade: float, idioma: str = "pt-br") -> None:
         try:
@@ -66,13 +66,13 @@ class Sintetizador:
         self.idioma = idioma
         self._trava = threading.Lock()
         self._misturas: dict = {}
-        self.estilo(voz)  # confere a receita já ao abrir
+        self.estilo(voz)  # checks the recipe right on opening
 
     def vozes(self) -> list[str]:
         return sorted(self.kokoro.get_voices())
 
     def estilo(self, receita: str):
-        """O "DNA" da voz: uma voz do Kokoro ou a mistura de várias, pela receita."""
+        """The voice "DNA": one Kokoro voice or a mix of several, per the recipe."""
         if receita not in self._misturas:
             disponiveis = set(self.kokoro.get_voices())
             partes = ler_receita(receita)
@@ -128,7 +128,7 @@ def criar_servidor(sintetizador, host: str, porta: int) -> ThreadingHTTPServer:
             except (ValueError, KeyError, TypeError) as erro:
                 self._responder(400, "text/plain; charset=utf-8", str(erro).encode())
                 return
-            except Exception as erro:  # o servidor continua de pé para a próxima frase
+            except Exception as erro:  # the server stays up for the next sentence
                 self._responder(500, "text/plain; charset=utf-8", str(erro).encode())
                 return
             self._responder(200, "audio/wav", wav)
@@ -144,7 +144,7 @@ def servir(url: str, pasta: Path, voz: str, velocidade: float) -> int:
     host, porta = partes.hostname or "127.0.0.1", partes.port or 5001
     print(f"Carregando o Kokoro de {pasta}...")
     sintetizador = Sintetizador(pasta, voz, velocidade)
-    sintetizador.sintetizar("Pronto.")  # aquece, para a primeira frase não demorar
+    sintetizador.sintetizar("Pronto.")  # warm up, so the first sentence is not slow
     servidor = criar_servidor(sintetizador, host, porta)
     print(f"Kokoro pronto em http://{host}:{porta} (voz {voz}). Ctrl+C encerra.")
     try:

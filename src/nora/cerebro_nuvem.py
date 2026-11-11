@@ -1,8 +1,8 @@
-"""Cérebro na nuvem: o Claude (API da Anthropic), em streaming, para as perguntas difíceis.
+"""Cloud brain: Claude (Anthropic API), streaming, for the hard questions.
 
-Recebe as mesmas mensagens do cérebro local (persona, notas da memória, conversa) e devolve a
-resposta aos pedaços, do mesmo jeito: a voz e a tela não sabem quem respondeu.
-Usa o SDK oficial `anthropic` (extra [nuvem]) e a chave ANTHROPIC_API_KEY do .env.
+Takes the same messages as the local brain (persona, memory notes, conversation) and returns the
+answer in chunks, the same way: the voice and the screen do not know who answered.
+Uses the official `anthropic` SDK ([nuvem] extra) and the ANTHROPIC_API_KEY key from .env.
 """
 
 from __future__ import annotations
@@ -14,16 +14,17 @@ from dataclasses import dataclass, field
 from nora.cerebro import CerebroIndisponivel, Medidas
 from nora.config import Config
 
-# Modelos com recusa resolvida no servidor (`fallbacks: "default"`): se o modelo recusar por
-# segurança, a API repete o pedido num modelo indicado, dentro da mesma chamada.
+# Models with server-side refusal handling (`fallbacks: "default"`): if the model refuses for
+# safety reasons, the API retries the request on a designated model, within the same call.
 _COM_FALLBACK = ("claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1")
 _BETA_FALLBACK = "server-side-fallback-2026-07-01"
 RECUSA = "Desculpe, nisso eu não posso ajudar."
 
 
 def separar_sistema(mensagens: list[dict[str, str]]) -> tuple[str, list[dict[str, str]]]:
-    """A API recebe o sistema à parte: junta as mensagens de sistema (persona e notas) e deixa
-    só a conversa, começando por uma fala da pessoa e sem dois papéis iguais seguidos."""
+    """The API takes the system prompt separately: joins the system messages (persona and notes)
+    and leaves only the conversation, starting with a user turn and with no two equal roles
+    in a row."""
     sistema = "\n\n".join(m["content"] for m in mensagens if m["role"] == "system")
     conversa: list[dict[str, str]] = []
     for mensagem in mensagens:
@@ -42,7 +43,7 @@ def separar_sistema(mensagens: list[dict[str, str]]) -> tuple[str, list[dict[str
 
 
 def nome_do_modelo(modelo: str) -> str:
-    """'claude-sonnet-5-5' -> 'Claude Sonnet 5.5', para avisos e o --medir."""
+    """'claude-sonnet-5-5' -> 'Claude Sonnet 5.5', for notices and --medir."""
     partes = modelo.removeprefix("claude-").split("-")
     nome = " ".join(p.capitalize() for p in partes if not p.isdigit())
     versao = ".".join(p for p in partes if p.isdigit())
@@ -79,7 +80,7 @@ class CerebroNuvem:
         return self.cliente
 
     def aquecer(self) -> float:
-        return 0.0  # nada a carregar: o modelo fica na nuvem
+        return 0.0  # nothing to load: the model lives in the cloud
 
     def _abrir(self, cliente, sistema: str, conversa: list[dict[str, str]]):
         pedido = {
@@ -96,7 +97,7 @@ class CerebroNuvem:
         return cliente.messages.stream(**pedido)
 
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
-        """Envia a conversa ao Claude e devolve a resposta aos pedaços."""
+        """Sends the conversation to Claude and returns the answer in chunks."""
         cliente = self._cliente()
         sistema, conversa = separar_sistema(mensagens)
         if not conversa:
@@ -125,7 +126,7 @@ class CerebroNuvem:
 
 
 def problema_do_pacote() -> str:
-    """ "" se o SDK do Claude carrega; senão, o que falta ou o erro ao carregar."""
+    """ "" if the Claude SDK loads; otherwise, what is missing or the load error."""
     try:
         import anthropic  # noqa: F401
     except ModuleNotFoundError as erro:
@@ -138,8 +139,8 @@ def problema_do_pacote() -> str:
 
 
 def testar_conexao(config: Config) -> str:
-    """Confere a chave e o modelo pesado com a API de modelos (não gera texto, não gasta
-    créditos). Devolve "" se deu certo, ou o motivo da falha."""
+    """Checks the key and the heavy model with the models API (generates no text, spends no
+    credits). Returns "" if it worked, or the reason for the failure."""
     if not config.chave_anthropic:
         return "falta ANTHROPIC_API_KEY no .env"
     if problema := problema_do_pacote():
@@ -155,7 +156,7 @@ def testar_conexao(config: Config) -> str:
 
 
 def _explicar(erro: Exception) -> str:
-    """Uma frase clara para cada tipo de falha da API (o resto do texto fica no histórico)."""
+    """A clear sentence for each type of API failure (the rest of the text stays in the history)."""
     try:
         import anthropic
     except ImportError:

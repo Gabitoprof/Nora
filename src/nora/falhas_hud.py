@@ -1,11 +1,11 @@
-"""Falhas da HUD (visualização), contadas sem parar a fala.
+"""HUD (visualization) failures, counted without stopping speech.
 
-A HUD nunca pode interromper o áudio: os erros dela são engolidos no caminho acústico. Mas não em
-silêncio: cada (lugar, tipo de erro) vira uma linha de log na primeira vez e, depois, só conta.
-Nunca registra a mensagem do erro, que pode ter texto da conversa, nem áudio.
+The HUD can never interrupt the audio: its errors are swallowed on the acoustic path. But not
+silently: each (place, error type) becomes a log line the first time and, after that, is only
+counted. It never records the error message, which may contain conversation text, nor audio.
 
-Seguro no callback de áudio: sem trava (um contador aproximado basta) e no máximo uma linha de log
-por tipo de erro em toda a sessão.
+Safe in the audio callback: no lock (an approximate counter is enough) and at most one log line
+per error type in the whole session.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ _contagem: dict[tuple[str, str], int] = {}
 
 
 def registrar(onde: str, erro: BaseException) -> None:
-    """Conta a falha; a primeira de cada tipo, em cada lugar, vira uma linha de log."""
+    """Counts the failure; the first of each type, in each place, becomes a log line."""
     try:
         chave = (onde, type(erro).__name__)
         vezes = _contagem.get(chave, 0) + 1
@@ -28,11 +28,11 @@ def registrar(onde: str, erro: BaseException) -> None:
                 *chave,
             )
     except Exception:
-        pass  # nem o registro pode parar o áudio
+        pass  # not even logging may stop the audio
 
 
 def contagem() -> dict[str, int]:
-    """{"lugar: TipoDoErro": vezes}, para o diagnóstico e os testes."""
+    """{"lugar: TipoDoErro": count}, for diagnostics and tests."""
     return {f"{onde}: {tipo}": vezes for (onde, tipo), vezes in dict(_contagem).items()}
 
 

@@ -1,19 +1,19 @@
-"""ElevenLabs v4 por diálogo em tempo real (WebSocket `text-to-dialogue/stream-input`).
+"""ElevenLabs v4 through real-time dialogue (WebSocket `text-to-dialogue/stream-input`).
 
-O v4 não aceita o text-to-speech comum (400 `unsupported_model`); só o Text to Dialogue. Uma
-conexão fica aberta entre as respostas:
+v4 does not accept regular text-to-speech (400 `unsupported_model`); only Text to Dialogue. One
+connection stays open between answers:
 
-- 1ª mensagem: `voices` (exatamente uma, a voz da Nora) e `voice_settings` (só `stability` vale);
-  a chave vai no cabeçalho `xi-api-key`, nunca na URL nem no log.
-- Cada resposta é um turno: o texto vai aos pedaços (`inputs`, o primeiro com `new_turn: true`)
-  conforme o modelo escreve, e `flush: true` no fim. O áudio volta aos pedaços (PCM em base64),
-  com o alinhamento por caractere (`sync_alignment=true`), e toca conforme chega.
-- Entre as respostas, `keep_alive` a cada `manter_viva_s` (o servidor fecha após 20 s sem
-  mensagem); sem resposta por `ociosa_s`, a conexão é fechada e reaberta na próxima.
-- Barge-in: o turno é cancelado, o áudio para e a conexão é fechada; a próxima resposta abre uma
-  limpa (nada de áudio de uma resposta tocando na outra).
+- 1st message: `voices` (exactly one, Nora's voice) and `voice_settings` (only `stability`
+  counts); the key goes in the `xi-api-key` header, never in the URL or the log.
+- Each answer is a turn: the text goes in chunks (`inputs`, the first with `new_turn: true`) as
+  the model writes, and `flush: true` at the end. The audio comes back in chunks (base64 PCM),
+  with per-character alignment (`sync_alignment=true`), and plays as it arrives.
+- Between answers, `keep_alive` every `manter_viva_s` (the server closes after 20 s without a
+  message); with no answer for `ociosa_s`, the connection is closed and reopened on the next one.
+- Barge-in: the turn is cancelled, the audio stops and the connection is closed; the next answer
+  opens a clean one (no audio from one answer playing into another).
 
-Formato das mensagens conferido no SDK oficial (`elevenlabs` 2.77.0, tipos
+Message format checked against the official SDK (`elevenlabs` 2.77.0, types
 `TextToDialogueWebsocket*`).
 """
 
@@ -31,18 +31,18 @@ from nora.servico import ServicoIndisponivel
 
 URL = "wss://api.elevenlabs.io/v1/text-to-dialogue/stream-input"
 TAXA = 22_050
-MAX_PALAVRAS = 256  # limite da HUD (hud_contrato.json)
+MAX_PALAVRAS = 256  # HUD limit (hud_contrato.json)
 log = logging.getLogger("nora.voz")
 
 
 def e_modelo_de_dialogo(modelo: str) -> bool:
-    """Modelos que só funcionam pelo Text to Dialogue (o v4 e o v4 turbo)."""
+    """Models that only work through Text to Dialogue (v4 and v4 turbo)."""
     return modelo.startswith("eleven_v4")
 
 
 def palavras_do_alinhamento(caracteres: list[tuple[str, float, float]]) -> list[dict]:
-    """Junta os caracteres alinhados (caractere, início, fim, em ms) em palavras para a HUD: em
-    ordem, sem sobreposição, sem as audio tags ([happy]) e no máximo as últimas 256."""
+    """Joins the aligned characters (character, start, end, in ms) into words for the HUD: in
+    order, without overlap, without the audio tags ([happy]) and at most the last 256."""
     palavras: list[dict] = []
     atual, inicio, fim, dentro_de_tag = "", 0.0, 0.0, False
 
@@ -82,24 +82,25 @@ def palavras_do_alinhamento(caracteres: list[tuple[str, float, float]]) -> list[
 
 
 class Turno:
-    """Uma resposta falada: o texto vai, o áudio volta (`audio`, tocável enquanto chega)."""
+    """One spoken answer: the text goes out, the audio comes back (`audio`, playable as it
+    arrives)."""
 
     def __init__(self, sessao: SessaoDialogo) -> None:
         self.sessao = sessao
         self.audio, self._por, self._fechar = AudioEmPartes.de_fila(TAXA)
         self.erro: Exception | None = None
         self.cancelado = False
-        self.pedido: float | None = None  # perf_counter do primeiro texto enviado
+        self.pedido: float | None = None  # perf_counter of the first text sent
         self.primeiro_pcm: float | None = None
         self.ultimo_audio = 0.0
         self.finalizado_em: float | None = None
         self.terminado = threading.Event()
         self.recebido_ms = 0.0
         self.recebeu_alinhamento = False
-        self.recebidas: list[str] = []  # tipos de mensagem do servidor (diagnóstico, sem texto)
+        self.recebidas: list[str] = []  # server message types (diagnostics, no text)
         self._caracteres: list[tuple[str, float, float]] = []
-        # Referência dos tempos do alinhamento, decidida uma vez por turno e fixa dali em diante:
-        # "trecho" (cada mensagem começa perto de 0) ou "turno" (contados desde o início da fala).
+        # Reference for the alignment times, decided once per turn and fixed from then on:
+        # "trecho" (each message starts near 0) or "turno" (counted from the start of the speech).
         self.referencia: str | None = None
 
     @property
@@ -107,7 +108,7 @@ class Turno:
         return self.primeiro_pcm is not None
 
     def enviar(self, texto: str) -> None:
-        """Manda um pedaço do texto (uma frase, conforme o modelo escreve)."""
+        """Sends a piece of the text (a sentence, as the model writes)."""
         if self.terminado.is_set() or not texto.strip():
             return
         primeiro = self.pedido is None
@@ -120,17 +121,17 @@ class Turno:
         self.sessao._enviar({"inputs": [entrada]}, self)
 
     def finalizar(self) -> None:
-        """Fim da resposta: gera o que ficou no buffer (`flush`)."""
+        """End of the answer: generates what is left in the buffer (`flush`)."""
         if self.terminado.is_set() or self.finalizado_em is not None:
             return
         self.finalizado_em = time.monotonic()
-        if self.pedido is None:  # nada foi enviado: não há o que esperar
+        if self.pedido is None:  # nothing was sent: nothing to wait for
             self._concluir()
             return
         self.sessao._enviar({"flush": True}, self)
 
     def cancelar(self) -> None:
-        """Barge-in: para o áudio na hora e descarta o resto desta resposta."""
+        """Barge-in: stops the audio immediately and discards the rest of this answer."""
         if self.terminado.is_set() and self.audio.cancelado.is_set():
             return
         self.cancelado = True
@@ -138,7 +139,7 @@ class Turno:
         self._concluir()
         self.sessao.fechar()
 
-    # chamados pela linha que lê o WebSocket ------------------------------------------------
+    # called by the thread that reads the WebSocket -----------------------------------------
 
     def _receber(self, pcm: bytes, alinhamento: dict | None) -> None:
         if self.terminado.is_set():
@@ -150,13 +151,13 @@ class Turno:
         if alinhamento and alinhamento.get("chars"):
             inicios = alinhamento.get("char_start_times_ms") or []
             duracoes = alinhamento.get("char_durations_ms") or []
-            # O SDK oficial documenta, no WebSocket de TTS, tempos relativos ao trecho devolvido.
-            # O do diálogo não diz; então a referência é decidida no primeiro alinhamento que
-            # chega depois de algum áudio e não muda mais no turno (um servidor que alternasse
-            # entre as duas não desloca as palavras no meio da fala).
+            # The official SDK documents, for the TTS WebSocket, times relative to the returned
+            # chunk. The dialogue one does not say; so the reference is decided on the first
+            # alignment that arrives after some audio and does not change again in the turn (a
+            # server that switched between the two does not shift the words mid-speech).
             if self.referencia is None and inicios and self.recebido_ms > 0:
                 self.referencia = "trecho" if inicios[0] < self.recebido_ms - 50 else "turno"
-            # Base = posição, no PCM deste turno, em que começa o áudio desta mensagem.
+            # Base = position, in this turn's PCM, where this message's audio starts.
             base = self.recebido_ms if self.referencia == "trecho" else 0.0
             for caractere, comeco, duracao in zip(
                 alinhamento["chars"], inicios, duracoes, strict=False
@@ -176,7 +177,7 @@ class Turno:
             and self.pedido is not None
             and not self.recebeu_audio
         ):
-            # Texto enviado e nenhum áudio: é falha (cai na reserva), não uma resposta muda.
+            # Text sent and no audio: it is a failure (falls back), not a silent answer.
             vistas = ", ".join(dict.fromkeys(self.recebidas)) or "nenhuma mensagem"
             erro = ServicoIndisponivel(f"O ElevenLabs não mandou áudio (recebi: {vistas}).")
             self.sessao.ultimo_erro = f"sem áudio (recebi: {vistas})"
@@ -188,7 +189,7 @@ class Turno:
 
 
 class SessaoDialogo:
-    """A conexão com o ElevenLabs, reaproveitada entre as respostas."""
+    """The connection to ElevenLabs, reused across answers."""
 
     def __init__(
         self,
@@ -214,10 +215,10 @@ class SessaoDialogo:
         self._turno: Turno | None = None
         self._ultimo_envio = 0.0
         self._ultima_atividade = 0.0
-        self.conexoes = 0  # quantas vezes abriu (diagnóstico e testes)
-        self.ultimo_erro = ""  # tipo e código, nunca texto pessoal nem a chave
+        self.conexoes = 0  # how many times it opened (diagnostics and tests)
+        self.ultimo_erro = ""  # type and code, never personal text nor the key
 
-    # conexão ---------------------------------------------------------------------------------
+    # connection ------------------------------------------------------------------------------
 
     def _endereco(self) -> str:
         consulta = urllib.parse.urlencode(
@@ -235,7 +236,7 @@ class SessaoDialogo:
         destino = urllib.parse.urlsplit(self.url)
         local = destino.hostname in ("127.0.0.1", "localhost", "::1")
         try:
-            # `__enter__`: a conexão fica aberta entre as respostas (fora de um `with`).
+            # `__enter__`: the connection stays open between answers (outside a `with`).
             self._ws = connect(
                 self._endereco(),
                 additional_headers={"xi-api-key": self.chave},
@@ -262,14 +263,14 @@ class SessaoDialogo:
         return self._ws is not None
 
     def novo_turno(self) -> Turno:
-        """Começa uma resposta. Abre a conexão se ainda não estiver aberta (dá para chamar antes
-        do modelo começar a escrever: a conexão fica pronta enquanto ele pensa)."""
+        """Starts an answer. Opens the connection if it is not open yet (it can be called before
+        the model starts writing: the connection gets ready while it thinks)."""
         with self._trava:
             anterior = self._turno
             if anterior is not None and not anterior.terminado.is_set():
                 anterior.cancelar()
             elif anterior is not None and anterior.erro is not None:
-                self._fechar_ws()  # a resposta anterior falhou: começa numa conexão limpa
+                self._fechar_ws()  # the previous answer failed: start on a clean connection
             if self._ws is None:
                 self._abrir()
             self._turno = Turno(self)
@@ -305,7 +306,7 @@ class SessaoDialogo:
             except Exception:
                 pass
 
-    # leitura (linha própria) -----------------------------------------------------------------
+    # reading (own thread) --------------------------------------------------------------------
 
     def _ler(self, ws) -> None:
         from websockets.exceptions import ConnectionClosed
@@ -337,7 +338,7 @@ class SessaoDialogo:
                 if tipo not in turno.recebidas and len(turno.recebidas) < 10:
                     turno.recebidas.append(str(tipo)[:40])
         if mensagem.get("error") or ("message" in mensagem and "code" in mensagem):
-            # Erro do ElevenLabs: guarda só o identificador e o código (sem texto da conversa).
+            # ElevenLabs error: keep only the identifier and the code (no conversation text).
             self.ultimo_erro = f"{mensagem.get('error', 'erro')} ({mensagem.get('code', '?')})"
             log.warning("ElevenLabs v4 recusou: %s", self.ultimo_erro)
             if turno is not None:
@@ -357,7 +358,7 @@ class SessaoDialogo:
             turno._concluir()
 
     def _cuidar(self, ws) -> bool:
-        """Relógios: fim do turno sem aviso, keep_alive e fechamento por ociosidade."""
+        """Timers: end of turn without notice, keep_alive and closing on idleness."""
         agora = time.monotonic()
         with self._trava:
             if ws is not self._ws:
@@ -383,7 +384,7 @@ class SessaoDialogo:
                     turno._concluir()
                     ativo = False
             if ativo and turno.finalizado_em is not None:
-                return True  # o áudio está chegando: o servidor não está ocioso
+                return True  # audio is arriving: the server is not idle
             if not ativo and agora - self._ultima_atividade > self.ociosa_s:
                 self._fechar_ws()
                 return False
@@ -399,7 +400,7 @@ class SessaoDialogo:
     def _caiu(self, ws, motivo: str) -> None:
         with self._trava:
             if ws is not self._ws:
-                return  # já fechada por nós (barge-in, ociosidade)
+                return  # already closed by us (barge-in, idleness)
             self._ws = None
             self.ultimo_erro = motivo
             turno = self._turno

@@ -10,7 +10,7 @@ from nora.config import carregar
 from nora.maos_livres import conversar_maos_livres
 from nora.vad import BYTES_POR_QUADRO, DetectorDeFala, em_quadros, falas
 
-# --- palavra de ativação ----------------------------------------------------------------------
+# --- wake word --------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -46,7 +46,7 @@ def test_despedidas_e_normalizacao():
     assert not e_despedida("tchau para quem?")
 
 
-# --- detector de fala ---------------------------------------------------------------------------
+# --- speech detector ----------------------------------------------------------------------------
 
 
 def quadro(valor):
@@ -101,7 +101,7 @@ def test_microfone_captando_sem_parar_ainda_da_folga_para_o_teclado():
     assert saida.count(None) == 2  # uma folga a cada 10 quadros
 
 
-# --- conversa mãos livres -----------------------------------------------------------------------
+# --- hands-free conversation --------------------------------------------------------------------
 
 
 def test_conversa_maos_livres(criar_raiz):

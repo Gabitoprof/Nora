@@ -51,7 +51,7 @@ def test_auto_melhoria_desligada_nao_observa(criar_raiz):
     assert not caminho_do_banco(roteador.config.pasta_dados).exists()
 
 
-# --- fechamento do dia, relatório e decisões (P2) ------------------------------------------------
+# --- closing the day, report and decisions (P2) --------------------------------------------------
 
 
 DIA = datetime(2026, 11, 3, 10, 0)
@@ -601,7 +601,7 @@ def test_loops_entregam_relatorio_sem_pergunta(criar_raiz, monkeypatch, interfac
     assert conversa.melhorias.nao_mostrados() == []
 
 
-# --- regressão do Enter no `nora falar` com a auto-melhoria ligada ------------------------------
+# --- Enter regression in `nora falar` with self-improvement on ----------------------------------
 
 
 class Teclado:

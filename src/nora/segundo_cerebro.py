@@ -1,19 +1,21 @@
-"""Second Brain (v0.3.1): as memórias consolidadas da Nora viram notas no Obsidian, com links
-entre áreas, nomes, meses da agenda e preferências, e um grafo para o mapa da memória.
+"""Second Brain (v0.3.1): Nora's consolidated memories become notes in Obsidian, with links
+between areas, names, agenda months and preferences, and a graph for the memory map.
 
-A memória (SQLite) continua sendo a fonte da verdade; as notas são uma vista dela.
+The memory (SQLite) remains the source of truth; the notes are a view of it.
 
-Fora do caminho da fala, sempre:
-- a conversa só chama `avisar()` (levanta um sinal) depois que a curadoria, que já roda em
-  segundo plano, grava a memória;
-- uma linha própria (`Trabalhador`) espera a Nora ficar livre (sem responder nem falar), lê a
-  memória numa conexão só de leitura, compara com o que já foi exportado e escreve só o que
-  mudou. Se a Nora voltar a falar no meio, para e continua depois;
-- não há fila de eventos que possa encher: o estado exportado (estado.db) é o ponto de
-  retomada. Se o PC desligar no meio, a próxima rodada refaz o que faltou, sem duplicar.
+Always off the speech path:
+- the conversation only calls `avisar()` (raises a signal) after curation, which already runs in
+  the background, writes the memory;
+- a thread of its own (`Trabalhador`) waits for Nora to be free (neither answering nor
+  speaking), reads the memory over a read-only connection, compares it with what was already
+  exported and writes only what changed. If Nora speaks again midway, it stops and continues
+  later;
+- there is no event queue that could fill up: the exported state (estado.db) is the resume
+  point. If the PC shuts down midway, the next round redoes what was missing, without
+  duplicating.
 
-Notas que a Nora não criou, ou que você editou, nunca são sobrescritas nem apagadas: viram
-conflito em `nora cerebro status`.
+Notes Nora did not create, or that you edited, are never overwritten or deleted: they become a
+conflict in `nora cerebro status`.
 """
 
 from __future__ import annotations
@@ -39,8 +41,8 @@ from nora.paleta import cor as cor_da_emocao
 VERSAO_DO_CONTRATO = 1
 CONTRATO = Path(__file__).with_name("segundo_cerebro_contrato.json")
 
-# As cores das emoções vêm de src/nora/paleta.json, o mesmo arquivo que a HUD lê (nora.paleta): um
-# sistema de cores só, sem cópia. Os nomes são os tons de emocao.py e a neutra.
+# The emotion colors come from src/nora/paleta.json, the same file the HUD reads (nora.paleta): a
+# single color system, no copy. The names are the tones from emocao.py plus neutra.
 NOMES_DOS_TONS = (
     "alegre",
     "empolgada",
@@ -52,23 +54,23 @@ NOMES_DOS_TONS = (
     "neutra",
 )
 CORES_DAS_EMOCOES = {nome: cor_da_emocao(nome) for nome in NOMES_DOS_TONS}
-# Cor de base de cada área (o corpo do nó). Áreas novas ganham uma cor estável da reserva.
+# Base color of each area (the node body). New areas get a stable color from the reserve.
 CORES_DAS_AREAS = {
-    "trabalho": "#2F6BFF",  # azul
-    "pessoal": "#F09BD8",  # rosa/lilás
-    "saude": "#4ADE80",  # verde
-    "familia": "#FBBF24",  # amarelo quente
-    "estudos": "#22D3EE",  # ciano
-    "projetos": "#FF8A3D",  # laranja
-    "rotina": "#CBD5E1",  # prata
-    "financas": "#059669",  # verde-esmeralda (mais escuro que saúde)
-    "espiritualidade": "#A855F7",  # violeta
-    "tecnologia": "#7C8CFF",  # azul elétrico (mais claro e arroxeado que trabalho)
+    "trabalho": "#2F6BFF",  # blue
+    "pessoal": "#F09BD8",  # pink/lilac
+    "saude": "#4ADE80",  # green
+    "familia": "#FBBF24",  # warm yellow
+    "estudos": "#22D3EE",  # cyan
+    "projetos": "#FF8A3D",  # orange
+    "rotina": "#CBD5E1",  # silver
+    "financas": "#059669",  # emerald green (darker than saúde)
+    "espiritualidade": "#A855F7",  # violet
+    "tecnologia": "#7C8CFF",  # electric blue (lighter and more purple than trabalho)
 }
 _RESERVA_DE_CORES = ["#E879F9", "#FACC15", "#4ADE80", "#F472B6", "#38BDF8", "#FB7185", "#A3E635"]
 COR_SEM_AREA = "#9CA3AF"
 
-# Palavras com maiúscula que não são nomes (começo de frase, dias, meses, pronomes).
+# Capitalized words that are not names (sentence start, days, months, pronouns).
 _NAO_SAO_NOMES = {
     "a", "o", "as", "os", "e", "eu", "ele", "ela", "eles", "elas", "voce", "nos", "hoje",
     "amanha", "ontem", "em", "no", "na", "de", "do", "da", "para", "pra", "com", "por", "um",
@@ -107,20 +109,20 @@ def cor_da_area(area: str) -> str:
 
 
 def nome_de_arquivo(texto: str, tamanho: int = TAMANHO_DO_TITULO) -> str:
-    """Um nome que serve de arquivo no Windows e de [[link]] no Obsidian. Barras e dois-pontos
-    entre números viram hífen ("21/11/2026" → "21-11-2026", "10:30" → "10-30"), para a data
-    continuar legível; o resto dos caracteres proibidos vira espaço."""
+    """A name that works as a file on Windows and as a [[link]] in Obsidian. Slashes and colons
+    between numbers become hyphens ("21/11/2026" → "21-11-2026", "10:30" → "10-30"), so the
+    date stays readable; the other forbidden characters become spaces."""
     texto = _ENTRE_NUMEROS.sub("-", texto)
     limpo = " ".join(_PROIBIDOS_NO_NOME.sub(" ", texto).split())
     if len(limpo) > tamanho:
         corte = limpo[:tamanho].rsplit(" ", 1)[0] or limpo[:tamanho]
         limpo = corte + "…"
-    limpo = limpo.strip(" .")  # Windows não aceita nome terminado em ponto ou espaço
+    limpo = limpo.strip(" .")  # Windows does not accept a name ending in a period or space
     return limpo or "sem título"
 
 
 def _yaml(valor) -> str:
-    """Valor de propriedade YAML seguro: textos entre aspas (JSON é YAML válido)."""
+    """Safe YAML property value: quoted texts (JSON is valid YAML)."""
     if isinstance(valor, bool):
         return "true" if valor else "false"
     if isinstance(valor, int | float):
@@ -136,7 +138,7 @@ def _hash(conteudo: str) -> str:
     return hashlib.sha256(conteudo.encode("utf-8")).hexdigest()
 
 
-# --- o que vem da memória -----------------------------------------------------------------------
+# --- what comes from memory ---------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -148,7 +150,7 @@ class FatoExportavel:
     atualizado: str
     origem: str
     emocao: str = ""
-    data: str = ""  # AAAA-MM-DD, se está na agenda
+    data: str = ""  # YYYY-MM-DD, if it is in the agenda
 
 
 @dataclass
@@ -158,7 +160,8 @@ class Conteudo:
 
 
 def ler_memoria(caminho: Path) -> Conteudo:
-    """Lê a memória numa conexão só de leitura (não trava a conversa, que escreve na dela)."""
+    """Reads the memory over a read-only connection (does not lock the conversation, which writes on
+    its own)."""
     if not caminho.is_file():
         return Conteudo()
     db = sqlite3.connect(f"{caminho.resolve().as_uri()}?mode=ro", uri=True, timeout=5)
@@ -190,7 +193,7 @@ def ler_memoria(caminho: Path) -> Conteudo:
         db.close()
 
 
-# --- o que vira nota e grafo --------------------------------------------------------------------
+# --- what becomes a note and graph --------------------------------------------------------------
 
 
 @dataclass
@@ -201,7 +204,7 @@ class Grafo:
 
 @dataclass
 class Plano:
-    notas: dict[str, str] = field(default_factory=dict)  # caminho relativo → conteúdo
+    notas: dict[str, str] = field(default_factory=dict)  # relative path → content
     grafo: Grafo = field(default_factory=Grafo)
 
 
@@ -216,8 +219,8 @@ def _origem_legivel(origem: str) -> str:
 
 
 def nomes_no_texto(texto: str, ignorar: set[str]) -> list[str]:
-    """Nomes próprios do texto (pessoas, lugares, siglas). O primeiro nome da frase só conta se
-    for sigla, porque ele tem maiúscula de qualquer jeito."""
+    """Proper names in the text (people, places, acronyms). The first word of the sentence only
+    counts if it is an acronym, because it is capitalized anyway."""
     nomes = []
     for achado in _NOME.finditer(texto):
         nome = achado.group(1).strip()
@@ -238,11 +241,11 @@ def nomes_no_texto(texto: str, ignorar: set[str]) -> list[str]:
 
 
 class Planejador:
-    """Monta as notas e o grafo a partir da memória (função pura de `Conteudo`)."""
+    """Builds the notes and the graph from the memory (a pure function of `Conteudo`)."""
 
     def __init__(self, config, prefixo_dos_links: str) -> None:
         self.opcoes = config.segundo_cerebro
-        self.prefixo = prefixo_dos_links  # caminho da pasta do Second Brain dentro do vault
+        self.prefixo = prefixo_dos_links  # path of the Second Brain folder inside the vault
         nomes_proprios = {config.assistente.nome, config.nome_usuario}
         self.ignorar_nomes = {_chave(n) for n in nomes_proprios if n}
         self.privadas = {_chave(area) for area in self.opcoes.areas_privadas}
@@ -264,8 +267,8 @@ class Planejador:
             usados.add(_chave(titulo))
             titulos[fato.id] = titulo
 
-        # Nomes que aparecem em 2 memórias ou mais: ligam memórias de verdade. Um nome que só
-        # aparece uma vez não vira nó (não enche o grafo de pontas soltas).
+        # Names that appear in 2 memories or more: they really link memories. A name that appears
+        # only once does not become a node (it does not fill the graph with loose ends).
         mencoes: dict[str, list[int]] = {}
         formas: dict[str, dict[str, int]] = {}
         for fato in fatos:
@@ -510,12 +513,12 @@ def _nota(propriedades: dict, tags: list[str], corpo: str) -> str:
     return "\n".join(linhas)
 
 
-# --- escrever no vault, de forma incremental e segura -------------------------------------------
+# --- writing to the vault, incrementally and safely ---------------------------------------------
 
 
 def escrever_atomico(caminho: Path, conteudo: str) -> None:
-    """Escreve num arquivo temporário ao lado e troca de uma vez: uma queda no meio deixa o
-    arquivo antigo inteiro, nunca pela metade."""
+    """Writes to a temporary file alongside and swaps it in at once: a crash midway leaves the old
+    file whole, never half-written."""
     caminho.parent.mkdir(parents=True, exist_ok=True)
     descritor, temporario = tempfile.mkstemp(dir=caminho.parent, prefix=".nora-", suffix=".tmp")
     try:
@@ -530,7 +533,7 @@ def escrever_atomico(caminho: Path, conteudo: str) -> None:
 
 
 class VaultAusente(Exception):
-    """A pasta do vault (ou a de cima do Second Brain) não existe."""
+    """The vault folder (or the one above the Second Brain) does not exist."""
 
 
 @dataclass
@@ -544,15 +547,15 @@ class Resumo:
 
 
 class Sincronizador:
-    """Leva a memória para a pasta do Second Brain e grava o grafo e o mapa."""
+    """Takes the memory to the Second Brain folder and writes the graph and the map."""
 
     def __init__(self, config, destino: Path, prefixo_dos_links: str, vault: str = "") -> None:
         self.config = config
         self.destino = destino
-        self.vault = vault  # nome do vault, para abrir a nota no Obsidian pelo mapa
-        # A pasta que precisa existir antes: o vault (pasta relativa) ou a pasta acima dela
-        # (caminho absoluto). Sem ela, não cria nada: um caminho errado na config não vira um
-        # vault novo no lugar errado.
+        self.vault = vault  # vault name, to open the note in Obsidian from the map
+        # The folder that must exist beforehand: the vault (relative folder) or the folder above it
+        # (absolute path). Without it, nothing is created: a wrong path in the config does not
+        # become a new vault in the wrong place.
         relativa = not Path(config.segundo_cerebro.pasta).expanduser().is_absolute()
         self.base = Path(config.notas.pasta) if relativa else destino.parent
         self.pasta = config.pasta_dados / "segundo_cerebro"
@@ -570,7 +573,7 @@ class Sincronizador:
                 """
             )
 
-    # estado ---------------------------------------------------------------------------------
+    # state ----------------------------------------------------------------------------------
 
     def _exportadas(self) -> dict[str, str]:
         return dict(self._estado.execute("SELECT caminho, hash FROM notas"))
@@ -605,12 +608,12 @@ class Sincronizador:
         notas = self._estado.execute("SELECT COUNT(*) FROM notas").fetchone()[0]
         return {"meta": meta, "conflitos": conflitos, "notas": notas, "destino": self.destino}
 
-    # sincronizar ----------------------------------------------------------------------------
+    # sync -----------------------------------------------------------------------------------
 
     def sincronizar(self, pausar: Callable[[], bool] = lambda: False) -> Resumo:
-        """Uma rodada: lê a memória, escreve o que mudou, apaga o que saiu dela e grava o grafo.
-        `pausar` é consultado entre arquivos: se a Nora voltou a falar, para (e continua na
-        próxima rodada, do ponto em que estiver)."""
+        """One round: reads the memory, writes what changed, deletes what left it and writes the
+        graph. `pausar` is checked between files: if Nora started speaking again, it stops (and
+        continues in the next round, from wherever it is)."""
         with self._trava:
             inicio = time.perf_counter()
             resumo = Resumo()
@@ -641,7 +644,7 @@ class Sincronizador:
                     "SELECT COUNT(*) FROM conflitos"
                 ).fetchone()[0]
             except Exception as erro:
-                # Sem a mensagem: pode ter caminho ou trecho pessoal. Só o tipo do erro.
+                # Without the message: it may contain a path or personal text. Only the error type.
                 resumo.erro = type(erro).__name__
                 log.error("Second Brain: falha na sincronização (%s)", resumo.erro)
             self._meta(
@@ -657,7 +660,7 @@ class Sincronizador:
         novo = _hash(conteudo)
         if arquivo.exists():
             atual = _hash(arquivo.read_text(encoding="utf-8", errors="replace"))
-            if atual == novo:  # já está certo (inclusive depois de uma queda no meio)
+            if atual == novo:  # already right (including after a crash midway)
                 if exportado != novo:
                     self._registrar(caminho, novo)
                 return
@@ -690,8 +693,8 @@ class Sincronizador:
             "versao": VERSAO_DO_CONTRATO,
             "vault": self.vault,
             "prefixo": self.planejador.prefixo,
-            # Caminho completo da pasta: o link "Abrir no Obsidian" usa ?path=, que acha o vault
-            # sozinho (o nome da pasta de [notas] nem sempre é o nome do vault no Obsidian).
+            # Full folder path: the "Abrir no Obsidian" link uses ?path=, which finds the vault
+            # on its own (the [notas] folder name is not always the vault name in Obsidian).
             "raiz": str(self.destino.resolve()),
             "nos": grafo.nos,
             "ligacoes": grafo.ligacoes,
@@ -700,7 +703,7 @@ class Sincronizador:
         texto = json.dumps(dados, ensure_ascii=False, sort_keys=True)
         from nora.mapa_memoria import pagina
 
-        # Compara o arquivo inteiro: uma versão nova da página ou da config também refaz o mapa.
+        # Compares the whole file: a new version of the page or the config also rebuilds the map.
         arquivos = {
             self.pasta / "grafo.json": texto,
             self.pasta / "mapa.html": pagina(
@@ -722,12 +725,12 @@ def _legenda_das_areas(grafo: Grafo) -> dict[str, str]:
     return {area: cor_da_area(area) for area in areas}
 
 
-# --- linha em segundo plano ---------------------------------------------------------------------
+# --- background thread --------------------------------------------------------------------------
 
 
 class Trabalhador(threading.Thread):
-    """Sincroniza quando avisado (a memória mudou) ou a cada `intervalo`, sempre esperando a
-    Nora ficar livre. Nunca é chamado de dentro da resposta: a conversa só chama `avisar()`."""
+    """Syncs when signaled (the memory changed) or every `intervalo`, always waiting for Nora to be
+    free. It is never called from inside the answer: the conversation only calls `avisar()`."""
 
     def __init__(
         self,
@@ -747,19 +750,19 @@ class Trabalhador(threading.Thread):
         self.ultimo: Resumo | None = None
 
     def avisar(self) -> None:
-        """A memória mudou. Não bloqueia: só levanta o sinal."""
+        """The memory changed. Does not block: only raises the signal."""
         self._sinal.set()
 
     def _pausar(self) -> bool:
         return self._parar.is_set() or self.ocupado()
 
     def run(self) -> None:
-        self._sinal.set()  # uma rodada ao abrir: pega o que mudou com a Nora fechada
+        self._sinal.set()  # one round on opening: picks up what changed while Nora was closed
         while not self._parar.is_set():
             self._sinal.wait(self.intervalo)
             self._sinal.clear()
             while self.ocupado() and not self._parar.is_set():
-                self._parar.wait(self.folga)  # respondendo ou falando: espera
+                self._parar.wait(self.folga)  # answering or speaking: wait
             if self._parar.is_set():
                 break
             try:
@@ -769,10 +772,10 @@ class Trabalhador(threading.Thread):
                 continue
             self.rodadas += 1
             if self.ultimo.interrompido:
-                self._sinal.set()  # a Nora voltou a falar no meio: tenta de novo depois
+                self._sinal.set()  # Nora started speaking again midway: try again later
 
     def encerrar(self, espera: float = 15.0) -> None:
-        """Ao fechar a Nora: para a linha e faz uma última rodada (fora da conversa)."""
+        """When Nora closes: stops the thread and does a last round (outside the conversation)."""
         self._parar.set()
         self._sinal.set()
         self.join(espera)
@@ -783,12 +786,12 @@ class Trabalhador(threading.Thread):
         self.sincronizador.fechar()
 
 
-# --- abrir pela config --------------------------------------------------------------------------
+# --- opening from the config --------------------------------------------------------------------
 
 
 def destino(config) -> tuple[Path, str, str] | None:
-    """(pasta do Second Brain, prefixo dos links no vault, nome do vault), ou None se não dá
-    para saber onde (pasta relativa sem [notas] pasta)."""
+    """(Second Brain folder, link prefix in the vault, vault name), or None if there is no way to
+    know where (relative folder without [notas] pasta)."""
     pasta = Path(config.segundo_cerebro.pasta).expanduser()
     vault = config.notas.pasta
     if pasta.is_absolute():
@@ -814,8 +817,8 @@ def abrir_sincronizador(config) -> Sincronizador | None:
 
 
 def iniciar(conversa) -> Trabalhador | None:
-    """Liga o Second Brain na conversa, se estiver ativo e houver memória. Nunca levanta erro:
-    sem Second Brain, a conversa segue igual."""
+    """Plugs the Second Brain into the conversation, if it is on and there is memory. Never raises:
+    without the Second Brain, the conversation goes on the same."""
     config = conversa.config
     if conversa.memoria is None or not config.segundo_cerebro.ativo:
         return None

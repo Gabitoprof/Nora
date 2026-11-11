@@ -383,7 +383,7 @@ def test_cerebro_openai_sem_chave_e_testar_conexao(criar_raiz, monkeypatch):
     assert "pip install" in testar_conexao(config)
 
 
-# --- regressões do relatório de fechamento da v0.3.0 -------------------------------------------
+# --- regressions from the v0.3.0 closing report ------------------------------------------------
 
 
 def test_modo_jogo_sem_nuvem_nao_reacende_o_cerebro_local(criar_raiz):

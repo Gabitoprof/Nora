@@ -426,7 +426,7 @@ def test_registro_de_falha_nunca_levanta(monkeypatch):
     falhas_hud.registrar("qualquer", RuntimeError("x"))
 
 
-# --- fim da reprodução (reproducao_encerrada) ---------------------------------------------------
+# --- end of playback (reproducao_encerrada) -----------------------------------------------------
 
 
 def _eventos(fila, tipo):

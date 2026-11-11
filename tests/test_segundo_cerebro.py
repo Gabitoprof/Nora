@@ -71,7 +71,7 @@ def memorias_de_exemplo(memoria):
     return prova, estudo, exame
 
 
-# --- exportação -------------------------------------------------------------------------------
+# --- export -----------------------------------------------------------------------------------
 
 
 def test_exporta_memorias_com_propriedades_links_e_sem_areas_privadas(ambiente):
@@ -246,7 +246,7 @@ def test_sem_emocoes_quando_desligado(ambiente):
     assert "emocao" not in "".join(p.read_text("utf-8") for p in pasta.rglob("*.md"))
 
 
-# --- grafo, contrato e mapa -------------------------------------------------------------------
+# --- graph, contract and map ------------------------------------------------------------------
 
 
 def test_grafo_segue_o_contrato_versionado(ambiente):
@@ -315,7 +315,7 @@ def test_grafo_grande_e_incremental(ambiente):
     assert len(list((pasta / "Memórias").glob("*.md"))) == memoria.contar() > 1000
 
 
-# --- fora do caminho da fala ------------------------------------------------------------------
+# --- off the speech path ----------------------------------------------------------------------
 
 
 class SincronizadorFalso:
@@ -430,7 +430,7 @@ def test_voz_marca_falando_enquanto_toca(criar_raiz):
     assert visto and all(visto) and conversa.falando is False
 
 
-# --- comandos ---------------------------------------------------------------------------------
+# --- commands ---------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(

@@ -223,7 +223,7 @@ def test_texto_vai_antes_do_audio_voltar_e_toca_conforme_chega(v4):
     assert locutor.tempos.comeco_da_voz > 0
 
 
-# --- alinhamento ------------------------------------------------------------------------------
+# --- alignment --------------------------------------------------------------------------------
 
 
 def test_palavras_do_alinhamento_tiram_tags_e_mantem_a_ordem():
@@ -335,7 +335,7 @@ def test_hud_recebe_as_palavras_alinhadas_ou_a_estimativa(v4, ponte, modo, preci
     assert ponte.estado["emocao"] == "alegre"
 
 
-# --- conexão: keep_alive, ociosidade e barge-in ------------------------------------------------
+# --- connection: keep_alive, idleness and barge-in ---------------------------------------------
 
 
 def test_keep_alive_entre_as_respostas_e_fecha_quando_ociosa():
@@ -394,7 +394,7 @@ def test_barge_in_fecha_a_sessao_e_a_proxima_nao_mistura_audio(v4):
     assert len(tocados[0]) < len(pcm_de("Primeira resposta que vai ser cortada no meio. "))
 
 
-# --- reserva (HTTP flash) ---------------------------------------------------------------------
+# --- fallback (HTTP flash) --------------------------------------------------------------------
 
 
 def test_erro_do_dialogo_cai_no_flash_por_http_e_guarda_o_motivo(v4):
@@ -469,7 +469,7 @@ def test_fala_avulsa_tambem_usa_o_dialogo(v4):
     assert audio.ler_wav(wav)[0] == pcm_de("Teste. ")
 
 
-# --- diagnóstico ------------------------------------------------------------------------------
+# --- diagnostics ------------------------------------------------------------------------------
 
 
 def test_conversa_v4_de_ponta_a_ponta_grava_o_diagnostico(criar_raiz, monkeypatch):
@@ -510,7 +510,7 @@ def test_verificar_mostra_flash_e_continuidade_desativada(criar_raiz):
     assert any("Continuidade ElevenLabs" in linha and "desativada" in linha for linha in linhas)
 
 
-# --- referência dos tempos do alinhamento ---------------------------------------------------------
+# --- alignment time reference ---------------------------------------------------------------------
 
 
 def _turno_com(trechos):
@@ -580,7 +580,7 @@ def test_servidor_falso_com_varios_trechos_de_offsets_conhecidos(v4):
     assert palavras[1]["inicio_ms"] == pytest.approx(primeiro_ms, abs=1)
 
 
-# --- reserva no meio da fala ----------------------------------------------------------------------
+# --- fallback mid-speech --------------------------------------------------------------------------
 
 
 def _flash(pedidos_texto):

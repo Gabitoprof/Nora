@@ -1,4 +1,4 @@
-"""Conversa digitada com a Nora (parte 1 da v0.1.0; a voz entra por cima disto)."""
+"""Typed conversation with Nora (part 1 of v0.1.0; the voice sits on top of this)."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def _resumir(texto: str, limite: int = 300) -> str:
 
 COMANDOS_SAIR = {"sair", "tchau", "/sair", "exit", "quit"}
 
-# "Apaga de vez X": apaga da memória e do histórico, mas só depois de a pessoa confirmar.
+# "Apaga de vez X": deletes from memory and history, but only after the person confirms.
 _APAGAR = r"\b(apaga|apague|apagar|exclui|exclua|excluir|deleta|delete|deletar|remove|remova)\b"
 _DE_VEZ = r"\b(de vez|para sempre|pra sempre|definitivamente|completamente)\b"
 _TUDO_SOBRE = r"\btudo (sobre|de|do|da|dos|das)\b"
@@ -60,8 +60,8 @@ def _sem_acento(texto: str) -> str:
 
 
 def pedido_de_apagar(texto: str) -> str | None:
-    """O assunto de um "apaga de vez ...", "" se não disse qual, ou None se não é esse pedido.
-    "Esquece isso" (sem "de vez") é só esquecer: quem cuida é a curadoria."""
+    """The subject of an "apaga de vez ...", "" if it was not said, or None if it is not that
+    request. "Esquece isso" (without "de vez") is just forgetting: curation handles it."""
     if not re.search(_APAGAR, texto, re.I):
         return None
     if not (re.search(_DE_VEZ, texto, re.I) or re.search(_TUDO_SOBRE, texto, re.I)):
@@ -91,8 +91,8 @@ _NUMEROS = {
 
 
 def pedido_de_melhoria(texto: str) -> tuple[str, int] | None:
-    """("listar", 0) ou ("aprovar" | "recusar" | "adiar", nº). Só com a palavra "melhoria" e,
-    para decidir, um número claro: nada de adivinhar qual proposta."""
+    """("listar", 0) or ("aprovar" | "recusar" | "adiar", no.). Only with the word "melhoria" and,
+    to decide, a clear number: no guessing which proposal."""
     limpo = " ".join(re.sub(r"[^\w\s]", " ", _sem_acento(texto)).split())
     if not re.search(r"\bmelhorias?\b", limpo):
         return None
@@ -140,7 +140,7 @@ AUTOMATICA = object()
 
 
 class Conversa:
-    """Guarda as mensagens da sessão e pede respostas ao cérebro."""
+    """Keeps the session's messages and asks the brain for answers."""
 
     def __init__(
         self,
@@ -159,18 +159,20 @@ class Conversa:
         self.notas = notas
         self.observador = observador
         self.melhorias = melhorias
-        self.ocupada = False  # respondendo agora: a auto-melhoria espera
-        self.falando = False  # a voz ainda está tocando a resposta: o Second Brain espera
-        self.segundo_cerebro = None  # o sincronizador das notas, se ligado ([segundo_cerebro])
-        self._melhoria_pendente: tuple[str, int] | None = None  # (ação, nº) esperando o "sim"
-        self.ultima_interacao = ""  # para a voz anotar os tempos dela na mesma interação
-        self._anterior: tuple[str, str] = ("", "")  # (interação, quem respondeu), p/ reclamações
-        self.trechos_de_notas: list[Trecho] = []  # trechos das notas usados na última resposta
-        self.lembrancas: list[Fato] = []  # fatos usados na última resposta
-        self.trechos: list[Troca] = []  # trechos de conversas antigas usados na última resposta
+        self.ocupada = False  # answering now: self-improvement waits
+        self.falando = False  # the voice is still playing the answer: the Second Brain waits
+        self.segundo_cerebro = None  # the notes synchronizer, if on ([segundo_cerebro])
+        self._melhoria_pendente: tuple[str, int] | None = (
+            None  # (action, no.) waiting for the "sim"
+        )
+        self.ultima_interacao = ""  # so the voice records its times in the same interaction
+        self._anterior: tuple[str, str] = ("", "")  # (interaction, who answered), for complaints
+        self.trechos_de_notas: list[Trecho] = []  # note passages used in the last answer
+        self.lembrancas: list[Fato] = []  # facts used in the last answer
+        self.trechos: list[Troca] = []  # old conversation passages used in the last answer
         self.avisos: list[str] = []
         self._curadorias: list[threading.Thread] = []
-        self._apagar_pendente: tuple[str, set[str]] | None = None  # esperando o "sim"
+        self._apagar_pendente: tuple[str, set[str]] | None = None  # waiting for the "sim"
         self.limpar()
 
     def limpar(self) -> None:
@@ -181,8 +183,8 @@ class Conversa:
             self.avisos.append(aviso)
 
     def _agenda(self, texto: str, hoje: date) -> list[str]:
-        """Linhas da agenda para a nota: os próximos dias, o período citado na pergunta e,
-        se ela fala de aniversário, os aniversários anotados."""
+        """Agenda lines for the note: the next days, the period mentioned in the question and, if it
+        talks about a birthday, the recorded birthdays."""
         dias = self.config.memoria.agenda_dias
         vistos: set[tuple[date, int]] = set()
 
@@ -219,7 +221,7 @@ class Conversa:
         return partes
 
     def _preferencias(self) -> list[dict[str, str]]:
-        """O que a pessoa pediu sobre o jeito de falar, em toda resposta."""
+        """What the person asked about the way of speaking, in every answer."""
         try:
             preferencias = self.memoria.preferencias()
         except Exception:
@@ -232,8 +234,8 @@ class Conversa:
         return [{"role": "system", "content": "\n".join(linhas)}]
 
     def _lembrar(self, texto: str) -> list[dict[str, str]]:
-        """Preferências, fatos e trechos de conversas antigas parecidos com a pergunta, como
-        notas para o modelo (que não ficam guardadas na conversa)."""
+        """Preferences, facts and old conversation passages similar to the question, as notes for
+        the model (which are not kept in the conversation)."""
         self.lembrancas, self.trechos, self.trechos_de_notas = [], [], []
         notas = self._notas(texto) + self._contas_de_data(texto)
         if self.memoria is None:
@@ -241,7 +243,7 @@ class Conversa:
         return self._preferencias() + self._lembrancas(texto) + notas
 
     def _contas_de_data(self, texto: str) -> list[dict[str, str]]:
-        """As contas de data da pergunta, feitas pelo código: o modelo erra "daqui a 23 dias"."""
+        """The question's date math, done by the code: the model gets "daqui a 23 dias" wrong."""
         anteriores = [m["content"] for m in self.mensagens[:-1] if m["role"] == "user"]
         try:
             linhas = contas_de_data(texto, date.today(), anteriores)
@@ -256,7 +258,7 @@ class Conversa:
         return [{"role": "system", "content": "\n".join([cabecalho, *linhas])}]
 
     def _notas(self, texto: str) -> list[dict[str, str]]:
-        """Os trechos das notas do Obsidian parecidos com a pergunta."""
+        """The Obsidian note passages similar to the question."""
         if self.notas is None:
             return []
         config = self.config.notas
@@ -264,7 +266,7 @@ class Conversa:
             self.trechos_de_notas = self.notas.buscar(
                 texto, config.trechos_por_pergunta, config.similaridade_minima
             )
-        except Exception as erro:  # sem as notas a conversa continua
+        except Exception as erro:  # without the notes the conversation goes on
             self._avisar(f"Notas indisponíveis ({erro}).")
             return []
         if not self.trechos_de_notas:
@@ -291,7 +293,7 @@ class Conversa:
                     memoria.similaridade_minima,
                     exceto_sessao=self.historico.sessao,
                 )
-        except Exception as erro:  # sem memória a conversa continua
+        except Exception as erro:  # without memory the conversation goes on
             modelo = memoria.modelo_embeddings
             self._avisar(f"Memória indisponível ({erro}). Rode: ollama pull {modelo}")
         try:
@@ -322,8 +324,8 @@ class Conversa:
         return [{"role": "system", "content": "\n".join(partes)}]
 
     def _memorizar(self, pergunta: str, resposta: str, anterior: str = "", tom: str = "") -> None:
-        """Guarda a troca inteira e anota os fatos novos (em segundo plano). Ao terminar, avisa
-        o Second Brain (sem esperar): as notas do Obsidian são escritas depois, por ele."""
+        """Stores the whole exchange and notes the new facts (in the background). When done, signals
+        the Second Brain (without waiting): the Obsidian notes are written later, by it."""
         try:
             agora = datetime.now()
             self.memoria.guardar_troca(
@@ -341,7 +343,9 @@ class Conversa:
                 _, nova = self.memoria.preferir(preferencia)
                 if nova:
                     self._avisar(f"vou lembrar de: {preferencia}")
-            for texto in curadoria.esquecer:  # antes dos fatos novos: numa correção, sai o errado
+            for texto in (
+                curadoria.esquecer
+            ):  # before the new facts: in a correction, the wrong one goes out
                 apagados = self.memoria.esquecer_parecido(texto)
                 for apagado in apagados:
                     self._avisar(f"esqueci: {apagado.texto}")
@@ -368,8 +372,8 @@ class Conversa:
             self.avisar_segundo_cerebro()
 
     def avisar_segundo_cerebro(self) -> None:
-        """A memória mudou: o Second Brain sincroniza quando a Nora estiver livre. Só levanta um
-        sinal; nunca escreve notas nem espera nada aqui."""
+        """The memory changed: the Second Brain syncs when Nora is free. Only raises a signal;
+        never writes notes or waits for anything here."""
         if self.segundo_cerebro is not None:
             self.segundo_cerebro.avisar()
 
@@ -387,37 +391,38 @@ class Conversa:
             )
 
     def avisos_do_cerebro(self) -> list[str]:
-        """Avisos do roteador (quem respondeu na falta de quem) ainda não mostrados."""
+        """Router notices (who answered in whose absence) not shown yet."""
         pegar = getattr(self.cerebro, "avisos_pendentes", None)
         return pegar() if pegar else []
 
     @property
     def origem(self) -> str:
-        """Quem respondeu por último: o cérebro local ou um modelo do Claude."""
+        """Who answered last: the local brain or a Claude model."""
         return getattr(self.cerebro, "origem", "") or self.config.modelo_local.modelo
 
     def avisos_pendentes(self) -> list[str]:
-        """Avisos da memória ainda não mostrados (e os esquece)."""
+        """Memory notices not shown yet (and forgets them)."""
         avisos, self.avisos = self.avisos, []
         return avisos
 
     def encerrar(self) -> list[str]:
-        """Espera a memória terminar de anotar a conversa; devolve os avisos que sobraram."""
+        """Waits for memory to finish noting the conversation; returns the remaining notices."""
         if any(linha.is_alive() for linha in self._curadorias):
             self.esperar_memoria()
-        if self.segundo_cerebro is not None:  # última sincronização, já fora da conversa
+        if self.segundo_cerebro is not None:  # last sync, already outside the conversation
             self.segundo_cerebro.encerrar()
             self.segundo_cerebro = None
         return self.avisos_pendentes()
 
     def esperar_memoria(self, timeout: float = 120.0) -> None:
-        """Espera as curadorias em andamento (ao sair, para não perder fatos)."""
+        """Waits for the curations in progress (on exit, so no facts are lost)."""
         for linha in self._curadorias:
             linha.join(timeout)
         self._curadorias = [linha for linha in self._curadorias if linha.is_alive()]
 
     def _responder_comando(self, texto: str, resposta: str) -> str:
-        """Guarda na conversa e no histórico uma resposta que não passou pelo cérebro."""
+        """Stores in the conversation and the history an answer that did not go through the
+        brain."""
         self.mensagens += [
             {"role": "user", "content": texto},
             {"role": "assistant", "content": resposta},
@@ -427,8 +432,8 @@ class Conversa:
         return resposta
 
     def _apagar_pela_conversa(self, texto: str) -> str | None:
-        """ "Apaga de vez X": mostra o que sairia e espera o "sim". A resposta, ou None se a fala
-        não tem nada a ver com isso."""
+        """ "Apaga de vez X": shows what would go and waits for the "sim". The answer, or None if
+        the utterance has nothing to do with it."""
         pendente, self._apagar_pendente = self._apagar_pendente, None
         if pendente:
             resposta = confirmacao(texto)
@@ -469,14 +474,14 @@ class Conversa:
 
     def _apagar_confirmado(self, texto: str, assunto: str, falas_do_pedido: set[str]) -> str:
         feito = self.memoria.apagar_de_vez(assunto, confirmar=True)
-        # o próprio pedido também cita o assunto: sai do histórico junto
+        # the request itself also mentions the subject: it leaves the history too
         apagar_do_historico(self.config.pasta_dados, feito.textos | falas_do_pedido)
         quanto = _contagem(len(feito.fatos), len(feito.trocas)) or "o que restava"
-        self.avisar_segundo_cerebro()  # a nota sai do vault na próxima rodada
+        self.avisar_segundo_cerebro()  # the note leaves the vault in the next round
         return self._responder_comando(texto, f"Pronto, apaguei de vez {quanto}.")
 
     def perguntar(self, texto: str):
-        """Mantém a lógica da conversa única e expõe apenas sua apresentação opcional."""
+        """Keeps the single conversation logic and exposes only its optional presentation."""
         from nora.emocao import emocoes_em
         from nora.hud import atualizar_notas, emitir
 
@@ -519,7 +524,7 @@ class Conversa:
                 emitir("modo_jogo" if getattr(self.cerebro, "jogo", False) else "ociosa")
 
     def _perguntar(self, texto: str):
-        """Devolve a resposta aos pedaços e guarda pergunta e resposta no histórico."""
+        """Returns the answer in chunks and stores question and answer in the history."""
         comando = self._apagar_pela_conversa(texto)
         if comando is not None:
             yield comando
@@ -532,7 +537,7 @@ class Conversa:
         if comando is not None:
             yield comando
             return
-        self.ocupada = True  # respondendo ou retomando: a auto-melhoria espera
+        self.ocupada = True  # answering or resuming: self-improvement waits
         try:
             if pede_retomada(texto):
                 yield from self._retomar(texto)
@@ -542,8 +547,8 @@ class Conversa:
             self.ocupada = False
 
     def _mapa_pela_conversa(self, texto: str) -> str | None:
-        """ "Mostre seu segundo cérebro", "abra o mapa da memória": abre o mapa já pronto (não
-        recalcula nada) no navegador. A resposta, ou None se a fala não é esse pedido."""
+        """ "Mostre seu segundo cérebro", "abra o mapa da memória": opens the ready-made map (it
+        recalculates nothing) in the browser. The answer, or None if it is not that request."""
         if not pede_o_mapa(texto):
             return None
         from nora.melhorias import abrir_arquivo
@@ -567,7 +572,7 @@ class Conversa:
         return self._responder_comando(texto, resposta)
 
     def _melhorias_pela_conversa(self, texto: str) -> str | None:
-        """ "Quais melhorias você sugeriu?" e "aprova/recusa/adia a melhoria 3" (com "sim")."""
+        """ "Quais melhorias você sugeriu?" and "aprova/recusa/adia a melhoria 3" (with "sim")."""
         if self.melhorias is None:
             return None
         pendente, self._melhoria_pendente = self._melhoria_pendente, None
@@ -621,7 +626,7 @@ class Conversa:
         )
 
     def _retomar(self, texto: str):
-        """Responde de novo, inteira, a última pergunta que ficou pela metade."""
+        """Answers again, in full, the last question left halfway."""
         try:
             pendentes = self.memoria.pendentes() if self.memoria is not None else []
         except Exception:
@@ -633,12 +638,12 @@ class Conversa:
             return
         pendente = pendentes[0]
         tentativas = self.memoria.tentar_pendencia(pendente.id)
-        # uma resposta nova e identificada, não um complemento do pedaço que já saiu
+        # a new, labeled answer, not a continuation of the part that already came out
         yield f'Retomando a pergunta "{_resumir(pendente.pergunta, 80)}": '
         yield from self._responder(pendente.pergunta, retomada=(pendente, tentativas))
 
     def _pendencia(self, interacao, pergunta, parcial, motivo, retomada) -> None:
-        """Guarda a resposta que não terminou, para retomar depois (nunca como fato)."""
+        """Stores the answer that did not finish, to resume later (never as a fact)."""
         if self.memoria is None:
             return
         try:
@@ -660,8 +665,8 @@ class Conversa:
             self._avisar(f"Não consegui guardar a resposta pela metade ({erro}).")
 
     def _oferecer_retomada_do_jogo(self) -> None:
-        """Saiu do modo jogo: se alguma pergunta ficou sem resposta lá, oferece retomar (só
-        oferece; nada roda sozinho)."""
+        """Left game mode: if some question was left unanswered there, offers to resume (it only
+        offers; nothing runs on its own)."""
         if self.memoria is None:
             return
         try:
@@ -675,8 +680,8 @@ class Conversa:
             )
 
     def _observar(self, interacao: str, texto: str, situacao: str) -> None:
-        """Anota para a auto-melhoria como foi a resposta: cada cérebro tentado, comandos e
-        reclamações (só categorias e tempos; o texto da conversa não vai para lá)."""
+        """Records for self-improvement how the answer went: each brain tried, commands and
+        complaints (only categories and times; the conversation text does not go there)."""
         self.ultima_interacao = interacao
         anterior, quem_antes = self._anterior
         self._anterior = (interacao, self.origem)
@@ -685,7 +690,7 @@ class Conversa:
         registrar = self.observador.registrar
         jogo = bool(getattr(self.cerebro, "jogo", False))
         tentativas = getattr(self.cerebro, "tentativas", None)
-        if tentativas is None:  # um cérebro só (sem roteador)
+        if tentativas is None:  # a single brain (no router)
             medidas = self.cerebro.medidas
             tentativas = [
                 {
@@ -710,7 +715,7 @@ class Conversa:
             registrar("llm", tipo, self.origem, interacao, status=situacao, modo_jogo=jogo)
         if situacao == "comando":
             registrar("roteador", "comando", interacao=interacao, modo_jogo=jogo)
-        if anterior and insatisfeito(texto):  # "tá errado", "não entendi": sobre a anterior
+        if anterior and insatisfeito(texto):  # "tá errado", "não entendi": about the previous one
             registrar(
                 "llm",
                 "feedback_negativo",
@@ -720,7 +725,9 @@ class Conversa:
                 gravidade="aviso",
                 modo_jogo=jogo,
             )
-            if quem_antes.startswith("local"):  # o local respondeu algo que precisava de mais
+            if quem_antes.startswith(
+                "local"
+            ):  # the local model answered something that needed more
                 registrar(
                     "roteador",
                     "rota_suspeita",
@@ -732,7 +739,7 @@ class Conversa:
                 )
 
     def _responder(self, texto: str, retomada: tuple[Pendente, int] | None = None):
-        # a resposta anterior (com as etiquetas de emoção) mostra a que tom a pessoa reage agora
+        # the previous answer (with emotion tags) shows which tone the person is reacting to now
         anterior = next(
             (m["content"] for m in reversed(self.mensagens) if m["role"] == "assistant"), ""
         )
@@ -743,7 +750,7 @@ class Conversa:
             "usuario", texto, **({"retomada": retomada[0].id} if retomada else {})
         )
         if self.memoria is not None and not retomada:
-            try:  # se o programa cair no meio, ela vira pendência na próxima vez
+            try:  # if the program crashes midway, it becomes a pending item next time
                 self.memoria.abrir_resposta(interacao, self.historico.sessao, texto)
             except Exception:
                 pass
@@ -760,9 +767,9 @@ class Conversa:
             self._observar(interacao, texto, "sem_resposta")
             raise
         except (GeneratorExit, KeyboardInterrupt):
-            # Ctrl+C: chega aqui como KeyboardInterrupt se ela estava esperando o cérebro, ou
-            # como GeneratorExit se estava falando (quem lê o gerador o fecha). Depois disto o
-            # gerador acabou, então a pendência é gravada uma vez só.
+            # Ctrl+C: arrives here as KeyboardInterrupt if she was waiting for the brain, or
+            # as GeneratorExit if she was speaking (whoever reads the generator closes it). After
+            # this the generator is done, so the pending item is stored only once.
             self._observar(interacao, texto, "cancelada")
             parcial = sem_emocoes("".join(partes).strip())
             self.historico.registrar(
@@ -770,14 +777,15 @@ class Conversa:
             )
             self._pendencia(interacao, texto, parcial, "cancelada", retomada)
             raise
-        # A resposta crua tem as etiquetas de emoção ({alegre}...), que só a voz usa: a conversa
-        # guarda a crua (o modelo segue o próprio jeito), o histórico e a memória, a limpa.
+        # The raw answer has the emotion tags ({alegre}...), which only the voice uses: the
+        # conversation keeps the raw one (the model follows its own style), history and memory the
+        # clean one.
         crua = "".join(partes).strip()
         resposta = sem_emocoes(crua)
         self.mensagens.append({"role": "assistant", "content": crua})
         medidas = self.cerebro.medidas
-        # interrompida (parou no meio) ou sem resposta: fica marcada no histórico e não vai para
-        # a memória, para uma resposta pela metade não virar fato
+        # interrupted (stopped midway) or no answer: it is marked in the history and does not go
+        # to memory, so a half-finished answer does not become a fact
         situacao = getattr(self.cerebro, "situacao", "completa")
         self.historico.registrar(
             "assistente",
@@ -819,7 +827,7 @@ _PEDE_MAPA = re.compile(
 
 
 def pede_o_mapa(texto: str) -> bool:
-    """Se a fala pede para ver o Second Brain (e não pergunta o que ele é)."""
+    """Whether the utterance asks to see the Second Brain (and does not ask what it is)."""
     sem_acento = unicodedata.normalize("NFKD", texto.lower())
     limpo = " ".join("".join(c for c in sem_acento if not unicodedata.combining(c)).split())
     return bool(_PEDE_MAPA.search(limpo))
@@ -832,8 +840,8 @@ def nova_conversa(
     notas=AUTOMATICA,
     observador=AUTOMATICA,
 ):
-    """Conversa com o cérebro local, o histórico e (se ligadas na config) a memória e as notas.
-    As notas novas ou alteradas são lidas em segundo plano, sem atrasar o começo."""
+    """Conversation with the local brain, the history and (if on in the config) the memory and the
+    notes. New or changed notes are read in the background, without delaying the start."""
     if memoria is AUTOMATICA:
         memoria = abrir_memoria(config)
     if notas is AUTOMATICA:
@@ -851,7 +859,7 @@ def nova_conversa(
         melhorias,
     )
     if memoria is not None:
-        try:  # respostas que caíram com o programa da última vez viram pendências
+        try:  # answers lost when the program crashed last time become pending items
             memoria.recuperar_abertas(exceto_sessao=conversa.historico.sessao)
             quantas = len(memoria.pendentes())
             if quantas:
@@ -896,7 +904,7 @@ def conversar(
     except CerebroIndisponivel as erro:
         escrever(f"\n[erro] {erro}")
     escrever(f"Conversa com {nome}. Digite 'sair' para encerrar e '/limpar' para começar do zero.")
-    for aviso in conversa.avisos_pendentes():  # ao abrir: respostas pela metade, por exemplo
+    for aviso in conversa.avisos_pendentes():  # on opening: half-finished answers, for example
         escrever(f"[memória] {aviso}")
     agendador = iniciar_melhorias(conversa, escrever)
     while True:
@@ -917,7 +925,9 @@ def conversar(
             continue
         from nora.troca_voz import pedido_de_voz
 
-        if pedido_de_voz(texto):  # sem isso, o cérebro diria que trocou sem trocar nada
+        if pedido_de_voz(
+            texto
+        ):  # without this, the brain would say it switched without switching anything
             escrever(
                 f"{nome}: Aqui eu só escrevo, sem voz. Para trocar a voz, converse comigo por "
                 "voz (nora ouvir ou nora conversar --voz) e peça lá."
@@ -925,7 +935,7 @@ def conversar(
             continue
 
         escrever(f"{nome}: ", fim="")
-        tela = FiltroDeTela()  # as etiquetas de emoção ({alegre}...) não aparecem
+        tela = FiltroDeTela()  # the emotion tags ({alegre}...) do not show
         try:
             for pedaco in conversa.perguntar(texto):
                 escrever(tela.alimentar(pedaco), fim="")

@@ -1,10 +1,10 @@
-"""Cores das emoções da Nora: uma fonte só, `src/nora/paleta.json`, dentro do pacote (vai junto
-no wheel), lida pela HUD (TypeScript, importa o mesmo arquivo) e por qualquer parte em Python (ex.:
-o mapa do Second Brain). Não copie as cores para outro lugar.
+"""Colors of Nora's emotions: a single source, `src/nora/paleta.json`, inside the package (it ships
+in the wheel), read by the HUD (TypeScript, imports the same file) and by any Python part (e.g.
+the Second Brain map). Do not copy the colors anywhere else.
 
-`cores` tem os grupos (neutra, alegria, carinho, calma, seriedade, tristeza, curiosidade);
-`aliases` liga cada nome de emoção da Nora (as etiquetas de emocao.py e os nomes antigos da
-HUD) a um grupo; `dinamica` é a intensidade do movimento de cada grupo na HUD.
+`cores` has the groups (neutra, alegria, carinho, calma, seriedade, tristeza, curiosidade);
+`aliases` maps each of Nora's emotion names (the emocao.py tags and the HUD's old names) to a
+group; `dinamica` is the movement intensity of each group in the HUD.
 """
 
 from __future__ import annotations
@@ -28,16 +28,16 @@ def _chave(nome: str) -> str:
 
 
 def grupo(emocao: str) -> str:
-    """O grupo de cor de uma emoção ("curiosa" → "curiosidade"); desconhecida → "neutra"."""
+    """The color group of an emotion ("curiosa" → "curiosidade"); unknown → "neutra"."""
     aliases = paleta()["aliases"]
     return aliases.get(emocao.strip().lower()) or aliases.get(_chave(emocao)) or "neutra"
 
 
 def cor(emocao: str) -> str:
-    """A cor (#RRGGBB) de uma emoção, igual à da HUD."""
+    """The color (#RRGGBB) of an emotion, the same as the HUD's."""
     return paleta()["cores"][grupo(emocao)]
 
 
 def cores_por_emocao() -> dict[str, str]:
-    """Todos os nomes conhecidos → cor (a mesma tabela `cores` de hud/src/state.ts)."""
+    """All known names → color (the same `cores` table as hud/src/state.ts)."""
     return {nome: paleta()["cores"][g] for nome, g in paleta()["aliases"].items()}

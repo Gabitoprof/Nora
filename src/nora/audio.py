@@ -1,4 +1,4 @@
-"""Áudio: WAV em memória (biblioteca padrão) e microfone/alto-falante (sounddevice, opcional)."""
+"""Audio: in-memory WAV (standard library) and microphone/speaker (sounddevice, optional)."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ import wave
 from array import array
 from collections.abc import Callable, Iterable, Iterator
 
-TAXA = 16_000  # Hz, o que o Whisper espera
+TAXA = 16_000  # Hz, what Whisper expects
 
 
 def para_wav(amostras: bytes, taxa: int = TAXA, canais: int = 1) -> bytes:
-    """Empacota áudio PCM 16 bits em um arquivo WAV na memória."""
+    """Packs 16-bit PCM audio into an in-memory WAV file."""
     saida = io.BytesIO()
     with wave.open(saida, "wb") as arquivo:
         arquivo.setnchannels(canais)
@@ -24,7 +24,7 @@ def para_wav(amostras: bytes, taxa: int = TAXA, canais: int = 1) -> bytes:
 
 
 def ler_wav(dados: bytes) -> tuple[bytes, int, int]:
-    """Devolve (amostras PCM 16 bits, taxa, canais) de um WAV."""
+    """Returns (16-bit PCM samples, rate, channels) from a WAV."""
     with wave.open(io.BytesIO(dados), "rb") as arquivo:
         if arquivo.getsampwidth() != 2:
             raise ValueError("Só WAV de 16 bits é suportado.")
@@ -36,8 +36,8 @@ def ler_wav(dados: bytes) -> tuple[bytes, int, int]:
 
 
 def como_wav_16bits(dados: bytes) -> bytes:
-    """Qualquer áudio (WAV de 16 ou 32 bits, FLAC, MP3...) como WAV PCM 16 bits mono, que é o
-    que a Nora toca. WAV de 16 bits passa direto; o resto precisa do pacote soundfile."""
+    """Any audio (16- or 32-bit WAV, FLAC, MP3...) as 16-bit mono PCM WAV, which is what Nora
+    plays. 16-bit WAV passes straight through; the rest needs the soundfile package."""
     try:
         amostras, taxa, canais = ler_wav(dados)
         return para_wav(_para_mono(amostras, canais), taxa)
@@ -62,7 +62,7 @@ def duracao_wav(dados: bytes) -> float:
 
 
 def reamostrar(amostras: bytes, de: int, para: int = TAXA) -> bytes:
-    """Converte áudio PCM 16 bits mono de uma taxa para outra (interpolação linear)."""
+    """Converts 16-bit mono PCM audio from one rate to another (linear interpolation)."""
     if de == para or not amostras:
         return amostras
     origem = array("h")
@@ -81,8 +81,9 @@ def reamostrar(amostras: bytes, de: int, para: int = TAXA) -> bytes:
 
 
 def reamostrar_qualidade(amostras: bytes, de: int, para: int) -> bytes:
-    """Como reamostrar, mas com corte de frequências (pela FFT, com numpy): não abafa nem cria
-    chiado ao baixar a taxa. Para preparar áudio de treino; sem numpy, usa a versão simples."""
+    """Like reamostrar, but with a frequency cutoff (through the FFT, with numpy): it neither
+    muffles nor adds hiss when lowering the rate. For preparing training audio; without numpy, uses
+    the simple version."""
     if de == para or not amostras:
         return amostras
     try:
@@ -90,7 +91,7 @@ def reamostrar_qualidade(amostras: bytes, de: int, para: int) -> bytes:
     except ImportError:
         return reamostrar(amostras, de, para)
     sinal = numpy.frombuffer(amostras, dtype="<i2").astype(numpy.float64)
-    folga = de // 10  # silêncio nas pontas: a FFT trata o sinal como cíclico
+    folga = de // 10  # silence at the edges: the FFT treats the signal as cyclic
     sinal = numpy.pad(sinal, folga)
     total = max(1, round(len(sinal) * para / de))
     espectro = numpy.fft.rfft(sinal)
@@ -104,7 +105,7 @@ def reamostrar_qualidade(amostras: bytes, de: int, para: int) -> bytes:
 
 
 def dispositivo(valor: str) -> int | str | None:
-    """Converte a escolha da config: vazio = padrão do sistema, número = índice, texto = nome."""
+    """Converts the config choice: empty = system default, number = index, text = name."""
     valor = valor.strip()
     if not valor:
         return None
@@ -133,8 +134,8 @@ def _sounddevice():
 
 
 def _audio_nao_carregou(erro: BaseException) -> str:
-    """O pacote está lá, mas não carrega: mostra a causa real. O caso comum é o .venv recriado
-    com outra versão do Python, com os pacotes compilados para a versão antiga."""
+    """The package is there, but does not load: shows the real cause. The common case is a .venv
+    recreated with another Python version, with the packages compiled for the old one."""
     return (
         f"A parte de áudio está instalada, mas não carregou: {erro}. "
         "Se o .venv foi recriado com outra versão do Python, reinstale nele: "
@@ -146,10 +147,11 @@ _PREFERENCIA_DE_API = ("Windows WASAPI", "Windows DirectSound", "Windows WDM-KS"
 
 
 def _candidatos_de_microfone(sd, microfone: int | str | None) -> list[int | str | None]:
-    """O microfone pedido e, depois, o mesmo microfone pelas outras APIs de áudio do Windows.
+    """The requested microphone and, after it, the same microphone through Windows' other audio
+    APIs.
 
-    No Windows cada microfone aparece uma vez por API (MME, DirectSound, WASAPI, WDM-KS) e às
-    vezes só algumas funcionam; o MME ainda corta o nome em 31 caracteres.
+    On Windows each microphone shows up once per API (MME, DirectSound, WASAPI, WDM-KS) and
+    sometimes only some of them work; MME also cuts the name at 31 characters.
     """
     candidatos: list[int | str | None] = [microfone]
     try:
@@ -159,7 +161,7 @@ def _candidatos_de_microfone(sd, microfone: int | str | None) -> list[int | str 
     except Exception:
         return candidatos
     base = nome[:31]
-    # O WDM-KS escreve o nome de outro jeito, mas mantém o modelo entre parênteses no fim:
+    # WDM-KS writes the name differently, but keeps the model in parentheses at the end:
     # "Headset (@System32\\drivers\\bthhfenum.sys,...;(HAYLOU S40))".
     modelo = re.search(r"\(([^()]+)\)\s*$", nome)
     marca = f"({modelo.group(1)})" if modelo else None
@@ -183,14 +185,14 @@ TAXAS_ALTERNATIVAS = (48_000, 44_100, 16_000, 32_000, 22_050, 8_000)
 
 
 def _abrir_microfone(sd, microfone: int | str | None, callback):
-    """Abre o microfone; se falhar, tenta outras taxas, estéreo e o mesmo microfone pelas outras
-    APIs de áudio do Windows. Devolve (fluxo já gravando, taxa, canais).
+    """Opens the microphone; if it fails, tries other rates, stereo and the same microphone through
+    Windows' other audio APIs. Returns (stream already recording, rate, channels).
 
-    O fluxo é iniciado aqui porque alguns aparelhos abrem sem erro e só falham ao começar a
-    gravar (ex.: fone Bluetooth com o modo de chamada desligado: "dispositivo não conectado").
+    The stream is started here because some devices open without error and only fail when they
+    start recording (e.g. a Bluetooth headset with call mode off: "dispositivo não conectado").
 
-    Fones Bluetooth são o caso típico: o Windows anuncia 44,1 kHz, mas o microfone deles só
-    aceita 16 ou 8 kHz quando está em uso.
+    Bluetooth headsets are the typical case: Windows announces 44.1 kHz, but their microphone
+    only accepts 16 or 8 kHz while in use.
     """
     erros: list[str] = []
     for candidato in _candidatos_de_microfone(sd, microfone):
@@ -203,7 +205,8 @@ def _abrir_microfone(sd, microfone: int | str | None, callback):
         taxas = dict.fromkeys((int(info["default_samplerate"]), *TAXAS_ALTERNATIVAS))
         extras = {}
         if "WASAPI" in api and hasattr(sd, "WasapiSettings"):
-            # Deixa o Windows converter taxa e canais, em vez de exigir o formato exato do aparelho.
+            # Lets Windows convert rate and channels, instead of requiring the device's exact
+            # format.
             extras["extra_settings"] = sd.WasapiSettings(auto_convert=True)
         canais_possiveis = dict.fromkeys((1, min(2, int(info["max_input_channels"]) or 1)))
         ultimo = ""
@@ -246,10 +249,10 @@ def _para_mono(amostras: bytes, canais: int) -> bytes:
 
 
 def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes:
-    """Grava do microfone até a pessoa apertar Enter; devolve um WAV de 16 kHz mono.
+    """Records from the microphone until the person presses Enter; returns a 16 kHz mono WAV.
 
-    Grava na taxa que o microfone aceita (muitos só aceitam 44,1 ou 48 kHz) e converte
-    para 16 kHz, que é o que o Whisper espera.
+    Records at the rate the microphone accepts (many only accept 44.1 or 48 kHz) and converts
+    to 16 kHz, which is what Whisper expects.
     """
     sd = _sounddevice()
     blocos: list[bytes] = []
@@ -267,7 +270,7 @@ def gravar_ate_enter(entrada=input, microfone: int | str | None = None) -> bytes
 
 
 class Microfone:
-    """Microfone sempre aberto: entrega blocos de PCM 16 kHz mono, conforme chegam."""
+    """Always-open microphone: delivers 16 kHz mono PCM blocks as they arrive."""
 
     def __init__(self, microfone: int | str | None = None) -> None:
         import queue
@@ -279,15 +282,15 @@ class Microfone:
         )
 
     def __enter__(self) -> Microfone:
-        return self  # o fluxo já começa a gravar ao abrir
+        return self  # the stream starts recording on opening
 
     def __exit__(self, *args) -> None:
         self._fluxo.stop()
         self._fluxo.close()
 
     def pausar(self) -> None:
-        """Para de captar enquanto a Nora fala. Em fone Bluetooth isso é obrigatório: com o
-        microfone aberto o fone fica no modo chamada e a saída de som normal fica muda."""
+        """Stops capturing while Nora speaks. On a Bluetooth headset this is mandatory: with the
+        microphone open the headset stays in call mode and the normal sound output goes mute."""
         if self._fluxo.active:
             self._fluxo.stop()
 
@@ -296,7 +299,7 @@ class Microfone:
             self._fluxo.start()
 
     def limpar(self) -> None:
-        """Descarta o que foi captado até agora (ex.: a própria voz da Nora)."""
+        """Discards what was captured so far (e.g. Nora's own voice)."""
         while not self._fila.empty():
             self._fila.get_nowait()
 
@@ -305,10 +308,10 @@ class Microfone:
 
         while True:
             try:
-                # Espera em pedaços curtos: no Windows, uma espera sem prazo ignora o Ctrl+C.
+                # Waits in short pieces: on Windows, a wait without a timeout ignores Ctrl+C.
                 bloco = self._fila.get(timeout=0.2)
             except queue.Empty:
-                yield b""  # sinal de vida: quem consome pode olhar outras coisas (o teclado)
+                yield b""  # sign of life: the consumer can check other things (the keyboard)
                 continue
             convertido = reamostrar(_para_mono(bloco, self._canais), self._taxa)
             from nora.hud import amostrar_pcm
@@ -318,11 +321,11 @@ class Microfone:
 
 
 def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
-    """Toca PCM 16 bits entregando o áudio aos pedaços (callback) e espera terminar.
+    """Plays 16-bit PCM by handing the audio over in pieces (callback) and waits for it to finish.
 
-    O modo "callback" funciona em todas as APIs de áudio do Windows; o modo bloqueante
-    (escrever tudo de uma vez) não existe no WDM-KS, a única API que mostra a saída do
-    modo chamada de fones Bluetooth."""
+    The "callback" mode works on all Windows audio APIs; the blocking mode (writing everything
+    at once) does not exist on WDM-KS, the only API that shows the call-mode output of
+    Bluetooth headsets."""
     import threading
 
     terminou = threading.Event()
@@ -338,7 +341,7 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
         from nora.hud import reproducao
 
         if not iniciou:
-            reproducao(True)  # primeiro callback real da saída, não início da síntese
+            reproducao(True)  # first real output callback, not the start of synthesis
             iniciou = True
         antes = posicao
         pedaco = amostras[posicao : posicao + quadros * bytes_por_quadro]
@@ -346,7 +349,7 @@ def _tocar(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
         if observador is not None:
             try:
                 observador.entregar(antes // bytes_por_quadro, posicao // bytes_por_quadro, tempo)
-            except Exception as erro:  # a HUD nunca para a fala; a falha é contada
+            except Exception as erro:  # the HUD never stops speech; the failure is counted
                 from nora.falhas_hud import registrar
 
                 registrar("audio.entregar", erro)
@@ -378,14 +381,14 @@ _avisos_de_saida: list[str] = []
 
 
 def avisos_de_saida() -> list[str]:
-    """Avisos da saída de som ainda não mostrados (e os esquece)."""
+    """Sound output notices not shown yet (and forgets them)."""
     avisos = list(dict.fromkeys(_avisos_de_saida))
     _avisos_de_saida.clear()
     return avisos
 
 
 def _tocar_em(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None:
-    """Toca numa saída; se ela recusar a taxa do áudio, converte para a taxa dela."""
+    """Plays on an output; if it refuses the audio's rate, converts to its rate."""
     try:
         _tocar(sd, amostras, taxa, canais, alto_falante)
         return
@@ -397,8 +400,8 @@ def _tocar_em(sd, amostras: bytes, taxa: int, canais: int, alto_falante) -> None
 
 
 def com_silencio_inicial(dados: bytes, ms: int) -> bytes:
-    """Põe um pouco de silêncio antes do som. Fones Bluetooth e algumas placas de som "acordam"
-    depois que o som começou e engolem o início ("Oi" sai cortado)."""
+    """Adds a little silence before the sound. Bluetooth headsets and some sound cards "wake up"
+    after the sound has started and swallow the beginning ("Oi" comes out cut)."""
     if ms <= 0:
         return dados
     amostras, taxa, canais = ler_wav(dados)
@@ -407,8 +410,8 @@ def com_silencio_inicial(dados: bytes, ms: int) -> bytes:
 
 
 class AudioEmPartes:
-    """Áudio PCM 16 bits que ainda está chegando (voz em streaming). Uma linha própria baixa as
-    partes assim que ele é criado; quem toca começa com as primeiras, sem esperar o resto."""
+    """16-bit PCM audio that is still arriving (streaming voice). A thread of its own downloads the
+    parts as soon as it is created; the player starts with the first ones, without waiting."""
 
     def __init__(self, partes: Iterable[bytes], taxa: int, canais: int = 1) -> None:
         import queue
@@ -417,14 +420,16 @@ class AudioEmPartes:
         self.taxa = taxa
         self.canais = canais
         self.erro: Exception | None = None
-        self.primeira = threading.Event()  # chegou a primeira parte (ou acabou sem nenhuma)
-        self.baixado = threading.Event()  # chegou tudo (ou deu erro)
-        self.cancelado = threading.Event()  # barge-in: para de tocar e descarta o resto
-        # Palavras com tempo real (alinhamento da voz), para a HUD; a versão sobe a cada mudança.
+        self.primeira = threading.Event()  # the first part arrived (or it ended without any)
+        self.baixado = threading.Event()  # everything arrived (or there was an error)
+        self.cancelado = threading.Event()  # barge-in: stop playing and discard the rest
+        # Words with real timing (voice alignment), for the HUD; the version goes up on every
+        # change.
         self.palavras: list[dict] = []
         self.versao_palavras = 0
-        self.texto = ""  # o texto todo, para estimar as palavras se não vier alinhamento
-        # Medidas da reprodução (diagnóstico): quando o som começou e o silêncio por falta de dados.
+        self.texto = ""  # the whole text, to estimate the words if no alignment comes
+        # Playback measurements (diagnostics): when the sound started and the silence from missing
+        # data.
         self.inicio_som: float | None = None
         self.silencio_ms = 0.0
         self.maior_silencio_ms = 0.0
@@ -433,8 +438,8 @@ class AudioEmPartes:
 
     @classmethod
     def de_fila(cls, taxa: int, canais: int = 1):
-        """Áudio alimentado aos pedaços por quem chama (ex.: um WebSocket). Devolve
-        (áudio, pôr(pcm), fechar(erro=None))."""
+        """Audio fed in pieces by the caller (e.g. a WebSocket). Returns
+        (audio, pôr(pcm), fechar(erro=None))."""
         import queue
 
         fila: queue.Queue = queue.Queue()
@@ -455,7 +460,7 @@ class AudioEmPartes:
         return audio, fila.put, fechar
 
     def cancelar(self) -> None:
-        """Para a reprodução na hora (o resto do áudio é descartado)."""
+        """Stops playback immediately (the rest of the audio is discarded)."""
         self.cancelado.set()
 
     def definir_palavras(self, palavras: list[dict]) -> None:
@@ -463,7 +468,7 @@ class AudioEmPartes:
         self.versao_palavras += 1
 
     def _baixar(self, partes: Iterable[bytes]) -> None:
-        sobra = b""  # um byte de amostra cortada no meio, que vai com a próxima parte
+        sobra = b""  # a byte of a sample cut in half, which goes with the next part
         quadro = 2 * self.canais
         try:
             for parte in partes:
@@ -473,7 +478,7 @@ class AudioEmPartes:
                 if inteiro:
                     self._fila.put(dados[:inteiro])
                     self.primeira.set()
-        except Exception as erro:  # a internet caiu no meio: toca o que chegou
+        except Exception as erro:  # the internet dropped midway: play what arrived
             self.erro = erro
         finally:
             self._fila.put(None)
@@ -481,25 +486,26 @@ class AudioEmPartes:
             self.baixado.set()
 
     def partes(self) -> Iterator[bytes]:
-        """As partes em ordem, conforme chegam (só dá para percorrer uma vez)."""
+        """The parts in order, as they arrive (can only be iterated once)."""
         while (parte := self._fila.get()) is not None:
             yield parte
 
     def tudo(self) -> bytes:
-        """Espera chegar tudo e devolve o PCM inteiro; levanta o erro, se o download caiu."""
+        """Waits for everything to arrive and returns the whole PCM; raises the error if the
+        download dropped."""
         pcm = b"".join(self.partes())
         if self.erro is not None:
             raise self.erro
         return pcm
 
 
-# Quanto áudio juntar antes de abrir o alto-falante: menos que isso e uma demora da rede vira
-# um buraco no som.
+# How much audio to gather before opening the speaker: less than this and a network delay becomes
+# a gap in the sound.
 PRE_CARGA_S = 0.15
 
 
 def _deslocar(palavras: list[dict], atraso_ms: float) -> list[dict]:
-    """As palavras alinhadas na posição real do áudio tocado (depois do silêncio inicial)."""
+    """The aligned words at the real position of the played audio (after the initial silence)."""
     if not atraso_ms:
         return list(palavras)
     return [
@@ -509,28 +515,28 @@ def _deslocar(palavras: list[dict], atraso_ms: float) -> list[dict]:
 
 
 def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> None:
-    """Toca o áudio conforme ele chega. Se a saída recusar a taxa, converte cada parte."""
+    """Plays the audio as it arrives. If the output refuses the rate, converts each part."""
     import threading
 
     taxa, canais = audio.taxa, audio.canais
     bytes_por_quadro = 2 * canais
     buffer = bytearray(b"\x00\x00" * canais * (taxa * max(0, silencio_ms) // 1000))
     trava = threading.Lock()
-    chegou = threading.Event()  # tudo baixado e posto no buffer
+    chegou = threading.Event()  # everything downloaded and put in the buffer
     terminou = threading.Event()
     saida_taxa = [taxa]
     observador = None
     posicao = 0
     iniciou = False
-    buraco = [0.0]  # silêncio seguido por falta de dados (o maior vira diagnóstico)
-    # O silêncio inicial (fones Bluetooth) vem antes do PCM da voz: as palavras andam junto.
+    buraco = [0.0]  # continuous silence from missing data (the longest becomes diagnostics)
+    # The initial silence (Bluetooth headsets) comes before the voice PCM: the words shift with it.
     atraso_ms = float(max(0, silencio_ms))
 
     def observar(metodo, *args):
         if observador is not None:
             try:
                 getattr(observador, metodo)(*args)
-            except Exception as erro:  # a HUD nunca para a fala; a falha é contada
+            except Exception as erro:  # the HUD never stops speech; the failure is counted
                 from nora.falhas_hud import registrar
 
                 registrar(f"audio.{metodo}", erro)
@@ -543,7 +549,7 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
             if saida_taxa[0] != taxa:
                 parte = reamostrar(parte, taxa, saida_taxa[0])
             observar("receber_pcm", parte)
-            if audio.versao_palavras != versao:  # alinhamento real da voz: palavras para a HUD
+            if audio.versao_palavras != versao:  # real voice alignment: words for the HUD
                 versao = audio.versao_palavras
                 observar("alinhar", _deslocar(audio.palavras, atraso_ms))
             with trava:
@@ -561,7 +567,7 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
             reproducao(True)
             iniciou = True
         precisa = quadros * bytes_por_quadro
-        if audio.cancelado.is_set():  # barge-in: silêncio já, sem tocar o resto
+        if audio.cancelado.is_set():  # barge-in: silence now, without playing the rest
             saida[:] = bytes(len(saida))
             raise sd.CallbackStop
         with trava:
@@ -573,7 +579,7 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
             audio.inicio_som = time.perf_counter()
         if len(pedaco) < precisa:
             saida[len(pedaco) :] = bytes(precisa - len(pedaco))
-            if audio.inicio_som is not None and not acabou:  # buraco: a rede atrasou
+            if audio.inicio_som is not None and not acabou:  # gap: the network was late
                 falta = (precisa - len(pedaco)) / bytes_por_quadro / saida_taxa[0] * 1000
                 audio.silencio_ms += falta
                 buraco[0] += falta
@@ -581,7 +587,7 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
         else:
             buraco[0] = 0.0
         anterior = posicao
-        posicao += len(pedaco) // bytes_por_quadro  # zeros de falta de rede não avançam palavras
+        posicao += len(pedaco) // bytes_por_quadro  # zeros from network gaps do not advance words
         observar("entregar_pcm", saida, anterior, posicao, tempo)
         if len(pedaco) < precisa and acabou:
             raise sd.CallbackStop
@@ -628,8 +634,8 @@ def _tocar_partes(sd, audio: AudioEmPartes, silencio_ms: int, alto_falante) -> N
 
 
 def tocar_partes(audio: AudioEmPartes, alto_falante=None, silencio_ms: int = 0) -> None:
-    """Toca um áudio em streaming e espera terminar. Se a saída escolhida não abrir, toca na
-    padrão (como tocar_wav)."""
+    """Plays a streaming audio and waits for it to finish. If the chosen output does not open, plays
+    on the default one (like tocar_wav)."""
     sd = _sounddevice()
     try:
         _tocar_partes(sd, audio, silencio_ms, alto_falante)
@@ -645,8 +651,8 @@ def tocar_partes(audio: AudioEmPartes, alto_falante=None, silencio_ms: int = 0) 
 
 
 def tocador(config_audio) -> Callable[[bytes | AudioEmPartes], None]:
-    """Função que toca um WAV (ou um áudio em streaming) na saída da config ([audio]
-    alto_falante e silencio_inicial_ms)."""
+    """Function that plays a WAV (or a streaming audio) on the config's output ([audio]
+    alto_falante and silencio_inicial_ms)."""
     alto_falante = dispositivo(config_audio.alto_falante)
     ms = config_audio.silencio_inicial_ms
 
@@ -660,10 +666,10 @@ def tocador(config_audio) -> Callable[[bytes | AudioEmPartes], None]:
 
 
 def tocar_wav(dados: bytes, alto_falante: int | str | None = None) -> None:
-    """Toca um WAV e espera terminar.
+    """Plays a WAV and waits for it to finish.
 
-    Se a saída escolhida em [audio] alto_falante não abrir (sumiu, mudou de número, ou está
-    ocupada por outro programa, como acontece no WDM-KS), toca na saída padrão do Windows."""
+    If the output chosen in [audio] alto_falante does not open (it disappeared, changed number,
+    or is taken by another program, as happens on WDM-KS), plays on the Windows default output."""
     sd = _sounddevice()
     amostras, taxa, canais = ler_wav(dados)
     try:

@@ -1,4 +1,4 @@
-"""Medidas derivadas de PCM, sem gravação ou transmissão de áudio ao navegador."""
+"""Measurements derived from PCM, without recording or sending audio to the browser."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ def _fft(x):
 
 
 class Medidor:
-    """FFT 512, bandas relativas e envelope 35 ms de ataque / 180 ms de soltura."""
+    """512-point FFT, relative bands and a 35 ms attack / 180 ms release envelope."""
 
     def __init__(self):
         self.envelope = 0.0
@@ -61,7 +61,7 @@ class Medidor:
         pico = max(map(abs, pontos), default=0.0)
         tau = 0.035 if rms > self.envelope else 0.18
         self.envelope += (rms - self.envelope) * (1 - math.exp(-max(0, dt) / tau))
-        # Pontos contíguos na taxa real; decimar por salto inventaria frequências.
+        # Contiguous points at the real rate; decimating by skipping would invent frequencies.
         janela = pontos[-JANELA:] + [0.0] * max(0, JANELA - len(pontos))
         media = sum(janela) / JANELA
         ponderada = [(v - media) * w for v, w in zip(janela, _janela(), strict=True)]
@@ -100,10 +100,10 @@ class Medidor:
 
 
 class EnvelopeTemporal:
-    """RMS a cada 20 ms; guarda somente medidas e uma sobra menor que uma janela.
+    """RMS every 20 ms; stores only measurements and a remainder smaller than one window.
 
-    A alimentação ocorre na linha que recebe os blocos, nunca no callback PortAudio.
-    Até dez minutos; ao exceder o limite, desativa palavras sem afetar a reprodução.
+    Feeding happens on the thread that receives the blocks, never in the PortAudio callback.
+    Up to ten minutes; past the limit, it turns words off without affecting playback.
     """
 
     def __init__(self, taxa: int, canais: int):

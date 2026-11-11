@@ -1,12 +1,14 @@
-"""Instalação limpa: gera o wheel, instala num venv novo fora do checkout e confere que o pacote
-funciona sozinho (sem o repositório ao lado).
+"""Clean install: builds the wheel, installs it in a new venv outside the checkout and checks that
+the package works on its own (without the repository next to it).
 
     python scripts/testar_instalacao_limpa.py
 
-Roda no CI (job `instalacao`, só Linux). Sai com código 1 e explica o que faltou se algo falhar.
+Runs in CI (job `instalacao`, Linux only). Exits with code 1 and explains what was missing if
+something fails.
 
-Também roda `nora --verificar` instalada, com a pasta do usuário num lugar temporário
-(`NORA_HOME`): a config padrão vem de dentro do pacote e a pasta pessoal é criada na hora.
+It also runs the installed `nora --verificar`, with the user folder in a temporary place
+(`NORA_HOME`): the default config comes from inside the package and the personal folder is
+created on the spot.
 """
 
 from __future__ import annotations
@@ -22,7 +24,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 IGNORAR = (".git", "build", "dist", "*.egg-info", "node_modules", "data", ".venv", "__pycache__")
 
-# Roda dentro do venv novo, com `python -I` (sem PYTHONPATH nem a pasta atual) e fora do checkout.
+# Runs inside the new venv, with `python -I` (no PYTHONPATH or current folder), outside the
+# checkout.
 CONFERIR = r"""
 import importlib.resources as recursos, json, sys
 from pathlib import Path
@@ -65,7 +68,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="nora-instalacao-") as pasta:
         pasta = Path(pasta)
         dist = pasta / "dist"
-        # Uma cópia limpa: o `build/` do checkout pode ter módulos velhos que iriam para o wheel.
+        # A clean copy: the checkout's `build/` may have old modules that would go into the wheel.
         fonte = pasta / "fonte"
         shutil.copytree(RAIZ, fonte, ignore=shutil.ignore_patterns(*IGNORAR))
         rodar(sys.executable, "-m", "pip", "wheel", str(fonte), "--no-deps", "-w", dist)
@@ -79,7 +82,7 @@ def main() -> int:
         rodar(python, "-m", "pip", "install", "--no-index", "--no-deps", rodas[0])
         saida = rodar(python, "-I", "-c", CONFERIR, RAIZ, cwd=pasta)
         print(saida.stdout.strip())
-        # `nora --verificar` instalada: lê o padrão do pacote e cria a pasta do usuário.
+        # Installed `nora --verificar`: reads the package default and creates the user folder.
         casa = pasta / "casa"
         ambiente = {**os.environ, "NORA_HOME": str(casa)}
         ambiente.pop("PYTHONPATH", None)

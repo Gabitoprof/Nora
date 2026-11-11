@@ -1,4 +1,4 @@
-"""Histórico bruto: toda pergunta e resposta, guardado desde o primeiro dia (em data/)."""
+"""Raw history: every question and answer, kept from day one (in data/)."""
 
 from __future__ import annotations
 
@@ -33,8 +33,8 @@ APAGADO = "[apagado a pedido]"
 
 
 def apagar_do_historico(pasta_dados: Path, textos: set[str]) -> int:
-    """Troca, nos arquivos do histórico, as falas cujo texto está em `textos` por APAGADO (o resto
-    da conversa fica). Devolve quantas falas foram apagadas."""
+    """Replaces, in the history files, the utterances whose text is in `textos` with APAGADO (the
+    rest of the conversation stays). Returns how many utterances were deleted."""
     if not textos:
         return 0
     apagadas = 0
@@ -51,7 +51,7 @@ def apagar_do_historico(pasta_dados: Path, textos: set[str]) -> int:
                 apagadas += 1
                 mudou = True
             linhas.append(json.dumps(registro, ensure_ascii=False))
-        if mudou:  # grava num arquivo ao lado e troca, para não perder tudo se faltar luz
+        if mudou:  # writes to a side file and swaps it in, so nothing is lost on a power cut
             temporario = arquivo.with_suffix(".jsonl.tmp")
             temporario.write_text("\n".join(linhas) + "\n", encoding="utf-8")
             temporario.replace(arquivo)

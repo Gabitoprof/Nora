@@ -17,15 +17,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      # numpy e soundfile: os testes de áudio (laboratório de voz, conjunto de treino) rodam de
-      # verdade; o resto do extra [voz] (microfone, onnxruntime) não é preciso nos testes.
+      # numpy and soundfile: the audio tests (voice lab, training set) run for real; the rest of
+      # the [voz] extra (microphone, onnxruntime) is not needed in the tests.
       - run: pip install -e ".[dev,memoria]" numpy soundfile "websockets>=13"
       - run: ruff format --check .
       - run: ruff check .
       - run: pytest
       - run: nora --verificar
 
-  # O pacote instalado por wheel, fora do checkout (só Linux, para economizar minutos).
+  # The package installed from a wheel, outside the checkout (Linux only, to save minutes).
   instalacao:
     runs-on: ubuntu-latest
     steps:

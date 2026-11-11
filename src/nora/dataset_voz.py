@@ -1,8 +1,8 @@
-"""Gera um conjunto de treino de voz (formato LJSpeech, o que o treino do Piper usa) falando
-muitas frases com a voz configurada, por exemplo um fluxo seu do ComfyUI.
+"""Builds a voice training set (LJSpeech format, the one Piper training uses) by speaking many
+sentences with the configured voice, for example one of your ComfyUI flows.
 
-Saída: <pasta>/wavs/0001.wav ... (mono, 16 bits, 22.050 Hz) e <pasta>/metadata.csv com
-"0001|texto da frase". Pode ser interrompido: na próxima vez continua de onde parou.
+Output: <pasta>/wavs/0001.wav ... (mono, 16 bits, 22,050 Hz) and <pasta>/metadata.csv with
+"0001|texto da frase". It can be interrupted: next time it resumes where it stopped.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ _FIM_DE_FRASE = re.compile(r"(?<=[.!?…])\s+")
 
 
 def frases_de_texto(texto: str, minimo: int = 20, maximo: int = 180) -> list[str]:
-    """Corta um texto corrido (ex.: um livro de domínio público) em frases boas para treino:
-    nem curtas demais, nem longas demais, sem repetidas."""
+    """Splits running text (e.g. a public-domain book) into sentences good for training:
+    not too short, not too long, no repeats."""
     vistas, frases = set(), []
     for bloco in texto.splitlines():
         for frase in _FIM_DE_FRASE.split(bloco):
@@ -46,10 +46,11 @@ def gerar_dataset(
     pasta: Path,
     saida: Callable[[str], None] = print,
 ) -> int:
-    """Fala cada frase com a voz dada e salva no formato do treino. Devolve quantas gerou."""
+    """Speaks each sentence with the given voice and saves it in the training format. Returns how
+    many it generated."""
     wavs = pasta / "wavs"
     wavs.mkdir(parents=True, exist_ok=True)
-    # As que o conferir-dataset descartou não são refeitas (sairiam iguais, com a mesma semente).
+    # The ones conferir-dataset discarded are not redone (they would come out the same, same seed).
     fora = descartadas(pasta)
     pendentes, puladas = [], 0
     for numero, frase in enumerate(frases, start=1):
@@ -77,7 +78,7 @@ def gerar_dataset(
 
 
 def descartadas(pasta: Path) -> set[str]:
-    """Números das frases tiradas pelo conferir-dataset (descartadas.txt)."""
+    """Numbers of the sentences removed by conferir-dataset (descartadas.txt)."""
     arquivo = pasta / DESCARTADAS
     if not arquivo.is_file():
         return set()
@@ -87,7 +88,7 @@ def descartadas(pasta: Path) -> set[str]:
 
 
 def _escrever_metadata(pasta: Path, frases: list[str]) -> None:
-    """metadata.csv só com as frases que têm áudio, no formato 'id|texto'."""
+    """metadata.csv with only the sentences that have audio, in the 'id|texto' format."""
     linhas = [
         f"{numero:04}|{frase.replace('|', ' ')}"
         for numero, frase in enumerate(frases, start=1)

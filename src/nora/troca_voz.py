@@ -1,5 +1,5 @@
-"""Trocar a voz falando: "usa a voz do Piper", "volta pro ElevenLabs", "qual voz você está
-usando?". Vale nos modos com voz (nora ouvir, nora falar, nora conversar --voz)."""
+"""Switching the voice by speaking: "usa a voz do Piper", "volta pro ElevenLabs", "qual voz você
+está usando?". Works in the voice modes (nora ouvir, nora falar, nora conversar --voz)."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ _VERBOS = (
 _FALA_COM = r"\b(fala|fale|falar)\b (com|usando|na|pela) (a )?voz\b"
 _PADRAO = r"\bvoz (normal|padrao|principal|de sempre|original)\b"
 _QUAL = r"\b(qual|que) (e a )?(sua )?voz\b.{0,30}\b(usando|essa|agora|atual)\b"
-# Pergunta ou comparação sobre as vozes: não é pedido de troca.
+# A question or comparison about the voices: not a switch request.
 _PERGUNTA = (
     r"\b(melhor|pior|diferenca|compara|comparar|comparando|como|por que|porque|o que|quem|"
     r"quando|onde|qual|quais|acha|ou o|ou a)\b"
@@ -33,8 +33,8 @@ _DESTINO = r"\b(para|pra|pro|pela|pelo)\b"
 
 @dataclass(frozen=True)
 class PedidoDeVoz:
-    acao: str  # "trocar" ou "qual"
-    motor: str = ""  # "" com "trocar" = a voz da config
+    acao: str  # "trocar" or "qual"
+    motor: str = ""  # "" with "trocar" = the config's voice
 
 
 def _texto(texto: str) -> str:
@@ -44,7 +44,7 @@ def _texto(texto: str) -> str:
 
 
 def _motores(texto: str) -> list[str]:
-    """Os motores citados no texto, na ordem em que aparecem (sem repetir)."""
+    """The engines mentioned in the text, in the order they appear (no repeats)."""
     achados = sorted(
         (achado.start(), motor)
         for motor, nomes in _MOTORES
@@ -54,8 +54,8 @@ def _motores(texto: str) -> list[str]:
 
 
 def pedido_de_voz(texto: str) -> PedidoDeVoz | None:
-    """O pedido de troca de voz na fala, se ela for só isso (frase curta e intenção clara).
-    Perguntar sobre um motor ("o Piper é melhor que o Kokoro?") não troca nada."""
+    """The voice switch request in the speech, if that is all it is (short sentence, clear intent).
+    Asking about an engine ("o Piper é melhor que o Kokoro?") switches nothing."""
     limpo = _texto(texto)
     if not limpo or len(limpo.split()) > 12:
         return None
@@ -66,7 +66,7 @@ def pedido_de_voz(texto: str) -> PedidoDeVoz | None:
     if re.search(_PERGUNTA, limpo):
         return None
     motores = _motores(limpo)
-    if len(motores) > 1:  # "troca do Kokoro para o Piper": vale o que vem depois do "para"
+    if len(motores) > 1:  # "troca do Kokoro para o Piper": what comes after "para" wins
         destinos = list(re.finditer(_DESTINO, limpo))
         depois = _motores(limpo[destinos[-1].end() :]) if destinos else []
         return PedidoDeVoz("trocar", depois[0]) if len(depois) == 1 else None
@@ -78,8 +78,8 @@ def pedido_de_voz(texto: str) -> PedidoDeVoz | None:
 
 
 def atender_pedido(voz, pedido: PedidoDeVoz, padrao: str) -> tuple[str, bytes | None]:
-    """Faz a troca e devolve (o que ela responde, o áudio já falado com a voz nova).
-    Sem áudio, a resposta deve ser falada com a voz atual."""
+    """Makes the switch and returns (what she answers, the audio already spoken in the new voice).
+    Without audio, the answer must be spoken with the current voice."""
     atual = getattr(voz, "motor", "")
     if pedido.acao == "qual" or not hasattr(voz, "trocar"):
         if not atual:

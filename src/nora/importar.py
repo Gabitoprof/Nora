@@ -1,4 +1,4 @@
-"""Importa as conversas antigas de <dados>/historico para a memória (nora memoria importar)."""
+"""Imports the old conversations from <dados>/historico into memory (nora memoria importar)."""
 
 from __future__ import annotations
 
@@ -11,14 +11,14 @@ from nora.memoria import Memoria
 
 
 def trocas(arquivo: Path) -> list[tuple[str, str, str, str]]:
-    """(quando, sessão, pergunta, resposta) de um arquivo do histórico, na ordem."""
+    """(when, session, question, answer) from a history file, in order."""
     resultado, pergunta = [], None
     for linha in arquivo.read_text(encoding="utf-8").splitlines():
         try:
             registro = json.loads(linha)
         except json.JSONDecodeError:
             continue
-        if registro.get("apagado"):  # apagado a pedido: não volta pela importação
+        if registro.get("apagado"):  # deleted on request: does not come back through import
             pergunta = None
             continue
         if registro.get("papel") == "usuario":
@@ -37,8 +37,8 @@ def trocas(arquivo: Path) -> list[tuple[str, str, str, str]]:
 
 
 def importar_historico(config: Config, memoria: Memoria, saida=print) -> int:
-    """Passa cada troca ainda não importada pela curadoria. Pode ser rodado de novo: continua
-    de onde parou."""
+    """Runs each exchange not yet imported through curation. It can be run again: it resumes
+    where it stopped."""
     ja_ate = memoria.meta("importado_ate") or ""
     arquivos = sorted((config.pasta_dados / "historico").glob("*.jsonl"))
     pendentes = [t for a in arquivos for t in trocas(a) if t[0] > ja_ate]
@@ -52,7 +52,7 @@ def importar_historico(config: Config, memoria: Memoria, saida=print) -> int:
             fato_id, novo = memoria.lembrar(
                 fato.texto, origem=f"historico {quando[:10]}", area=fato.area
             )
-            if not fato_id:  # a pessoa pediu para esquecer isso
+            if not fato_id:  # the person asked to forget this
                 continue
             novos += novo
             area = memoria.normalizar_area(fato.area)

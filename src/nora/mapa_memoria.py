@@ -1,11 +1,11 @@
-"""Mapa da memória: uma página HTML que mostra o grafo do Second Brain como uma rede de
-neurônios. Arquivo único, sem bibliotecas de fora e sem internet: abre no navegador, longe do
-processo da Nora (a animação nunca disputa tempo com a voz).
+"""Memory map: an HTML page that shows the Second Brain graph as a network of neurons. A single
+file, with no outside libraries and no internet: it opens in the browser, away from Nora's
+process (the animation never competes for time with the voice).
 
-Leitura visual (legenda na própria página):
-- cor do corpo do nó = área da memória; halo = tom da conversa (as cores da HUD);
-- tamanho = número de ligações (com limite); pulso = memória atualizada nos últimos 7 dias;
-- as ligações reais surgem aos poucos ao abrir (animação; nenhuma memória é criada).
+Visual reading (legend on the page itself):
+- node body color = memory area; halo = conversation tone (the HUD colors);
+- size = number of links (capped); pulse = memory updated in the last 7 days;
+- the real links appear gradually on opening (animation; no memory is created).
 """
 
 from __future__ import annotations
@@ -16,8 +16,8 @@ _PAGINA = Path(__file__).with_name("mapa_memoria.html")
 
 
 def pagina(dados_json: str, mostrar_texto: bool = False) -> str:
-    """A página com o grafo embutido. O JSON vai dentro de <script>: todo "<" vira \\u003c (JSON
-    válido), para nenhum texto de memória fechar o script ou abrir outro."""
+    """The page with the embedded graph. The JSON goes inside <script>: every "<" becomes \\u003c
+    (valid JSON), so no memory text closes the script or opens another."""
     seguro = dados_json.replace("<", "\\u003c")
     modelo = _PAGINA.read_text(encoding="utf-8")
     return modelo.replace("__DADOS__", seguro).replace(

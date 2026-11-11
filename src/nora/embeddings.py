@@ -1,4 +1,4 @@
-"""Embeddings: transforma textos em vetores de significado pelo Ollama (/api/embed)."""
+"""Embeddings: turns texts into meaning vectors through Ollama (/api/embed)."""
 
 from __future__ import annotations
 

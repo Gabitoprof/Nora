@@ -1,20 +1,20 @@
-"""Mede se o Second Brain atrasa a fala da Nora (requisito do documento 2 da v0.3.1).
+"""Measures whether the Second Brain delays Nora's speech (requirement from v0.3.1 document 2).
 
-Roda o caminho da voz de verdade (Conversa → responder_falando → Locutor → tocar) com um cérebro
-e uma voz falsos de tempo fixo, para tirar a variação da rede e da GPU, em três cenários:
+Runs the real voice path (Conversa → responder_falando → Locutor → tocar) with a fake brain and
+a fake voice of fixed timing, to remove network and GPU variation, in three scenarios:
 
-  desligado   Second Brain desligado (referência)
-  ligado      Second Brain ligado, com memória grande, avisado a cada resposta (uso real: ele
-              espera a Nora ficar livre)
-  estresse    sincronização rodando sem parar, ignorando se a Nora está falando (pior caso
-              artificial: mede a disputa de CPU/GIL)
+  desligado   Second Brain off (reference)
+  ligado      Second Brain on, with a large memory, signaled on every answer (real use: it
+              waits for Nora to be free)
+  estresse    sync running nonstop, ignoring whether Nora is speaking (artificial worst case:
+              measures CPU/GIL contention)
 
-Métricas por resposta: início do áudio (fim da fala → primeiro áudio tocando) e a maior pausa
-entre trechos de áudio. Mostra p50, p95 e p99. Uso:
+Metrics per answer: audio start (end of speech → first audio playing) and the longest pause
+between audio chunks. Shows p50, p95 and p99. Usage:
 
     python scripts/medir_segundo_cerebro.py --respostas 60 --fatos 2000
 
-Não substitui a medição no Windows com a voz e o modelo de verdade (checklist em
+It does not replace the measurement on Windows with the real voice and model (checklist in
 docs/SEGUNDO_CEREBRO.md).
 """
 
@@ -60,7 +60,7 @@ class Embeddings:
 
 
 class CerebroFalso:
-    """Primeiro pedaço em 150 ms, depois um pedaço a cada 40 ms."""
+    """First chunk at 150 ms, then one chunk every 40 ms."""
 
     situacao = "completa"
 
@@ -77,7 +77,7 @@ class CerebroFalso:
 
 
 class VozFalsa:
-    """Sintetiza em 120 ms + 2 ms por caractere; o áudio dura 60 ms por palavra."""
+    """Synthesizes in 120 ms + 2 ms per character; the audio lasts 60 ms per word."""
 
     def sintetizar(self, frase: str) -> bytes:
         time.sleep(0.12 + 0.002 * len(frase))
@@ -109,7 +109,7 @@ def percentis(valores: list[float]) -> dict[str, float]:
 
 
 def criar_memoria(arquivo: Path, fatos: int) -> None:
-    """A memória grande, criada uma vez e copiada para cada cenário."""
+    """The large memory, created once and copied for each scenario."""
     memoria = Memoria(arquivo, Embeddings())
     areas = ["estudos", "trabalho", "rotina", "projetos", "pessoal"]
     for i in range(fatos):
@@ -159,7 +159,7 @@ def medir(cenario: str, respostas: int, modelo: Path) -> dict:
 
             def sem_parar():
                 while not parar.is_set():
-                    # Força reescrever tudo: apaga o registro do que já foi exportado.
+                    # Forces rewriting everything: deletes the record of what was already exported.
                     with sincronizador._estado:
                         sincronizador._estado.execute("DELETE FROM notas")
                     for nota in (config.notas.pasta / "Nora Brain").rglob("*.md"):
@@ -183,7 +183,7 @@ def medir(cenario: str, respostas: int, modelo: Path) -> dict:
                 max((b[0] - a[1] for a, b in zip(marcas, marcas[1:], strict=False)), default=0.0)
             )
             if trabalhador is not None:
-                trabalhador.avisar()  # a memória "mudou" a cada resposta
+                trabalhador.avisar()  # the memory "changed" on every answer
             time.sleep(0.05)
         parar.set()
         if cenario == "estresse":

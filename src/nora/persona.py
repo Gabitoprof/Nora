@@ -1,4 +1,4 @@
-"""Monta o prompt de sistema a partir da persona da config."""
+"""Builds the system prompt from the config's persona."""
 
 from __future__ import annotations
 

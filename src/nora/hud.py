@@ -1,8 +1,8 @@
-"""Ponte local opcional: eventos SSE de apresentação, sem outro mic/cérebro/TTS.
+"""Optional local bridge: presentation SSE events, with no extra mic/brain/TTS.
 
-O núcleo nunca espera clientes. As filas são limitadas e clientes lentos recebem o estado
-atual ao reconectar. Somente campos públicos enumerados são aceitos; texto/notas exigem
-consentimento da sessão e não são persistidos. O servidor usa apenas a biblioteca padrão.
+The core never waits for clients. The queues are bounded and slow clients get the current
+state on reconnecting. Only enumerated public fields are accepted; text/notes require session
+consent and are not persisted. The server uses only the standard library.
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ def _acustica_valida(dados):
 
 
 def _encerrada_valida(dados):
-    """Fim de uma reprodução: só números e o motivo, nunca texto."""
+    """End of a playback: only numbers and the reason, never text."""
     return (
         dados.keys() == CAMPOS["reproducao_encerrada"]
         and type(dados["id"]) is int
@@ -108,7 +108,7 @@ def _fala_valida(dados):
 
 
 class PonteHUD:
-    """Estado efêmero de apresentação. Publicar é best-effort e nunca faz I/O."""
+    """Ephemeral presentation state. Publishing is best-effort and never does I/O."""
 
     def __init__(self, nome: str = "Nora", capacidade: int = 64) -> None:
         self._trava = threading.RLock()
@@ -288,7 +288,7 @@ class PonteHUD:
                 self.estado["texto"] = (
                     self.estado["texto"] + texto if dados.get("acumular") else texto
                 )[-6000:]
-                # Um cliente lento pode perder eventos; o próximo texto recupera o conteúdo.
+                # A slow client may lose events; the next text recovers the content.
                 dados = {"texto": self.estado["texto"], "acumular": False}
             else:
                 chave = {
@@ -346,7 +346,7 @@ class PonteHUD:
         with self._trava:
             self._epoca_privacidade += 1
             self.estado.update(privacidade=not visivel, texto="", notas=[], fala_temporizada=None)
-            # Nada pessoal já enfileirado pode chegar após a confirmação de ocultar.
+            # Nothing personal already queued may arrive after the hide confirmation.
             for fila in self._filas:
                 with fila.mutex:
                     fila.queue.clear()
@@ -394,7 +394,7 @@ _ponte: PonteHUD | None = None
 
 
 def emitir(tipo: str, **dados) -> None:
-    """Uma HUD indisponível ou um observador defeituoso nunca interrompe a Nora."""
+    """An unavailable HUD or a faulty observer never interrupts Nora."""
     if _ponte is not None:
         try:
             if tipo == "emocao" and _ponte._reproduzindo:
@@ -421,8 +421,8 @@ def atualizar_notas() -> None:
 
 
 def reproducao(ativa: bool, fim: tuple[float, float, bool] | None = None) -> None:
-    """Começo (True) ou fim (False) do som na saída. No fim, `fim` = (posição tocada em ms,
-    duração em ms, interrompida): a HUD só mostra a última palavra num fim natural."""
+    """Start (True) or end (False) of the sound at the output. At the end, `fim` = (played position
+    in ms, duration in ms, interrupted): the HUD only shows the last word on a natural end."""
     if _ponte is None:
         return
     try:
@@ -448,7 +448,7 @@ def reproducao(ativa: bool, fim: tuple[float, float, bool] | None = None) -> Non
                 if getattr(getattr(conversa, "cerebro", None), "jogo", False)
                 else ("pensando" if getattr(conversa, "ocupada", False) else "ouvindo")
             )
-            # Leitura simples: o callback de áudio nunca espera o lock de uma apresentação.
+            # Simple read: the audio callback never waits for a presentation's lock.
             if _ponte.estado["estado"] != "erro":
                 emitir(estado)
             _ponte.estado.update(fala_temporizada=None, nivel_audio=0.0)
@@ -467,14 +467,14 @@ def reproducao(ativa: bool, fim: tuple[float, float, bool] | None = None) -> Non
                 fluxo=0.0,
             )
             emitir("nivel_audio", nivel=0.0, fonte="voz")
-    except Exception as erro:  # falha de visualização nunca chega ao callback de áudio
+    except Exception as erro:  # a visualization failure never reaches the audio callback
         registrar("hud.reproducao", erro)
 
 
 def nivel_pcm(amostras: bytes, fonte: str) -> None:
     if _ponte is None or not amostras:
         return
-    # Amostra no máximo 256 pontos; não envia nem guarda áudio bruto.
+    # Samples at most 256 points; neither sends nor stores raw audio.
     valores = array("h")
     valores.frombytes(amostras[: len(amostras) // 2 * 2])
     passo = max(1, len(valores) // 256)
@@ -507,7 +507,7 @@ def amostrar_pcm(amostras: bytes, fonte: str, taxa: int = 16000, canais: int = 1
 
 
 def preparar_reproducao(amostras: bytes | None, taxa: int, canais: int):
-    """None = streaming, cuja duração final ainda não chegou; nunca espera o download."""
+    """None = streaming, whose final duration has not arrived yet; never waits for the download."""
     if _ponte is None:
         return None
     try:
@@ -517,7 +517,7 @@ def preparar_reproducao(amostras: bytes | None, taxa: int, canais: int):
         return None
 
 
-# Telemetria da HUD (homologação): só estes números, gravados em <dados>/diagnostico_hud.json.
+# HUD telemetry (acceptance): only these numbers, written to <dados>/diagnostico_hud.json.
 CAMPOS_DIAGNOSTICO = {
     "janela_s", "quadros", "intervalo_p50", "intervalo_p95", "intervalo_pior", "trabalho_p95",
     "palavras", "atraso_palavra_p50", "atraso_palavra_p95", "contextos_webgl",
@@ -542,7 +542,7 @@ class ServidorHUD:
         dados: Path | None = None,
     ) -> None:
         self.ponte, self.token = ponte, secrets.token_urlsafe(32)
-        self.dados = dados  # onde gravar a telemetria da HUD (None = não grava)
+        self.dados = dados  # where to write the HUD telemetry (None = do not write)
         self._pedidos: list[float] = []
         self._trava_pedidos = threading.Lock()
         from nora.caminhos import build_da_hud
@@ -558,7 +558,7 @@ class ServidorHUD:
                 self.connection.settimeout(5)
 
             def log_message(self, *args) -> None:
-                pass  # URLs/corpos nunca são registrados
+                pass  # URLs/bodies are never logged
 
             def autorizado(self, mutacao=False) -> bool:
                 permitido = f"127.0.0.1:{dono.porta}"
@@ -566,8 +566,8 @@ class ServidorHUD:
                 origem = self.headers.get("Origin")
                 if host != permitido or origem not in (None, f"http://{permitido}"):
                     return False
-                # Links de outros sites abrem só o documento público, nunca a API.
-                # Após carregar, os assets/eventos usam a própria origem loopback.
+                # Links from other sites open only the public document, never the API.
+                # After loading, the assets/events use the loopback origin itself.
                 navegacao_inicial = (
                     not mutacao
                     and self.command == "GET"
@@ -760,7 +760,7 @@ class ServidorHUD:
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
 
     def gravar_diagnostico(self, dados: dict) -> None:
-        """Último resumo de telemetria da HUD (números), com a hora; nunca derruba a HUD."""
+        """Last HUD telemetry summary (numbers), with the time; never brings down the HUD."""
         if self.dados is None:
             return
         try:
@@ -788,7 +788,7 @@ class ServidorHUD:
 
 
 def executar(config, ouvir: bool = False, porta: int = 8765, **opcoes) -> int:
-    """Serve a interface; --hud usa exatamente o loop mãos livres existente."""
+    """Serves the interface; --hud uses exactly the existing hands-free loop."""
     global _ponte
     ponte = PonteHUD(config.assistente.nome)
     try:

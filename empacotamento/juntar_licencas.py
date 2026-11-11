@@ -1,6 +1,6 @@
-"""Copia os avisos de licença de cada pacote Python que vai dentro do nora.exe para
-`<destino>/licencas/<pacote>/`, mais a do próprio Python. As licenças MIT/BSD/Apache dos pacotes
-pedem que o aviso acompanhe a distribuição.
+"""Copies the license notices of each Python package that goes inside nora.exe to
+`<destino>/licencas/<pacote>/`, plus Python's own. The packages' MIT/BSD/Apache licenses require
+the notice to accompany the distribution.
 
     python empacotamento/juntar_licencas.py dist/nora
 """
@@ -14,7 +14,7 @@ from importlib import metadata
 from pathlib import Path
 
 NOMES = ("LICENSE", "LICENCE", "COPYING", "NOTICE", "AUTHORS")
-EXTRAS = ("voz", "memoria", "nuvem")  # os que vão dentro do nora.exe (kokoro e dev ficam de fora)
+EXTRAS = ("voz", "memoria", "nuvem")  # the ones that go inside nora.exe (kokoro and dev stay out)
 
 
 def _nome(texto: str) -> str:
@@ -22,7 +22,7 @@ def _nome(texto: str) -> str:
 
 
 def dependencias(raiz: str = "nora", extras=EXTRAS) -> set[str]:
-    """Os pacotes que a Nora (com os extras do executável) puxa, recursivamente."""
+    """The packages Nora (with the executable's extras) pulls in, recursively."""
     vistos: set[str] = set()
     pendentes = [(raiz, set(extras))]
     while pendentes:

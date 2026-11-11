@@ -1,5 +1,5 @@
-"""Prioridade da voz: enquanto a Nora fala, abaixa o volume dos outros programas e depois
-devolve (Windows, pela biblioteca pycaw). Fora do Windows, ou sem a pycaw, não faz nada."""
+"""Voice priority: while Nora speaks, lowers the volume of other programs and then restores it
+(Windows, through the pycaw library). Outside Windows, or without pycaw, it does nothing."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from contextlib import contextmanager
 
 
 def _sessoes_de_audio():
-    """As sessões de áudio dos outros programas, como (nome, controle de volume)."""
+    """The other programs' audio sessions, as (name, volume control)."""
     from pycaw.pycaw import AudioUtilities
 
     for sessao in AudioUtilities.GetAllSessions():
@@ -21,7 +21,7 @@ def _sessoes_de_audio():
 
 @contextmanager
 def abafar_outros(volume: float, sessoes=None):
-    """Durante o bloco, os outros programas tocam a `volume` (0 a 1) do volume que tinham."""
+    """During the block, the other programs play at `volume` (0 to 1) of the volume they had."""
     if sessoes is None:
         if sys.platform != "win32":
             yield
@@ -29,9 +29,9 @@ def abafar_outros(volume: float, sessoes=None):
         try:
             import comtypes
 
-            comtypes.CoInitialize()  # cada linha de execução precisa iniciar o COM
+            comtypes.CoInitialize()  # each thread needs to initialize COM
             sessoes = list(_sessoes_de_audio())
-        except Exception:  # sem pycaw ou sem acesso ao áudio: só não abafa
+        except Exception:  # no pycaw or no access to audio: just do not duck
             yield
             return
     originais = []

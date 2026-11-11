@@ -154,7 +154,7 @@ def test_locutor_avisa_quando_a_voz_cai_no_meio():
     assert any("parou no meio" in erro for erro in locutor.tempos.erros)
 
 
-# --- tocar em streaming -----------------------------------------------------------------------
+# --- streaming playback -----------------------------------------------------------------------
 
 
 class SomFalso:

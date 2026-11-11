@@ -1,9 +1,9 @@
-"""Cérebro na nuvem da OpenAI (ChatGPT), em streaming, pela API Responses.
+"""OpenAI (ChatGPT) cloud brain, streaming, through the Responses API.
 
-Mesmo formato do cérebro local e do Claude: recebe as mensagens (persona, notas da memória,
-conversa) e devolve a resposta aos pedaços. Usa o SDK oficial `openai` (extra [nuvem]) e a chave
-OPENAI_API_KEY do .env. Sem resposta (erro, recusa ou nada escrito), avisa com
-CerebroIndisponivel, e o roteador pede ao Claude.
+Same shape as the local brain and Claude: takes the messages (persona, memory notes,
+conversation) and returns the answer in chunks. Uses the official `openai` SDK ([nuvem] extra)
+and the OPENAI_API_KEY key from .env. With no answer (error, refusal or nothing written), it
+signals CerebroIndisponivel, and the router asks Claude.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from nora.config import Config
 
 
 def problema_do_pacote() -> str:
-    """ "" se o SDK da OpenAI carrega; senão, o que falta ou o erro ao carregar."""
+    """ "" if the OpenAI SDK loads; otherwise, what is missing or the load error."""
     try:
         import openai  # noqa: F401
     except ModuleNotFoundError as erro:
@@ -38,7 +38,8 @@ class CerebroOpenAI:
     max_tokens: int = 8000
     cliente: object = None
     medidas: Medidas = field(default_factory=Medidas)
-    escreveu: bool = False  # se já falou algo nesta resposta (aí não dá para trocar de cérebro)
+    # whether something was already said in this answer (then the brain cannot be switched)
+    escreveu: bool = False
 
     @property
     def nome(self) -> str:
@@ -132,7 +133,7 @@ def _explicar(erro: Exception) -> str:
 
 
 def testar_conexao(config: Config) -> str:
-    """Confere a chave e o modelo pesado sem gerar texto. "" se deu certo."""
+    """Checks the key and the heavy model without generating text. "" if it worked."""
     if not config.chave_openai:
         return "falta OPENAI_API_KEY no .env"
     if problema := problema_do_pacote():

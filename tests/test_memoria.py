@@ -378,7 +378,7 @@ def test_comando_areas(criar_raiz, capsys, monkeypatch):
     assert "[saúde] Gabriel corre às 6h" in texto
 
 
-# --- esquecer e apagar de vez (relatório de fechamento da v0.3.0, A2) ---------------------------
+# --- forget and delete for good (v0.3.0 closing report, A2) -------------------------------------
 
 PROVA = "Ana tem prova de cálculo no dia 21"
 PERGUNTA = "Ana tem prova de cálculo no dia 21, me ajuda?"
@@ -466,7 +466,7 @@ def test_comando_apagar_mostra_e_so_apaga_com_confirmar(criar_raiz, capsys, monk
     assert "cálculo" not in historico.arquivo.read_text("utf-8")
 
 
-# --- apagar de vez pela conversa (com confirmação) -----------------------------------------------
+# --- delete for good in conversation (with confirmation) -----------------------------------------
 
 
 class CerebroAnotador:
@@ -542,7 +542,7 @@ def test_apagar_de_vez_pela_conversa_cancela_e_expira(criar_raiz):
     assert "Não achei" in "".join(conversa.perguntar("apaga de vez o cachorro do vizinho"))
 
 
-# --- respostas pendentes (A5 da revisão consolidada) ---------------------------------------------
+# --- pending answers (A5 of the consolidated review) ---------------------------------------------
 
 
 def _conversa_com_roteador(criar_raiz, local, cliente=None):

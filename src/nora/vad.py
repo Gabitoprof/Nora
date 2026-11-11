@@ -1,5 +1,5 @@
-"""Detecção de fala: o Silero VAD dá a chance de cada pedacinho de áudio ser voz, e o
-DetectorDeFala junta esses pedacinhos em falas inteiras (começo e fim)."""
+"""Speech detection: Silero VAD gives the probability that each small piece of audio is voice,
+and DetectorDeFala joins those pieces into whole utterances (start and end)."""
 
 from __future__ import annotations
 
@@ -11,18 +11,18 @@ from collections import deque
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
-QUADRO = 512  # amostras por quadro a 16 kHz (32 ms), o tamanho que o Silero espera
+QUADRO = 512  # samples per frame at 16 kHz (32 ms), the size Silero expects
 BYTES_POR_QUADRO = QUADRO * 2
 MS_POR_QUADRO = QUADRO * 1000 // 16_000
 
-# O modelo vem dentro do pacote silero-vad (licença MIT) no PyPI. Pegamos só o arquivo .onnx:
-# o pacote em si puxaria o PyTorch, que não é necessário.
+# The model comes inside the silero-vad package (MIT license) on PyPI. We take only the .onnx:
+# the package itself would pull in PyTorch, which is not needed.
 SILERO_VERSAO = "6.2.3"
 SILERO_ARQUIVO = "silero_vad/data/silero_vad.onnx"
 
 
 def baixar_modelo(destino: Path, versao: str = SILERO_VERSAO) -> Path:
-    """Baixa o silero_vad.onnx do pacote do PyPI, se ainda não existir."""
+    """Downloads silero_vad.onnx from the PyPI package, if it does not exist yet."""
     if destino.is_file():
         return destino
     with urllib.request.urlopen(f"https://pypi.org/pypi/silero-vad/{versao}/json", timeout=30) as r:
@@ -36,7 +36,7 @@ def baixar_modelo(destino: Path, versao: str = SILERO_VERSAO) -> Path:
 
 
 class SileroVAD:
-    """Probabilidade de haver voz em cada quadro de 512 amostras (16 kHz, PCM 16 bits)."""
+    """Probability of voice in each 512-sample frame (16 kHz, 16-bit PCM)."""
 
     CONTEXTO = 64
 
@@ -74,10 +74,10 @@ class SileroVAD:
 
 
 class DetectorDeFala:
-    """Recebe quadros com a chance de voz e devolve cada fala completa (PCM 16 kHz).
+    """Takes frames with their voice probability and returns each complete utterance (16 kHz PCM).
 
-    Começa quando a chance passa de `limiar`; termina depois de `silencio_ms` abaixo de
-    `limiar_fim`. Guarda um pouco do áudio de antes do começo, para não cortar a primeira sílaba.
+    Starts when the probability goes above `limiar`; ends after `silencio_ms` below
+    `limiar_fim`. Keeps a bit of the audio before the start, so the first syllable is not cut.
     """
 
     def __init__(
@@ -133,13 +133,13 @@ class DetectorDeFala:
         return fala if voz >= self._minimo else None
 
 
-# Quadros de 32 ms sem fala entre duas folgas para o teclado (~0,3 s).
+# 32 ms frames without speech between two breaks for the keyboard (~0.3 s).
 QUADROS_POR_FOLGA = 10
 
 
 def em_quadros(blocos: Iterable[bytes]) -> Iterator[bytes | None]:
-    """Reagrupa blocos de PCM de qualquer tamanho em quadros de 512 amostras. Um bloco vazio
-    (o microfone sem áudio novo) vira None, para quem consome poder fazer outras coisas."""
+    """Regroups PCM blocks of any size into 512-sample frames. An empty block (the microphone
+    with no new audio) becomes None, so the consumer can do other things."""
     sobra = b""
     for bloco in blocos:
         if not bloco:
@@ -152,9 +152,9 @@ def em_quadros(blocos: Iterable[bytes]) -> Iterator[bytes | None]:
 
 
 def falas(quadros: Iterable[bytes | None], vad, detector: DetectorDeFala) -> Iterator[bytes | None]:
-    """Passa cada quadro pelo VAD e pelo detector; devolve as falas completas, e None quando o
-    microfone está sem áudio novo ou a cada ~0,3 s de áudio sem fala completa: com o microfone
-    captando sem parar, quem consome também precisa de uma folga para olhar o teclado."""
+    """Runs each frame through the VAD and the detector; returns the complete utterances, and None
+    when the microphone has no new audio or every ~0.3 s of audio without a complete utterance:
+    with the microphone capturing nonstop, the consumer also needs a break to check the keyboard."""
     sem_fala = 0
     for quadro in quadros:
         if quadro is None:

@@ -1,9 +1,9 @@
-"""Carrega e valida a config da Nora.
+"""Loads and validates Nora's config.
 
-Ordem: nora.toml (padrão, dentro do pacote; `config/nora.toml` na pasta do usuário o substitui, se
-existir) -> config/local.toml (pessoal, fora do Git) -> variáveis de ambiente e .env (segredos).
-A pasta do usuário é a raiz do repositório no desenvolvimento e `%APPDATA%\\Nora` instalada
-(veja caminhos.py).
+Order: nora.toml (default, inside the package; `config/nora.toml` in the user folder replaces it,
+if it exists) -> config/local.toml (personal, outside Git) -> environment variables and .env
+(secrets). The user folder is the repository root during development and `%APPDATA%\\Nora` when
+installed (see caminhos.py).
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ RAIZ = pasta_do_usuario()
 
 
 class ConfigError(Exception):
-    """Config ausente ou inválida."""
+    """Missing or invalid config."""
 
 
 @dataclass(frozen=True)
@@ -52,7 +52,7 @@ class Ouvido:
     motor: str
     url: str
     idioma: str
-    vocabulario: tuple[str, ...] = ()  # nomes e termos que o Whisper deve escrever certo
+    vocabulario: tuple[str, ...] = ()  # names and terms Whisper must spell right
 
 
 @dataclass(frozen=True)
@@ -67,19 +67,19 @@ class VozPiper:
     url: str
     voz: str
     velocidade: float = 1.0
-    variacao: float = 0.0  # noise_scale do Piper; 0 = o padrão do modelo
-    variacao_ritmo: float = 0.0  # noise_w_scale do Piper; 0 = o padrão do modelo
+    variacao: float = 0.0  # Piper's noise_scale; 0 = the model's default
+    variacao_ritmo: float = 0.0  # Piper's noise_w_scale; 0 = the model's default
 
 
 @dataclass(frozen=True)
 class VozElevenLabs:
     voz_id: str
     modelo: str
-    semente: int = -1  # mesma semente em todos os pedidos = tom mais constante; -1 = sorteia
-    continuidade: bool = True  # HTTP: frase anterior junto; v4: a conexão fica aberta
-    modelo_reserva: str = "eleven_flash_v2_5"  # se o diálogo (v4) falhar, pelo HTTP
-    estabilidade: float = 0.5  # v4 (diálogo): o único ajuste de voz que vale
-    manter_conexao_s: int = 120  # v4: fecha a conexão depois de tanto tempo sem resposta
+    semente: int = -1  # same seed on every request = steadier tone; -1 = random
+    continuidade: bool = True  # HTTP: previous sentence sent along; v4: the connection stays open
+    modelo_reserva: str = "eleven_flash_v2_5"  # if the dialogue (v4) fails, through HTTP
+    estabilidade: float = 0.5  # v4 (dialogue): the only voice setting that applies
+    manter_conexao_s: int = 120  # v4: closes the connection after this long without an answer
 
 
 @dataclass(frozen=True)
@@ -104,7 +104,9 @@ class Voz:
     piper: VozPiper
     elevenlabs: VozElevenLabs
     comfyui: VozComfyUI
-    juntar_curta: int = 0  # pedido à voz com menos caracteres espera a próxima frase; 0 = não
+    juntar_curta: int = (
+        0  # a voice request with fewer characters waits for the next sentence; 0 = no
+    )
 
 
 @dataclass(frozen=True)
@@ -129,19 +131,21 @@ class Memoria:
 @dataclass(frozen=True)
 class AutoMelhoria:
     ativa: bool = True
-    hora_relatorio: str = "20:00"  # HH:MM, hora local do relatório diário
-    min_ocorrencias: int = 3  # menos que isso num dia não vira proposta
-    latencia_resposta_ms: int = 2500  # até o primeiro pedaço da resposta
-    latencia_ouvido_ms: int = 1500  # transcrição
-    latencia_voz_ms: int = 2000  # da primeira frase pronta até começar a falar
-    dias_de_eventos: int = 30  # eventos mais velhos são apagados no fechamento
-    notificar: bool = True  # notificação do Windows quando o relatório fica pronto
-    apresentar: str = "abrir"  # abrir: abre o .md; terminal: mostra o texto inteiro na conversa
+    hora_relatorio: str = "20:00"  # HH:MM, local time of the daily report
+    min_ocorrencias: int = 3  # fewer than this in a day does not become a proposal
+    latencia_resposta_ms: int = 2500  # until the first chunk of the answer
+    latencia_ouvido_ms: int = 1500  # transcription
+    latencia_voz_ms: int = 2000  # from the first ready sentence until speech starts
+    dias_de_eventos: int = 30  # older events are deleted when the day closes
+    notificar: bool = True  # Windows notification when the report is ready
+    apresentar: str = (
+        "abrir"  # abrir: opens the .md; terminal: shows the full text in the conversation
+    )
 
 
 @dataclass(frozen=True)
 class Notas:
-    pasta: Path | None = None  # o vault do Obsidian; None = sem notas
+    pasta: Path | None = None  # the Obsidian vault; None = no notes
     trechos_por_pergunta: int = 3
     similaridade_minima: float = 0.5
     ignorar: tuple[str, ...] = ()
@@ -150,16 +154,16 @@ class Notas:
 
 @dataclass(frozen=True)
 class SegundoCerebro:
-    """Second Brain (v0.3.1): as memórias consolidadas viram notas no Obsidian."""
+    """Second Brain (v0.3.1): the consolidated memories become notes in Obsidian."""
 
-    ativo: bool = False  # exportar só com consentimento: desligado por padrão
-    pasta: str = "Nora Brain"  # dentro do vault de [notas] pasta (ou um caminho absoluto)
-    areas_privadas: tuple[str, ...] = ("saúde", "finanças")  # nunca viram nota
-    preferencias: bool = True  # exporta as preferências sobre o jeito de falar
-    agenda: bool = True  # liga fatos com data aos meses da agenda
-    emocoes: bool = True  # anota o tom da conversa em que o fato surgiu
-    intervalo_s: int = 60  # além do aviso da memória, confere a cada tantos segundos
-    mostrar_texto_no_mapa: bool = False  # o mapa abre com o texto das memórias escondido
+    ativo: bool = False  # export only with consent: off by default
+    pasta: str = "Nora Brain"  # inside the [notas] pasta vault (or an absolute path)
+    areas_privadas: tuple[str, ...] = ("saúde", "finanças")  # never become notes
+    preferencias: bool = True  # exports the preferences about the way of speaking
+    agenda: bool = True  # links facts with a date to the agenda months
+    emocoes: bool = True  # records the tone of the conversation where the fact came up
+    intervalo_s: int = 60  # besides the memory signal, checks every this many seconds
+    mostrar_texto_no_mapa: bool = False  # the map opens with the memory text hidden
 
 
 @dataclass(frozen=True)
@@ -208,7 +212,7 @@ class Roteador:
     modo: str = "automatico"
     escalar: bool = True
     triagem: bool = True
-    complexas: str = "openai"  # quem responde as complexas; a outra nuvem é a reserva
+    complexas: str = "openai"  # who answers the complex ones; the other cloud is the fallback
 
 
 @dataclass(frozen=True)
@@ -322,7 +326,7 @@ def _notas(dados: dict[str, Any], raiz: Path) -> Notas:
 
 
 def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
-    """Junta dois dicionários de config; as chaves de `extra` vencem."""
+    """Merges two config dictionaries; the keys from `extra` win."""
     resultado = dict(base)
     for chave, valor in extra.items():
         if isinstance(valor, dict) and isinstance(resultado.get(chave), dict):
@@ -333,11 +337,11 @@ def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
 
 
 def ler_env(caminho: Path) -> dict[str, str]:
-    """Lê um arquivo .env simples (CHAVE=valor, # comentários)."""
+    """Reads a simple .env file (CHAVE=valor, # comments)."""
     if not caminho.is_file():
         return {}
     valores = {}
-    # utf-8-sig: o Bloco de Notas pode salvar com BOM, que grudaria no nome da primeira chave
+    # utf-8-sig: Notepad may save with a BOM, which would stick to the first key's name
     for linha in caminho.read_text(encoding="utf-8-sig").splitlines():
         linha = linha.strip()
         if not linha or linha.startswith("#") or "=" not in linha:
@@ -529,7 +533,7 @@ def _caminho(texto: str, raiz: Path) -> Path:
 
 
 def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Config:
-    """Lê os arquivos de config a partir de `raiz` e devolve uma Config validada."""
+    """Reads the config files from `raiz` and returns a validated Config."""
     ambiente = {**ler_env(raiz / ".env"), **(os.environ if ambiente is None else ambiente)}
 
     substituta = raiz / "config/nora.toml"

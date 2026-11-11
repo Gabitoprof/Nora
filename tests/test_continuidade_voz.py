@@ -25,7 +25,7 @@ class VozAnotada:
         return frase.encode()
 
 
-# --- juntar a frase curta ---------------------------------------------------------------------
+# --- joining the short sentence ---------------------------------------------------------------
 
 
 def test_frase_curta_espera_a_proxima_e_vai_junto():
@@ -82,7 +82,7 @@ def test_juntar_zero_mantem_o_jeito_antigo():
     assert voz.pedidos == ["Oi!", "Tudo certo por aqui, e com você?"]
 
 
-# --- ElevenLabs: semente e frase anterior -----------------------------------------------------
+# --- ElevenLabs: seed and previous sentence ---------------------------------------------------
 
 
 def _eleven(url, monkeypatch, **extras):
@@ -142,7 +142,7 @@ def test_outro_erro_do_elevenlabs_nao_e_engolido(monkeypatch):
     assert len(nuvem.pedidos) == 1
 
 
-# --- config e dica do ouvido ------------------------------------------------------------------
+# --- config and ear hint ----------------------------------------------------------------------
 
 
 def test_config_da_v031(criar_raiz):

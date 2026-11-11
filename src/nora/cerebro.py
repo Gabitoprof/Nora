@@ -1,4 +1,4 @@
-"""Cérebro local: conversa com o modelo do Ollama em streaming."""
+"""Local brain: talks to the Ollama model, streaming."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from nora.config import Config
 
 
 class CerebroIndisponivel(Exception):
-    """O cérebro (Ollama ou nuvem) não respondeu ou recusou o pedido. `categoria` diz o tipo da
-    falha para o diagnóstico (erro_provedor, timeout, resposta_vazia); vazia = descobrir."""
+    """The brain (Ollama or cloud) did not answer or refused the request. `categoria` gives the
+    failure type for diagnostics (erro_provedor, timeout, resposta_vazia); empty = find out."""
 
     def __init__(self, mensagem: str = "", categoria: str = "") -> None:
         super().__init__(mensagem)
@@ -22,7 +22,7 @@ class CerebroIndisponivel(Exception):
 
 
 def categoria_do_erro(erro: Exception) -> str:
-    """erro_provedor, timeout ou resposta_vazia, para o observador agrupar as falhas."""
+    """erro_provedor, timeout or resposta_vazia, so the observer can group the failures."""
     if getattr(erro, "categoria", ""):
         return erro.categoria
     causa = erro.__cause__
@@ -39,7 +39,7 @@ def categoria_do_erro(erro: Exception) -> str:
 
 @dataclass
 class Medidas:
-    """Tempos da última resposta, em segundos."""
+    """Times of the last answer, in seconds."""
 
     primeiro_pedaco: float = 0.0
     total: float = 0.0
@@ -61,7 +61,7 @@ class CerebroLocal:
         )
 
     def aquecer(self) -> float:
-        """Carrega o modelo na memória sem gerar nada; devolve quanto tempo levou."""
+        """Loads the model into memory without generating anything; returns how long it took."""
         modelo = self.config.modelo_local
         inicio = time.perf_counter()
         pedido = self._pedido(
@@ -87,7 +87,7 @@ class CerebroLocal:
         return time.perf_counter() - inicio
 
     def descarregar(self) -> None:
-        """Tira o modelo da memória da placa de vídeo agora (modo jogo)."""
+        """Unloads the model from the graphics card memory now (game mode)."""
         pedido = urllib.request.Request(
             f"{self.config.ollama_host.rstrip('/')}/api/generate",
             data=json.dumps({"model": self.config.modelo_local.modelo, "keep_alive": 0}).encode(),
@@ -102,7 +102,7 @@ class CerebroLocal:
             ) from erro
 
     def responder(self, mensagens: list[dict[str, str]]) -> Iterator[str]:
-        """Envia a conversa ao Ollama e devolve a resposta aos pedaços, conforme é gerada."""
+        """Sends the conversation to Ollama and returns the answer in chunks, as it is generated."""
         modelo = self.config.modelo_local
         pedido = self._pedido(
             {

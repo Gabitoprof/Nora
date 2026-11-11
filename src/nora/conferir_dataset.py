@@ -1,10 +1,10 @@
-"""Confere um conjunto de treino de voz frase por frase, para separar os áudios bons dos ruins
-antes do treino do Piper.
+"""Checks a voice training set sentence by sentence, to separate the good recordings from the bad
+ones before Piper training.
 
-Para cada .wav: o Whisper transcreve e o texto é comparado com o esperado (palavra trocada,
-faltando ou sobrando), e o áudio é medido (ritmo da fala, silêncios longos, volume, distorção).
-O Whisper corrige sotaque ao transcrever ("houje" vira "hoje"), então pronúncia estranha ainda
-pede ouvido; o resto ele pega bem.
+For each .wav: Whisper transcribes it and the text is compared with the expected one (swapped,
+missing or extra words), and the audio is measured (speech rate, long silences, volume,
+distortion). Whisper corrects accent when transcribing ("houje" becomes "hoje"), so odd
+pronunciation still needs a human ear; it catches the rest well.
 """
 
 from __future__ import annotations
@@ -24,26 +24,26 @@ from nora.dataset_voz import DESCARTADAS, descartadas
 
 _PALAVRA = re.compile(r"[a-z0-9]+")
 
-# Limites (ajustados para frases curtas de assistente, 1 a 10 s)
+# Limits (tuned for short assistant sentences, 1 to 10 s)
 ACERTO_BOM = 0.85
 ACERTO_RUIM = 0.6
 SILENCIO_PONTA_S = 1.0
 PAUSA_LONGA_S = 1.5
-RITMO_LIMITE = 1.6  # vezes a mediana do conjunto (para mais ou para menos)
+RITMO_LIMITE = 1.6  # times the set's median (above or below)
 RITMO_RUIM = 2.2
 VOLUME_BAIXO_DB = -35.0
-ESTOURO = 0.001  # fração de amostras no limite
+ESTOURO = 0.001  # fraction of samples at the limit
 
 
 def palavras(texto: str) -> list[str]:
-    """Minúsculas, sem acento e sem pontuação: 'Você, hoje?' -> ['voce', 'hoje']."""
+    """Lowercase, no accents and no punctuation: 'Você, hoje?' -> ['voce', 'hoje']."""
     sem_acento = unicodedata.normalize("NFD", texto.lower())
     sem_acento = "".join(c for c in sem_acento if unicodedata.category(c) != "Mn")
     return _PALAVRA.findall(sem_acento)
 
 
 def acerto(esperado: str, ouvido: str) -> float:
-    """Quanto da frase o Whisper ouviu igual (0 a 1), comparando palavra por palavra."""
+    """How much of the sentence Whisper heard the same (0 to 1), comparing word by word."""
     a, b = palavras(esperado), palavras(ouvido)
     if not a and not b:
         return 1.0
@@ -53,7 +53,7 @@ def acerto(esperado: str, ouvido: str) -> float:
 @dataclass
 class Medidas:
     duracao: float
-    fala: float  # segundos com voz (sem os silêncios)
+    fala: float  # seconds with voice (without the silences)
     silencio_inicio: float
     silencio_fim: float
     maior_pausa: float
@@ -62,7 +62,7 @@ class Medidas:
 
 
 def medir(amostras: bytes, taxa: int, quadro_s: float = 0.02) -> Medidas:
-    """Mede o áudio PCM 16 bits mono em quadros de 20 ms."""
+    """Measures 16-bit mono PCM audio in 20 ms frames."""
     import numpy
 
     sinal = numpy.frombuffer(amostras, dtype="<i2").astype(numpy.float64) / 32768.0
@@ -98,7 +98,7 @@ class Avaliacao:
     transcricao: str
     acerto: float
     medidas: Medidas
-    ritmo: float  # letras por segundo de fala
+    ritmo: float  # letters per second of speech
     problemas: list[str] = field(default_factory=list)
     grave: bool = False
 
@@ -158,7 +158,7 @@ def conferir(
     pasta: Path,
     saida: Callable[[str], None] = print,
 ) -> list[Avaliacao]:
-    """Avalia cada frase do conjunto. `ouvido` precisa de transcrever(wav) -> texto."""
+    """Evaluates each sentence of the set. `ouvido` needs transcrever(wav) -> text."""
     frases = ler_metadata(pasta)
     saida(f"Conferindo {len(frases)} frases (o Whisper ouve cada uma)...")
     avaliacoes = []
@@ -194,7 +194,7 @@ def conferir(
 
 
 def salvar_relatorio(avaliacoes: list[Avaliacao], arquivo: Path) -> None:
-    """Planilha (abre no Excel) com a pior frase primeiro."""
+    """Spreadsheet (opens in Excel) with the worst sentence first."""
     ordem = {"ruim": 0, "conferir": 1, "boa": 2}
     with arquivo.open("w", encoding="utf-8-sig", newline="") as saida:
         escritor = csv.writer(saida, delimiter=";")
@@ -213,8 +213,8 @@ def salvar_relatorio(avaliacoes: list[Avaliacao], arquivo: Path) -> None:
 
 
 def descartar(pasta: Path, idents: list[str]) -> None:
-    """Tira os áudios do conjunto (vão para descartadas/) e do metadata.csv, e anota para o
-    gerar-dataset não refazê-los iguais."""
+    """Removes the recordings from the set (they go to descartadas/) and from metadata.csv, and
+    notes them so gerar-dataset does not redo them the same."""
     if not idents:
         return
     destino = pasta / "descartadas"

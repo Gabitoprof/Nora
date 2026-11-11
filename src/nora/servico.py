@@ -1,4 +1,4 @@
-"""Pedidos HTTP aos serviços locais (Ollama, whisper-server, Piper)."""
+"""HTTP requests to the local services (Ollama, whisper-server, Piper)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import urllib.request
 
 
 class ServicoIndisponivel(Exception):
-    """Um serviço local não respondeu ou recusou o pedido."""
+    """A local service did not answer or refused the request."""
 
 
 def enviar(nome: str, pedido: urllib.request.Request, timeout: float) -> bytes:
@@ -20,8 +20,8 @@ def enviar(nome: str, pedido: urllib.request.Request, timeout: float) -> bytes:
 
 
 def abrir(nome: str, pedido: urllib.request.Request, timeout: float):
-    """Faz o pedido e devolve a resposta aberta, para ler aos pedaços (streaming). Os erros de
-    conexão e as recusas (4xx, 5xx) viram ServicoIndisponivel aqui, antes de ler o corpo."""
+    """Makes the request and returns the open response, to read in chunks (streaming). Connection
+    errors and refusals (4xx, 5xx) become ServicoIndisponivel here, before reading the body."""
     try:
         return urllib.request.urlopen(pedido, timeout=timeout)
     except urllib.error.HTTPError as erro:
@@ -39,7 +39,7 @@ def abrir(nome: str, pedido: urllib.request.Request, timeout: float):
 
 
 def responde(url: str, timeout: float = 2.0) -> bool:
-    """True se há algum servidor HTTP escutando em `url` (qualquer status serve)."""
+    """True if some HTTP server is listening at `url` (any status will do)."""
     try:
         with urllib.request.urlopen(url, timeout=timeout):
             return True

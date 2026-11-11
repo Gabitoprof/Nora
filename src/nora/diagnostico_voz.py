@@ -1,7 +1,7 @@
-"""Diagnóstico da voz: o modelo que falou de fato, o estado da continuidade e os tempos da última
-resposta. Vai para o log (`nora.voz`) e para `<dados>/diagnostico_voz.json`, que o
-`nora --verificar` mostra. Só números, nomes de modelo e tipos de erro: nunca o texto da conversa
-nem chaves.
+"""Voice diagnostics: the model that actually spoke, the continuity state and the times of the last
+answer. It goes to the log (`nora.voz`) and to `<dados>/diagnostico_voz.json`, which
+`nora --verificar` shows. Only numbers, model names and error types: never the conversation text
+nor keys.
 """
 
 from __future__ import annotations
@@ -15,27 +15,29 @@ from pathlib import Path
 ARQUIVO = "diagnostico_voz.json"
 log = logging.getLogger("nora.voz")
 
-# Continuidade do ElevenLabs: a entonação seguindo de uma frase para a outra.
-ATIVA = "ativa"  # v4: uma conexão por conversa; HTTP: com a frase anterior (previous_text)
-DESATIVADA = "desativada"  # continuidade = false na config
-NAO_SUPORTADA = "não suportada"  # o modelo recusou a frase anterior (HTTP)
-ERRO = "erro"  # o diálogo (v4) falhou e a Nora caiu na reserva
+# ElevenLabs continuity: the intonation carrying from one sentence to the next.
+ATIVA = (
+    "ativa"  # v4: one connection per conversation; HTTP: with the previous sentence (previous_text)
+)
+DESATIVADA = "desativada"  # continuidade = false in the config
+NAO_SUPORTADA = "não suportada"  # the model refused the previous sentence (HTTP)
+ERRO = "erro"  # the dialogue (v4) failed and Nora fell back
 
 
 @dataclass
 class MedidaDaVoz:
-    modelo: str  # o que falou de fato (ex.: eleven_v4_turbo, ou a reserva)
-    via: str  # "dialogo" (WebSocket v4), "http" ou "http (reserva)"
+    modelo: str  # what actually spoke (e.g. eleven_v4_turbo, or the fallback)
+    via: str  # "dialogo" (WebSocket v4), "http" or "http (reserva)"
     continuidade: str
     pedido_ate_primeiro_pcm_ms: int | None = None
     pedido_ate_reproducao_ms: int | None = None
-    silencio_entre_trechos_ms: int = 0  # buracos por falta de áudio, somados
+    silencio_entre_trechos_ms: int = 0  # gaps from missing audio, summed
     maior_silencio_ms: int = 0
-    alinhamento: bool = False  # chegou alinhamento por caractere (palavras reais na HUD)
-    erro: str = ""  # tipo/código do erro, sem texto pessoal
+    alinhamento: bool = False  # per-character alignment arrived (real words in the HUD)
+    erro: str = ""  # error type/code, with no personal text
     quando: str = ""
-    geracoes: int = 0  # pedidos de síntese nesta resposta (v4: 1 turno; HTTP: 1 por lote)
-    reservas: list[str] = field(default_factory=list)  # motivo de cada troca para a reserva
+    geracoes: int = 0  # synthesis requests in this answer (v4: 1 turn; HTTP: 1 per batch)
+    reservas: list[str] = field(default_factory=list)  # reason for each switch to the fallback
 
 
 def _ms(inicio: float | None, fim: float | None) -> int | None:
@@ -45,12 +47,12 @@ def _ms(inicio: float | None, fim: float | None) -> int | None:
 
 
 def _curto(motivo: str) -> str:
-    """Motivo de reserva para o log: uma linha curta (as mensagens não levam texto da conversa)."""
+    """Fallback reason for the log: a short line (the messages carry no conversation text)."""
     return " ".join(str(motivo).split())[:160]
 
 
 def medir_locutor(locutor, modelo: str, via: str, continuidade: str) -> MedidaDaVoz:
-    """A medida de uma resposta falada pelo caminho HTTP (frase por frase)."""
+    """The measurement of an answer spoken through the HTTP path (sentence by sentence)."""
     return MedidaDaVoz(
         modelo=modelo,
         via=via,
@@ -64,7 +66,7 @@ def medir_locutor(locutor, modelo: str, via: str, continuidade: str) -> MedidaDa
 
 
 def medir_turno(turno, modelo: str, continuidade: str, erro: str = "") -> MedidaDaVoz:
-    """A medida de uma resposta falada pelo diálogo (v4)."""
+    """The measurement of an answer spoken through the dialogue (v4)."""
     audio = turno.audio
     return MedidaDaVoz(
         modelo=modelo,
@@ -81,7 +83,7 @@ def medir_turno(turno, modelo: str, continuidade: str, erro: str = "") -> Medida
 
 
 def registrar(pasta_dados: Path, medida: MedidaDaVoz) -> None:
-    """Grava a última medida e escreve uma linha no log. Nunca levanta erro."""
+    """Stores the last measurement and writes a log line. Never raises."""
     medida.quando = datetime.now().isoformat(timespec="seconds")
     log.info(
         "voz: modelo=%s via=%s continuidade=%s primeiro_pcm=%sms reproducao=%sms "
@@ -110,14 +112,14 @@ def registrar(pasta_dados: Path, medida: MedidaDaVoz) -> None:
 def ler(pasta_dados: Path) -> MedidaDaVoz | None:
     try:
         dados = json.loads((pasta_dados / ARQUIVO).read_text(encoding="utf-8"))
-        conhecidos = {f.name for f in fields(MedidaDaVoz)}  # arquivo de versão anterior
+        conhecidos = {f.name for f in fields(MedidaDaVoz)}  # file from an earlier version
         return MedidaDaVoz(**{k: v for k, v in dados.items() if k in conhecidos})
     except (OSError, ValueError, TypeError):
         return None
 
 
 def resumo(medida: MedidaDaVoz) -> str:
-    """Uma linha legível para o --verificar e o --medir."""
+    """A readable line for --verificar and --medir."""
     partes = [f"{medida.modelo} ({medida.via})", f"continuidade {medida.continuidade}"]
     if medida.pedido_ate_primeiro_pcm_ms is not None:
         partes.append(f"primeiro áudio em {medida.pedido_ate_primeiro_pcm_ms} ms")

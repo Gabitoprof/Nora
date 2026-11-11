@@ -1,5 +1,5 @@
-"""Linha de comando da Nora: `nora` (olá), `nora --verificar` (diagnóstico) e
-`nora conversar` (conversa digitada)."""
+"""Nora's command line: `nora` (hello), `nora --verificar` (diagnostics) and
+`nora conversar` (typed conversation)."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def saudacao(config: Config) -> str:
 
 
 def modelos_ollama(host: str, timeout: float = 2.0) -> list[str] | None:
-    """Lista os modelos instalados no Ollama, ou None se ele não responder."""
+    """Lists the models installed in Ollama, or None if it does not answer."""
     try:
         with urllib.request.urlopen(f"{host.rstrip('/')}/api/tags", timeout=timeout) as resposta:
             dados = json.load(resposta)
@@ -42,7 +42,7 @@ def descrever_voz(config: Config) -> str:
 
 
 def _instalado(modelo: str, instalados: list[str]) -> bool:
-    """O Ollama lista "bge-m3:latest" para quem pediu "bge-m3"."""
+    """Ollama lists "bge-m3:latest" for whoever asked for "bge-m3"."""
     return modelo in instalados or f"{modelo}:latest" in instalados
 
 
@@ -173,7 +173,7 @@ def verificar(config: Config) -> list[str]:
 
 
 def _diagnostico_elevenlabs(config: Config) -> list[str]:
-    """Modelo efetivo, continuidade e a última medida da voz (sem texto nem chave)."""
+    """Effective model, continuity and the last voice measurement (no text or key)."""
     import importlib.util
 
     from nora import diagnostico_voz as diag
@@ -200,7 +200,7 @@ def _diagnostico_elevenlabs(config: Config) -> list[str]:
 
 
 def testar_audio(config: Config, segundos: float, entrada=input) -> int:
-    """Lista os dispositivos de áudio e grava alguns segundos para tocar de volta."""
+    """Lists the audio devices and records a few seconds to play back."""
     import threading
 
     from nora import audio
@@ -241,7 +241,8 @@ IDIOMAS_KOKORO = {
 
 
 def comparar_realces(config: Config, frase: str, ouvir: bool = False, voz=None, tocar=None) -> int:
-    """Gera a frase em cada realce de pergunta e salva em data/vozes/pergunta_<realce>.wav."""
+    """Generates the sentence in each question emphasis and saves it to
+    data/vozes/pergunta_<realce>.wav."""
     from nora import audio
     from nora.config import REALCES_DE_PERGUNTA
     from nora.servico import ServicoIndisponivel
@@ -274,7 +275,7 @@ def comparar_realces(config: Config, frase: str, ouvir: bool = False, voz=None, 
 
 
 def _com_aprendidas(config: Config, voz):
-    """A voz com as pronúncias ensinadas na conversa (se a memória estiver ligada)."""
+    """The voice with the pronunciations taught in conversation (if memory is on)."""
     from nora.memoria import abrir_memoria
     from nora.voz import com_pronuncias_aprendidas
 
@@ -304,7 +305,7 @@ def comando_gerar_dataset(config: Config, args, voz=None) -> int:
     if not frases:
         print(f"[erro] Nenhuma frase aproveitável em {arquivo}.", file=sys.stderr)
         return 1
-    # Só a voz principal: a reserva misturaria outra voz no conjunto de treino.
+    # Only the main voice: the fallback would mix another voice into the training set.
     voz = voz or _com_aprendidas(config, _criar_motor(config, config.voz.motor))
     pasta = config.pasta_dados / "dataset_voz" / args.nome
     print(f"Voz: {config.voz.motor}. Frases de {arquivo}.")
@@ -374,7 +375,8 @@ def salvar_fala(
     voz=None,
     tocar=None,
 ) -> int:
-    """A Nora fala o texto com a voz da config (ElevenLabs, Kokoro, Piper...) e salva em .wav."""
+    """Nora speaks the text with the config's voice (ElevenLabs, Kokoro, Piper...) and saves it as
+    .wav."""
     import re
     import time
     from pathlib import Path
@@ -412,7 +414,7 @@ def salvar_fala(
 
 
 def laboratorio_de_voz(config: Config, args, sintetizador=None, tocar=None) -> int:
-    """Lista as vozes do Kokoro e toca uma voz ou mistura, para achar a voz da Nora."""
+    """Lists the Kokoro voices and plays a voice or mix, to find Nora's voice."""
     import re
 
     from nora import audio
@@ -765,7 +767,7 @@ def comando_memoria(config: Config, args) -> int:
 
 
 def _situacao_do_segundo_cerebro(config: Config) -> str:
-    """Uma linha para o --verificar: desligado, sem destino ou a última rodada."""
+    """A line for --verificar: off, no destination or the last round."""
     if not config.segundo_cerebro.ativo:
         return "desligado ([segundo_cerebro] ativo = false)"
     from nora.segundo_cerebro import destino
@@ -1060,7 +1062,7 @@ def main(argv: list[str] | None = None) -> int:
     from nora.config import RAIZ
 
     try:
-        preparar_pasta_do_usuario(RAIZ)  # instalada: cria a pasta da Nora na primeira vez
+        preparar_pasta_do_usuario(RAIZ)  # installed: creates Nora's folder the first time
     except OSError as erro:
         print(f"Não consegui criar a pasta da Nora em {RAIZ}: {erro}", file=sys.stderr)
     try:

@@ -1,14 +1,15 @@
-"""Cenário de inspeção da HUD sem microfone nem voz: o servidor real da HUD e uma fala sintética
-com palavras alinhadas, tocada em tempo real numa saída falsa (nada sai no alto-falante).
+"""HUD inspection scenario without microphone or voice: the real HUD server and a synthetic
+utterance with aligned words, played in real time on a fake output (nothing comes out of the
+speaker).
 
-    python scripts/hud_cenario.py [porta]      (padrão 8799)
+    python scripts/hud_cenario.py [porta]      (default 8799)
 
-Abra o endereço mostrado no navegador e digite no terminal:
-    falar    fala a frase de teste (palavras alinhadas, ~12 s)
-    ouvindo  volta ao estado de escuta
-    sair     encerra
+Open the address shown in the browser and type in the terminal:
+    falar    speaks the test sentence (aligned words, ~12 s)
+    ouvindo  goes back to the listening state
+    sair     quits
 
-Serve para conferir a HUD (marca, faixa da fala, onda) e tirar capturas. Não usa rede nem chaves.
+Used to check the HUD (mark, speech band, wave) and take screenshots. Uses no network or keys.
 """
 
 import math
@@ -106,7 +107,7 @@ def falar():
     som.definir_palavras(palavras)
 
     def alimentar():
-        passo = TAXA * 2 // 5  # 200 ms por pedaço, como chega da rede
+        passo = TAXA * 2 // 5  # 200 ms per chunk, as it arrives from the network
         for i in range(0, len(pcm), passo):
             por(pcm[i : i + passo])
             time.sleep(0.05)

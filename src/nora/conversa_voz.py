@@ -1,8 +1,8 @@
-"""Conversa por voz (parte 2 da v0.1.0): aperta Enter, fala, e a Nora responde falando.
+"""Voice conversation (part 2 of v0.1.0): press Enter, speak, and Nora answers by speaking.
 
-Ouvido (whisper-server), cérebro (Ollama) e voz (Piper) são serviços separados. A resposta é
-cortada em frases enquanto o modelo escreve: uma linha sintetiza a próxima frase enquanto outra
-toca a atual, então a Nora começa a falar antes de terminar de pensar.
+Ear (whisper-server), brain (Ollama) and voice (Piper) are separate services. The answer is split
+into sentences while the model writes: one thread synthesizes the next sentence while another
+plays the current one, so Nora starts speaking before she finishes thinking.
 """
 
 from __future__ import annotations
@@ -47,15 +47,15 @@ def _e_pergunta(frase: str) -> bool:
     return frase.rstrip(" \"'”)»").endswith("?")
 
 
-# Até quantos caracteres de frases que já estão esperando vão juntos num pedido à voz.
+# Up to how many characters of sentences already waiting go together in one voice request.
 LIMITE_DO_LOTE = 400
-# Quanto um pedido curto (abaixo de [voz] juntar_curta) espera a próxima frase para ir junto.
+# How long a short request (below [voz] juntar_curta) waits for the next sentence to go along.
 ESPERA_PARA_JUNTAR = 1.5
 
 
 @dataclass
 class Tempos:
-    """Segundos de cada etapa de uma fala, contados a partir do fim da gravação."""
+    """Seconds of each stage of an utterance, counted from the end of the recording."""
 
     transcricao: float = 0.0
     primeira_frase: float = 0.0
@@ -64,7 +64,7 @@ class Tempos:
 
 
 class Locutor:
-    """Recebe frases e as fala em ordem: uma linha sintetiza, outra toca."""
+    """Takes sentences and speaks them in order: one thread synthesizes, another plays."""
 
     def __init__(
         self,
@@ -82,7 +82,7 @@ class Locutor:
         self.inicio = inicio
         self.abafar = abafar
         self.tempos = Tempos()
-        # Diagnóstico (sem texto): pedidos de síntese e tempos do caminho HTTP.
+        # Diagnostics (no text): synthesis requests and HTTP path times.
         self.geracoes = 0
         self.primeiro_pedido: float | None = None
         self.primeiro_audio: float | None = None
@@ -101,17 +101,19 @@ class Locutor:
         self._frases.put(frase)
 
     def cancelar(self) -> None:
-        """Ctrl+C: o que já foi pedido termina de tocar (frase por frase não tem como cortar)."""
+        """Ctrl+C: what was already requested finishes playing (sentence by sentence cannot be
+        cut)."""
 
     def terminar(self) -> None:
-        """Espera tudo o que foi pedido ser falado."""
+        """Waits for everything requested to be spoken."""
         self._frases.put(_FIM)
         self._sintese.join()
         self._toque.join()
 
     def _sintetizar(self) -> None:
-        """Sintetiza as frases em ordem. Se várias já estão esperando (a voz é mais lenta que
-        o modelo, como no ComfyUI), junta-as num pedido só: menos pedidos, menos pausas."""
+        """Synthesizes the sentences in order. If several are already waiting (the voice is slower
+        than the model, as with ComfyUI), joins them in one request: fewer requests, fewer
+        pauses."""
         acabou = False
         anterior = None
         while not acabou:
@@ -119,12 +121,12 @@ class Locutor:
             if frase is _FIM:
                 break
             lote = [frase]
-            # Uma pergunta sempre fecha o pedido: com o "?" no fim, a voz sobe a entonação; no
-            # meio do texto, muitos modelos achatam.
+            # A question always closes the request: with the "?" at the end, the voice raises the
+            # intonation; in the middle of the text, many models flatten it.
             while sum(len(f) for f in lote) < LIMITE_DO_LOTE and not _e_pergunta(lote[-1]):
-                # Um pedido curto ("Hahaha, esse atchim!") espera um pouco a próxima frase: sozinho,
-                # vira um áudio curto que acaba antes da próxima ficar pronta (pausa), e a voz
-                # recomeça sem contexto (muda o tom).
+                # A short request ("Hahaha, esse atchim!") waits a bit for the next sentence: alone,
+                # it becomes a short clip that ends before the next one is ready (a pause), and the
+                # voice restarts without context (the tone changes).
                 curto = sum(len(f) for f in lote) < self.juntar
                 try:
                     proxima = (
@@ -159,7 +161,7 @@ class Locutor:
         item = self._audios.get()
         if item is _FIM:
             return
-        with self.abafar():  # os outros programas ficam mais baixos enquanto ela fala
+        with self.abafar():  # the other programs get quieter while she speaks
             while item is not _FIM:
                 wav, texto = item
                 em_streaming = isinstance(wav, audio.AudioEmPartes)
@@ -170,14 +172,14 @@ class Locutor:
                 if not self.tempos.comeco_da_voz:
                     self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
                 comeco = time.perf_counter()
-                if self._fim_anterior is not None:  # silêncio entre um trecho e o próximo
+                if self._fim_anterior is not None:  # silence between one chunk and the next
                     buraco = (comeco - self._fim_anterior) * 1000
                     self.silencio_ms += buraco
                     self.maior_silencio_ms = max(self.maior_silencio_ms, buraco)
                 try:
                     with contexto_fala(texto):
                         self.tocar(wav)
-                except Exception as erro:  # um problema no alto-falante não derruba a conversa
+                except Exception as erro:  # a speaker problem does not bring down the conversation
                     self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
                 if self.inicio_som is None:
                     self.inicio_som = (
@@ -193,13 +195,13 @@ class Locutor:
 
 
 def texto_restante(frases: list[str], alinhados: list[str]) -> str | None:
-    """O que falta falar depois do que o áudio já cobriu, cortado num limite de palavra.
+    """What is left to say after what the audio already covered, cut at a word boundary.
 
-    `alinhados` são os caracteres que o alinhamento do ElevenLabs já cobriu (áudio recebido, que
-    vai tocar inteiro). A contagem usa só letras e números, sem as etiquetas de emoção ({calma}) e
-    as audio tags ([happy]). Uma palavra pela metade é pulada (melhor que repetir o que já se
-    ouviu). Devolve None se não houver limite confiável (sem alinhamento, ou contagem maior que o
-    texto)."""
+    `alinhados` are the characters the ElevenLabs alignment already covered (received audio,
+    which will play in full). The count uses only letters and digits, without the emotion tags
+    ({calma}) and the audio tags ([happy]). A half word is skipped (better than repeating what
+    was already heard). Returns None if there is no reliable boundary (no alignment, or a count
+    larger than the text)."""
 
     def letras(texto: str):
         dentro = ""
@@ -224,21 +226,23 @@ def texto_restante(frases: list[str], alinhados: list[str]) -> str | None:
     if cobertas == len(posicoes):
         return ""
     corte = posicoes[cobertas - 1] + 1
-    while corte < len(texto) and texto[corte].isalnum():  # termina a palavra começada
+    while corte < len(texto) and texto[corte].isalnum():  # finish the started word
         corte += 1
     return texto[corte:].lstrip(" ,.;:!?")
 
 
 class LocutorDialogo:
-    """ElevenLabs v4 (diálogo): uma conexão só; cada frase vai assim que o cérebro a termina e o
-    áudio toca conforme chega, numa reprodução contínua (sem um pedido nem um toque por frase).
+    """ElevenLabs v4 (dialogue): a single connection; each sentence goes as soon as the brain
+    finishes it and the audio plays as it arrives, in continuous playback (no request or play per
+    sentence).
 
-    Mesma interface do `Locutor`. Se o diálogo falhar, o motivo fica em `motivo_reserva` e:
-    - antes do 1º áudio: a reserva (HTTP, frase por frase) fala a resposta inteira;
-    - depois de começar: a reserva continua do último limite de palavra que o alinhamento cobriu,
-      sem repetir o que já foi ouvido, e só depois que o áudio recebido acabar de tocar;
-    - sem limite confiável (sem alinhamento): a fala para de modo claro, `cortada` fica True e a
-      resposta inteira pode ser repetida a pedido ("repete a resposta que caiu")."""
+    Same interface as `Locutor`. If the dialogue fails, the reason goes to `motivo_reserva` and:
+    - before the 1st audio: the fallback (HTTP, sentence by sentence) speaks the whole answer;
+    - after it started: the fallback continues from the last word boundary the alignment
+      covered, without repeating what was already heard, and only after the received audio
+      finishes playing;
+    - without a reliable boundary (no alignment): speech stops clearly, `cortada` becomes True
+      and the whole answer can be repeated on request ("repete a resposta que caiu")."""
 
     def __init__(
         self,
@@ -259,10 +263,12 @@ class LocutorDialogo:
         self.emocao = ""
         self.turno = None
         self._toque: threading.Thread | None = None
-        self.cortada = False  # caiu no meio sem limite confiável: a resposta pode ser repetida
-        self.reservas: list[str] = []  # motivo de cada troca para a reserva (diagnóstico)
+        self.cortada = (
+            False  # dropped midway without a reliable boundary: the answer can be repeated
+        )
+        self.reservas: list[str] = []  # reason for each switch to the fallback (diagnostics)
         try:
-            # Abre (ou reaproveita) a conexão já, enquanto o cérebro ainda pensa.
+            # Opens (or reuses) the connection now, while the brain is still thinking.
             self.turno = dialogo.novo_turno()
         except ServicoIndisponivel as erro:
             self._para_reserva(erro)
@@ -279,7 +285,7 @@ class LocutorDialogo:
         ):
             self._seguir_na_reserva(self.turno.erro)
         if self.cortada:
-            self.frases.append(frase)  # não fala mais; guarda para poder repetir
+            self.frases.append(frase)  # speaks no more; keeps it so it can be repeated
             return
         if self.reserva is not None:
             self.frases.append(frase)
@@ -289,11 +295,12 @@ class LocutorDialogo:
             emocoes = emocoes_em(frase)
             self.emocao = emocoes[0].nome if emocoes else ""
         self.frases.append(frase)
-        self.turno.audio.texto = " ".join(self.frases)  # estimativa, se não vier alinhamento
+        self.turno.audio.texto = " ".join(self.frases)  # estimate, if no alignment comes
         self.turno.enviar(self.transformar(frase))
 
     def cancelar(self) -> None:
-        """Barge-in: corta o áudio e fecha a conexão (a próxima resposta abre outra, limpa)."""
+        """Barge-in: cuts the audio and closes the connection (the next answer opens a clean
+        one)."""
         if self.turno is not None:
             self.turno.cancelar()
 
@@ -312,7 +319,8 @@ class LocutorDialogo:
         return " ".join(self.frases)
 
     def _seguir_na_reserva(self, erro: Exception) -> None:
-        """O diálogo falhou: decide entre repetir tudo, continuar do limite ou parar."""
+        """The dialogue failed: decides between repeating everything, continuing from the boundary
+        or stopping."""
         if not self.turno.recebeu_audio:
             self._para_reserva(erro, repetir=True)
             return
@@ -342,7 +350,7 @@ class LocutorDialogo:
             toque, tocar_agora = self._toque, self.tocar
 
             def tocar(som, toque=toque, tocar_agora=tocar_agora):  # noqa: F811
-                toque.join()  # o áudio do v4 já recebido termina antes; nada se sobrepõe
+                toque.join()  # the v4 audio already received finishes first; nothing overlaps
                 tocar_agora(som)
 
         self.reserva = Locutor(self.voz, tocar, self.inicio, self.abafar, juntar=self.juntar)
@@ -355,27 +363,27 @@ class LocutorDialogo:
         som = self.turno.audio
         som.primeira.wait()
         if not self.turno.recebeu_audio:
-            return  # falhou ou foi cancelado antes de qualquer som
+            return  # failed or was cancelled before any sound
         if not self.tempos.comeco_da_voz:
             self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
         with self.abafar(), contexto_fala("", emocao=self.emocao, texto_depois=True):
             try:
                 self.tocar(som)
-            except Exception as erro:  # um problema no alto-falante não derruba a conversa
+            except Exception as erro:  # a speaker problem does not bring down the conversation
                 self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
 
 
 def abafador(config: Config):
-    """O que fazer com os outros programas enquanto a Nora fala, conforme [audio] prioridade."""
+    """What to do with the other programs while Nora speaks, per [audio] prioridade."""
     if not config.audio.prioridade:
         return nullcontext
     return lambda: abafar_outros(config.audio.volume_outros)
 
 
 def responder_falando(conversa: Conversa, *args, **kwargs) -> Tempos:
-    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve.
-    Enquanto isso, `conversa.falando` fica ligado: o Second Brain e outras tarefas de fundo
-    esperam a voz terminar (não disputam tempo com ela)."""
+    """Asks the brain for the answer, shows the text and speaks sentence by sentence while it
+    writes. Meanwhile, `conversa.falando` stays on: the Second Brain and other background tasks wait
+    for the voice to finish (they do not compete with it for time)."""
     conversa.falando = True
     try:
         return _responder_falando(conversa, *args, **kwargs)
@@ -393,19 +401,20 @@ def _responder_falando(
     escrever: Callable[..., None],
     medir: bool,
 ) -> Tempos:
-    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve.
-    Um pedido de troca de voz ("usa a voz do Piper") é atendido aqui, sem passar pelo cérebro."""
+    """Asks the brain for the answer, shows the text and speaks sentence by sentence while it
+    writes. A voice switch request ("usa a voz do Piper") is handled here, without going to the
+    brain."""
     pedido = pedido_de_voz(texto)
     if pedido:
         return trocar_de_voz(conversa, voz, tocar, texto, pedido, escrever)
-    # "Repete a resposta que caiu": a última resposta cuja voz caiu sem limite confiável volta
-    # a ser falada inteira, sem perguntar de novo ao cérebro.
+    # "Repete a resposta que caiu": the last answer whose voice dropped without a reliable boundary
+    # is spoken again in full, without asking the brain again.
     cortada = getattr(conversa, "fala_cortada", "")
     repetir = bool(cortada) and pede_retomada(texto)
     if repetir:
         conversa.fala_cortada = ""
     dialogo, transformar = achar_dialogo(voz)
-    if dialogo is not None:  # ElevenLabs v4: diálogo em tempo real, uma conexão por conversa
+    if dialogo is not None:  # ElevenLabs v4: real-time dialogue, one connection per conversation
         locutor = LocutorDialogo(
             dialogo, transformar, voz, tocar, inicio, abafador(conversa.config),
             juntar=conversa.config.voz.juntar_curta,
@@ -424,7 +433,7 @@ def _responder_falando(
                 locutor.tempos.primeira_frase = time.perf_counter() - inicio
             locutor.falar(frase)
 
-    tela = FiltroDeTela()  # a tela não mostra as etiquetas de emoção; a voz recebe tudo
+    tela = FiltroDeTela()  # the screen does not show the emotion tags; the voice gets everything
     try:
         for pedaco in [cortada] if repetir else conversa.perguntar(texto):
             escrever(tela.alimentar(pedaco), fim="")
@@ -473,7 +482,7 @@ def _responder_falando(
 
 
 def _nucleo(voz):
-    """O motor de voz de dentro das camadas (pronúncias, troca, reserva, realce)."""
+    """The voice engine inside the layers (pronunciations, switch, fallback, emphasis)."""
     for _ in range(10):
         proxima = getattr(voz, "principal", None) or getattr(voz, "voz", None)
         if proxima is None or isinstance(voz, VozElevenLabs):
@@ -483,8 +492,8 @@ def _nucleo(voz):
 
 
 def _diagnosticar(conversa: Conversa, voz, locutor, dialogo):
-    """Grava o diagnóstico da voz desta resposta (ElevenLabs): modelo efetivo, continuidade e
-    tempos. Sem texto da conversa. Devolve a medida (ou None, para as outras vozes)."""
+    """Stores the voice diagnostics of this answer (ElevenLabs): effective model, continuity and
+    times. No conversation text. Returns the measurement (or None, for the other voices)."""
     from nora import diagnostico_voz as diag
 
     config = conversa.config.voz.elevenlabs
@@ -494,7 +503,7 @@ def _diagnosticar(conversa: Conversa, voz, locutor, dialogo):
             reserva = getattr(locutor, "reserva", None)
             erro = getattr(dialogo.sessao(), "ultimo_erro", "") or "diálogo indisponível"
             if turno is None or (reserva is not None and not turno.recebeu_audio):
-                # Tudo pela reserva (o diálogo falhou antes do 1º áudio).
+                # Everything through the fallback (the dialogue failed before the 1st audio).
                 medida = diag.medir_locutor(
                     reserva, dialogo.reserva.modelo, "http (reserva)", diag.ERRO
                 )
@@ -502,7 +511,7 @@ def _diagnosticar(conversa: Conversa, voz, locutor, dialogo):
             else:
                 continuidade = diag.ATIVA if dialogo.continuidade else diag.DESATIVADA
                 medida = diag.medir_turno(turno, dialogo.modelo, continuidade)
-                if reserva is not None:  # começou no v4 e terminou na reserva
+                if reserva is not None:  # started on v4 and ended on the fallback
                     medida.via = "dialogo + http (reserva)"
                     medida.continuidade = diag.ERRO
                     medida.erro = erro
@@ -535,7 +544,7 @@ def resumo_da_voz(medida) -> str:
 
 
 def _observar_voz(conversa: Conversa, voz, tempos: Tempos, usou_reserva: bool) -> None:
-    """Tempos do ouvido e da voz e falhas da voz, para a auto-melhoria (sem texto)."""
+    """Ear and voice times and voice failures, for self-improvement (no text)."""
     observador = getattr(conversa, "observador", None)
     motor = getattr(voz, "motor", "") or conversa.config.voz.motor
     if observador is None:
@@ -586,8 +595,9 @@ def conversar_por_voz(
     tocar: Callable[[bytes], None] | None = None,
     so_teclado: bool = False,
 ) -> int:
-    """Conversa com resposta falada. Por padrão, Enter grava a fala e texto digitado vale como
-    pergunta; com `so_teclado`, não usa microfone: a pessoa digita e a Nora responde falando."""
+    """Conversation with a spoken answer. By default, Enter records speech and typed text counts as
+    a question; with `so_teclado`, no microphone is used: the person types and Nora answers by
+    speaking."""
     saida = saida or sys.stdout
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)

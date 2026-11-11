@@ -1,7 +1,7 @@
-"""Datas em português: acha datas num texto ("21/11", "12 de março") e o período de que uma
-pergunta fala ("amanhã", "sexta", "semana que vem", "em dezembro"), para a agenda da memória.
+"""Dates in Portuguese: finds dates in a text ("21/11", "12 de março") and the period a question
+talks about ("amanhã", "sexta", "semana que vem", "em dezembro"), for the memory agenda.
 
-Tudo em funções puras, que recebem o dia de hoje: fácil de testar e sem relógio escondido.
+All in pure functions that take today's date: easy to test and with no hidden clock.
 """
 
 from __future__ import annotations
@@ -69,8 +69,8 @@ class Evento:
 
 
 def _texto(texto: str) -> str:
-    """Minúsculas e sem acento, para comparar ("março" e "marco", "terça" e "terca"). Mantém a
-    pontuação, que separa as datas ("21/11")."""
+    """Lowercase and without accents, for comparison ("março" and "marco", "terça" and "terca").
+    Keeps punctuation, which separates the dates ("21/11")."""
     sem_acento = unicodedata.normalize("NFKD", texto.lower())
     return " ".join("".join(c for c in sem_acento if not unicodedata.combining(c)).split())
 
@@ -83,7 +83,7 @@ def _data_valida(ano: int, mes: int, dia: int) -> date | None:
 
 
 def _mais_perto(mes: int, dia: int, hoje: date) -> date | None:
-    """A data com esse dia e mês mais perto de hoje (ano passado, este ou o próximo)."""
+    """The date with that day and month closest to today (last year, this one or the next)."""
     candidatas = [_data_valida(hoje.year + delta, mes, dia) for delta in (-1, 0, 1)]
     candidatas = [c for c in candidatas if c]
     return min(candidatas, key=lambda c: abs((c - hoje).days)) if candidatas else None
@@ -97,8 +97,8 @@ def _ano(texto: str | None, mes: int, dia: int, hoje: date) -> date | None:
 
 
 def datas_no_texto(texto: str, hoje: date) -> list[tuple[date, bool]]:
-    """Datas escritas num texto, como (data, se repete todo ano). Sem ano, usa a mais perto de
-    hoje. Aniversários e "todo ano" são anuais."""
+    """Dates written in a text, as (date, whether it repeats every year). Without a year, uses the
+    one closest to today. Birthdays and "todo ano" are yearly."""
     limpo = _texto(texto)
     anual = bool(_ANUAL.search(limpo))
     achadas: list[date] = []
@@ -119,8 +119,8 @@ def _fim_do_mes(dia: date) -> date:
 
 
 def intervalo_da_pergunta(texto: str, hoje: date) -> tuple[date, date] | None:
-    """O período de que a pergunta fala, como (primeiro dia, último dia), ou None se ela não
-    fala de nenhum."""
+    """The period the question talks about, as (first day, last day), or None if it mentions
+    none."""
     t = _texto(texto)
     dias: list[date] = []
 
@@ -147,7 +147,7 @@ def intervalo_da_pergunta(texto: str, hoje: date) -> tuple[date, date] | None:
     elif re.search(r"\bsemana passada\b", t):
         periodo(segunda - timedelta(days=7), segunda - timedelta(days=1))
     if re.search(r"\bfim de semana\b|\bfinal de semana\b", t):
-        if hoje.weekday() == 6:  # domingo: o fim de semana é hoje
+        if hoje.weekday() == 6:  # Sunday: the weekend is today
             periodo(hoje, hoje)
         else:
             sabado = hoje + timedelta(days=(5 - hoje.weekday()) % 7)
@@ -182,7 +182,7 @@ def intervalo_da_pergunta(texto: str, hoje: date) -> tuple[date, date] | None:
 
 
 def ocorrencia(evento: Evento, inicio: date, fim: date) -> date | None:
-    """Em que dia o evento cai no período (eventos anuais caem todo ano), ou None."""
+    """Which day the event falls on in the period (yearly events fall every year), or None."""
     if not evento.anual:
         return evento.data if inicio <= evento.data <= fim else None
     for ano in range(inicio.year, fim.year + 1):
@@ -194,7 +194,7 @@ def ocorrencia(evento: Evento, inicio: date, fim: date) -> date | None:
 
 
 def quando(data: date, hoje: date) -> str:
-    """'sábado, 21/11/2026 (daqui a 3 dias)', para a nota que a Nora lê."""
+    """'sábado, 21/11/2026 (daqui a 3 dias)', for the note Nora reads."""
     distancia = (data - hoje).days
     if distancia == 0:
         perto = "hoje"
@@ -210,7 +210,7 @@ def quando(data: date, hoje: date) -> str:
 
 
 def ler_data(texto: str, hoje: date) -> date | None:
-    """Uma data escrita à mão: '21/11/2026', '21/11', '2026-11-21' ou '21 de novembro'."""
+    """A hand-written date: '21/11/2026', '21/11', '2026-11-21' or '21 de novembro'."""
     texto = texto.strip()
     try:
         return date.fromisoformat(texto)
@@ -220,9 +220,9 @@ def ler_data(texto: str, hoje: date) -> date | None:
     return achadas[0][0] if achadas else None
 
 
-# --- contas de data ---------------------------------------------------------------------------
-# O modelo recebe a data de hoje, mas erra a conta ("daqui a 23 dias" virava o dia e a semana
-# errados). Aqui a conta é feita pelo código e vai pronta para ele só falar.
+# --- date math --------------------------------------------------------------------------------
+# The model gets today's date, but gets the math wrong ("daqui a 23 dias" came out with the wrong
+# day and weekday). Here the code does the math and hands it over ready for the model to speak.
 
 _NUMEROS = {
     "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro": 4, "cinco": 5, "seis": 6,
@@ -236,7 +236,7 @@ _PALAVRA_NUMERO = "|".join(sorted(_NUMEROS, key=len, reverse=True))
 _NUMERO = rf"\d{{1,4}}|(?:{_PALAVRA_NUMERO})(?: e (?:{_PALAVRA_NUMERO}))*"
 _UNIDADE = r"dias?|semanas?|mes|meses|anos?"
 _FUTURO = re.compile(rf"\b(?:daqui a|daqui|dentro de|em)\s+({_NUMERO})\s+({_UNIDADE})\b")
-# "E daqui a 24?" logo depois de "daqui a 23 dias": a unidade vem da pergunta anterior.
+# "E daqui a 24?" right after "daqui a 23 dias": the unit comes from the previous question.
 _SEM_UNIDADE = re.compile(rf"\b(?:daqui a|daqui|dentro de)\s+({_NUMERO})\s*(?:[?.!]|$)")
 _PASSADO = re.compile(
     rf"\b(?:ha|faz)\s+({_NUMERO})\s+({_UNIDADE})\b|\b({_NUMERO})\s+({_UNIDADE})\s+atras\b"
@@ -251,8 +251,9 @@ def _numero(texto: str) -> int | None:
 
 
 def _somar(hoje: date, quantidade: int, unidade: str) -> date | None:
-    """`hoje` mais `quantidade` (negativa = para trás) dias, semanas, meses ou anos. Mês e ano
-    caem no último dia do mês quando o dia não existe (31/01 + 1 mês = 28 ou 29/02)."""
+    """`hoje` plus `quantidade` (negative = backwards) days, weeks, months or years. Month and year
+    land on the last day of the month when the day does not exist (31/01 + 1 month = 28 or
+    29/02)."""
     try:
         if unidade.startswith("dia"):
             return hoje + timedelta(days=quantidade)
@@ -278,10 +279,10 @@ def _unidade(unidade: str) -> str:
 
 
 def contas_de_data(texto: str, hoje: date, anterior: str | list[str] = "") -> list[str]:
-    """As contas de data que a pergunta pede, já feitas: "daqui a 24 dias", "há 2 semanas",
-    "3 meses atrás" e o dia da semana das datas citadas ("25/12", "29 de novembro"). Com
-    `anterior` (as perguntas de antes, da mais antiga para a mais nova), "e daqui a 24?" usa a
-    unidade da última que tinha uma ("daqui a 23 dias" → "e daqui a 24?" → "daqui a 50")."""
+    """The date calculations the question asks for, already done: "daqui a 24 dias", "há 2 semanas",
+    "3 meses atrás" and the weekday of the dates mentioned ("25/12", "29 de novembro"). With
+    `anterior` (the earlier questions, oldest to newest), "e daqui a 24?" uses the unit of the
+    last one that had one ("daqui a 23 dias" → "e daqui a 24?" → "daqui a 50")."""
     limpo = _texto(texto)
     pedidos = [(achado.group(1), achado.group(2)) for achado in _FUTURO.finditer(limpo)]
     if not pedidos:

@@ -1,17 +1,18 @@
-"""Roteador de modelos (v0.3.0): decide quem responde cada pergunta.
+"""Model router (v0.3.0): decides who answers each question.
 
-- automático: o cérebro local (Ollama) conversa; as perguntas difíceis (triagem, {pensar} do
-  local, reclamação) vão para a nuvem, com uma frase de espera na mesma voz;
-- nuvem: as difíceis vão primeiro para o ChatGPT (`[roteador] complexas`); se ele falhar, recusar
-  ou não responder, para o Claude; se os dois falharem, o local responde;
-- "pensa com calma", "pergunta difícil", "pergunta pro ChatGPT", "usa o Claude" na pergunta:
-  direto para a nuvem (e para quem foi chamado);
-- comandos: "use o cérebro local", "use o ChatGPT", "use o Claude", "modo automático",
-  "modo jogo" (tira o modelo local da placa de vídeo e responde tudo pela nuvem),
-  "sair do modo jogo";
-- reserva: sem Ollama, responde a nuvem; sem nuvem, responde o local; todos avisam.
+- automatic: the local brain (Ollama) handles conversation; the hard questions (triage, the
+  local model's {pensar}, a complaint) go to the cloud, with a holding phrase in the same voice;
+- cloud: the hard ones go first to ChatGPT (`[roteador] complexas`); if it fails, refuses or does
+  not answer, to Claude; if both fail, the local model answers;
+- "pensa com calma", "pergunta difícil", "pergunta pro ChatGPT", "usa o Claude" in the question:
+  straight to the cloud (and to whoever was called);
+- commands: "use o cérebro local", "use o ChatGPT", "use o Claude", "modo automático",
+  "modo jogo" (unloads the local model from the graphics card and answers everything through
+  the cloud), "sair do modo jogo";
+- fallback: without Ollama, the cloud answers; without the cloud, the local model answers; all
+  of them warn.
 
-Para a conversa, o roteador é um cérebro como outro qualquer: responder(), medidas, aquecer().
+To the conversation, the router is a brain like any other: responder(), medidas, aquecer().
 """
 
 from __future__ import annotations
@@ -76,8 +77,8 @@ _COMANDOS = (
     ),
 )
 
-# Triagem: sinais de pergunta pesada, vistos no texto antes de qualquer modelo. Não depende do
-# cérebro local se julgar capaz (modelos pequenos costumam se achar capazes demais).
+# Triage: signs of a heavy question, seen in the text before any model. It does not depend on
+# the local brain judging itself capable (small models tend to think themselves too capable).
 _SINAIS_DE_PESO = (
     (
         "código",
@@ -107,7 +108,7 @@ _SINAIS_DE_PESO = (
         r"traduza|traduz este|traduz esse|e-?mail formal|artigo|relatorio|curriculo)\b",
     ),
 )
-# Reação a uma resposta ruim do local: a pergunta ganha uma segunda chance na nuvem.
+# Reaction to a bad local answer: the question gets a second chance in the cloud.
 _INSATISFEITO = (
     r"\b(nao (e|foi) (isso|bem isso|o que (eu )?perguntei)|ta errado|esta errado|errou|"
     r"resposta errada|nao entendi|voce nao entendeu|explica melhor|explique melhor|"
@@ -116,7 +117,7 @@ _INSATISFEITO = (
 
 
 def peso_da_pergunta(texto: str) -> str:
-    """Por que a pergunta parece pesada ("código", "conta"...), ou "" se parece conversa."""
+    """Why the question looks heavy ("código", "conta"...), or "" if it looks like conversation."""
     limpo = _texto(texto)
     if len(limpo.split()) > 60 or len(texto) > 400:
         return "texto longo"
@@ -135,7 +136,7 @@ def _texto(texto: str) -> str:
     return " ".join("".join(c for c in sem_acento if not unicodedata.combining(c)).split())
 
 
-# Palavras que podem sobrar num comando puro ("Nora, usa o Claude agora, por favor").
+# Words that may be left over in a pure command ("Nora, usa o Claude agora, por favor").
 _SOBRAS_DE_COMANDO = set(
     (
         "nora agora por favor pf pfv entao ai ok beleza bem a o e de da do partir daqui pra "
@@ -147,7 +148,8 @@ _SOBRAS_DE_COMANDO = set(
 )
 
 
-# Antes do comando, uma destas faz da frase uma pergunta sobre ele ("como sair do modo jogo?").
+# Before the command, one of these makes the sentence a question about it ("como sair do modo
+# jogo?").
 _PERGUNTA_SOBRE = (
     r"\b(como|o que|por que|porque|quando|qual|quais|onde|quanto|explica|explique|significa|"
     r"funciona|serve)\b"
@@ -155,15 +157,16 @@ _PERGUNTA_SOBRE = (
 
 
 def achar_comando(texto: str) -> tuple[str | None, bool]:
-    """(comando, se é puro). Puro é só o comando ("use o Claude"); com conteúdo, a frase também
-    pede alguma coisa ("use o Claude para explicar fotossíntese") e essa coisa deve ser feita."""
+    """(command, whether it is pure). Pure is just the command ("use o Claude"); with content, the
+    sentence also asks for something ("use o Claude para explicar fotossíntese") and that
+    thing must be done."""
     limpo = _texto(texto)
-    if len(limpo.split()) > 10:  # frase longa é pergunta, não comando
+    if len(limpo.split()) > 10:  # a long sentence is a question, not a command
         return None, False
     for nome, padrao in _COMANDOS:
         achado = re.search(padrao, limpo)
         if achado and re.search(_PERGUNTA_SOBRE, limpo[: achado.start()]):
-            return None, False  # "como sair do modo jogo?": pergunta sobre o comando
+            return None, False  # "como sair do modo jogo?": a question about the command
         if achado:
             resto = re.sub(r"[^\w\s]", " ", limpo[: achado.start()] + " " + limpo[achado.end() :])
             resto = resto.split()
@@ -172,7 +175,7 @@ def achar_comando(texto: str) -> tuple[str | None, bool]:
 
 
 def comando_em(texto: str) -> str | None:
-    """O comando de troca de cérebro na fala, se ela for só um comando."""
+    """The brain switch command in the speech, if it is only a command."""
     nome, puro = achar_comando(texto)
     return nome if puro else None
 
@@ -183,7 +186,7 @@ def pede_pesado(texto: str) -> bool:
 
 
 def provedor_em(texto: str) -> str:
-    """Qual nuvem o texto cita: "anthropic" (Claude), "openai" (ChatGPT) ou ""."""
+    """Which cloud the text mentions: "anthropic" (Claude), "openai" (ChatGPT) or ""."""
     achou = re.search(_NUVENS, _texto(texto))
     if not achou:
         return ""
@@ -191,7 +194,8 @@ def provedor_em(texto: str) -> str:
 
 
 def quem_foi_chamado(texto: str) -> str:
-    """A nuvem pedida na pergunta ("pergunta pro ChatGPT ..."), ou "" se não pediu nenhuma."""
+    """The cloud requested in the question ("pergunta pro ChatGPT ..."), or "" if none was
+    requested."""
     achou = _PEDE_NUVEM.search(_texto(texto))
     return provedor_em(achou.group(0)) if achou else ""
 
@@ -214,22 +218,22 @@ class Roteador:
         self.rapido_openai = rapido_openai or CerebroOpenAI(config, gpt.rapido, gpt.esforco_rapido)
         self.pesado_openai = pesado_openai or CerebroOpenAI(config, gpt.pesado, gpt.esforco_pesado)
         self.modo = config.roteador.modo  # automatico | local | nuvem
-        self.provedor = config.roteador.complexas  # a nuvem que tenta primeiro
+        self.provedor = config.roteador.complexas  # the cloud tried first
         self.jogo = False
-        self.ativo = self.local  # quem respondeu por último (para as medidas)
+        self.ativo = self.local  # who answered last (for the measurements)
         self.origem = ""
         self.avisos: list[str] = []
-        # Como terminou a última resposta: "completa", "interrompida" (parou no meio) ou
-        # "sem resposta" (ninguém pôde responder). A conversa só aprende com as completas.
+        # How the last answer ended: "completa", "interrompida" (stopped midway) or
+        # "sem resposta" (nobody could answer). The conversation only learns from complete ones.
         self.situacao = "completa"
         self._avisou_sem_nuvem = False
-        self._aguardando: str | None = None  # comando esperando um "sim" (sair do modo jogo)
-        # Cada cérebro tentado na última resposta, para o diagnóstico (auto-melhoria):
-        # {"motor", "resultado" (resposta, escalou ou a categoria da falha), "duracao_ms"}.
+        self._aguardando: str | None = None  # command waiting for a "sim" (leaving game mode)
+        # Each brain tried in the last answer, for diagnostics (self-improvement):
+        # {"motor", "resultado" (resposta, escalou or the failure category), "duracao_ms"}.
         self.tentativas: list[dict] = []
         self._avisou_sem: set[str] = set()
 
-    # --- o que a conversa usa ---------------------------------------------------------------
+    # --- what the conversation uses ---------------------------------------------------------
 
     @property
     def medidas(self) -> Medidas:
@@ -248,14 +252,14 @@ class Roteador:
     def disponivel(self, provedor: str) -> bool:
         rapido, pesado = self._cerebros(provedor)
         if rapido.cliente is not None or pesado.cliente is not None:
-            return True  # (testes) cliente já pronto
+            return True  # (tests) ready-made client
         return not self._falta(provedor)
 
     def nuvem_disponivel(self) -> bool:
         return self.disponivel("openai") or self.disponivel("anthropic")
 
     def _falta(self, provedor: str) -> str:
-        """O que falta para usar essa nuvem ("" se nada)."""
+        """What is missing to use that cloud ("" if nothing)."""
         chave = self.config.chave_openai if provedor == "openai" else self.config.chave_anthropic
         if not chave:
             return f"falta a {CHAVES[provedor]} no .env"
@@ -267,7 +271,7 @@ class Roteador:
         self.situacao = "completa"
         self.tentativas = []
         aguardando, self._aguardando = self._aguardando, None
-        if aguardando:  # resolvido por regra: sem modelo, sem tocar na placa de vídeo
+        if aguardando:  # resolved by rule: no model, without touching the graphics card
             resposta = confirmacao(pergunta)
             if resposta == "sim":
                 self.situacao = "comando"
@@ -292,17 +296,21 @@ class Roteador:
             )
             return
         if comando and puro:
-            self.situacao = "comando"  # troca de estado: não é fato para a memória
+            self.situacao = "comando"  # state change: not a fact for memory
             yield self._trocar(comando, pergunta)
             return
-        if comando == "local":  # "use o cérebro local para ...": só esta pergunta, no local
+        if (
+            comando == "local"
+        ):  # "use o cérebro local para ...": only this question, on the local model
             yield from self._local(mensagens, escalar=False)
             return
-        if comando == "nuvem":  # "use o Claude para ...": só esta pergunta, na nuvem pedida
+        if (
+            comando == "nuvem"
+        ):  # "use o Claude para ...": only this question, on the requested cloud
             chamado = provedor_em(pergunta)
             yield from self._nuvem(mensagens, pesada=True, espera=True, chamado=chamado)
             return
-        if comando:  # "modo jogo, e ...": troca e responde o resto
+        if comando:  # "modo jogo, e ...": switches and answers the rest
             yield self._trocar(comando, pergunta) + " "
         chamado = quem_foi_chamado(pergunta)
         anterior_local = self.origem.startswith("local")
@@ -331,7 +339,7 @@ class Roteador:
         return peso_da_pergunta(pergunta) if self.config.roteador.triagem else ""
 
     def _avisar_sem_nuvem(self) -> None:
-        """Uma vez por conversa: a pergunta era para a nuvem, mas nenhuma está disponível."""
+        """Once per conversation: the question was meant for the cloud, but none is available."""
         if self._avisou_sem_nuvem:
             return
         self._avisou_sem_nuvem = True
@@ -341,13 +349,13 @@ class Roteador:
             "Respondi pelo cérebro local."
         )
 
-    # --- caminhos ---------------------------------------------------------------------------
+    # --- paths ------------------------------------------------------------------------------
 
     def _usar(self, cerebro, origem: str) -> None:
         self.ativo, self.origem = cerebro, origem
 
     def _anotar(self, resultado: str, inicio: float, primeiro: float | None) -> None:
-        """Guarda como foi a tentativa com o cérebro em uso (tempo até o primeiro pedaço)."""
+        """Records how the attempt with the brain in use went (time to the first chunk)."""
         fim = primeiro if primeiro is not None else time.perf_counter()
         self.tentativas.append(
             {"motor": self.origem, "resultado": resultado, "duracao_ms": int((fim - inicio) * 1000)}
@@ -358,7 +366,9 @@ class Roteador:
         envio = (
             mensagens + [{"role": "system", "content": INSTRUCAO_ESCALAR}] if escalar else mensagens
         )
-        escreveu = False  # depois de falar algo, trocar de cérebro emendaria duas respostas
+        escreveu = (
+            False  # after saying something, switching brains would stitch two answers together
+        )
         subir = False
         comeco_tentativa, primeiro = time.perf_counter(), None
         try:
@@ -373,7 +383,7 @@ class Roteador:
                     continue
                 inicio += pedaco
                 if ESCALAR in inicio:
-                    fluxo.close()  # a pergunta sobe para a nuvem
+                    fluxo.close()  # the question goes up to the cloud
                     subir = True
                     break
                 comeco = inicio.lstrip()
@@ -407,16 +417,18 @@ class Roteador:
             yield from self._nuvem(mensagens, pesada=True, espera=True)
 
     def _ordem(self, chamado: str) -> list[str]:
-        """As nuvens a tentar, na ordem: a chamada (ou a preferida), depois a outra."""
+        """The clouds to try, in order: the one called (or the preferred one), then the other."""
         primeira = chamado or self.provedor
         ordem = [primeira, "anthropic" if primeira == "openai" else "openai"]
         if chamado and not self.disponivel(chamado) and chamado not in self._avisou_sem:
-            self._avisou_sem.add(chamado)  # pediu essa nuvem pelo nome: diz por que não foi ela
+            self._avisou_sem.add(
+                chamado
+            )  # that cloud was asked for by name: say why it was not used
             self.avisos.append(f"O {NOMES[chamado]} não está disponível ({self._falta(chamado)}).")
         return [p for p in ordem if self.disponivel(p)]
 
     def _nuvem(self, mensagens, pesada: bool, espera: bool, chamado: str = "", reserva=True):
-        """Tenta as nuvens na ordem; sem nenhuma resposta, o local (se `reserva`)."""
+        """Tries the clouds in order; with no answer, the local model (if `reserva`)."""
         if espera:
             yield random.choice(FRASES_DE_ESPERA) + " "
         ordem = self._ordem(chamado)
@@ -442,7 +454,9 @@ class Roteador:
                     comeco_tentativa,
                     primeiro,
                 )
-                if escreveu:  # já falou metade: trocar de cérebro agora repetiria o começo
+                if (
+                    escreveu
+                ):  # half was already spoken: switching brains now would repeat the beginning
                     self.situacao = "interrompida"
                     self.avisos.append(f"{falha} A resposta ficou pela metade.")
                     return
@@ -450,7 +464,7 @@ class Roteador:
                     self.avisos.append(f"{falha} Pedi ao {NOMES[ordem[posicao + 1]]}.")
         if not reserva:
             raise erro or CerebroIndisponivel("Nenhuma nuvem disponível.")
-        if self.jogo:  # o local ocuparia de novo a placa de vídeo que o modo jogo liberou
+        if self.jogo:  # the local model would take up again the graphics card game mode freed
             self.situacao = "sem resposta"
             motivo = str(erro) if erro else self._sem_acesso(self.provedor).strip()
             self.avisos.append(
@@ -465,7 +479,7 @@ class Roteador:
             self._avisar_sem_nuvem()
         yield from self._local(mensagens, escalar=False)
 
-    # --- comandos ---------------------------------------------------------------------------
+    # --- commands ---------------------------------------------------------------------------
 
     def _trocar(self, comando: str, pergunta: str = "") -> str:
         self._usar(self.local, "comando")
@@ -474,7 +488,7 @@ class Roteador:
             try:
                 self.local.descarregar()
             except CerebroIndisponivel:
-                pass  # o Ollama já estava fora: a placa de vídeo já está livre
+                pass  # Ollama was already down: the graphics card is already free
             resposta = "Modo jogo ligado: liberei a placa de vídeo e respondo pela nuvem."
             if not self.nuvem_disponivel():
                 resposta += self._sem_acesso(self.provedor)

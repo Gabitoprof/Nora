@@ -1,4 +1,4 @@
-"""Observador opcional do áudio já existente: dados limitados, trabalho fora do callback."""
+"""Optional observer of the existing audio: bounded data, work outside the callback."""
 
 from __future__ import annotations
 
@@ -17,10 +17,11 @@ _contexto = threading.local()
 
 @contextmanager
 def contexto_fala(texto: str, emocao: str = "", texto_depois: bool = False):
-    """O texto que vai tocar (para estimar as palavras) e, se souber, a emoção da fala. No
-    diálogo em streaming o texto ainda não existe ao começar (`texto_depois`): as palavras chegam
-    alinhadas pela própria voz (`ReproducaoHUD.alinhar`) e, se o alinhamento não vier, são
-    estimadas no fim com o texto completo (`ReproducaoHUD.definir_texto`)."""
+    """The text that will play (to estimate the words) and, if known, the emotion of the utterance.
+    In the streaming dialogue the text does not exist yet at the start (`texto_depois`): the
+    words arrive aligned by the voice itself (`ReproducaoHUD.alinhar`) and, if the alignment
+    does not come, they are estimated at the end with the full text
+    (`ReproducaoHUD.definir_texto`)."""
     anterior = (
         getattr(_contexto, "texto", ""),
         getattr(_contexto, "emocao", ""),
@@ -74,7 +75,7 @@ class ReproducaoHUD:
             self.dono.sinal.set()
 
     def entregar_pcm(self, pcm: bytes, inicio: int, fim: int, tempo=None):
-        """Streaming: cópia de no máximo 2048 quadros, inclusive zeros de espera da rede."""
+        """Streaming: a copy of at most 2048 frames, including network-wait zeros."""
         if self.encerrada:
             return
         quadro = 2 * self.canais
@@ -90,7 +91,7 @@ class ReproducaoHUD:
         self.dono.sinal.set()
 
     def receber_pcm(self, pcm: bytes):
-        """Linha do download, não callback: somente duração e RMS de 20 ms são retidos."""
+        """Download thread, not the callback: only the duration and 20 ms RMS are kept."""
         if self.encerrada:
             return
         self.recebidos += len(pcm) // (2 * self.canais)
@@ -99,12 +100,12 @@ class ReproducaoHUD:
             self.envelope_temporal.alimentar(pcm)
 
     def alinhar(self, palavras: list[dict]):
-        """Palavras com o tempo real dado pela voz (alinhamento do ElevenLabs): substituem a
-        estimativa. Saem na HUD só com o conteúdo visível (a privacidade é checada ao publicar)."""
+        """Words with the real timing given by the voice (ElevenLabs alignment): they replace the
+        estimate. They show in the HUD only with visible content (privacy is checked on publish)."""
         if self.encerrada or not palavras:
             return
-        # Privado (ou opt-in revogado depois que esta fala começou): as palavras nem ficam
-        # guardadas no backend, não só deixam de ser publicadas.
+        # Private (or opt-in revoked after this utterance started): the words are not even
+        # kept in the backend, not just left unpublished.
         if (
             self.dono.ponte.estado["privacidade"]
             or self.dono.ponte._epoca_privacidade != self.epoca
@@ -121,7 +122,7 @@ class ReproducaoHUD:
         self.dono.sinal.set()
 
     def definir_texto(self, texto: str):
-        """Reserva do alinhamento: o texto completo, para estimar as palavras no fim."""
+        """Alignment fallback: the full text, to estimate the words at the end."""
         if self.envelope_temporal is not None and not self.dono.ponte.estado["privacidade"]:
             self.texto_pendente = texto
 
@@ -276,7 +277,7 @@ class AnalisadorHUD:
                 agora = time.monotonic()
                 self._voz(agora)
                 self._micro(agora)
-            except Exception as erro:  # visualização nunca interrompe STT, LLM, TTS ou áudio
+            except Exception as erro:  # visualization never interrupts STT, LLM, TTS or audio
                 registrar("hud_audio.rodar", erro)
 
     def encerrar(self):

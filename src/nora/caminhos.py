@@ -1,11 +1,12 @@
-"""Onde a Nora guarda e procura cada coisa, rodando do repositório ou instalada (.exe, wheel).
+"""Where Nora stores and looks for things, running from the repository or installed (.exe, wheel).
 
-- **No repositório** (checkout com `pyproject.toml`): tudo fica onde sempre ficou, na raiz do
-  repositório (`config/local.toml`, `.env`, `data/`, `models/`, `hud/dist`).
-- **Instalada:** o programa fica numa pasta só de leitura (ex.: `C:\\Program Files\\Nora`). A config
-  pessoal, o `.env`, a memória e os modelos vão para a pasta do usuário: `%APPDATA%\\Nora` no
-  Windows, `~/.nora` fora dele. A config padrão (`nora.toml`) e o build da HUD vêm no pacote.
-- `NORA_HOME` (variável do sistema, não do `.env`) troca a pasta do usuário nos dois casos.
+- **In the repository** (a checkout with `pyproject.toml`): everything stays where it always was,
+  at the repository root (`config/local.toml`, `.env`, `data/`, `models/`, `hud/dist`).
+- **Installed:** the program lives in a read-only folder (e.g. `C:\\Program Files\\Nora`). The
+  personal config, the `.env`, the memory and the models go to the user folder: `%APPDATA%\\Nora`
+  on Windows, `~/.nora` elsewhere. The default config (`nora.toml`) and the HUD build ship in the
+  package.
+- `NORA_HOME` (a system variable, not a `.env` one) changes the user folder in both cases.
 """
 
 from __future__ import annotations
@@ -43,12 +44,12 @@ ENV_INICIAL = """# Chaves e endereços da Nora (fora do Git e de qualquer envio)
 
 
 def congelada() -> bool:
-    """Rodando de dentro de um executável (PyInstaller)."""
+    """Running from inside an executable (PyInstaller)."""
     return bool(getattr(sys, "frozen", False))
 
 
 def no_repositorio() -> bool:
-    """Rodando de um checkout do repositório (desenvolvimento), não instalada."""
+    """Running from a repository checkout (development), not installed."""
     return (
         not congelada()
         and (REPOSITORIO / "pyproject.toml").is_file()
@@ -57,7 +58,7 @@ def no_repositorio() -> bool:
 
 
 def pasta_do_usuario(ambiente: dict[str, str] | None = None) -> Path:
-    """Onde ficam a config pessoal, o .env, os dados e os modelos."""
+    """Where the personal config, the .env, the data and the models live."""
     ambiente = os.environ if ambiente is None else ambiente
     if ambiente.get("NORA_HOME"):
         return Path(ambiente["NORA_HOME"]).expanduser()
@@ -69,8 +70,8 @@ def pasta_do_usuario(ambiente: dict[str, str] | None = None) -> Path:
 
 
 def preparar_pasta_do_usuario(pasta: Path) -> None:
-    """Na primeira vez (instalada), cria a pasta com uma config pessoal e um .env comentados.
-    Nunca sobrescreve o que já existe; no repositório, não faz nada."""
+    """The first time (installed), creates the folder with a commented personal config and .env.
+    Never overwrites what already exists; in the repository, does nothing."""
     if pasta == REPOSITORIO:
         return
     (pasta / "config").mkdir(parents=True, exist_ok=True)
@@ -83,8 +84,8 @@ def preparar_pasta_do_usuario(pasta: Path) -> None:
 
 
 def build_da_hud(ambiente: dict[str, str] | None = None) -> Path:
-    """A pasta do build da HUD (index.html e assets): NORA_HUD_DIST, a cópia dentro do
-    executável ou a do repositório (`hud/dist`)."""
+    """The HUD build folder (index.html and assets): NORA_HUD_DIST, the copy inside the
+    executable or the repository's (`hud/dist`)."""
     ambiente = os.environ if ambiente is None else ambiente
     if ambiente.get("NORA_HUD_DIST"):
         return Path(ambiente["NORA_HUD_DIST"])
