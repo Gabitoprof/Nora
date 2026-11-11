@@ -4,7 +4,7 @@ A personal AI assistant that **talks by voice in real time**, runs **mostly on y
 
 > Nora speaks and is used in **Brazilian Portuguese**: the commands, voice phrases and messages below are in Portuguese on purpose. This documentation is in English.
 
-> **Status:** `v0.3.0` (**model router**): Nora wakes up on her name, listens, talks on the local model and sends the hard questions to **ChatGPT, with Claude as fallback**, always answering with the same voice, emotion and memory. Next stage: `v0.4.0` (HUD). See the [roadmap](docs/MAPA_MENTAL.md#2-roadmap-por-etapas).
+> **Status:** `v0.3.0` (**model router**): Nora wakes up on her name, listens, talks on the local model and sends the hard questions to **ChatGPT, with Claude as fallback**, always answering with the same voice, emotion and memory. Next stage: `v0.4.0` (HUD). See the [roadmap](docs/MAPA_MENTAL.md#2-roadmap-by-stage).
 
 ## What she already does
 

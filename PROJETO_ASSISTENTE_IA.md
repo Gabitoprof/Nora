@@ -1,256 +1,256 @@
-# Assistente de IA Pessoal por Voz: Documento do Projeto
+# Personal Voice AI Assistant: Project Document
 
-> Documento de partida para desenvolver o projeto no Claude Code.
-> Origem: conversa de planejamento em 29/10/2026.
-> Autor: Gabriel (Carlos Gabriel Moura Santiago)
-
----
-
-## 1. Visão
-
-Criar uma **IA de conversação por voz em tempo real**, com **nome, voz e identidade próprios e exclusivos**.
-
-- **Foco:** a IA conversando em tempo real. Uma mesa touch com projetor **não é prioridade**.
-- **Desenvolvimento:** por etapas, cada uma gerando uma versão funcional.
-- **Distribuição:** repositório público só para consulta, com todos os direitos reservados (até a v0.3.0, MIT), pensando na comercialização. O que for aberto no futuro sai num repositório separado.
-
-### O que gera a imersão
-- Voz natural e resposta rápida.
-- Interface reagindo à fala (um orbe animado, relógio, cartões com o conteúdo falado).
-- **Iniciativa própria:** a IA fala sem ser chamada, por exemplo numa rotina matinal com a data, um recado e o plano do dia.
+> Starting document for developing the project in Claude Code.
+> Origin: planning conversation on 29/10/2026.
+> Author: Gabriel (Carlos Gabriel Moura Santiago)
 
 ---
 
-## 2. Arquitetura definida
+## 1. Vision
 
-### 2.1 Pipeline de voz em tempo real
-1. **Wake word** com o nome personalizado: openWakeWord (grátis, treinável) ou Porcupine. Roda localmente, na CPU.
-2. **VAD** (detecção de fala): Silero VAD.
-3. **STT** (transcrição em streaming): **whisper.cpp com Vulkan**. O faster-whisper exige CUDA/NVIDIA e não serve para a GPU AMD.
-4. **Cérebro (LLM)**: ver 2.2.
-5. **TTS** (voz em streaming, frase por frase): Piper (local, CPU). Opções na nuvem: ElevenLabs ou Cartesia.
-6. **Barge-in**: interromper a IA falando por cima. Exige **cancelamento de eco** e um bom microfone.
-7. **Meta de latência:** < 1 s entre parar de falar e ouvir a resposta (MVP: < 2 s). Só se alcança com tudo em streaming.
+Create a **real-time voice conversation AI**, with its **own exclusive name, voice and identity**.
 
-### 2.2 Cérebro híbrido (decisão do Gabriel)
-- **Conversa do dia a dia → modelo LOCAL** via Ollama ou LM Studio (backend ROCm ou Vulkan). Sugestão: modelo de 12–14B quantizado (Qwen ou Gemma), usando cerca de 9–10 GB de VRAM.
-- **Raciocínio pesado → modelos externos via API** (Claude e outros). O modelo local decide quando escalar a tarefa.
-  - Enquanto espera, a IA local fala algo como "deixa eu analisar isso", para não ficar em silêncio.
-  - A resposta volta e é dita com a mesma voz e persona.
-- **Modo jogo:** quando um jogo pesado abre, o modelo local sai da VRAM e a conversa vai para a API.
-- **Descarregamento automático:** usar `keep_alive` do Ollama para liberar a VRAM depois de um tempo sem uso.
+- **Focus:** the AI talking in real time. A touch table with a projector is **not a priority**.
+- **Development:** in stages, each one producing a working version.
+- **Distribution:** public repository for reference only, all rights reserved (MIT up to v0.3.0), with commercialization in mind. Anything opened up in the future goes to a separate repository.
 
-### 2.3 Base de dados local que evolui (decisão do Gabriel)
-Alimentada pelas perguntas e respostas e desenvolvida com o tempo. Usa **SQLite + sqlite-vec** (busca vetorial), num arquivo local, no NVMe.
+### What creates the immersion
+- Natural voice and fast answers.
+- Interface reacting to speech (an animated orb, clock, cards with the spoken content).
+- **Own initiative:** the AI speaks without being called, for example in a morning routine with the date, a message and the plan for the day.
 
-**Camadas:**
-| Camada | Conteúdo | Uso |
+---
+
+## 2. Defined architecture
+
+### 2.1 Real-time voice pipeline
+1. **Wake word** with the custom name: openWakeWord (free, trainable) or Porcupine. Runs locally, on the CPU.
+2. **VAD** (speech detection): Silero VAD.
+3. **STT** (streaming transcription): **whisper.cpp with Vulkan**. faster-whisper requires CUDA/NVIDIA and does not work on the AMD GPU.
+4. **Brain (LLM)**: see 2.2.
+5. **TTS** (streaming voice, sentence by sentence): Piper (local, CPU). Cloud options: ElevenLabs or Cartesia.
+6. **Barge-in**: interrupting the AI by speaking over it. Requires **echo cancellation** and a good microphone.
+7. **Latency target:** < 1 s between stopping speaking and hearing the answer (MVP: < 2 s). Only reachable with everything streaming.
+
+### 2.2 Hybrid brain (Gabriel's decision)
+- **Everyday conversation → LOCAL model** via Ollama or LM Studio (ROCm or Vulkan backend). Suggestion: a quantized 12–14B model (Qwen or Gemma), using about 9–10 GB of VRAM.
+- **Heavy reasoning → external models via API** (Claude and others). The local model decides when to escalate the task.
+  - While waiting, the local AI says something like "deixa eu analisar isso" (let me look into that), so it is not silent.
+  - The answer comes back and is spoken with the same voice and persona.
+- **Game mode:** when a heavy game opens, the local model leaves VRAM and the conversation goes to the API.
+- **Automatic unloading:** use Ollama's `keep_alive` to free VRAM after a while unused.
+
+### 2.3 Local database that evolves (Gabriel's decision)
+Fed by questions and answers and developed over time. Uses **SQLite + sqlite-vec** (vector search), in a local file, on the NVMe.
+
+**Layers:**
+| Layer | Contents | Use |
 |---|---|---|
-| **Histórico bruto** | Todas as perguntas e respostas | Consulta e dataset futuro |
-| **Memória curada** | Fatos e preferências extraídos e resumidos automaticamente ("acorda 06:30", "prefere respostas curtas") | Injetada no contexto (RAG) |
-| **Conhecimento** | Boas respostas vindas dos modelos grandes | Modelo local responde sozinho na próxima vez, sem gastar API |
+| **Raw history** | Every question and answer | Lookup and future dataset |
+| **Curated memory** | Facts and preferences extracted and summarized automatically ("wakes up at 06:30", "prefers short answers") | Injected into the context (RAG) |
+| **Knowledge** | Good answers from the large models | The local model answers on its own next time, without spending API |
 
-> **Importante:** o modelo local não "aprende" sozinho só por ter um banco ao lado. A evolução vem da recuperação de memória (RAG). **Futuro (fase 4 ou 5):** fine-tuning LoRA do modelo local com o histórico acumulado. Por isso o histórico bruto é guardado desde o primeiro dia.
+> **Important:** the local model does not "learn" by itself just by having a database next to it. The evolution comes from memory retrieval (RAG). **Future (phase 4 or 5):** LoRA fine-tuning of the local model with the accumulated history. That is why the raw history is kept from day one.
 
-### 2.4 Extensibilidade
-- **Conectores, skills, agentes, subagentes e automações** entram conforme a ideia se desenvolve.
-- **Decisão de base, já agora:** toda ferramenta segue o **padrão MCP** (Model Context Protocol). Cada conector novo vira um plugin, sem refazer o núcleo.
+### 2.4 Extensibility
+- **Connectors, skills, agents, subagents and automations** come in as the idea develops.
+- **Base decision, right now:** every tool follows the **MCP standard** (Model Context Protocol). Each new connector becomes a plugin, without rebuilding the core.
 
-### 2.5 Agentes dentro da IA (runtime)
-- **Orquestrador (a persona):** conversa com o usuário e delega aos especialistas, chamados como ferramentas.
-- **Especialistas:** agenda e rotina, pesquisa, controle do PC e da casa, memória (resume e guarda o que importa).
+### 2.5 Agents inside the AI (runtime)
+- **Orchestrator (the persona):** talks with the user and delegates to specialists, called as tools.
+- **Specialists:** agenda and routine, research, PC and home control, memory (summarizes and keeps what matters).
 
-### 2.6 HUD (interface visual)
-- Página web TypeScript em tela cheia no monitor ultrawide ou janela responsiva.
-- Identidade oficial: coroa orgânica de ondas prateadas e partículas digitais sobre preto,
-  conforme PNG aprovado; sem substituir por orbe genérico. Three.js/WebGL com fallback Canvas.
-- Níveis de áudio reais enviados pelo pipeline Python existente; o navegador não captura
-  outro microfone nem reproduz outro TTS. Ponte local SSE, opcional, sem bloquear a conversa.
-- Cartões, relógio, estado, modelo/origem e voz ativos; conteúdo privado oculto por padrão.
-- Implementação v0.4.0 em andamento, sem release; [guia da HUD](docs/HUD.md) e
-  [homologação cumulativa](docs/HOMOLOGACAO.md).
+### 2.6 HUD (visual interface)
+- Full-screen TypeScript web page on the ultrawide monitor or a responsive window.
+- Official identity: an organic crown of silver waves and digital particles on black,
+  as in the approved PNG; not to be replaced by a generic orb. Three.js/WebGL with a Canvas fallback.
+- Real audio levels sent by the existing Python pipeline; the browser does not capture
+  another microphone or play another TTS. Optional local SSE bridge, never blocking the conversation.
+- Cards, clock, state, active model/origin and voice; private content hidden by default.
+- v0.4.0 implementation in progress, no release; [HUD guide](docs/HUD.md) and
+  [cumulative acceptance](docs/HOMOLOGACAO.md).
 
-### 2.7 Modo distribuído (futuro)
-- **Máquina pequena sempre ligada** (mini PC, notebook velho ou Raspberry Pi 5), o "corpo": wake word, agendador, banco de memória, automações. Consumo de cerca de 10–15 W.
-- **PC principal**, o "cérebro" local: quando ligado, recebe a conversa.
-- **API como reserva:** quando o PC está desligado ou ocupado.
-- **Regra:** a arquitetura já nasce preparada para isso, com componentes separados que se comunicam pela rede local.
+### 2.7 Distributed mode (future)
+- **Small always-on machine** (mini PC, old laptop or Raspberry Pi 5), the "body": wake word, scheduler, memory database, automations. Draws about 10–15 W.
+- **Main PC**, the local "brain": when on, it takes the conversation.
+- **API as fallback:** when the PC is off or busy.
+- **Rule:** the architecture is born ready for this, with separate components talking over the local network.
 
 ---
 
-## 3. Hardware do PC principal
+## 3. Main PC hardware
 
-| Componente | Modelo |
+| Component | Model |
 |---|---|
 | GPU | Gigabyte **RX 9060 XT 16 GB** (AMD, RDNA 4) |
 | CPU | Ryzen 7 **9800X3D** |
-| RAM | 32 GB DDR5 6000 MHz CL36 Corsair (2 pentes) |
-| Fonte | MSI 750 W Gold Plus |
-| Placa-mãe | B850 Gaming X WiFi6E |
-| Armazenamento | SSD NVMe 1 TB + SSD SATA 240 GB |
+| RAM | 32 GB DDR5 6000 MHz CL36 Corsair (2 sticks) |
+| PSU | MSI 750 W Gold Plus |
+| Motherboard | B850 Gaming X WiFi6E |
+| Storage | 1 TB NVMe SSD + 240 GB SATA SSD |
 
-**Implicações:**
-- **GPU AMD:** evitar ferramentas só-CUDA. Usar **Vulkan e ROCm**. O suporte à RDNA 4 depende da versão do driver e do programa, então **testar primeiro** (Etapa 1).
-- **Divisão da VRAM (16 GB):** LLM 12–14B (~9–10 GB) + Whisper (~1–2 GB) + folga para o sistema e o HUD. Modelos de 20B ou mais cabem, mas ficam apertados e lentos.
-- **Armazenamento:** modelos e banco no **NVMe**. O SATA fica para **backup do banco**.
+**Implications:**
+- **AMD GPU:** avoid CUDA-only tools. Use **Vulkan and ROCm**. RDNA 4 support depends on the driver and program versions, so **test first** (Stage 1).
+- **VRAM split (16 GB):** 12–14B LLM (~9–10 GB) + Whisper (~1–2 GB) + headroom for the system and the HUD. 20B+ models fit, but are tight and slow.
+- **Storage:** models and database on the **NVMe**. The SATA is for **database backup**.
 
-**Upgrades futuros (só se sentir falta depois de usar):**
-1. **RAM:** **trocar** por 2×32 GB (64 GB) ou 2×48 GB (96 GB) DDR5 6000. **Não usar 4 pentes:** no AM5 isso costuma derrubar a velocidade (para 5200–5600) e causar instabilidade.
-2. **Segunda GPU só para IA:** ex.: RTX 3060 12 GB usada. Libera a RX 9060 XT para jogos e resolve a compatibilidade CUDA. Antes de comprar, conferir:
-   - consumo da placa (a fonte de 750 W deve aguentar);
-   - o segundo slot PCIe (geralmente x4, o que não importa para IA);
-   - espaço e ventilação no gabinete.
-3. **NVMe extra** para os modelos (organização e espaço).
-
----
-
-## 4. Custos e API
-
-- **Claude Pro não inclui API.** São produtos separados. O Pro serve para **desenvolver** o projeto no Claude Code. A API (Console, paga por uso) é para a IA **rodando**. Max e Team trazem créditos mensais de API, o Pro não.
-- **Custo estimado da API:** baixo para uso pessoal. Haiku na conversa e Sonnet/Opus só no pesado devem dar poucos dólares por mês. Definir um **limite de gasto** no Console.
-- **Não usar** `claude -p` com o login do Pro como "cérebro": é lento (vários segundos) e o plano não foi feito para isso.
-- **Energia:** PC gamer ligado 24h fica em algo como R$ 50–80/mês, contra R$ 7–10/mês de um mini PC (estimativa).
+**Future upgrades (only if missed after using it):**
+1. **RAM:** **replace** with 2×32 GB (64 GB) or 2×48 GB (96 GB) DDR5 6000. **Do not use 4 sticks:** on AM5 this usually drops the speed (to 5200–5600) and causes instability.
+2. **Second GPU only for AI:** e.g. a used RTX 3060 12 GB. Frees the RX 9060 XT for games and solves CUDA compatibility. Before buying, check:
+   - the card's power draw (the 750 W PSU must handle it);
+   - the second PCIe slot (usually x4, which does not matter for AI);
+   - space and airflow in the case.
+3. **Extra NVMe** for the models (organization and space).
 
 ---
 
-## 5. Roadmap por etapas (cada etapa = uma versão)
+## 4. Costs and API
 
-| Versão | Etapa | Status | Entregas | Critério de pronto |
+- **Claude Pro does not include the API.** They are separate products. Pro is for **developing** the project in Claude Code. The API (Console, pay per use) is for the AI **running**. Max and Team come with monthly API credits, Pro does not.
+- **Estimated API cost:** low for personal use. Haiku for conversation and Sonnet/Opus only for heavy work should be a few dollars a month. Set a **spending limit** in the Console.
+- **Do not use** `claude -p` with the Pro login as the "brain": it is slow (several seconds) and the plan was not made for that.
+- **Energy:** a gaming PC on 24h costs something like R$ 50–80/month, against R$ 7–10/month for a mini PC (estimate).
+
+---
+
+## 5. Roadmap by stage (each stage = one version)
+
+| Version | Stage | Status | Deliveries | Done criterion |
 |---|---|---|---|---|
-| **v0.0.0** | Fundação | ✅ | Repositório, licença, README, estrutura, `.gitignore`, `.env.example`, config de **nome, persona, voz e modelos** | Projeto roda o "hello world" e a config carrega |
-| **v0.1.0** | Conversa por voz | ✅ | Ativação pelo nome (transcrição), Silero VAD, whisper.cpp, Ollama (Qwen 3.5 9B), vozes Kokoro, Piper e ElevenLabs com reserva, mãos livres | Falar o nome, perguntar e ouvir a resposta em < 2 s |
-| **v0.2.0** | Memória | ✅ | SQLite + sqlite-vec: fatos por áreas, memória total (todas as trocas), agenda de datas, aprender pronúncia e jeito de falar; voz própria (dataset, verificador, treino do Piper) | Lembra de fatos entre sessões |
-| **v0.3.0** | Roteador de modelos | ✅ | Roteador local → ChatGPT → Claude (triagem, `{pensar}`, segunda chance), frase de espera, modo jogo (com confirmação para sair), reservas sem emendar respostas, troca de cérebro e de voz por comando, índice das notas do Obsidian, emoção na voz, esquecer e apagar de vez, respostas pela metade recuperáveis, auto-melhoria supervisionada (relatório diário por regras, decisões pela pessoa) | Pergunta difícil vai para a API e volta com a mesma voz |
-| **v0.4.0** | HUD | 🔄 | Ondas e partículas reativas, cartões, relógio, tela cheia | Interface reage à voz em tempo real |
-| **v0.5.0** | Ferramentas MCP | ⬜ | Agenda, clima, controle do PC, arquivos | Executa ações por voz |
-| **v0.6.0** | Rotinas e iniciativa | ⬜ | Briefing das 06:30, lembretes, automações, **câmera** (ver Banco de ideias) | IA fala primeiro no horário e por presença |
-| **v0.7.0** | Agentes e subagentes | ⬜ | Especialistas chamados pelo orquestrador | Tarefas complexas delegadas |
-| **v0.8.0** | Modo distribuído | ⬜ | Separação "corpo 24h" × "cérebro" | Funciona com o PC desligado (via API) |
-| **v1.0.0** | Lançamento | ⬜ | Instalador, docs completas, backends AMD/NVIDIA/CPU | Terceiros instalam e usam |
+| **v0.0.0** | Foundation | ✅ | Repository, license, README, structure, `.gitignore`, `.env.example`, config for **name, persona, voice and models** | The project runs "hello world" and the config loads |
+| **v0.1.0** | Voice conversation | ✅ | Activation by name (transcription), Silero VAD, whisper.cpp, Ollama (Qwen 3.5 9B), Kokoro, Piper and ElevenLabs voices with fallback, hands-free | Say the name, ask and hear the answer in < 2 s |
+| **v0.2.0** | Memory | ✅ | SQLite + sqlite-vec: facts by area, total memory (every exchange), date agenda, learning pronunciation and way of speaking; own voice (dataset, checker, Piper training) | Remembers facts across sessions |
+| **v0.3.0** | Model router | ✅ | Router local → ChatGPT → Claude (triage, `{pensar}`, second chance), holding phrase, game mode (with confirmation to leave), fallbacks without stitching answers, switching brain and voice by command, Obsidian notes index, emotion in the voice, forget and delete for good, recoverable half-finished answers, supervised self-improvement (daily rule-based report, decisions by the person) | A hard question goes to the API and comes back in the same voice |
+| **v0.4.0** | HUD | 🔄 | Reactive waves and particles, cards, clock, full screen | The interface reacts to the voice in real time |
+| **v0.5.0** | MCP tools | ⬜ | Agenda, weather, PC control, files | Performs actions by voice |
+| **v0.6.0** | Routines and initiative | ⬜ | 06:30 briefing, reminders, automations, **camera** (see Idea bank) | The AI speaks first on schedule and on presence |
+| **v0.7.0** | Agents and subagents | ⬜ | Specialists called by the orchestrator | Complex tasks delegated |
+| **v0.8.0** | Distributed mode | ⬜ | Split "24h body" × "brain" | Works with the PC off (via API) |
+| **v1.0.0** | Launch | ⬜ | Installer, complete docs, AMD/NVIDIA/CPU backends | Third parties install and use it |
 
-### Versionamento semântico (`vMAIOR.MENOR.CORREÇÃO`)
+### Semantic versioning (`vMAJOR.MINOR.PATCH`)
 
-| Parte | Quando muda | Exemplo |
+| Part | When it changes | Example |
 |---|---|---|
-| **MAIOR** | Lançamento estável ou mudança que quebra a compatibilidade | `v0.8.0` → `v1.0.0` |
-| **MENOR** | Cada nova etapa do roadmap | `v0.1.0` → `v0.2.0` |
-| **CORREÇÃO** | Ajustes, correções e melhorias pequenas dentro de uma etapa | `v0.1.0` → `v0.1.1` → `v0.1.2` |
+| **MAJOR** | Stable launch or a change that breaks compatibility | `v0.8.0` → `v1.0.0` |
+| **MINOR** | Each new roadmap stage | `v0.1.0` → `v0.2.0` |
+| **PATCH** | Small adjustments, fixes and improvements within a stage | `v0.1.0` → `v0.1.1` → `v0.1.2` |
 
-- Cada versão publicada ganha uma **tag no Git** com o mesmo nome (ex.: `v0.1.0`) e uma entrada no `CHANGELOG.md`.
-- Antes da `v1.0.0`, o projeto ainda está em desenvolvimento e qualquer parte pode mudar.
+- Each published version gets a **Git tag** with the same name (e.g. `v0.1.0`) and an entry in `CHANGELOG.md`.
+- Before `v1.0.0`, the project is still in development and any part may change.
 
-**Etapas futuras:** fine-tuning LoRA, casa inteligente (Home Assistant), mesa com projetor e touch.
-
----
-
-## 6. Repositório público e licenças
-
-- **Nada pessoal no repositório:**
-  - chaves de API só em `.env` (ignorado pelo Git), com um `.env.example` de modelo;
-  - **o banco de memória, o histórico e os dados de rosto nunca vão para o GitHub**;
-  - pasta `data/` no `.gitignore` desde a v0.0.
-- **Nome e marca:** não usar "Jarvis", nem logos ou referências visuais da Marvel, no nome, no logo ou na divulgação. É marca registrada. "Inspirado em assistentes da ficção" pode.
-- **Nome personalizável:** o nome do assistente vem do config. Cada usuário dá o seu, e o do Gabriel continua exclusivo.
-- **Licença do código:** todos os direitos reservados desde 06/11/2026 (até a v0.3.0, MIT). O que for aberto no futuro sai num repositório separado, com licença escolhida na hora.
-- **Licenças de modelos e vozes:** verificar uma a uma. Algumas proíbem uso comercial ou redistribuição (ex.: **XTTS é não comercial**; algumas vozes do Piper têm restrições). Preferir componentes redistribuíveis, ou baixar os modelos à parte via script.
-- **Backends trocáveis:** Vulkan, ROCm, CUDA e CPU, para rodar em outras máquinas.
-- **Qualidade do repositório:** commits organizados (Conventional Commits), uma tag por etapa, `CHANGELOG.md`, CI básico. Serve também como portfólio.
-- **Voz original:** criar com voice design ou escolher uma pronta. **Não imitar a voz de ator real.**
+**Future stages:** LoRA fine-tuning, smart home (Home Assistant), projector and touch table.
 
 ---
 
-## 7. Sugestões de nome (com sigla)
+## 6. Public repository and licenses
 
-- **K.A.I.R.O.S.:** *kairós* = "o momento certo" (grego). Combina com briefing e rotina.
-- **Ó.R.I.O.N.:** Operador de Rotina, Inteligência e Organização Neural.
-- **V.E.G.A.:** Vigilância, Execução e Gestão Autônoma.
-- **A.U.R.A.:** Assistente Universal de Rotina e Automação.
-
-> Ainda a decidir: o **nome do produto** e o **nome do assistente pessoal** do Gabriel podem ser diferentes.
-
----
-
-## 8. Banco de ideias
-
-### 8.1 Identificação por câmera
-Ao chegar no quarto, a IA identifica a pessoa e interage. Encaixe: **Etapa 6**.
-
-- **Camada 1, presença:** detectar que alguém entrou, sem identificar quem. Leve: webcam + MediaPipe (CPU) ou um **sensor mmWave** (barato, sem câmera, detecta até alguém parado).
-- **Camada 2, reconhecimento:** só quando há presença, comparar o rosto com o cadastro (ex.: InsightFace) e cumprimentar com contexto ("Boa noite, Gabriel. Você tem prova amanhã, quer revisar?").
-- **Privacidade:**
-  - dados de rosto **só locais**;
-  - pessoa desconhecida → nada pessoal é dito;
-  - comando de voz ou botão para desligar a câmera;
-  - cadastro de visitas só com consentimento.
-
-### 8.2 Obsidian como segundo cérebro
-*Origem: [Referência 01](docs/referencias/video-01-assistente-local.md).*
-
-- ✅ **Feito na v0.3.0:** o assistente lê o **vault do Obsidian** (notas `.md`) como base de conhecimento, indexada no SQLite + sqlite-vec (`nora notas`).
-- O HUD desenha o **grafo das notas** e destaca as que foram usadas na resposta. Encaixe: **Etapa 4**.
-- Pastas podem ser deixadas de fora no config (`[notas] ignorar`). Notas pessoais continuam fora do GitHub.
-
-### 8.3 Troca de cérebro e de voz por comando
-*Origem: [Referência 01](docs/referencias/video-01-assistente-local.md).*
-
-- ✅ **Feito na v0.3.0:** "use o cérebro local", "use o ChatGPT", "use o Claude", "troque para a voz do Piper". Escolher um modelo local específico pelo nome ("troque para o Gemma") ainda não existe.
-- O HUD mostra sempre o **modelo e a voz ativos** e a **origem** de cada resposta (qual ferramenta ou nota foi usada).
-
-### 8.4 Palavras de partículas no HUD
-*Origem: ideia para o HUD (31/10/2026).*
-
-- Enquanto a Nora fala, **cada palavra aparece formada por partículas** no centro do HUD, em sincronia com a voz; palavras importantes ganham outra cor (ex.: vermelho).
-- Técnica: desenhar a palavra num canvas invisível, sortear pontos dentro das letras e animar milhares de partículas (Three.js) até esses pontos; na palavra seguinte, as partículas voam para as novas posições.
-- Usar alinhamento real apenas quando houver metadados temporais. Sem eles, a animação de palavras é uma estimativa visual explicitamente indicada, desativável; não prometer sincronismo fonético.
-- Encaixe: **Etapa 4 (HUD)**, junto com as ondas e os cartões.
-
-### 8.5 Criação de voz pelo ComfyUI
-*Origem: ideia do Gabriel (31/10/2026).*
-
-- Usar o **ComfyUI** (interface de fluxos em nós, rodando no PC) como laboratório para **criar e treinar a voz da Nora**, montando o processo visualmente: gravações → limpeza do áudio → clonagem ou treino → teste.
-- O ComfyUI tem nós da comunidade para síntese e clonagem de voz (ex.: F5-TTS, Chatterbox, XTTS). **Conferir a licença de cada modelo**: alguns são só para uso não comercial (XTTS, pesos do F5-TTS); o Chatterbox é MIT.
-- A voz criada sai como arquivo/modelo e entra na Nora por um motor de voz (`[voz] motor`), como o Kokoro e o Piper.
-- Cuidados: só vozes próprias ou de quem autorizar; nada de áudio do ElevenLabs como material de treino; instalar o ComfyUI num ambiente separado da Nora, com **Python 3.12 ou 3.13**; conferir o suporte à GPU AMD (RX 9060 XT) no Windows.
-- Relacionado: laboratório de voz (`nora voz testar`, mistura de vozes do Kokoro) e treino de voz própria com o Piper.
-- **Status (v0.2.0):** feito o motor `comfyui`, o `nora voz gerar-dataset`, o `nora voz conferir-dataset` e os notebooks de treino do Piper (Kaggle e Colab). **Aprendizado:** a voz treinada nunca fica mais natural do que a de origem; o Qwen3-TTS fala português com sotaque, e o Piper herdou o sotaque. Para uma voz natural, a origem precisa ser pt-BR de verdade (gravar uma voz real, com autorização, ou um modelo que fale bem português e permita treinar).
-
-*(Adicionar novas ideias aqui.)*
+- **Nothing personal in the repository:**
+  - API keys only in `.env` (ignored by Git), with a `.env.example` template;
+  - **the memory database, the history and face data never go to GitHub**;
+  - `data/` folder in `.gitignore` since v0.0.
+- **Name and brand:** do not use "Jarvis", nor Marvel logos or visual references, in the name, logo or promotion. It is a registered trademark. "Inspired by the assistants of fiction" is fine.
+- **Customizable name:** the assistant's name comes from the config. Each user gives their own, and Gabriel's stays exclusive.
+- **Code license:** all rights reserved since 06/11/2026 (MIT up to v0.3.0). Anything opened in the future goes to a separate repository, with a license chosen at that time.
+- **Model and voice licenses:** check them one by one. Some forbid commercial use or redistribution (e.g. **XTTS is non-commercial**; some Piper voices have restrictions). Prefer redistributable components, or download the models separately via script.
+- **Swappable backends:** Vulkan, ROCm, CUDA and CPU, to run on other machines.
+- **Repository quality:** organized commits (Conventional Commits), one tag per stage, `CHANGELOG.md`, basic CI. It also works as a portfolio.
+- **Original voice:** create it with voice design or pick a ready-made one. **Do not imitate a real actor's voice.**
 
 ---
 
-## 9. Desenvolvimento com Claude Code: papéis sugeridos
+## 7. Name suggestions (with acronym)
 
-| Papel | Responsabilidade |
+- **K.A.I.R.O.S.:** *kairós* = "the right moment" (Greek). Fits the briefing and routine.
+- **Ó.R.I.O.N.:** Operador de Rotina, Inteligência e Organização Neural (Routine, Intelligence and Neural Organization Operator).
+- **V.E.G.A.:** Vigilância, Execução e Gestão Autônoma (Vigilance, Execution and Autonomous Management).
+- **A.U.R.A.:** Assistente Universal de Rotina e Automação (Universal Routine and Automation Assistant).
+
+> Still to decide: the **product name** and the **name of Gabriel's personal assistant** may be different.
+
+---
+
+## 8. Idea bank
+
+### 8.1 Camera identification
+When someone arrives in the room, the AI identifies the person and interacts. Fits: **Stage 6**.
+
+- **Layer 1, presence:** detect that someone came in, without identifying who. Lightweight: webcam + MediaPipe (CPU) or an **mmWave sensor** (cheap, no camera, detects even someone standing still).
+- **Layer 2, recognition:** only when there is presence, compare the face with the registered ones (e.g. InsightFace) and greet with context ("Boa noite, Gabriel. Você tem prova amanhã, quer revisar?").
+- **Privacy:**
+  - face data **local only**;
+  - unknown person → nothing personal is said;
+  - voice command or button to turn the camera off;
+  - registering visitors only with consent.
+
+### 8.2 Obsidian as a second brain
+*Origin: [Reference 01](docs/referencias/video-01-assistente-local.md).*
+
+- ✅ **Done in v0.3.0:** the assistant reads the **Obsidian vault** (`.md` notes) as a knowledge base, indexed in SQLite + sqlite-vec (`nora notas`).
+- The HUD draws the **notes graph** and highlights the ones used in the answer. Fits: **Stage 4**.
+- Folders can be left out in the config (`[notas] ignorar`). Personal notes stay out of GitHub.
+
+### 8.3 Switching brain and voice by command
+*Origin: [Reference 01](docs/referencias/video-01-assistente-local.md).*
+
+- ✅ **Done in v0.3.0:** "use o cérebro local", "use o ChatGPT", "use o Claude", "troque para a voz do Piper". Choosing a specific local model by name ("troque para o Gemma") does not exist yet.
+- The HUD always shows the **active model and voice** and the **origin** of each answer (which tool or note was used).
+
+### 8.4 Particle words in the HUD
+*Origin: idea for the HUD (31/10/2026).*
+
+- While Nora speaks, **each word appears formed by particles** in the center of the HUD, in sync with the voice; important words get another color (e.g. red).
+- Technique: draw the word on an invisible canvas, pick points inside the letters and animate thousands of particles (Three.js) to those points; on the next word, the particles fly to the new positions.
+- Use real alignment only when there is timing metadata. Without it, the word animation is a visual estimate, explicitly labeled and possible to turn off; do not promise phonetic sync.
+- Fits: **Stage 4 (HUD)**, together with the waves and the cards.
+
+### 8.5 Voice creation with ComfyUI
+*Origin: Gabriel's idea (31/10/2026).*
+
+- Use **ComfyUI** (node-based flow interface, running on the PC) as a lab to **create and train Nora's voice**, building the process visually: recordings → audio cleanup → cloning or training → test.
+- ComfyUI has community nodes for voice synthesis and cloning (e.g. F5-TTS, Chatterbox, XTTS). **Check each model's license**: some are non-commercial only (XTTS, F5-TTS weights); Chatterbox is MIT.
+- The created voice comes out as a file/model and enters Nora through a voice engine (`[voz] motor`), like Kokoro and Piper.
+- Care: only your own voices or voices of people who authorize it; no ElevenLabs audio as training material; install ComfyUI in an environment separate from Nora, with **Python 3.12 or 3.13**; check AMD GPU (RX 9060 XT) support on Windows.
+- Related: voice lab (`nora voz testar`, Kokoro voice mixing) and training your own voice with Piper.
+- **Status (v0.2.0):** done: the `comfyui` engine, `nora voz gerar-dataset`, `nora voz conferir-dataset` and the Piper training notebooks (Kaggle and Colab). **Lesson:** the trained voice is never more natural than the source; Qwen3-TTS speaks Portuguese with an accent, and Piper inherited the accent. For a natural voice, the source must be real pt-BR (record a real voice, with permission, or a model that speaks Portuguese well and allows training).
+
+*(Add new ideas here.)*
+
+---
+
+## 9. Development with Claude Code: suggested roles
+
+| Role | Responsibility |
 |---|---|
-| **Plan** | Arquitetura, contratos entre módulos, plano de cada etapa |
-| **Subagente de voz** | Wake word, VAD, STT, TTS, barge-in, eco |
-| **Subagente de cérebro** | Orquestração LLM, roteador, persona |
-| **Subagente de memória** | Esquema do banco, RAG, curadoria automática |
-| **Subagente de HUD** | Orbe, cartões, animações, Electron/Tauri |
-| **Subagente de integrações** | Servidores MCP (agenda, clima, PC, casa) |
-| **Revisor** | Mede a latência por etapa, testes, comparação com a referência |
+| **Plan** | Architecture, contracts between modules, plan for each stage |
+| **Voice subagent** | Wake word, VAD, STT, TTS, barge-in, echo |
+| **Brain subagent** | LLM orchestration, router, persona |
+| **Memory subagent** | Database schema, RAG, automatic curation |
+| **HUD subagent** | Orb, cards, animations, Electron/Tauri |
+| **Integrations subagent** | MCP servers (agenda, weather, PC, home) |
+| **Reviewer** | Measures latency per stage, tests, comparison with the reference |
 
 ---
 
-## 10. Decisões (tomadas em 30/10/2026, antes da v0.0.0)
+## 10. Decisions (made on 30/10/2026, before v0.0.0)
 
-1. **Sistema operacional:** ✅ **Windows**, com aceleração da GPU via Vulkan. Linux (ROCm) fica como plano B se o desempenho não bastar; o código roda nos dois.
-2. **Nome:** ✅ **Nora** para o projeto e para o assistente. O nome do assistente continua configurável.
-3. **Linguagem:** ✅ **núcleo em Python + HUD em web (TypeScript)**.
-4. **Uso 24h:** ✅ **não por enquanto**. O modo distribuído fica na v0.8.0, como previsto.
-5. **Licença:** ✅ **MIT** até a v0.3.0; desde 06/11/2026, **todos os direitos reservados**, pensando na comercialização (o que for aberto sai num repositório separado).
+1. **Operating system:** ✅ **Windows**, with GPU acceleration via Vulkan. Linux (ROCm) is plan B if performance is not enough; the code runs on both.
+2. **Name:** ✅ **Nora** for the project and for the assistant. The assistant's name stays configurable.
+3. **Language:** ✅ **Python core + web HUD (TypeScript)**.
+4. **24h use:** ✅ **not for now**. Distributed mode stays in v0.8.0, as planned.
+5. **License:** ✅ **MIT** up to v0.3.0; since 06/11/2026, **all rights reserved**, with commercialization in mind (anything opened goes to a separate repository).
 
 ---
 
-## 11. Primeiro prompt sugerido para o Claude Code
+## 11. Suggested first prompt for Claude Code
 
 ```
-Leia PROJETO_ASSISTENTE_IA.md por completo. Vamos iniciar a Etapa 0 (v0.0.0).
-Antes de escrever código, use o modo de planejamento para:
-1. Confirmar comigo as decisões pendentes da seção 10.
-2. Propor a estrutura de pastas (núcleo Python modular, HUD web separado,
-   servidores MCP como plugins, pasta data/ fora do Git).
-3. Criar um CLAUDE.md resumindo as regras do projeto (seções 2, 3 e 6).
-Depois, implemente a v0.0.0 e, em seguida, um teste rápido de compatibilidade
-da GPU AMD (Ollama com ROCm/Vulkan e whisper.cpp com Vulkan) para validar a Etapa 1.
+Read PROJETO_ASSISTENTE_IA.md in full. Let's start Stage 0 (v0.0.0).
+Before writing code, use plan mode to:
+1. Confirm with me the pending decisions in section 10.
+2. Propose the folder structure (modular Python core, separate web HUD,
+   MCP servers as plugins, data/ folder outside Git).
+3. Create a CLAUDE.md summarizing the project rules (sections 2, 3 and 6).
+Then implement v0.0.0 and, right after, a quick AMD GPU compatibility test
+(Ollama with ROCm/Vulkan and whisper.cpp with Vulkan) to validate Stage 1.
 ```

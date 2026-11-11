@@ -1,195 +1,195 @@
-# Mapa mental do projeto
+# Project mind map
 
-> Visão geral do projeto em diagramas. O GitHub desenha os blocos `mermaid` automaticamente.
-> **Regra:** toda etapa concluída atualiza este arquivo, mudando o status no roadmap e incluindo nós novos no mapa.
-> Versão visual editável no Obsidian: [`MAPA_MENTAL.canvas`](MAPA_MENTAL.canvas) (veja [`OBSIDIAN.md`](OBSIDIAN.md)).
-> Fonte detalhada: [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md).
-> Referências estudadas: [`referencias/`](referencias/video-01-assistente-local.md).
+> Project overview in diagrams. GitHub draws the `mermaid` blocks automatically.
+> **Rule:** every finished stage updates this file, changing the status in the roadmap and adding new nodes to the map.
+> Editable visual version in Obsidian: [`MAPA_MENTAL.canvas`](MAPA_MENTAL.canvas) (see [`OBSIDIAN.md`](OBSIDIAN.md)).
+> Detailed source: [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md).
+> References studied: [`referencias/`](referencias/video-01-assistente-local.md).
 
-**Legenda do roadmap:** ✅ concluída · 🔄 em andamento · ⬜ pendente
+**Roadmap legend:** ✅ done · 🔄 in progress · ⬜ pending
 
-**Versões:** `vMAIOR.MENOR.CORREÇÃO`. Cada etapa sobe o número do meio (`v0.1.0` → `v0.2.0`), e ajustes dentro de uma etapa sobem o último (`v0.1.0` → `v0.1.1`). Detalhes na seção 5 de [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md).
+**Versions:** `vMAJOR.MINOR.PATCH`. Each stage bumps the middle number (`v0.1.0` → `v0.2.0`), and fixes within a stage bump the last one (`v0.1.0` → `v0.1.1`). Details in section 5 of [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md).
 
 ---
 
-## 1. Visão geral
+## 1. Overview
 
 ```mermaid
 mindmap
   root((Nora))
-    Voz em tempo real
+    Real-time voice
       Wake word
-        Nome dito no começo da frase
-        Digitar também vale
+        Name said at the start of the sentence
+        Typing also works
       VAD
         Silero VAD
       STT
-        whisper.cpp com Vulkan
+        whisper.cpp with Vulkan
       TTS
         Kokoro local
-        Piper com voz treinada
+        Piper with a trained voice
         ElevenLabs
         ComfyUI
-        Voz de reserva
-      Emoção na voz
-        Escolhida pelo contexto
-        Audio tags no ElevenLabs v3
-        Aprende com as reações
+        Fallback voice
+      Emotion in the voice
+        Chosen by context
+        Audio tags on ElevenLabs v3
+        Learns from reactions
       Barge-in
-        Cancelamento de eco
-      Latência
-        Meta menos de 1 s
-        MVP menos de 2 s
-    Cérebro híbrido
+        Echo cancellation
+      Latency
+        Target under 1 s
+        MVP under 2 s
+    Hybrid brain
       Local
         Ollama
         Qwen 3.5 9B
-        keep_alive libera VRAM
-      Roteador
-        Triagem e segunda chance
-        Pensar do local
-        Comandos de voz
+        keep_alive frees VRAM
+      Router
+        Triage and second chance
+        Local model thinking
+        Voice commands
       API
-        ChatGPT primeiro
-        Claude de reserva
-        Frase de espera
-      Modo jogo
-        Conversa vai para a API
-        Sair só com confirmação
-        Nunca volta ao local sozinho
-    Memória
-      SQLite e sqlite-vec
-      Histórico bruto
-        Memória total
-      Memória curada
-        Áreas por assunto
-        Agenda de datas
-        Aprende pronúncia e jeito de falar
-      Esquecer e apagar de vez
-      Respostas pela metade
-        Retomar depois
-      Notas do Obsidian
-        Índice só de leitura
-      Conhecimento
-      Futuro LoRA
-    Auto-melhoria
-      Observador sem texto
-      Relatório diário por regras
-      Aprovar recusar adiar
-      Pesquisa na web futura
-    Extensões
-      Padrão MCP
-      Orquestrador persona
-      Especialistas
-        Agenda e rotina
-        Pesquisa
-        Controle do PC e casa
-        Memória
+        ChatGPT first
+        Claude as fallback
+        Holding phrase
+      Game mode
+        Conversation goes to the API
+        Leave only with confirmation
+        Never returns to local on its own
+    Memory
+      SQLite and sqlite-vec
+      Raw history
+        Total memory
+      Curated memory
+        Areas by subject
+        Date agenda
+        Learns pronunciation and way of speaking
+      Forget and delete for good
+      Half-finished answers
+        Resume later
+      Obsidian notes
+        Read-only index
+      Knowledge
+      Future LoRA
+    Self-improvement
+      Observer without text
+      Rule-based daily report
+      Approve reject postpone
+      Future web research
+    Extensions
+      MCP standard
+      Orchestrator persona
+      Specialists
+        Agenda and routine
+        Research
+        PC and home control
+        Memory
     HUD
-      Web TypeScript e ponte SSE local
-      Ondas Three.js e fallback Canvas
-      Partículas e áudio do núcleo
-      Privacidade por padrão
-      Cartões e relógio
-    Modo distribuído
-      Corpo 24h mini PC
-      Cérebro PC principal
-      API como reserva
+      TypeScript web and local SSE bridge
+      Three.js waves and Canvas fallback
+      Particles and audio from the core
+      Privacy by default
+      Cards and clock
+    Distributed mode
+      24h body mini PC
+      Brain main PC
+      API as fallback
     Hardware
       RX 9060 XT 16 GB
-        Vulkan e ROCm
-        Evitar só CUDA
+        Vulkan and ROCm
+        Avoid CUDA only
       Ryzen 7 9800X3D
       32 GB DDR5
-      NVMe para modelos e banco
-    Licença e distribuição
-      Dados fora do Git
+      NVMe for models and database
+    License and distribution
+      Data out of Git
       env.example
-      Sem marca Marvel
-      Nome configurável
-      Todos os direitos reservados, até a v0.3.0 MIT
-      Conferir licenças de modelos e vozes
-    Banco de ideias
-      Câmera
-        Presença
-        Reconhecimento facial local
-        Privacidade
-      Obsidian como segundo cérebro
-        Grafo no HUD
-      Palavras de partículas no HUD
-      Criação de voz pelo ComfyUI
+      No Marvel brand
+      Configurable name
+      All rights reserved, MIT up to v0.3.0
+      Check model and voice licenses
+    Idea bank
+      Camera
+        Presence
+        Local face recognition
+        Privacy
+      Obsidian as a second brain
+        Graph in the HUD
+      Particle words in the HUD
+      Voice creation with ComfyUI
 ```
 
 ---
 
-## 2. Roadmap por etapas
+## 2. Roadmap by stage
 
 ```mermaid
 flowchart LR
-  v00["v0.0.0 Fundação"]:::done --> v01["v0.1.0 Conversa por voz"]:::done
-  v01 --> v02["v0.2.0 Memória"]:::done
-  v02 --> v03["v0.3.0 Roteador de modelos"]:::done
+  v00["v0.0.0 Foundation"]:::done --> v01["v0.1.0 Voice conversation"]:::done
+  v01 --> v02["v0.2.0 Memory"]:::done
+  v02 --> v03["v0.3.0 Model router"]:::done
   v03 --> v04["v0.4.0 HUD"]:::doing
-  v04 --> v05["v0.5.0 Ferramentas MCP"]:::pend
-  v05 --> v06["v0.6.0 Rotinas e iniciativa"]:::pend
-  v06 --> v07["v0.7.0 Agentes"]:::pend
-  v07 --> v08["v0.8.0 Modo distribuído"]:::pend
-  v08 --> v10["v1.0.0 Lançamento"]:::pend
+  v04 --> v05["v0.5.0 MCP tools"]:::pend
+  v05 --> v06["v0.6.0 Routines and initiative"]:::pend
+  v06 --> v07["v0.7.0 Agents"]:::pend
+  v07 --> v08["v0.8.0 Distributed mode"]:::pend
+  v08 --> v10["v1.0.0 Launch"]:::pend
 
   classDef done fill:#2e7d32,stroke:#1b5e20,color:#fff
   classDef doing fill:#f9a825,stroke:#f57f17,color:#000
   classDef pend fill:#eceff1,stroke:#90a4ae,color:#37474f
 ```
 
-| Versão | Etapa | Status | Critério de pronto |
+| Version | Stage | Status | Done criterion |
 |---|---|---|---|
-| v0.0.0 | Fundação | ✅ | Projeto roda o "hello world" e a config carrega |
-| v0.1.0 | Conversa por voz | ✅ | Falar o nome, perguntar e ouvir a resposta em menos de 2 s |
-| v0.2.0 | Memória | ✅ | Lembra de fatos entre sessões |
-| v0.3.0 | Roteador de modelos | ✅ | Pergunta difícil vai para a API e volta com a mesma voz |
-| v0.4.0 | HUD | 🔄 | Interface reage à voz em tempo real |
-| v0.5.0 | Ferramentas MCP | ⬜ | Executa ações por voz |
-| v0.6.0 | Rotinas e iniciativa | ⬜ | IA fala primeiro no horário e por presença |
-| v0.7.0 | Agentes e subagentes | ⬜ | Tarefas complexas delegadas |
-| v0.8.0 | Modo distribuído | ⬜ | Funciona com o PC desligado, via API |
-| v1.0.0 | Lançamento | ⬜ | Terceiros instalam e usam |
+| v0.0.0 | Foundation | ✅ | The project runs "hello world" and the config loads |
+| v0.1.0 | Voice conversation | ✅ | Say the name, ask and hear the answer in under 2 s |
+| v0.2.0 | Memory | ✅ | Remembers facts across sessions |
+| v0.3.0 | Model router | ✅ | A hard question goes to the API and comes back in the same voice |
+| v0.4.0 | HUD | 🔄 | The interface reacts to the voice in real time |
+| v0.5.0 | MCP tools | ⬜ | Performs actions by voice |
+| v0.6.0 | Routines and initiative | ⬜ | The AI speaks first on schedule and on presence |
+| v0.7.0 | Agents and subagents | ⬜ | Complex tasks delegated |
+| v0.8.0 | Distributed mode | ⬜ | Works with the PC off, via the API |
+| v1.0.0 | Launch | ⬜ | Third parties install and use it |
 
 ---
 
-## 3. Fluxo de uma conversa
+## 3. Flow of a conversation
 
 ```mermaid
 flowchart LR
-  mic(["Microfone"]) --> ww["Wake word"] --> vad["VAD"] --> stt["STT whisper.cpp"]
-  stt --> orq{"Orquestrador"}
-  orq -->|conversa| local["LLM local Ollama"]
-  orq -->|pesado| api["API ChatGPT, Claude de reserva"]
-  orq -->|ação| mcp["Ferramentas MCP"]
-  mem[("Memória SQLite")] <--> orq
+  mic(["Microphone"]) --> ww["Wake word"] --> vad["VAD"] --> stt["STT whisper.cpp"]
+  stt --> orq{"Orchestrator"}
+  orq -->|conversation| local["Local LLM Ollama"]
+  orq -->|heavy| api["API ChatGPT, Claude as fallback"]
+  orq -->|action| mcp["MCP tools"]
+  mem[("SQLite memory")] <--> orq
   local --> tts["TTS ElevenLabs, Kokoro, Piper"]
   api --> tts
   mcp --> orq
-  tts --> spk(["Alto-falante"])
-  tts --> hud["HUD ondas e cartões"]
+  tts --> spk(["Speaker"])
+  tts --> hud["HUD waves and cards"]
 ```
 
 ---
 
-## 4. Decisões tomadas (30/10/2026)
+## 4. Decisions made (30/10/2026)
 
 ```mermaid
 mindmap
-  root((Decisões da v0.0.0))
-    Sistema operacional
-      Windows com Vulkan
-      Linux como plano B
-    Nome
-      Nora para projeto e assistente
-    Linguagem
-      Núcleo Python
-      HUD TypeScript
-    Uso 24h
-      Só na v0.8.0
-    Licença
-      Todos os direitos reservados
+  root((v0.0.0 decisions))
+    Operating system
+      Windows with Vulkan
+      Linux as plan B
+    Name
+      Nora for project and assistant
+    Language
+      Python core
+      TypeScript HUD
+    24h use
+      Only in v0.8.0
+    License
+      All rights reserved
 ```
