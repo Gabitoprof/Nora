@@ -1,13 +1,13 @@
 /**
- * Telemetria da HUD para a homologação: só números (nenhum texto da conversa).
+ * HUD telemetry for acceptance: only numbers (no conversation text).
  *
- * - intervalo entre quadros (o que a pessoa vê: com limite de 30 FPS o ideal é 33,3 ms);
- * - trabalho de cada quadro (ms de JavaScript para desenhar a cena e as letras);
- * - atraso som → palavra: quanto do áudio da palavra já tinha tocado quando ela apareceu;
- * - contextos WebGL criados e perdidos (vazamento ou queda da placa de vídeo);
- * - memória do JavaScript (só no Chrome/Edge).
+ * - interval between frames (what the person sees: with a 30 FPS cap the ideal is 33.3 ms);
+ * - work per frame (JavaScript ms to draw the scene and the letters);
+ * - sound → word delay: how much of the word's audio had already played when it appeared;
+ * - WebGL contexts created and lost (a leak or a graphics card drop);
+ * - JavaScript memory (Chrome/Edge only).
  *
- * Guarda as últimas amostras em buffers fixos; `resumo()` calcula os percentis.
+ * Keeps the latest samples in fixed buffers; `resumo()` computes the percentiles.
  */
 export interface DiagnosticoHud {
   janela_s: number;
@@ -76,7 +76,7 @@ export class Telemetria {
       fps_limite: this.fpsLimite,
     };
   }
-  /** Texto curto para os Ajustes. */
+  /** Short text for the Settings panel. */
   linha(): string {
     const r = this.resumo();
     if (!r.quadros) return "";

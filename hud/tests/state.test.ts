@@ -175,7 +175,7 @@ describe("reproducao_encerrada no estado da HUD", () => {
   it("ordem: fim de uma reprodução antiga não apaga a fala atual; fora de ordem é ignorado", () => {
     let m = reduzir(visivel(), fim(3, 4));
     expect(m.fala_temporizada?.id).toBe(4);
-    m = reduzir(m, fim(4, 2)); // sequência velha
+    m = reduzir(m, fim(4, 2)); // old sequence
     expect(m.fala_temporizada?.id).toBe(4);
   });
   it("duplicidade: o mesmo fim repetido não muda nada", () => {
@@ -188,7 +188,7 @@ describe("reproducao_encerrada no estado da HUD", () => {
     let m = reduzir(visivel(), fim(4, 4));
     m = reduzir(m, evento("fala_temporizada", fala(4), 5));
     expect(m.fala_temporizada).toBeNull();
-    m = reduzir(m, evento("fala_temporizada", fala(5), 6)); // a próxima resposta aparece
+    m = reduzir(m, evento("fala_temporizada", fala(5), 6)); // the next answer appears
     expect(m.fala_temporizada?.id).toBe(5);
   });
   it("reconexão: o servidor pode ter reiniciado, os ids voltam a valer", () => {
@@ -205,7 +205,7 @@ describe("reproducao_encerrada no estado da HUD", () => {
     m = reduzir(m, evento("texto_visivel", { texto: "segredo", acumular: false }, 6));
     m = reduzir(m, evento("notas", { notas: [{ titulo: "nota" }] }, 7));
     expect(m.fala_temporizada).toBeNull(); expect(m.texto).toBe(""); expect(m.notas).toEqual([]);
-    m = reduzir(m, fim(4, 8)); // o fim chega depois: continua tudo limpo
+    m = reduzir(m, fim(4, 8)); // the end arrives later: everything stays clean
     expect(m.fala_temporizada).toBeNull();
   });
 });

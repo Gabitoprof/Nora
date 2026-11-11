@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 
-// Versão e commit da HUD, gravados no build, para a homologação registrar o que foi testado.
+// HUD version and commit, written at build time, so acceptance records what was tested.
 const pacote = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf-8"));
 function commit(): string {
   if (process.env.NORA_COMMIT) return process.env.NORA_COMMIT.slice(0, 12);

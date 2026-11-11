@@ -2,16 +2,16 @@ import type { Acustica } from "./scene-audio";
 import type { Evento, FalaTemporizada, Modelo, PalavraTemporizada } from "./state";
 import { CampoParticulasTexto, type OpcoesCampoTexto } from "./text-particle-field";
 
-/** Relógio da mídia: estado e chegada da timeline não fazem a locução avançar. */
+/** Media clock: state and timeline arrival do not move the speech forward. */
 export class RelogioFala {
   /**
-   * `idadeMaxima`: amostra mais velha que isso (ms) não vale (a palavra some);
-   * `extrapolacaoMaxima`: quanto o relógio avança sozinho desde a última amostra (ms).
+   * `idadeMaxima`: a sample older than this (ms) does not count (the word disappears);
+   * `extrapolacaoMaxima`: how far the clock advances on its own since the last sample (ms).
    */
-  // Medido em tests/relogio-medicao.test.ts (docs/HOMOLOGACAO.md): 450/400 não perde palavras
-  // com engasgos de até 450 ms e mantém o atraso p95 em 50 ms.
+  // Measured in tests/relogio-medicao.test.ts (docs/HOMOLOGACAO.md): 450/400 loses no words
+  // with stalls of up to 450 ms and keeps the p95 delay at 50 ms.
   constructor(readonly idadeMaxima = 450, readonly extrapolacaoMaxima = 400) {}
-  /** Recuos menores que isso (ms) são ruído de rede: a posição não volta (sem piscar). */
+  /** Setbacks smaller than this (ms) are network noise: the position does not go back (no flicker). */
   static readonly TOLERANCIA_RECUO = 60;
   private ultimaPosicao = -1;
   private ultimoId = -1;
@@ -33,11 +33,11 @@ export class RelogioFala {
   limpar() { this.ultimaPosicao = -1; this.ultimoId = -1; this.amostra = null; this.recebida = -Infinity; this.encerrado = -1; this.resultado.palavra = { texto: "", inicio_ms: 0, fim_ms: 0, destaque: false }; this.resultado.posicao = 0; }
   palavra(fala: FalaTemporizada | null, agora: number) {
     const a = this.amostra;
-    // RAF pode preceder a chegada SSE dentro do mesmo frame: jamais voltar o relógio.
+    // RAF may precede the SSE arrival within the same frame: never move the clock back.
     const decorrido = Math.max(0, agora - this.recebida);
     if (!a?.ativo || !fala || fala.id !== a.reproducao_id || decorrido > this.idadeMaxima || a.rms < .002) return null;
     let posicao = Math.min(a.duracao_ms || fala.duracao_ms, a.posicao_ms + Math.min(decorrido, this.extrapolacaoMaxima));
-    // Amostra nova chega com o atraso da rede e "puxa" a posição alguns ms para trás: ignora.
+    // A new sample arrives with the network delay and "pulls" the position a few ms back: ignore.
     if (a.reproducao_id === this.ultimoId && posicao < this.ultimaPosicao && this.ultimaPosicao - posicao < RelogioFala.TOLERANCIA_RECUO) posicao = this.ultimaPosicao;
     this.ultimaPosicao = posicao; this.ultimoId = a.reproducao_id;
     let inicio = 0, fim = fala.palavras.length - 1;
@@ -49,25 +49,25 @@ export class RelogioFala {
     }
     return null;
   }
-  /** Há amostra recente da reprodução desta fala (entre palavras ou numa pausa curta). */
+  /** There is a recent playback sample for this utterance (between words or in a short pause). */
   ativo(fala: FalaTemporizada | null, agora: number) {
     const a = this.amostra;
     return !!(a?.ativo && fala && fala.id === a.reproducao_id && agora - this.recebida <= this.idadeMaxima);
   }
 }
 
-/** A palavra fica até a próxima começar, inclusive nas pausas, até este teto (silêncio longo). */
+/** The word stays until the next one starts, pauses included, up to this cap (long silence). */
 export const TETO_PAUSA_MS = 1500;
 /**
- * Movimento das palavras: tremor leve (soltar pontos atrapalharia a leitura) e chegada rápida da
- * poeira. Medido em tests/text-particles.test.ts: legível (90% dos pontos a < 3 px) em ~116 ms,
- * meta ≤ 150 ms.
+ * Word movement: light tremor (loosening points would hurt reading) and a fast arrival from the
+ * dust. Measured in tests/text-particles.test.ts: readable (90% of the points within 3 px) in
+ * ~116 ms, target ≤ 150 ms.
  */
 export const VIDA_PALAVRAS = { tremor: .45, chegada: 30, rigidezChegada: 80 };
-/** Quantas palavras já ditas ficam visíveis à esquerda da atual. */
+/** How many words already said stay visible to the left of the current one. */
 export const ANTERIORES = 3;
 
-/** Um único glifo semântico por vez; as mesmas partículas fazem a transição e a dissolução. */
+/** A single semantic glyph at a time; the same particles do the transition and the dissolve. */
 export class PalavrasParticulas {
   private relogio = new RelogioFala();
   private ultimaAmostra: Acustica | null = null;
@@ -78,11 +78,11 @@ export class PalavrasParticulas {
   private anterior = 0;
   private maiorId = 0;
   private encerrado = 0;
-  /** Avisado quando uma palavra aparece: quanto do áudio dela já tinha tocado (ms). */
+  /** Notified when a word appears: how much of its audio had already played (ms). */
   aoMostrar?: (atrasoMs: number) => void;
-  /** Teto da retenção nas pausas (ms); configurável. */
+  /** Cap on holding during pauses (ms); configurable. */
   tetoPausa = TETO_PAUSA_MS;
-  /** Palavras já ditas desta fala (só as que já tocaram; nunca as próximas). */
+  /** Words already said in this utterance (only those already played; never the next ones). */
   private anteriores: string[] = [];
   private idAnteriores = 0;
   private palavraAtual = "";
@@ -100,8 +100,8 @@ export class PalavrasParticulas {
     if (evento.tipo !== "reproducao_encerrada") return;
     const d = evento.dados;
     if (typeof d.id !== "number" || typeof d.posicao_ms !== "number" || typeof d.duracao_ms !== "number" || typeof d.interrompida !== "boolean") return;
-    if (d.id < this.maiorId || d.id <= this.encerrado) return; // aviso antigo ou repetido
-    // Fim da reprodução (natural ou interrompida): a palavra some na hora, sem segurar.
+    if (d.id < this.maiorId || d.id <= this.encerrado) return; // old or repeated notice
+    // End of playback (natural or interrupted): the word disappears at once, without holding.
     this.encerrado = d.id;
     this.apagar(); this.fala = null;
   }

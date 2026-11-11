@@ -6,11 +6,11 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { onda, aleatorio } from "./scene-math";
 import { cores, inicial, expressaoEmocional, type Modelo } from "./state";
 import { EnvelopeVisual, SILENCIO, aproximar, brilhoInferior, cadenciaVisual, ondaInferior, type Dinamica } from "./scene-audio";
-/** Brilho (bloom) da qualidade Detalhada: força em repouso e quanto a voz soma. */
+/** Glow (bloom) of the Detailed quality: strength at rest and how much the voice adds. */
 export const BRILHO = { forca: .7, raio: .28, limiar: .42, voz: .45 };
-/** Ciano discreto dos realces (pontos de luz no anel e na poeira). */
+/** Subtle cyan of the highlights (points of light on the ring and in the dust). */
 const CIANO = 0x9fe6ff;
-/** `energia`: o mesmo sinal que move o anel (voz quando fala, microfone quando escuta), 0–1. */
+/** `energia`: the same signal that moves the ring (voice when speaking, mic when listening), 0–1. */
 export interface QuadroVisual { agora: number; delta: number; reduzido: boolean; cor: string; energia: number; }
 type Qualidade = "alta" | "baixa" | "canvas";
 export class Cena {
@@ -42,10 +42,10 @@ export class Cena {
   private parar = false;
   private sprite?: THREE.CanvasTexture;
   private brilhos?: THREE.Points;
-  /** Contextos WebGL criados e perdidos (telemetria da homologação). */
+  /** WebGL contexts created and lost (acceptance telemetry). */
   contextosCriados = 0;
   contextosPerdidos = 0;
-  /** ms de JavaScript do último quadro desenhado. */
+  /** JavaScript ms of the last drawn frame. */
   ultimoTrabalho = 0;
   private largura = 1;
   private altura = 1;
@@ -119,7 +119,7 @@ export class Cena {
   }
   private preparar() {
     this.limpar();
-    // Contextos Canvas/WebGL não podem compartilhar o mesmo elemento após criação.
+    // Canvas/WebGL contexts cannot share the same element after creation.
     const novo = document.createElement("canvas");
     novo.setAttribute("aria-hidden", "true");
     this.canvas.replaceWith(novo);
@@ -141,8 +141,8 @@ export class Cena {
         });
         this.contextosCriados++;
         this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-        // Fundo preto opaco + `mix-blend-mode: screen` no CSS: o preto some sobre o fundo da
-        // página e só a luz (com o brilho) soma.
+        // Opaque black background + `mix-blend-mode: screen` in the CSS: the black disappears over the
+        // page background and only the light (with the glow) adds up.
         this.renderer.setClearColor(0x000000, 1);
         if (this.densidade === "alta") {
           this.composer = new EffectComposer(this.renderer);
@@ -187,7 +187,7 @@ export class Cena {
         );
         const coresParticulas = new Float32Array(numeroPontos * 3);
         for (let i = 0; i < numeroPontos; i++) {
-          // Os pontos da onda inferior (i % 5 == 0) ficam mais claros no centro.
+          // The bottom-wave dots (i % 5 == 0) are brighter in the center.
           const brilho = (0.25 + aleatorio(i + 5) * 0.75) * (i % 5 === 0 ? brilhoInferior((this.sementes[i * 6] - .5) * 20) * 1.35 : 1);
           coresParticulas.set([brilho, brilho, brilho], i * 3);
         }
@@ -272,7 +272,7 @@ export class Cena {
     this.camera.updateProjectionMatrix();
     if (this.renderer) {
       this.renderer.setSize(w, h);
-      // Brilho em meia resolução: mesmo efeito, um quarto do custo.
+      // Glow at half resolution: same effect, a quarter of the cost.
       this.composer?.setSize(w, h);
       this.bloom?.resolution.set(Math.max(1, w / 2), Math.max(1, h / 2));
     }

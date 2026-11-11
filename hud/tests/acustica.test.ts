@@ -75,8 +75,8 @@ describe("palavras seguem a posição de reprodução",()=>{
   it("não avança por estado, não pisca quando RAF precede chegada do pacote",()=>{
     const r=new RelogioFala();r.atualizar(amostra({posicao_ms:100}),110);
     expect(r.palavra(fala,100)?.palavra.texto).toBe("Olá");expect(r.palavra(fala,110)?.posicao).toBe(100);
-    expect(r.palavra(fala,350)).toBeNull(); // lacuna temporal real, não próximo estado
-    expect(r.palavra(fala,411)).toBeNull(); // amostra expirada
+    expect(r.palavra(fala,350)).toBeNull(); // a real time gap, not the next state
+    expect(r.palavra(fala,411)).toBeNull(); // expired sample
   });
   it("silêncio limpa palavra, preserva timeline e retoma na posição real",()=>{
     const r=new RelogioFala();r.atualizar(amostra({rms:0,envelope:0,posicao_ms:250}),0);expect(r.palavra(fala,50)).toBeNull();
@@ -93,8 +93,8 @@ describe("palavras seguem a posição de reprodução",()=>{
 });
 
 describe("painel lateral acompanha a onda central (regressão)",()=>{
-  // Antes: o painel mostrava Math.round(rms*100)%, e uma fala baixa (RMS 0,004) virava "0%"
-  // enquanto a onda central, movida pelo envelope e pelo pico do mesmo evento, já se mexia.
+  // Before: the panel showed Math.round(rms*100)%, and quiet speech (RMS 0.004) became "0%"
+  // while the central wave, moved by the envelope and peak of the same event, was already moving.
   const conectado={...inicial,conectado:true,estado:"ouvindo" as const};
   const baixa=amostra({fonte:"microfone",rms:.004,envelope:.003,pico:.03,reproducao_id:0,posicao_ms:0,duracao_ms:0});
   it("fala baixa: a onda se deforma e o painel não mostra zero",()=>{
@@ -122,7 +122,7 @@ describe("painel lateral acompanha a onda central (regressão)",()=>{
     }
     const falando=reduzir(reduzir(ouvindo,evento("falando",{},4)),evento("acustica",amostra(),5));
     expect(leituraDoPainel(falando).nivel).toBeGreaterThan(0);
-    expect(leituraDoPainel({...falando,estado:"ouvindo"}).nivel).toBe(0); // voz não vale ouvindo
+    expect(leituraDoPainel({...falando,estado:"ouvindo"}).nivel).toBe(0); // voice does not count while listening
   });
   it("escala em decibéis: −60 dBFS é zero, 0 dBFS é cheio, fala comum fica no meio",()=>{
     expect(nivelPerceptivo(0)).toBe(0);expect(nivelPerceptivo(.001)).toBeCloseTo(0);expect(nivelPerceptivo(1)).toBe(1);

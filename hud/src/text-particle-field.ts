@@ -3,23 +3,24 @@ import { desenharGeometrico, temGlifos } from "./geometric-glyphs";
 
 export type FaseParticulas = "poeira" | "formando" | "retendo" | "dispersando";
 /**
- * "Vida" das partículas enquanto a letra está formada: sem ela, a letra fica parada.
- * - tremor: raio (px) do movimento de cada ponto em volta do seu lugar na letra;
- * - fluxo: fração do tempo em que cada ponto se solta para a poeira e volta (troca contínua);
- * - poeira: brilho da poeira livre em volta das letras; extras: quantos pontos de poeira livre.
- * A energia do áudio (voz ou microfone) aumenta tremor, fluxo e brilho.
+ * Particle "life" while the letter is formed: without it, the letter stands still.
+ * - tremor: radius (px) of each point's movement around its place in the letter;
+ * - fluxo: fraction of the time each point breaks off into the dust and comes back (continuous
+ *   exchange);
+ * - poeira: brightness of the free dust around the letters; extras: how many free dust points.
+ * The audio energy (voice or microphone) increases tremor, flow and brightness.
  */
 export interface Vida {
   tremor: number; fluxo: number; poeira: number; extras: number;
-  /** Escalonamento da chegada (ms): os pontos saem da poeira um a um, em fluxo. 0 = todos juntos. */
+  /** Arrival stagger (ms): the points leave the dust one by one, in a stream. 0 = all together. */
   chegada: number;
-  /** Rigidez da mola na chegada (maior = mais rápido). */
+  /** Spring stiffness on arrival (higher = faster). */
   rigidezChegada: number;
 }
 export const SEM_VIDA: Vida = { tremor: 0, fluxo: 0, poeira: .025, extras: 36, chegada: 0, rigidezChegada: 48 };
-/** Posição atual (no sistema do campo) do grão de poeira ligado ao ponto `i`; false se não houver. */
+/** Current position (in the field's system) of the dust grain tied to point `i`; false if none. */
 export type Origem = (i: number, saida: [number, number]) => boolean;
-/** Pool fixo: identidade, posição e velocidade sobrevivem às trocas de palavra. */
+/** Fixed pool: identity, position and velocity survive word changes. */
 export class NuvemLetras {
   readonly ids: Uint16Array;
   readonly x: Float32Array;
@@ -33,20 +34,20 @@ export class NuvemLetras {
   private readonly livreX: Float32Array;
   private readonly livreY: Float32Array;
   private readonly brilho: Float32Array;
-  /** Peso do brilho de cada destino (palavras já ditas ficam mais apagadas que a atual). */
+  /** Brightness weight of each target (words already said are dimmer than the current one). */
   readonly peso: Float32Array;
   quantidade = 0;
   alvos = 0;
   fase: FaseParticulas = "poeira";
   private inicio = 0;
   vida: Vida = SEM_VIDA;
-  /** Se definida, a poeira livre é a poeira da cena: os pontos saem dela e voltam para ela. */
+  /** If set, the free dust is the scene's dust: the points leave it and return to it. */
   origem?: Origem;
   private readonly atraso: Float32Array;
   private readonly tmp: [number, number] = [0, 0];
-  /** Energia do áudio agora (0–1): voz quando ela fala, microfone quando escuta. */
+  /** Audio energy now (0–1): voice when she speaks, microphone when she listens. */
   energia = 0;
-  // Parâmetros fixos de cada ponto (frequências, fases, direção e período do fluxo).
+  // Fixed parameters of each point (frequencies, phases, direction and flow period).
   private readonly freqA: Float32Array;
   private readonly freqB: Float32Array;
   private readonly faseA: Float32Array;
@@ -90,12 +91,12 @@ export class NuvemLetras {
     this.inicio = agora;
     this.fase = imediato ? "retendo" : "formando";
     for (let i = 0; i < this.quantidade; i++) {
-      // Com origem, o ponto parte de onde o seu grão de poeira está agora.
+      // With an origin, the point starts from where its dust grain is now.
       if (this.origem && this.origem(i, this.tmp)) { this.livreX[i] = this.tmp[0]; this.livreY[i] = this.tmp[1]; }
       if (i < this.alvos) {
         this.alvoX[i] = coordenadas[i * 2]; this.alvoY[i] = coordenadas[i * 2 + 1];
         this.peso[i] = pesos?.[i] ?? 1;
-        // Partículas apagadas voltam como poeira, jamais nascem já sobre o glifo.
+        // Faded particles come back as dust, never born already on the glyph.
         if (this.alpha[i] < .01) { this.x[i] = this.livreX[i]; this.y[i] = this.livreY[i]; this.alpha[i] = .1; }
         if (imediato) { this.x[i] = this.alvoX[i]; this.y[i] = this.alvoY[i]; this.vx[i] = this.vy[i] = 0; this.alpha[i] = this.brilho[i] * this.peso[i]; }
       }
@@ -109,7 +110,7 @@ export class NuvemLetras {
     this.fase = "poeira"; this.quantidade = this.alvos = 0;
     this.alpha.fill(0); this.vx.fill(0); this.vy.fill(0);
     this.x.set(this.livreX); this.y.set(this.livreY);
-    // Apagar também a máscara geométrica evita reter texto privado no pool.
+    // Clearing the geometric mask too avoids keeping private text in the pool.
     this.alvoX.fill(0); this.alvoY.fill(0);
   }
   passo(agora: number, delta: number, reduzido = false) {
@@ -121,20 +122,20 @@ export class NuvemLetras {
     const dt = Math.max(0, Math.min(100, delta)) / 1000;
     const origem = this.origem;
     if (origem) {
-      // A poeira da cena se move: os lugares livres acompanham cada grão ligado a um ponto.
+      // The scene's dust moves: the free places follow each grain tied to a point.
       for (let i = 0; i < this.quantidade; i++)
         if (origem(i, this.tmp)) { this.livreX[i] = this.tmp[0]; this.livreY[i] = this.tmp[1]; }
     }
     const omegaFixo = retendo ? 48 : origem ? 6.5 : 4.2;
     const amortecimentoFixo = Math.exp(-omegaFixo * dt);
-    // Voltando para a poeira da cena, o ponto se apaga mais devagar: dá para ver a viagem.
+    // Going back to the scene's dust, the point fades more slowly: the trip is visible.
     const fade = Math.exp(-dt / (retendo ? .075 : this.origem ? .3 : .135));
     const vida = this.vida, t = agora / 1000, energia = Math.max(0, Math.min(1, this.energia));
     const viva = retendo && (vida.tremor > 0 || vida.fluxo > 0);
     const tremor = vida.tremor * (1 + energia * 4);
     const fluxo = Math.min(.35, vida.fluxo * (1 + energia * 1.5));
     for (let i = 0; i < this.quantidade; i++) {
-      // Na chegada escalonada, cada ponto espera a sua vez na poeira antes de partir.
+      // In the staggered arrival, each point waits its turn in the dust before leaving.
       const partiu = !formando || chegada <= 0 || agora - this.inicio >= this.atraso[i] * chegada;
       const glifo = retendo && i < this.alvos && partiu;
       const omega = formando && chegada > 0 && glifo ? this.vida.rigidezChegada : omegaFixo;
@@ -147,12 +148,12 @@ export class NuvemLetras {
         if (glifo) {
           tx += tremor * ondaA; ty += tremor * ondaB;
           if (fluxo > 0) {
-            // Cada ponto passa uma fração do seu período solto na poeira e volta para a letra.
+            // Each point spends a fraction of its period loose in the dust and returns to the letter.
             const ciclo = (t / this.periodo[i] + this.faseA[i] / (Math.PI * 2)) % 1;
             if (ciclo < fluxo) {
               const s = Math.sin(Math.PI * ciclo / fluxo);
               if (origem) {
-                // Vai até o seu grão na órbita e volta para a letra.
+                // Goes to its grain in the orbit and back to the letter.
                 tx += (this.livreX[i] - tx) * s; ty += (this.livreY[i] - ty) * s;
                 realce = 1 - .5 * s;
               } else {
@@ -162,24 +163,24 @@ export class NuvemLetras {
               }
             }
           }
-          // Cintilar leve; com a voz, a letra brilha mais.
+          // Light twinkle; with the voice, the letter shines more.
           realce *= (.82 + .18 * ondaB) * (1 + .35 * energia);
         } else if (!origem) {
-          tx += 16 * ondaA; ty += 7 * ondaB; // poeira livre circulando
+          tx += 16 * ondaA; ty += 7 * ondaB; // free dust circulating
         }
       }
       if (reduzido) {
         this.x[i] = tx; this.y[i] = ty; this.vx[i] = this.vy[i] = 0;
         this.alpha[i] = glifo ? this.brilho[i] * this.peso[i] : 0; continue;
       }
-      // Solução analítica da mola criticamente amortecida, estável em 30/60/120 FPS.
+      // Analytic solution of the critically damped spring, stable at 30/60/120 FPS.
       const dx = this.x[i] - tx, dy = this.y[i] - ty;
       const bx = this.vx[i] + omega * dx, by = this.vy[i] + omega * dy;
       this.x[i] = tx + (dx + bx * dt) * amortecimento;
       this.y[i] = ty + (dy + by * dt) * amortecimento;
       this.vx[i] = (this.vx[i] - omega * bx * dt) * amortecimento;
       this.vy[i] = (this.vy[i] - omega * by * dt) * amortecimento;
-      // Com origem, fora da letra o ponto é a própria poeira da cena (que já aparece): some aqui.
+      // With an origin, outside the letter the point is the scene's own dust (already shown): hide it.
       const alvoAlpha = glifo ? Math.min(1, this.brilho[i] * this.peso[i] * realce) : origem ? (formando && i < this.alvos ? .18 : 0) : retendo ? (viva ? vida.poeira : .025) : 0;
       this.alpha[i] = alvoAlpha + (this.alpha[i] - alvoAlpha) * fade;
     }
@@ -193,35 +194,35 @@ export interface OpcoesCampoTexto {
   maximo?: number;
   fonte?: string;
   tamanhoFonte?: number;
-  /** "geometrico": alfabeto próprio da Nora (marca); "fonte": a fonte do sistema. */
+  /** "geometrico": Nora's own alphabet (mark); "fonte": the system font. */
   estilo?: "geometrico" | "fonte";
-  /** Grossura do traço do alfabeto geométrico, em frações da altura da letra. */
+  /** Stroke thickness of the geometric alphabet, as a fraction of the letter height. */
   espessura?: number;
-  /** Halo suave em volta de cada partícula (brilho da poeira). */
+  /** Soft halo around each particle (dust glow). */
   brilho?: number;
-  /** Fontes instaladas no computador para a marca, em ordem (ex.: Nasalization). Se nenhuma
-   * estiver instalada, vale o alfabeto geométrico próprio. Nenhum arquivo de fonte é embutido. */
+  /** Fonts installed on the computer for the mark, in order (e.g. Nasalization). If none is
+   * installed, Nora's own geometric alphabet is used. No font file is embedded. */
   fontesInstaladas?: string[];
-  /** Movimento enquanto a letra está formada (ver `Vida`); sem isso, ela fica parada. */
+  /** Movement while the letter is formed (see `Vida`); without it, it stands still. */
   vida?: Partial<Vida>;
   /**
-   * Camada compartilhada (canvas sobre a HUD inteira): o campo desenha nela, na posição do seu
-   * canvas âncora, e os pontos podem sair dos limites dele (vêm da poeira da cena).
+   * Shared layer (a canvas over the whole HUD): the field draws on it, at the position of its
+   * anchor canvas, and the points may leave its bounds (they come from the scene's dust).
    */
   camada?: Camada;
-  /** Posição na tela (px da camada) do grão de poeira `indice` da cena. */
+  /** Screen position (layer px) of the scene's dust grain `indice`. */
   origemTela?: (indice: number, saida: [number, number]) => boolean;
-  /** Retângulo (na camada) que o campo ocupa; padrão: o do próprio canvas. */
+  /** Rectangle (in the layer) the field occupies; default: the canvas's own. */
   retangulo?: () => { left: number; top: number; width: number };
-  /** Semente para escolher grãos de poeira diferentes em cada campo. */
+  /** Seed to pick different dust grains in each field. */
   semente?: number;
-  /** Multiplica o tamanho das partículas (canvas que a tela reduz precisa de pontos maiores). */
+  /** Multiplies the particle size (a canvas the screen shrinks needs larger points). */
   escalaParticula?: number;
 }
-/** Canvas transparente sobre a HUD, limpo uma vez por quadro por quem o possui. */
+/** Transparent canvas over the HUD, cleared once per frame by its owner. */
 export interface Camada { contexto: CanvasRenderingContext2D | null; escala: number; deslocamento: () => { left: number; top: number } }
 
-/** Canvas desenha os corpos da simulação; a máscara só define seus destinos. Sem RAF próprio. */
+/** The canvas draws the simulation bodies; the mask only sets their targets. No RAF of its own. */
 export class CampoParticulasTexto {
   readonly nuvem: NuvemLetras;
   private contexto: CanvasRenderingContext2D | null;
@@ -238,7 +239,7 @@ export class CampoParticulasTexto {
   private retangulo: () => { left: number; top: number; width: number };
   private ret = { left: 0, top: 0, width: 1 };
   private readonly tela: [number, number] = [0, 0];
-  /** A fonte instalada em uso na marca, ou "" (alfabeto próprio). */
+  /** The installed font in use for the mark, or "" (own alphabet). */
   fonteEmUso = "";
   constructor(private canvas: HTMLCanvasElement, opcoes: OpcoesCampoTexto = {}) {
     canvas.width = opcoes.largura ?? 1200; canvas.height = opcoes.altura ?? 140;
@@ -262,7 +263,7 @@ export class CampoParticulasTexto {
     const origemTela = opcoes.origemTela, semente = opcoes.semente ?? 0;
     if (this.camada && origemTela) {
       this.nuvem.origem = (i, saida) => {
-        // Cada ponto fica ligado a um grão fixo da poeira (espalhado por toda a órbita).
+        // Each point stays tied to a fixed dust grain (spread across the whole orbit).
         if (!origemTela(i * 7919 + semente, this.tela)) return false;
         const k = canvas.width / Math.max(1, this.ret.width);
         saida[0] = (this.tela[0] - this.ret.left) * k; saida[1] = (this.tela[1] - this.ret.top) * k;
@@ -271,8 +272,8 @@ export class CampoParticulasTexto {
     }
   }
   /**
-   * Forma `texto` com as partículas. `anteriores` (palavras já ditas) entram menores e mais
-   * apagadas à esquerda, na mesma nuvem: a troca de palavra vira um deslizar da linha.
+   * Forms `texto` with the particles. `anteriores` (words already said) come in smaller and
+   * dimmer on the left, in the same cloud: a word change becomes a slide of the line.
    */
   definirTexto(texto: string, agora: number, imediato = false, anteriores: readonly string[] = []) {
     const chave = anteriores.length ? `${anteriores.join(" ")}\u0000${texto}` : texto;

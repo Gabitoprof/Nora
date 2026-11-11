@@ -1,8 +1,8 @@
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
-// A versão corrigida é resolvida a partir dos consumidores transitivos reais.
-// Exercita as APIs de glob que o parser e o ESLint usam após o override de segurança.
+// The fixed version is resolved from the real transitive consumers.
+// Exercises the glob APIs the parser and ESLint use after the security override.
 const require = createRequire(import.meta.url);
 const doTypeScriptESLint = createRequire(require.resolve("typescript-eslint"));
 const doParser = createRequire(

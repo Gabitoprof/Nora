@@ -55,7 +55,7 @@ describe("agenda usa somente playback e protege final/alinhamento",()=>{
   });
 });
 
-// DOM mínimo para exercitar o controlador Canvas sem introduzir outra dependência.
+// Minimal DOM to exercise the Canvas controller without adding another dependency.
 import { afterEach, beforeEach, vi } from "vitest";
 import { PalavrasParticulas } from "../src/word-particles";
 import { inicial, type Evento, type Modelo } from "../src/state";
@@ -93,7 +93,7 @@ describe("controlador: privacidade, último glifo e acessibilidade",()=>{
     expect(canvas.hidden).toBe(true);expect(legenda.textContent).toBe("");expect(p.campo.nuvem.quantidade).toBe(0);
     const terminado={...m,fala_temporizada:null,estado:"ouvindo" as const,acustica:{...audio(1000),ativo:false}};
     p.atualizar(terminado,true,false,20);p.desenhar(50,"#d8e1e5",false,30);
-    // aviso repetido ou atrasado da mesma fala não muda nada
+    // a repeated or late notice for the same utterance changes nothing
     p.receberEvento(evFim());p.atualizar({...m,acustica:audio(900)},true,false,60);p.desenhar(70,"#d8e1e5",false,10);
     expect(canvas.attrs.has("aria-label")).toBe(false);expect(p.campo.nuvem.quantidade).toBe(0);
   });
@@ -141,7 +141,7 @@ describe("faixa superior: linha da fala sem piscar e sem adiantar palavras",()=>
   });
   it("pausa longa (até o teto): a palavra fica até a próxima começar, sem tela vazia",()=>{
     const {p,canvas,m}=criar();
-    tocar(p,m,300,0); // "dois" (280–500); a próxima, "tres", começa em 1200
+    tocar(p,m,300,0); // "dois" (280–500); the next one, "tres", starts at 1200
     for(let t=50,pos=350;pos<1200;t+=50,pos+=50){tocar(p,m,pos,t);expect(canvas.attrs.get("aria-label")).toContain("dois");}
     tocar(p,m,1210,900);expect(canvas.attrs.get("aria-label")).toContain("tres");
   });
@@ -155,7 +155,7 @@ describe("faixa superior: linha da fala sem piscar e sem adiantar palavras",()=>
   });
   it("cancelamento e Privado limpam na hora, mesmo no meio de uma pausa",()=>{
     const {p,canvas,m}=criar();
-    tocar(p,m,300,0);tocar(p,m,700,400); // segurando "dois" na pausa
+    tocar(p,m,300,0);tocar(p,m,700,400); // holding "dois" during the pause
     p.receberEvento({...evFim(true),dados:{id:7,posicao_ms:700,duracao_ms:1600,interrompida:true}});
     expect(canvas.hidden).toBe(true);expect(p.campo.nuvem.quantidade).toBe(0);
     const b=criar();tocar(b.p,b.m,300,0);tocar(b.p,b.m,700,400);
@@ -171,7 +171,7 @@ describe("faixa superior: linha da fala sem piscar e sem adiantar palavras",()=>
     expect(chamadas.map(c=>c.texto)).toEqual(["um","dois"]);
     expect(chamadas[1].anteriores).toEqual(["um"]);
     for(const c of chamadas)expect(c.anteriores).not.toContain("tres");
-    // os destinos da palavra anterior têm peso menor (mais apagados)
+    // the previous word's targets have less weight (dimmer)
     const pesos=Array.from(p.campo.nuvem.peso.subarray(0,p.campo.nuvem.alvos));
     expect(Math.min(...pesos)).toBeLessThan(1);expect(Math.max(...pesos)).toBe(1);
   });
@@ -212,7 +212,7 @@ describe("marca viva: a letra formada não fica parada",()=>{
     const n=viva();const vistos=new Set<number>();
     for(let t=16;t<=12000;t+=16){n.passo(t,16);for(let i=0;i<n.alvos;i++)if(Math.hypot(n.x[i]-n.alvoX[i],n.y[i]-n.alvoY[i])>15)vistos.add(i);}
     expect(vistos.size/n.alvos).toBeGreaterThan(.5);expect(desvio(n).soltos).toBeLessThan(.2);
-    // poeira livre em volta, visível
+    // free dust around, visible
     expect(n.quantidade).toBe(n.alvos+320);expect(n.alpha[n.alvos+5]).toBeGreaterThan(.1);
   });
   it("a voz aumenta o movimento",()=>{
@@ -234,7 +234,7 @@ describe("letras feitas da poeira da cena (origem)",()=>{
   const criar=()=>{
     const n=new NuvemLetras(400,960,180);
     n.vida={...SEM_VIDA,chegada:1000,rigidezChegada:7,extras:0};
-    // poeira girando longe da letra
+    // dust spinning far from the letter
     n.origem=(i,s)=>{s[0]=-400+Math.cos(i)*50;s[1]=900+Math.sin(i)*50;return true;};
     return n;
   };
@@ -242,10 +242,10 @@ describe("letras feitas da poeira da cena (origem)",()=>{
     const n=criar();n.passo(0,16);n.definirAlvos(forma,0);
     n.passo(16,16);
     const longe=(i:number)=>Math.hypot(n.x[i]-n.alvoX[i],n.y[i]-n.alvoY[i]);
-    // no começo todos estão na poeira, longe da letra
+    // at the start all are in the dust, far from the letter
     for(let i=0;i<n.alvos;i++)expect(longe(i)).toBeGreaterThan(300);
     for(let t=32;t<=600;t+=16)n.passo(t,16);
-    // a meio caminho: uns já saíram, outros ainda esperam a vez
+    // halfway: some have left, others still wait their turn
     const saiu=[...Array(n.alvos).keys()].filter(i=>longe(i)<600).length;
     expect(saiu).toBeGreaterThan(0);expect(saiu).toBeLessThan(n.alvos);
     for(let t=616;t<=3000;t+=16)n.passo(t,16);
@@ -267,7 +267,7 @@ describe("palavra legível depressa (meta: ≤ 150 ms)",()=>{
     const forma=new Float32Array(Array.from({length:1600},(_,i)=>i%2?40+(i%40):300+i/4));
     const n=new NuvemLetras(2000,1200,140);
     n.vida={...SEM_VIDA,...VIDA_PALAVRAS,extras:0};
-    n.origem=(i,s)=>{s[0]=600+Math.cos(i)*700;s[1]=-300+Math.sin(i)*200;return true;}; // poeira longe
+    n.origem=(i,s)=>{s[0]=600+Math.cos(i)*700;s[1]=-300+Math.sin(i)*200;return true;}; // dust far away
     n.passo(0,16);n.definirAlvos(forma,0);
     let legivel=-1;
     for(let t=16;t<=400;t+=1000/60){

@@ -1,21 +1,21 @@
 /**
- * Alfabeto geométrico próprio da Nora (maiúsculas, algarismos e pontuação): letras largas, de
- * traço único com cantos arredondados e "A" sem travessão, no espírito das fontes de ficção
- * científica. É desenho original em código, sem arquivo de fonte (nada a licenciar ou baixar).
+ * Nora's own geometric alphabet (capitals, digits and punctuation): wide, single-stroke letters
+ * with rounded corners and an "A" without a crossbar, in the spirit of science-fiction fonts. It
+ * is an original drawing in code, with no font file (nothing to license or download).
  *
- * Serve de máscara: as partículas pousam sobre os traços. Coordenadas em unidades da altura
- * da letra (0 = topo, 1 = base); cada glifo tem largura própria.
+ * It works as a mask: the particles land on the strokes. Coordinates in units of the letter
+ * height (0 = top, 1 = baseline); each glyph has its own width.
  */
 
 type Ponto = readonly [number, number];
-/** Um traço: pontos ligados em linha, com cantos arredondados; `fechado` liga o último ao primeiro. */
+/** A stroke: points joined in a line, with rounded corners; `fechado` joins the last to the first. */
 interface Traco { pontos: Ponto[]; fechado?: boolean; raio?: number | number[] }
 interface Glifo { largura: number; tracos: Traco[] }
 
 const t = (pontos: Ponto[], raio?: number | number[], fechado = false): Traco => ({ pontos, raio, fechado });
 const ponto = (x: number, y: number): Traco => ({ pontos: [[x, y], [x + 0.001, y]] });
 
-const L = 1.06; // largura padrão: letras largas
+const L = 1.06; // default width: wide letters
 
 export const GLIFOS: Record<string, Glifo> = {
   A: { largura: 1.12, tracos: [t([[0, 1], [0.56, 0], [1.12, 1]], 0.12)] },
@@ -66,20 +66,20 @@ export const GLIFOS: Record<string, Glifo> = {
   "/": { largura: 0.66, tracos: [t([[0, 1], [0.66, 0]])] },
 };
 
-/** Acentos sobre a letra base (em unidades da altura, acima do topo). */
+/** Accents over the base letter (in height units, above the top). */
 const ACENTOS: Record<string, (centro: number) => Traco[]> = {
-  "́": c => [t([[c - 0.1, -0.16], [c + 0.14, -0.32]])], // agudo
+  "́": c => [t([[c - 0.1, -0.16], [c + 0.14, -0.32]])], // acute
   "̀": c => [t([[c + 0.1, -0.16], [c - 0.14, -0.32]])], // grave
-  "̂": c => [t([[c - 0.22, -0.14], [c, -0.32], [c + 0.22, -0.14]], 0.04)], // circunflexo
-  "̃": c => [t([[c - 0.26, -0.16], [c - 0.1, -0.3], [c + 0.1, -0.18], [c + 0.26, -0.32]], 0.06)], // til
-  "̈": c => [ponto(c - 0.16, -0.22), ponto(c + 0.16, -0.22)], // trema
-  "̧": c => [t([[c, 1], [c, 1.12], [c + 0.14, 1.2]], 0.05)], // cedilha
+  "̂": c => [t([[c - 0.22, -0.14], [c, -0.32], [c + 0.22, -0.14]], 0.04)], // circumflex
+  "̃": c => [t([[c - 0.26, -0.16], [c - 0.1, -0.3], [c + 0.1, -0.18], [c + 0.26, -0.32]], 0.06)], // tilde
+  "̈": c => [ponto(c - 0.16, -0.22), ponto(c + 0.16, -0.22)], // diaeresis
+  "̧": c => [t([[c, 1], [c, 1.12], [c + 0.14, 1.2]], 0.05)], // cedilla
 };
 
 export const ESPACO = 0.5;
 export const ENTRE_LETRAS = 0.3;
 
-/** Letras que o alfabeto sabe desenhar (depois de tirar os acentos e pôr em maiúsculas). */
+/** Letters the alphabet can draw (after removing accents and uppercasing). */
 export function temGlifos(texto: string): boolean {
   return [...texto.normalize("NFD").toLocaleUpperCase("pt-BR")]
     .every(c => c === " " || c in GLIFOS || c in ACENTOS);
@@ -96,7 +96,7 @@ function pecas(texto: string): (Peca | null)[] {
   return saida;
 }
 
-/** Largura do texto em unidades da altura da letra. */
+/** Text width in units of the letter height. */
 export function larguraTexto(texto: string): number {
   let x = 0, primeira = true;
   for (const p of pecas(texto)) {
@@ -109,11 +109,11 @@ export function larguraTexto(texto: string): number {
 
 function tracar(ctx: CanvasRenderingContext2D, traco: Traco, ox: number, oy: number, h: number) {
   const pts = traco.pontos.map(([x, y]) => [ox + x * h, oy + y * h] as const);
-  // Raio por canto (lista, na ordem dos pontos) ou um só para todos.
+  // Radius per corner (a list, in point order) or a single one for all.
   const raioDe = (i: number) => (Array.isArray(traco.raio) ? traco.raio[i % traco.raio.length] : traco.raio ?? 0) * h;
   ctx.beginPath();
   if (traco.fechado) {
-    // Começa no meio do primeiro lado para arredondar todos os cantos.
+    // Starts in the middle of the first side so every corner gets rounded.
     const [a, b] = [pts[0], pts[1]];
     ctx.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
     for (let i = 1; i <= pts.length; i++) {
@@ -130,8 +130,8 @@ function tracar(ctx: CanvasRenderingContext2D, traco: Traco, ox: number, oy: num
 }
 
 /**
- * Desenha o texto centralizado no retângulo (largura × altura), cabendo nos dois sentidos.
- * `espessura` é a grossura do traço em frações da altura da letra.
+ * Draws the text centered in the rectangle (width × height), fitting both ways.
+ * `espessura` is the stroke thickness as a fraction of the letter height.
  */
 export function desenharGeometrico(
   ctx: CanvasRenderingContext2D, texto: string, largura: number, altura: number,
@@ -140,7 +140,7 @@ export function desenharGeometrico(
   const espessura = opcoes.espessura ?? 0.13;
   const total = larguraTexto(texto);
   if (total <= 0) return;
-  // Altura da letra: cabe em ~62% da altura (espaço para acentos) e na largura disponível.
+  // Letter height: fits in ~62% of the height (room for accents) and in the available width.
   const h = Math.min(altura * 0.58, (largura * (opcoes.ocupacao ?? 0.9)) / (total + espessura));
   let x = (largura - total * h) / 2;
   const y = (altura - h) / 2 + h * 0.06;

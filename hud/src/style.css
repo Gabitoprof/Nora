@@ -170,7 +170,7 @@ button:hover {
   position: absolute;
   inset: 0;
   z-index: 0;
-  /* A cena é desenhada sobre preto: em "screen" o preto some e só a luz soma ao fundo. */
+  /* The scene is drawn over black: in "screen" the black disappears and only the light adds. */
   mix-blend-mode: screen;
 }
 .scene canvas {
@@ -1243,7 +1243,7 @@ button:hover {
   opacity: 0.3;
 }
 
-/* A região das palavras preserva a coroa vazada e a proporção da tipografia. */
+/* The word region keeps the hollow crown and the typography's proportion. */
 .word-stage {
   position: absolute;
   z-index: 4;
@@ -1284,20 +1284,20 @@ button:hover {
   .word-stage #word-caption { font-size: 8px; }
 }
 
-/* Marca desenhada por partículas; o heading permanece acessível sem duplicação visual. */
+/* Mark drawn by particles; the heading stays accessible without visual duplication. */
 .sr-only {position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;}
 #brand-particles {display:block;width:100%;height:auto;aspect-ratio:16/3;margin:0 auto 16px;}
 .word-stage {top:5.5%;width:min(66vw,1060px);}
 .word-stage #word-caption {font-size:12px;color:#d5dfe4;}
 @media(max-width:800px){.word-stage{top:12%;width:calc(100% - 56px)}#brand-particles{margin-bottom:14px}.word-stage #word-caption{font-size:12px}}
 
-/* Brilho das letras de partículas (a cena WebGL tem bloom; os canvas 2D, este halo leve). */
+/* Glow of the particle letters (the WebGL scene has bloom; the 2D canvases, this light halo). */
 #brand-particles {filter:drop-shadow(0 0 3px rgba(190,240,255,.65)) drop-shadow(0 0 14px rgba(120,215,255,.28));}
 #word-particles {filter:drop-shadow(0 0 3px rgba(190,240,255,.55)) drop-shadow(0 0 10px rgba(120,215,255,.22));}
 @media (prefers-reduced-motion: reduce) {#brand-particles,#word-particles{filter:none;}}
 
-/* Camada das letras: sobre a cena e o centro, sem capturar o mouse. Os canvas da marca e das
-   palavras ficam só como âncora de posição; o desenho vai para esta camada. */
-/* Sem filtro CSS (caro em tela cheia): o halo é desenhado no próprio canvas. */
+/* Letter layer: over the scene and the center, without capturing the mouse. The mark and word
+   canvases are only position anchors; the drawing goes to this layer. */
+/* No CSS filter (expensive full screen): the halo is drawn on the canvas itself. */
 .letras {position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none;}
 #brand-particles, #word-particles {filter:none;}

@@ -42,7 +42,7 @@ export function onda(
   saida[2]=Math.sin(t*2+largura*2)*.25;
   return saida;
 }
-/** Gerador determinístico visual, nunca usado como nível de áudio. */
+/** Deterministic visual generator, never used as an audio level. */
 export function aleatorio(indice: number): number {
   const x = Math.sin(indice * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);

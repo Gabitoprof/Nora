@@ -1,13 +1,13 @@
 /**
- * Medição do relógio da fala (item 5 do roadmap): simulação determinística, sem navegador.
+ * Speech clock measurement (roadmap item 5): deterministic simulation, no browser.
  *
- * Reprodução real: posição P(t) = t. O backend publica uma amostra acústica a cada 50 ms com a
- * posição tocada naquele instante; ela chega à HUD com atraso de rede/processamento de 5 a 45 ms
- * e, de vez em quando, há um "engasgo" (CPU ocupada, coleta de lixo) em que nenhuma amostra chega
- * por 150 a 450 ms. A HUD desenha a 60 FPS. Mede-se:
- * - atraso som → palavra: quando a palavra aparece na tela menos quando ela começa no som (p50/p95);
- * - sumiço: fração de quadros, durante a fala, sem palavra nenhuma (o relógio deu "sem amostra");
- * - salto: maior pulo da posição estimada entre quadros seguidos (ms) e recuos.
+ * Real playback: position P(t) = t. The backend publishes an acoustic sample every 50 ms with the
+ * position played at that instant; it reaches the HUD with a network/processing delay of 5 to 45
+ * ms and, now and then, there is a "stall" (busy CPU, garbage collection) where no sample arrives
+ * for 150 to 450 ms. The HUD draws at 60 FPS. Measured:
+ * - sound → word delay: when the word appears on screen minus when it starts in the sound (p50/p95);
+ * - dropout: fraction of frames, during speech, with no word at all (the clock said "no sample");
+ * - jump: largest jump of the estimated position between consecutive frames (ms) and setbacks.
  */
 import { describe, expect, it } from "vitest";
 import { RelogioFala } from "../src/word-particles";

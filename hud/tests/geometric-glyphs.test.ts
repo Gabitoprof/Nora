@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { desenharGeometrico, GLIFOS, larguraTexto, temGlifos } from "../src/geometric-glyphs";
 import { amostrarMascara } from "../src/text-particle-field";
 
-/** Contexto 2D falso que guarda os pontos de cada traço desenhado. */
+/** Fake 2D context that keeps the points of each drawn stroke. */
 function contextoFalso() {
   const tracos: number[][][] = [];
   let atual: number[][] = [];
@@ -23,7 +23,7 @@ describe("alfabeto geométrico próprio (marca)", () => {
     for (const c of "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,?!:-") expect(c in GLIFOS).toBe(true);
     expect(temGlifos("Nora")).toBe(true);
     expect(temGlifos("ÍRIS, OLÁ! AÇÃO")).toBe(true);
-    expect(temGlifos("NORA ✦")).toBe(false); // símbolo desconhecido: cai na fonte do sistema
+    expect(temGlifos("NORA ✦")).toBe(false); // unknown symbol: falls back to the system font
   });
   it("A da marca não tem travessão: um único traço em V invertido", () => {
     expect(GLIFOS.A.tracos).toHaveLength(1);
@@ -33,13 +33,13 @@ describe("alfabeto geométrico próprio (marca)", () => {
   it("desenha cada letra dentro do retângulo, centralizada e sem passar das bordas", () => {
     const { ctx, tracos, estado } = contextoFalso();
     desenharGeometrico(ctx, "NORA", 960, 180, { espessura: 0.12 });
-    // N (1 traço), O (1), R (2), A (1)
+    // N (1 stroke), O (1), R (2), A (1)
     expect(tracos).toHaveLength(5);
     const pontos = tracos.flat();
     const xs = pontos.map(p => p[0]), ys = pontos.map(p => p[1]);
     expect(Math.min(...xs)).toBeGreaterThan(0); expect(Math.max(...xs)).toBeLessThan(960);
     expect(Math.min(...ys)).toBeGreaterThan(0); expect(Math.max(...ys)).toBeLessThan(180);
-    // centralizado na horizontal (tolerância de meio traço)
+    // horizontally centered (half-stroke tolerance)
     expect(Math.abs((Math.min(...xs) + Math.max(...xs)) / 2 - 480)).toBeLessThan(estado.lineWidth);
     expect(estado.lineCap).toBe("round");
   });
@@ -63,7 +63,7 @@ describe("amostragem da máscara: as partículas pousam sobre a letra", () => {
   const w = 200, h = 60;
   const mascara = () => {
     const px = new Uint8ClampedArray(w * h * 4);
-    // duas barras: x 20–40 e x 120–180, y 10–50
+    // two bars: x 20–40 and x 120–180, y 10–50
     for (let y = 10; y < 50; y++) for (let x = 0; x < w; x++)
       if ((x >= 20 && x < 40) || (x >= 120 && x < 180)) px[(y * w + x) * 4 + 3] = 255;
     return px;
@@ -81,7 +81,7 @@ describe("amostragem da máscara: as partículas pousam sobre a letra", () => {
     const alvos = amostrarMascara(mascara(), w, h, 300);
     let esquerda = 0; const linhas = new Set<number>();
     for (let i = 0; i < alvos.length; i += 2) { if (alvos[i] < 60) esquerda++; linhas.add(Math.round(alvos[i + 1] / 4)); }
-    // a barra da esquerda tem 1/4 da área: recebe por volta de 1/4 dos pontos
+    // the left bar has 1/4 of the area: it gets about 1/4 of the points
     expect(esquerda / 300).toBeGreaterThan(0.18); expect(esquerda / 300).toBeLessThan(0.32);
     expect(linhas.size).toBeGreaterThanOrEqual(10);
   });
@@ -93,7 +93,7 @@ describe("amostragem da máscara: as partículas pousam sobre a letra", () => {
 
 import { escolherFonteInstalada, fonteInstalada } from "../src/text-particle-field";
 describe("Nasalization só quando instalada no computador",()=>{
-  // Contexto falso: a "fonte instalada" muda a largura medida; as outras caem na genérica.
+  // Fake context: the "installed font" changes the measured width; the others fall back to generic.
   const contexto=(instaladas:string[])=>{
     const ctx={font:"",measureText(t:string){const instalada=instaladas.some(n=>this.font.includes(`"${n}"`));return {width:t.length*(instalada?71:60)};}};
     return ctx as unknown as CanvasRenderingContext2D;

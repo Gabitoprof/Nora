@@ -1,7 +1,7 @@
 import paleta from "../../src/nora/paleta.json";
 import type { Acustica } from "./scene-audio";
 import contrato from "../../src/nora/hud_contrato.json";
-/** Contrato v1 compartilhado com o núcleo Python. */
+/** Contract v1 shared with the Python core. */
 export type Estado =
   | "conectado"
   | "desconectado"
@@ -78,7 +78,7 @@ export interface Modelo {
   latencia_ms?: number;
   acustica: Acustica | null;
   fala_temporizada: FalaTemporizada | null;
-  /** Maior id de reprodução já encerrada: fala desse id (ou anterior) que chegar atrasada é ignorada. */
+  /** Highest id of a finished playback: speech from that id (or earlier) arriving late is ignored. */
   encerrada: number;
   jogo: boolean;
 }
@@ -158,7 +158,7 @@ export function snapshot(dados: unknown, anterior: Modelo = inicial): Modelo {
     privacidade: privado,
     acustica: dados.conectado === true ? lerAcustica(dados.acustica) : null,
     fala_temporizada: privado || dados.conectado !== true ? null : lerFala(dados.fala_temporizada),
-    // Reconexão: o estado do servidor é a verdade (pode ter reiniciado e voltado os ids a 1).
+    // Reconnection: the server state is the truth (it may have restarted and reset the ids to 1).
     encerrada: 0,
     jogo: dados.jogo === true,
     nivel_audio:
@@ -208,7 +208,7 @@ export function reduzir(anterior: Modelo, evento: unknown): Modelo {
       break;
     case "fala_temporizada": {
       const fala=lerFala(d);
-      // Só com a tela autorizada, e nunca de uma reprodução que já acabou (mensagem atrasada).
+      // Only with the screen authorized, and never from a playback that already ended (late message).
       if(!proximo.privacidade && proximo.conectado && fala && fala.id>anterior.encerrada) proximo.fala_temporizada=fala;
       break;
     }
@@ -307,29 +307,30 @@ export const nomesEstado: Record<Estado, string> = {
   erro: "Atenção necessária",
   recuperando: "Reconectando",
 };
-/** Base da identidade dark: branco-prateado com ciano discreto. */
+/** Base of the dark identity: silvery white with a subtle cyan. */
 export const PRATA = "#C9D6DC";
-/** Quanto da cor da emoção entra no prata (o resto é prata): a emoção vira um matiz, não a cor. */
+/** How much of the emotion color goes into the silver (the rest is silver): a tint, not the color. */
 export const MATIZ_EMOCAO = 0.2;
-/** Mistura linear de duas cores hex (#RRGGBB). */
+/** Linear mix of two hex colors (#RRGGBB). */
 export function misturar(base: string, cor: string, peso: number): string {
   const canal = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
   return "#" + [0, 1, 2].map(i => Math.round(canal(base, i) * (1 - peso) + canal(cor, i) * peso)
     .toString(16).padStart(2, "0")).join("").toUpperCase();
 }
-/** Cores das emoções vêm da fonte única (src/nora/paleta.json, a mesma do Second Brain); na HUD
- * elas aparecem contidas no prata, para manter o visual dark aprovado. */
+/** Emotion colors come from the single source (src/nora/paleta.json, the same as the Second
+ * Brain); in the HUD they show restrained within the silver, to keep the approved dark look. */
 export const coresDaEmocao: Record<string,string> = Object.fromEntries(Object.entries(paleta.aliases).map(([nome,grupo])=>[nome,paleta.cores[grupo as keyof typeof paleta.cores]]));
 export const cores: Record<string,string> = Object.fromEntries(Object.entries(coresDaEmocao).map(([nome,cor])=>[nome,misturar(PRATA,cor,MATIZ_EMOCAO)]));
 
-/** RMS linear (0–1) em escala de decibéis: −60 dBFS = 0, 0 dBFS = 1. Fala comum (RMS 0,005 a
- * 0,1) fica entre 23% e 67%, em vez de 0% a 10% na escala linear. */
+/** Linear RMS (0–1) on a decibel scale: −60 dBFS = 0, 0 dBFS = 1. Ordinary speech (RMS 0.005 to
+ * 0.1) lands between 23% and 67%, instead of 0% to 10% on the linear scale. */
 export function nivelPerceptivo(rms: number): number {
   if (!(rms > 0)) return 0;
   return Math.min(1, Math.max(0, (20 * Math.log10(rms) + 60) / 60));
 }
-/** Mesma regra da onda central (scene-math `onda`): o microfone só conta enquanto ela escuta e
- * a voz só enquanto ela fala. Fora disso (pensando, repouso), a última medida não vale mais. */
+/** Same rule as the central wave (scene-math `onda`): the microphone only counts while she listens
+ * and the voice only while she speaks. Otherwise (thinking, rest), the last reading no longer
+ * counts. */
 function sinalDaOnda(m: Modelo): number {
   const escutando = m.estado === "ouvindo" || m.estado === "fala_detectada";
   const a = m.acustica;
@@ -339,10 +340,11 @@ function sinalDaOnda(m: Modelo): number {
       : 0;
   return escutando || m.estado === "falando" ? m.nivel_audio : 0;
 }
-/** O que o painel lateral mostra. Usa o mesmo sinal que move a onda central: a medida acústica
- * da fonte em uso (RMS ou envelope, o maior, como a onda, que segura o envelope na soltura).
- * Com sinal, nunca mostra "0%" nem "Em silêncio" (antes, RMS 0,004 virava "0%" enquanto a onda
- * já se mexia); sem a onda reagir (pensando, repouso), não mostra nível antigo. */
+/** What the side panel shows. Uses the same signal that moves the central wave: the acoustic
+ * reading of the source in use (RMS or envelope, whichever is larger, like the wave, which holds
+ * the envelope on release). With a signal, it never shows "0%" or "Em silêncio" (before, RMS
+ * 0.004 became "0%" while the wave was already moving); when the wave is not reacting
+ * (thinking, rest), it shows no stale level. */
 export function leituraDoPainel(m: Modelo): { nivel: number; rotulo: string } {
   if (!m.conectado) return { nivel: 0, rotulo: "Sem dados" };
   const sinal = sinalDaOnda(m);

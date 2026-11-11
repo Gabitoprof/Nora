@@ -8,7 +8,7 @@ import {
   type Evento,
   type Modelo,
 } from "./state";
-/** SSE só recebe eventos; comandos explícitos usam POST autenticado na mesma origem. */
+/** SSE only receives events; explicit commands use an authenticated same-origin POST. */
 export class Ponte {
   modelo = { ...inicial };
   private fonte?: EventSource;
@@ -44,7 +44,7 @@ export class Ponte {
         this.tentativa = 0;
         this.atualizar(this.modelo, evento as Evento);
       } catch {
-        /* Um evento malformado nunca derruba a interface. */
+        /* A malformed event never brings down the interface. */
       }
     };
     this.fonte.onmessage = receber;

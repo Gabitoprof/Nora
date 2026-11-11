@@ -1,3 +1,3 @@
-/** Definidos no build (vite.config.ts): versão do hud/package.json e commit do checkout. */
+/** Defined at build time (vite.config.ts): hud/package.json version and checkout commit. */
 declare const __VERSAO_NORA__: string;
 declare const __COMMIT_NORA__: string;
