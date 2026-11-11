@@ -1,139 +1,139 @@
-# Andamento da Nora (para revisão)
+# Nora progress (for review)
 
-Resumo do estado do projeto para uma revisão de código. Atualizado em 05/11/2026 (preparação do release `v0.3.0`), branch `Pull_code`.
+Summary of the project state for a code review. Updated on 05/11/2026 (preparing the `v0.3.0` release), branch `Pull_code`.
 
-## O que é
+## What it is
 
-Assistente de voz pessoal em pt-BR, local primeiro, todos os direitos reservados (até a v0.3.0, MIT). Python 3.11–3.13. Regras do projeto em `CLAUDE.md`; visão completa em `PROJETO_ASSISTENTE_IA.md`.
+Personal voice assistant in pt-BR, local first, all rights reserved (MIT up to v0.3.0). Python 3.11–3.13. Project rules in `CLAUDE.md`; full vision in `PROJETO_ASSISTENTE_IA.md`.
 
-## Versões
+## Versions
 
-- `v0.2.0` lançada (tag): conversa por voz e memória.
-- `v0.3.0` lançada (05/11/2026): roteador de modelos. Release, qualidade e homologação em [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md).
-- Em andamento: `v0.4.0` (`0.4.0.dev0`), na branch `integracao/v0.4.0`. Ela junta a HUD acústica, o `Pull_code` (voz sem troca de tom, streaming do ElevenLabs, ouvido com vocabulário, contas de data) e o Second Brain ([`SEGUNDO_CEREBRO.md`](SEGUNDO_CEREBRO.md)). As correções da revisão (P0, P2, P3) estão feitas. Falta a homologação no Windows: roteiro em [`HOMOLOGACAO.md`](HOMOLOGACAO.md), seção "v0.4.0 — preparação da homologação".
-- Distribuição: `nora.exe` sem assinatura e instalador gerados pelo workflow **Empacotar** (Actions > Empacotar > Artifacts), mais o pacote de dependências e o guia [`INSTALACAO.md`](INSTALACAO.md). Instalada, a pasta pessoal é `%APPDATA%\Nora`. Pendentes: assinatura (Microsoft Store/MSIX ou certificado OV), vozes locais no instalador (GPL) e a etapa de segurança (memória criptografada, chaves no Cofre do Windows, permissões das ferramentas).
+- `v0.2.0` released (tag): voice conversation and memory.
+- `v0.3.0` released (05/11/2026): model router. Release, quality and acceptance in [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md).
+- In progress: `v0.4.0` (`0.4.0.dev0`), on the `integracao/v0.4.0` branch. It brings together the acoustic HUD, `Pull_code` (voice without tone changes, ElevenLabs streaming, ear with vocabulary, date math) and the Second Brain ([`SEGUNDO_CEREBRO.md`](SEGUNDO_CEREBRO.md)). The review fixes (P0, P2, P3) are done. The Windows acceptance is missing: script in [`HOMOLOGACAO.md`](HOMOLOGACAO.md), section "v0.4.0 — preparação da homologação".
+- Distribution: unsigned `nora.exe` and installer built by the **Empacotar** workflow (Actions > Empacotar > Artifacts), plus the dependency pack and the [`INSTALACAO.md`](INSTALACAO.md) guide. Once installed, the personal folder is `%APPDATA%\Nora`. Pending: signing (Microsoft Store/MSIX or an OV certificate), local voices in the installer (GPL) and the security stage (encrypted memory, keys in the Windows Credential Manager, tool permissions).
 
-## Caminho de uma pergunta
+## Path of a question
 
-1. **Ouvir:** Silero VAD (`vad.py`) → whisper.cpp HTTP (`ouvido.py`) → palavra "Nora" (`ativacao.py`). Ou texto digitado. Laços: `conversa_voz.py`, `maos_livres.py`.
-2. **Lembrar:** `conversa.py::_lembrar` junta preferências, fatos e trechos (`memoria.py`: SQLite + sqlite-vec, embeddings bge-m3 pelo Ollama), agenda (`agenda.py`) e notas do Obsidian (`notas.py`).
-3. **Classificar:** `roteador.py`. Comandos (cérebro, modo jogo), triagem por palavras-chave, `{pensar}` do modelo local e segunda chance quando a pessoa reclama.
-4. **Executar:** local Ollama (`cerebro.py`); nuvem ChatGPT (`cerebro_openai.py`, API Responses) → Claude (`cerebro_nuvem.py`) → local. Sem trocar de cérebro se a resposta já começou a sair.
-5. **Falar:** marcas de emoção (`emocao.py`) → voz (`voz.py`: ElevenLabs, Kokoro, Piper, ComfyUI, com reserva). Troca de voz por comando em `troca_voz.py`.
-6. **Registrar:** histórico JSONL (`historico.py`) e curadoria em segundo plano (`curadoria.py`), que anota, corrige e esquece fatos. Respostas que não terminaram vão para `respostas_pendentes` (`memoria.py`).
-7. **Second Brain (v0.3.1, opcional):** `segundo_cerebro.py` leva a memória para notas do Obsidian numa linha própria, depois da resposta, e grava o grafo e o mapa (`mapa_memoria.py`). Contrato em `segundo_cerebro_contrato.json`.
-8. **Observar e propor:** `observador.py` anota métricas e categorias (sem texto); `melhorias.py` fecha o dia, gera propostas e o relatório e guarda as decisões.
+1. **Listen:** Silero VAD (`vad.py`) → whisper.cpp HTTP (`ouvido.py`) → the word "Nora" (`ativacao.py`). Or typed text. Loops: `conversa_voz.py`, `maos_livres.py`.
+2. **Remember:** `conversa.py::_lembrar` gathers preferences, facts and passages (`memoria.py`: SQLite + sqlite-vec, bge-m3 embeddings through Ollama), agenda (`agenda.py`) and Obsidian notes (`notas.py`).
+3. **Classify:** `roteador.py`. Commands (brain, game mode), keyword triage, the local model's `{pensar}` and a second chance when the person complains.
+4. **Execute:** local Ollama (`cerebro.py`); cloud ChatGPT (`cerebro_openai.py`, Responses API) → Claude (`cerebro_nuvem.py`) → local. No brain switch if the answer has already started coming out.
+5. **Speak:** emotion tags (`emocao.py`) → voice (`voz.py`: ElevenLabs, Kokoro, Piper, ComfyUI, with fallback). Voice switch by command in `troca_voz.py`.
+6. **Record:** JSONL history (`historico.py`) and background curation (`curadoria.py`), which notes, corrects and forgets facts. Answers that did not finish go to `respostas_pendentes` (`memoria.py`).
+7. **Second Brain (v0.3.1, optional):** `segundo_cerebro.py` takes the memory to Obsidian notes on its own thread, after the answer, and writes the graph and the map (`mapa_memoria.py`). Contract in `segundo_cerebro_contrato.json`.
+8. **Observe and propose:** `observador.py` records metrics and categories (no text); `melhorias.py` closes the day, generates proposals and the report and stores the decisions.
 
-## Feito na v0.3.0 (commits desde a v0.2.0)
+## Done in v0.3.0 (commits since v0.2.0)
 
-- Emoção automática na voz (`emocao.py`, `[emocao]`).
-- Roteador local ↔ nuvem, modo jogo, frase de espera, reservas, avisos `[cérebro]`.
-- Triagem e segunda chance (`[roteador] triagem`).
-- Apagar e corrigir fatos pela conversa (campo `esquecer` na curadoria).
-- ChatGPT como padrão das perguntas complexas, Claude de reserva (`[roteador] complexas`, `[modelos.openai]`).
-- Troca de voz falando ("troque para a voz do Piper").
-- Índice das notas do Obsidian (`[notas] pasta`, `nora notas ler|buscar|status`, `data/notas.db`).
-- Correção: texto digitado no `nora ouvir` agora é lido com o microfone ativo (`vad.py::falas`).
-- Teste que mantém o `.env.example` em dia (`tests/test_env_exemplo.py`).
+- Automatic emotion in the voice (`emocao.py`, `[emocao]`).
+- Local ↔ cloud router, game mode, holding phrase, fallbacks, `[cérebro]` notices.
+- Triage and second chance (`[roteador] triagem`).
+- Deleting and correcting facts in conversation (the `esquecer` field in curation).
+- ChatGPT as the default for complex questions, Claude as fallback (`[roteador] complexas`, `[modelos.openai]`).
+- Voice switching by speaking ("troque para a voz do Piper").
+- Obsidian notes index (`[notas] pasta`, `nora notas ler|buscar|status`, `data/notas.db`).
+- Fix: text typed in `nora ouvir` is now read with the microphone on (`vad.py::falas`).
+- Test that keeps `.env.example` up to date (`tests/test_env_exemplo.py`).
 
-## Correções da revisão de 03/11/2026 (relatório de próximas ações)
+## Fixes from the 03/11/2026 review (next-actions report)
 
-| ID | Correção | Teste |
+| ID | Fix | Test |
 |---|---|---|
-| A1 | Modo jogo não chama o cérebro local quando a nuvem falha; avisa (`FRASE_JOGO_SEM_NUVEM`) | `test_modo_jogo_sem_nuvem_nao_reacende_o_cerebro_local` |
-| A2 | Esquecer = deixar de usar (tabela `esquecidos`: filtra `buscar_trocas` e bloqueia o `importar`); `nora memoria apagar` = apagar de vez (memória + `data/historico`, com prévia e `--confirmar`) | `test_esquecido_nao_volta_...`, `test_apagar_de_vez_...`, `test_comando_apagar_...` |
-| A3 | Comando com conteúdo responde o conteúdo (`achar_comando` devolve se é puro) | `test_comando_com_pergunta_responde_a_pergunta` |
-| A4 | Local que cai depois de falar não recebe outra resposta emendada | `test_falha_do_local_no_meio_nao_emenda_outra_resposta` |
-| A5 | `Roteador.situacao` (completa, interrompida, sem resposta) vai para o histórico; só as completas vão para a curadoria | `test_resposta_interrompida_fica_marcada_...`, `test_falha_da_nuvem_no_meio_fica_marcada` |
-| A6 | Troca de voz exige verbo de troca e ignora perguntas/comparações | `test_perguntas_sobre_vozes_nao_trocam_a_voz` |
+| A1 | Game mode does not call the local brain when the cloud fails; it warns (`FRASE_JOGO_SEM_NUVEM`) | `test_modo_jogo_sem_nuvem_nao_reacende_o_cerebro_local` |
+| A2 | Forget = stop using (`esquecidos` table: filters `buscar_trocas` and blocks `importar`); `nora memoria apagar` = delete for good (memory + `data/historico`, with preview and `--confirmar`) | `test_esquecido_nao_volta_...`, `test_apagar_de_vez_...`, `test_comando_apagar_...` |
+| A3 | A command with content answers the content (`achar_comando` returns whether it is pure) | `test_comando_com_pergunta_responde_a_pergunta` |
+| A4 | A local model that drops after speaking does not get another answer stitched on | `test_falha_do_local_no_meio_nao_emenda_outra_resposta` |
+| A5 | `Roteador.situacao` (complete, interrupted, no answer) goes to the history; only complete ones go to curation | `test_resposta_interrompida_fica_marcada_...`, `test_falha_da_nuvem_no_meio_fica_marcada` |
+| A6 | Voice switching requires a switch verb and ignores questions/comparisons | `test_perguntas_sobre_vozes_nao_trocam_a_voz` |
 
-Os seis foram reproduzidos por teste antes da correção (A1: local chamado no modo jogo; A3: `comando_em` devolvia "nuvem" e a pergunta se perdia; A4: saída "Uma reResposta do Claude."; A2: trecho esquecido voltava com similaridade 0,79; A6: "qual voz é melhor..." virava pedido).
+All six were reproduced by a test before the fix (A1: local called in game mode; A3: `comando_em` returned "nuvem" and the question was lost; A4: output "Uma reResposta do Claude."; A2: a forgotten passage came back with similarity 0.79; A6: "qual voz é melhor..." became a request).
 
-## Revisão consolidada de 04/11/2026 (plano de auto-melhoria supervisionada)
+## Consolidated review of 04/11/2026 (supervised self-improvement plan)
 
-| Etapa | Entregue | Testes |
+| Stage | Delivered | Tests |
 |---|---|---|
-| P1 · A1 | Sair do modo jogo pede "sim" (regra em `confirmacao.py`, sem modelo); "como sair do modo jogo?" não muda nada; trocas de modo ficam como `situacao: "comando"` e não vão para a curadoria | `test_sair_do_modo_jogo_pede_confirmacao_...` |
-| P1 · A5 | Tabela `respostas_pendentes`: uma linha "aberta" por resposta vira pendência se o programa cair; também stream interrompido, sem resposta, Ctrl+C; retomada identificada ("termina a resposta que ficou pela metade"), 3 tentativas; `nora pendencias`; esquecer/apagar tiram as pendências do assunto | `test_resposta_interrompida_vira_pendencia_...`, `test_pendencia_de_cancelamento_...`, `test_respostas_completas_e_comandos_...`, `test_comando_pendencias_...` |
-| P1 · A4 | `CerebroIndisponivel.categoria` e `categoria_do_erro`; `Roteador.tentativas` (motor, resultado, tempo até o 1º pedaço); reserva só antes do conteúdo | `test_tentativas_ficam_anotadas_...` |
-| P2 | `observador.py` (sem texto) e `melhorias.py`: diagnóstico por regras, propostas com evidência, relatório diário, um por dia, recuperação do dia perdido, agendador que espera a Nora desocupada, notificação do Windows, decisões (aprovar gera tarefa; publicar exige `--autorizo-publicar`), `nora melhorias` e pela voz com "sim" | `tests/test_auto_melhoria.py` (12 testes) |
+| P1 · A1 | Leaving game mode asks for "sim" (rule in `confirmacao.py`, no model); "como sair do modo jogo?" changes nothing; mode switches are stored as `situacao: "comando"` and do not go to curation | `test_sair_do_modo_jogo_pede_confirmacao_...` |
+| P1 · A5 | `respostas_pendentes` table: one "open" row per answer becomes a pending item if the program crashes; also interrupted stream, no answer, Ctrl+C; identified resumption ("termina a resposta que ficou pela metade"), 3 attempts; `nora pendencias`; forget/delete remove the subject's pending items | `test_resposta_interrompida_vira_pendencia_...`, `test_pendencia_de_cancelamento_...`, `test_respostas_completas_e_comandos_...`, `test_comando_pendencias_...` |
+| P1 · A4 | `CerebroIndisponivel.categoria` and `categoria_do_erro`; `Roteador.tentativas` (engine, result, time to the 1st chunk); fallback only before content | `test_tentativas_ficam_anotadas_...` |
+| P2 | `observador.py` (no text) and `melhorias.py`: rule-based diagnosis, proposals with evidence, daily report, one per day, recovery of the missed day, a scheduler that waits for Nora to be free, Windows notification, decisions (approving generates a task; publishing requires `--autorizo-publicar`), `nora melhorias` and by voice with "sim" | `tests/test_auto_melhoria.py` (12 tests) |
 
-### Auditoria de 04/11/2026 (`AUDITORIA_NORA_PULL_CODE_2026-11-03.md`)
+### Audit of 04/11/2026 (`AUDITORIA_NORA_PULL_CODE_2026-11-03.md`)
 
-Os cinco pontos foram conferidos no código e reproduzidos por teste antes da correção.
+The five points were checked in the code and reproduced by a test before the fix.
 
-| Ponto | Correção | Teste |
+| Point | Fix | Test |
 |---|---|---|
-| P0 Ctrl+C | `conversa.py::_responder` trata `KeyboardInterrupt` junto com `GeneratorExit`: pendência gravada na hora, uma vez só | `test_ctrl_c_no_meio_vira_pendencia_na_hora` |
-| P1 retomada ocupada | `perguntar` marca `ocupada` também durante `_retomar` (`try/finally`) | `test_retomada_marca_a_nora_ocupada_e_o_relatorio_espera` |
-| P1 privacidade | `_relatorio` não escreve a pergunta; `_limpar_perguntas_dos_relatorios` limpa os antigos | `test_relatorio_nao_mostra_perguntas_e_limpa_os_antigos` |
-| P1 apresentação | `apresentar()` abre o .md ou mostra o texto inteiro; `marcar_mostrado` só depois; `falha_aviso` registrada; espera o modo jogo; `[auto_melhoria] apresentar` | `test_inicio_da_sessao_abre_...`, `test_se_nao_abrir_...`, `test_relatorio_do_meio_da_sessao_...`, `test_no_modo_jogo_o_relatorio_espera` |
-| P2 modo jogo | Regra `sem_resposta` reescrita; `_oferecer_retomada_do_jogo` ao sair do modo jogo (só oferece) | `test_sem_resposta_no_modo_jogo_nao_sugere_usar_o_local` |
+| P0 Ctrl+C | `conversa.py::_responder` handles `KeyboardInterrupt` together with `GeneratorExit`: pending item stored immediately, only once | `test_ctrl_c_no_meio_vira_pendencia_na_hora` |
+| P1 busy resumption | `perguntar` also sets `ocupada` during `_retomar` (`try/finally`) | `test_retomada_marca_a_nora_ocupada_e_o_relatorio_espera` |
+| P1 privacy | `_relatorio` does not write the question; `_limpar_perguntas_dos_relatorios` cleans the old ones | `test_relatorio_nao_mostra_perguntas_e_limpa_os_antigos` |
+| P1 presentation | `apresentar()` opens the .md or shows the full text; `marcar_mostrado` only afterwards; `falha_aviso` recorded; waits for game mode; `[auto_melhoria] apresentar` | `test_inicio_da_sessao_abre_...`, `test_se_nao_abrir_...`, `test_relatorio_do_meio_da_sessao_...`, `test_no_modo_jogo_o_relatorio_espera` |
+| P2 game mode | `sem_resposta` rule rewritten; `_oferecer_retomada_do_jogo` when leaving game mode (only offers) | `test_sem_resposta_no_modo_jogo_nao_sugere_usar_o_local` |
 
-**Não implementado (decisão pendente):** P3, a pesquisa técnica na web (opcional, desligada por padrão), e P4, levar a tarefa aprovada ao Codex numa branch isolada (hoje é manual). A auto-melhoria é escopo novo: a tag `v0.3.0` não depende dela.
+**Not implemented (decision pending):** P3, technical web research (optional, off by default), and P4, taking the approved task to Codex on an isolated branch (manual today). Self-improvement is new scope: the `v0.3.0` tag does not depend on it.
 
-## Pendente
+## Pending
 
-- **Validação no PC real** (Windows, AMD), que a CI não cobre:
-  - [ ] `nora --verificar` com tudo ok (Ollama, whisper, voz, Claude, ChatGPT, notas).
-  - [ ] `nora ouvir`: falar e digitar; "troque para a voz do Piper" e "volta pro ElevenLabs"; "o Piper é melhor que o Kokoro?" não troca.
-  - [ ] "modo jogo" libera a VRAM (Gerenciador de Tarefas); sem internet, ela avisa e a VRAM continua livre.
-  - [ ] "use o Claude para explicar fotossíntese" responde pelo Claude; o modo continua automático.
-  - [ ] "esquece que eu ..." e depois `nora memoria apagar "..."` (prévia e `--confirmar`).
-  - [ ] Por voz: "apaga de vez ..." → ela diz o que sairia → "sim, pode apagar"; e um "não" cancela.
-  - [ ] `nora notas ler` e uma pergunta sobre uma nota.
-  - [ ] "sai do modo jogo" pergunta antes; "como sair do modo jogo?" só explica.
-  - [ ] Ctrl+C no meio de uma resposta → na próxima conversa aparece o aviso → "termina a resposta que ficou pela metade".
-  - [ ] `nora melhorias fechar-dia` gera o relatório; a notificação do Windows aparece e abre o arquivo (o PowerShell da notificação ainda não foi testado num Windows real).
-  - [ ] Com a Nora aberta depois das 20:00 (ou mudando `hora_relatorio`), o relatório abre sozinho no programa do .md; com a Nora fechada, abre na próxima sessão.
-  - [ ] Ctrl+C enquanto ela ainda está pensando (antes de falar) → `nora pendencias` já mostra a pergunta, na mesma hora.
-  - [ ] Modo jogo sem internet → uma pergunta → "sai do modo jogo" → "sim" → aparece a oferta de retomar.
-  - [ ] Conferir com o bge-m3 real os limites `TROCA_ESQUECIDA` e os de latência em `[auto_melhoria]`.
-- Feito em 05/11/2026: auditoria final, regressão do Enter no `nora falar` corrigida, issue #3 corrigida, documentação revisada e versão `0.3.0`. A lista atualizada de testes manuais, os riscos e os passos de homologação estão em [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md); merge, tag e release esperam a autorização do mantenedor.
-- Próximo (proposta, ainda não decidida): classificador com confiança no roteador, primeiro com bge-m3 e exemplos por rota; testar o `Mapika/decider-2b` (Apache-2.0, GGUF) como alternativa.
-- Roadmap: v0.4.0 HUD, v0.5.0 ferramentas MCP (com permissões), v0.6.0 rotinas, v0.7.0 agentes, v0.8.0 modo distribuído.
+- **Validation on the real PC** (Windows, AMD), which CI does not cover:
+  - [ ] `nora --verificar` with everything ok (Ollama, whisper, voice, Claude, ChatGPT, notes).
+  - [ ] `nora ouvir`: speak and type; "troque para a voz do Piper" and "volta pro ElevenLabs"; "o Piper é melhor que o Kokoro?" does not switch.
+  - [ ] "modo jogo" frees the VRAM (Task Manager); without internet, she warns and the VRAM stays free.
+  - [ ] "use o Claude para explicar fotossíntese" answers through Claude; the mode stays automatic.
+  - [ ] "esquece que eu ..." and then `nora memoria apagar "..."` (preview and `--confirmar`).
+  - [ ] By voice: "apaga de vez ..." → she says what would go → "sim, pode apagar"; and a "não" cancels.
+  - [ ] `nora notas ler` and a question about a note.
+  - [ ] "sai do modo jogo" asks first; "como sair do modo jogo?" only explains.
+  - [ ] Ctrl+C in the middle of an answer → the notice appears in the next conversation → "termina a resposta que ficou pela metade".
+  - [ ] `nora melhorias fechar-dia` generates the report; the Windows notification appears and opens the file (the notification PowerShell has not been tested on a real Windows yet).
+  - [ ] With Nora open after 20:00 (or changing `hora_relatorio`), the report opens on its own in the .md program; with Nora closed, it opens in the next session.
+  - [ ] Ctrl+C while she is still thinking (before speaking) → `nora pendencias` already shows the question, immediately.
+  - [ ] Game mode without internet → a question → "sai do modo jogo" → "sim" → the offer to resume appears.
+  - [ ] Check with the real bge-m3 the `TROCA_ESQUECIDA` limits and the latency limits in `[auto_melhoria]`.
+- Done on 05/11/2026: final audit, the Enter regression in `nora falar` fixed, issue #3 fixed, documentation reviewed and version `0.3.0`. The updated list of manual tests, the risks and the acceptance steps are in [`RELEASE_v0.3.0.md`](RELEASE_v0.3.0.md); merge, tag and release wait for the maintainer's authorization.
+- Next (proposal, not decided yet): a classifier with confidence in the router, first with bge-m3 and examples per route; test `Mapika/decider-2b` (Apache-2.0, GGUF) as an alternative.
+- Roadmap: v0.4.0 HUD, v0.5.0 MCP tools (with permissions), v0.6.0 routines, v0.7.0 agents, v0.8.0 distributed mode.
 
-## Regras que a revisão deve conferir
+## Rules the review should check
 
-- Nada pessoal no Git: chaves só no `.env`, config pessoal em `config/local.toml`, `data/` ignorado.
-- Toda dependência nova em `docs/LICENCAS.md` (testado por `tests/test_licencas.py`); nada AGPL; ferramentas GPL (Piper, espeak) só como processo separado.
-- Toda variável de ambiente lida pelo código no `.env.example`, sem valor.
-- Os testes passam sem `anthropic`, `openai`, `numpy` ou `sqlite_vec` instalados (dependências opcionais).
-- Antes de commitar: `ruff format .`, `ruff check .`, `pytest`. Commits em inglês (Conventional Commits); textos e nomes em pt-BR.
-- Alvo: Windows com GPU AMD (Vulkan); nada que só funcione com CUDA.
+- Nothing personal in Git: keys only in `.env`, personal config in `config/local.toml`, `data/` ignored.
+- Every new dependency in `docs/LICENCAS.md` (tested by `tests/test_licencas.py`); nothing AGPL; GPL tools (Piper, espeak) only as a separate process.
+- Every environment variable read by the code in `.env.example`, with no value.
+- Tests pass without `anthropic`, `openai`, `numpy` or `sqlite_vec` installed (optional dependencies).
+- Before committing: `ruff format .`, `ruff check .`, `pytest`. Commits in English (Conventional Commits); user-facing texts and code names in pt-BR.
+- Target: Windows with an AMD GPU (Vulkan); nothing that only works with CUDA.
 
-## Pontos para olhar com atenção
+## Points to look at carefully
 
-- `roteador.py::_nuvem`: ordem das nuvens, avisos e o caso de falha no meio da resposta.
-- `notas.py`: atualização incremental (data de modificação e tamanho), índice vetorial opcional e a linha em segundo plano que lê as notas ao abrir a conversa (`conversa.py::nova_conversa`).
-- `troca_voz.py`: a lista de palavras de pergunta (`_PERGUNTA`) pode barrar algum pedido legítimo pouco comum.
-- `memoria.py`: os limites `TROCA_ESQUECIDA` (0,6) e `FATO_ESQUECIDO` (0,85) foram calibrados com vetores de teste; vale conferir com o bge-m3 real.
-- Concorrência: curadoria, notas e o agendador da auto-melhoria rodam em linhas separadas, cada um com sua conexão SQLite e trava (`check_same_thread=False`); observador e melhorias dividem o mesmo arquivo `auto_melhoria.db`.
-- `melhorias.py::notificar`: o script do PowerShell (notificação com `activationType="protocol"` e o caminho do .md) só foi testado com `subprocess.run` simulado.
-- `melhorias.py::diagnosticar`: as regras e os limites são um ponto de partida; os textos das propostas são genéricos por categoria.
-- A triagem por palavras-chave é frágil por natureza; a substituição está na seção Pendente.
+- `roteador.py::_nuvem`: cloud order, notices and the failure-mid-answer case.
+- `notas.py`: incremental update (modification date and size), optional vector index and the background thread that reads the notes when the conversation opens (`conversa.py::nova_conversa`).
+- `troca_voz.py`: the list of question words (`_PERGUNTA`) may block some unusual legitimate request.
+- `memoria.py`: the `TROCA_ESQUECIDA` (0.6) and `FATO_ESQUECIDO` (0.85) limits were calibrated with test vectors; worth checking with the real bge-m3.
+- Concurrency: curation, notes and the self-improvement scheduler run on separate threads, each with its own SQLite connection and lock (`check_same_thread=False`); observer and improvements share the same `auto_melhoria.db` file.
+- `melhorias.py::notificar`: the PowerShell script (notification with `activationType="protocol"` and the .md path) was only tested with a mocked `subprocess.run`.
+- `melhorias.py::diagnosticar`: the rules and limits are a starting point; the proposal texts are generic per category.
+- Keyword triage is fragile by nature; its replacement is in the Pending section.
 
-## Como testar
+## How to test
 
 ```bash
 pip install -e ".[dev,memoria]"
 ruff check . && pytest
 ```
 
-Na máquina real: `nora --verificar` (confere chaves, pacotes, Ollama, notas e vozes), `nora conversar --medir` e `nora ouvir`.
+On the real machine: `nora --verificar` (checks keys, packages, Ollama, notes and voices), `nora conversar --medir` and `nora ouvir`.
 
-## HUD v0.4.0 — implementação incremental
+## HUD v0.4.0 — incremental implementation
 
-Branch `feat/v0.4.0-hud`, baseada em `Pull_code` (`70d39b7`, já inclui AJ-01–AJ-03).
-Ondas/partículas conforme PNG oficial, cliente TypeScript e ponte de eventos local do núcleo.
-Fonte única da voz, memória e decisões permanece no Python.
-Guia e evidências serão mantidos em [HUD](HUD.md) e [homologação cumulativa](HOMOLOGACAO.md).
-A etapa permanece em andamento até a validação integrada no Windows/AMD; sem tag ou release.
+Branch `feat/v0.4.0-hud`, based on `Pull_code` (`70d39b7`, already includes AJ-01–AJ-03).
+Waves/particles following the official PNG, TypeScript client and the core's local event bridge.
+The single source of voice, memory and decisions stays in Python.
+The guide and evidence are kept in [HUD](HUD.md) and the [cumulative acceptance](HOMOLOGACAO.md).
+The stage stays in progress until the integrated validation on Windows/AMD; no tag or release.
 
-### Retomada da HUD acústica — 06/11/2026
+### Resuming the acoustic HUD — 06/11/2026
 
-O commit local antigo `83257f4` e seu bundle não estavam disponíveis no novo ambiente.
-A retomada parte da branch remota `feat/v0.4.0-hud` (`d952770`), preservando seu desenho.
-A compatibilidade usa as interfaces de streaming existentes da `Pull_code`, adaptadas
-na branch de desenvolvimento, sem merge ou alteração da branch de destino. Resultados
-e pendências físicos serão mantidos em [HUD](HUD.md) e [homologação](HOMOLOGACAO.md).
+The old local commit `83257f4` and its bundle were not available in the new environment.
+The resumption starts from the remote `feat/v0.4.0-hud` branch (`d952770`), keeping its design.
+Compatibility uses `Pull_code`'s existing streaming interfaces, adapted
+on the development branch, without a merge or a change to the target branch. Physical
+results and pending items are kept in [HUD](HUD.md) and [acceptance](HOMOLOGACAO.md).

@@ -1,91 +1,91 @@
-# Auto-melhoria da Nora (supervisionada)
+# Nora's self-improvement (supervised)
 
-A Nora observa como foram as conversas e, uma vez por dia, propõe melhorias com base no que se repetiu. **Ela só propõe:** nada muda no código, nada é instalado e nada é publicado sem você decidir.
+Nora watches how the conversations went and, once a day, proposes improvements based on what repeated. **She only proposes:** nothing changes in the code, nothing is installed and nothing is published without you deciding.
 
-## O ciclo
+## The cycle
 
 ```text
-durante o dia: conversa → observador (só tempos, falhas e categorias)
-na hora marcada: agrupa → diagnostica (regras) → propostas → relatório .md → aviso
-você: aprovar | recusar | adiar
-aprovada: gera a tarefa para desenvolver → branch isolada + testes → publicar só com nova autorização
+during the day: conversation → observer (only times, failures and categories)
+at the set time: groups → diagnoses (rules) → proposals → .md report → notice
+you: approve | reject | postpone
+approved: generates the development task → isolated branch + tests → publish only with a new authorization
 ```
 
-## O que ela observa
+## What she observes
 
-Fica em `data/auto_melhoria/auto_melhoria.db`, só no seu PC:
+It lives in `data/auto_melhoria/auto_melhoria.db`, only on your PC:
 
-- cada cérebro tentado em cada resposta: quem, o resultado (resposta, escalou, `erro_provedor`, `timeout`, `resposta_vazia`, `stream_interrompido`) e o tempo até o primeiro pedaço;
-- comandos (como o modo jogo), respostas sem resposta ou canceladas;
-- reclamações ("tá errado", "não entendi"), ligadas à resposta anterior, e quando o local respondeu algo que você rejeitou (`rota_suspeita`);
-- o tempo da transcrição e da voz, e as falhas da voz.
+- each brain tried in each answer: who, the result (answer, escalated, `erro_provedor`, `timeout`, `resposta_vazia`, `stream_interrompido`) and the time until the first chunk;
+- commands (such as game mode), unanswered or cancelled answers;
+- complaints ("tá errado", "não entendi"), linked to the previous answer, and when the local model answered something you rejected (`rota_suspeita`);
+- the transcription and voice times, and the voice failures.
 
-**Não guarda o texto do que foi dito nem áudio:** só IDs, categorias, tempos e o nome do motor. Os eventos com mais de `dias_de_eventos` (30) são apagados no fechamento do dia.
+**It does not store the text of what was said or audio:** only IDs, categories, times and the engine name. Events older than `dias_de_eventos` (30) are deleted when the day closes.
 
-## O relatório do dia
+## The daily report
 
-Na hora de `hora_relatorio` (padrão 20:00), se a Nora estiver aberta e não estiver respondendo nem no modo jogo, ela fecha o dia:
+At `hora_relatorio` (default 20:00), if Nora is open and is neither answering nor in game mode, she closes the day:
 
-- agrupa os eventos por causa provável (tipo, etapa e motor);
-- só vira proposta o que aconteceu pelo menos `min_ocorrencias` vezes (3): uma vez só não basta;
-- respostas lentas contam acima dos limites `latencia_*_ms`;
-- salva `data/auto_melhoria/relatorios/AAAA-MM-DD.md`.
+- groups the events by probable cause (type, stage and engine);
+- only what happened at least `min_ocorrencias` times (3) becomes a proposal: once is not enough;
+- slow answers count above the `latencia_*_ms` limits;
+- saves `data/auto_melhoria/relatorios/AAAA-MM-DD.md`.
 
-Cada proposta tem número, evidência (quantas vezes, quando, mediana e maior tempo), causa provável, solução sugerida, benefícios estimados, impacto em tempo/custo/GPU, risco, testes exigidos, arquivos prováveis, prioridade e confiança.
+Each proposal has a number, evidence (how many times, when, median and longest time), probable cause, suggested solution, estimated benefits, impact on time/cost/GPU, risk, required tests, likely files, priority and confidence.
 
-- **Dia sem problemas:** o relatório diz só "Sem novas melhorias relevantes".
-- **PC desligado na hora:** o relatório sai na próxima vez que você abrir a Nora, cobrindo o período que faltou, sem repetir.
-- **O mesmo problema em outro dia:** atualiza a mesma proposta, sem duplicar.
+- **Day without problems:** the report only says "Sem novas melhorias relevantes" (no new relevant improvements).
+- **PC off at that time:** the report comes out the next time you open Nora, covering the missed period, without repeating.
+- **The same problem on another day:** updates the same proposal, without duplicating.
 
-**Como você fica sabendo, sem digitar nada:**
-- se a Nora estiver aberta quando o dia fecha: uma notificação do Windows ("Nora: melhorias do dia"; clicar abre o relatório), e o relatório se abre no programa padrão do `.md`;
-- se não abrir, mostra o **texto inteiro** na sessão atual, quando a interface estiver livre, mesmo sem uma nova pergunta;
-- se o dia fechou com a Nora fechada: na próxima conversa ela abre o relatório ou mostra o texto inteiro.
+**How you find out, without typing anything:**
+- if Nora is open when the day closes: a Windows notification ("Nora: melhorias do dia"; clicking opens the report), and the report opens in the default program for `.md`;
+- if it does not open, she shows the **full text** in the current session, when the interface is free, even without a new question;
+- if the day closed with Nora closed: in the next conversation she opens the report or shows the full text.
 
-Ela nunca faz isso no meio de uma resposta nem no modo jogo: espera ficar livre. O relatório só conta como mostrado depois de aparecer de fato. Se a notificação ou a abertura falharem, o motivo fica registrado. A falha de abertura tenta o texto na mesma sessão. Arquivo ausente ou ilegível continua pendente, com uma tentativa de apresentação por sessão para evitar avisos repetidos. Restaure uma cópia UTF-8 no caminho informado (ou corrija as permissões) e reinicie a sessão para tentar novamente. Sem uma cópia, não há recuperação automática do conteúdo original; não feche o mesmo dia novamente para tentar recuperá-lo. Com `apresentar = "terminal"`, o texto sempre aparece na conversa, em vez de abrir o arquivo.
+She never does this in the middle of an answer or in game mode: she waits until she is free. The report only counts as shown after it actually appears. If the notification or the opening fail, the reason is recorded. An opening failure tries the text in the same session. A missing or unreadable file stays pending, with one presentation attempt per session to avoid repeated notices. Restore a UTF-8 copy at the given path (or fix the permissions) and restart the session to try again. Without a copy, there is no automatic recovery of the original content; do not close the same day again to try to recover it. With `apresentar = "terminal"`, the text always appears in the conversation, instead of opening the file.
 
-**O relatório não traz o texto das suas perguntas.** Das respostas pela metade, mostra só o número, o motivo e a data; as perguntas, só pedindo: `nora pendencias`. Relatórios antigos que traziam o começo das perguntas são limpos sozinhos.
+**The report does not include the text of your questions.** For half-finished answers, it shows only the number, the reason and the date; the questions, only on request: `nora pendencias`. Old reports that included the beginning of the questions are cleaned up on their own.
 
-## Decidir
+## Deciding
 
-| Pela conversa | Pelo terminal | O que acontece |
+| In conversation | From the terminal | What happens |
 |---|---|---|
-| "quais melhorias você sugeriu?" | `nora melhorias listar` | lista as que esperam decisão |
-| — | `nora melhorias relatorio --abrir` | abre o relatório mais recente |
-| "aprova a melhoria 3" → "sim" | `nora melhorias aprovar 3` | aprovada para **desenvolver**: gera `data/auto_melhoria/tarefas/melhoria-3.md`, a especificação para o Codex. O código não muda |
-| "recusa a melhoria 3" → "sim" | `nora melhorias recusar 3` | só volta com evidência nova (o dobro de ocorrências) ou numa versão nova |
-| "adia a melhoria 3" → "sim" | `nora melhorias adiar 3 --dias 7` | volta depois desses dias |
-| — | `nora melhorias estado 3 preparacao` | acompanha o desenvolvimento: `preparacao` → `em_teste` → `pronta_para_revisao` → `publicada` |
-| — | `nora melhorias fechar-dia` | faz o relatório de hoje agora |
+| "quais melhorias você sugeriu?" | `nora melhorias listar` | lists the ones waiting for a decision |
+| — | `nora melhorias relatorio --abrir` | opens the most recent report |
+| "aprova a melhoria 3" → "sim" | `nora melhorias aprovar 3` | approved for **development**: generates `data/auto_melhoria/tarefas/melhoria-3.md`, the specification for Codex. The code does not change |
+| "recusa a melhoria 3" → "sim" | `nora melhorias recusar 3` | only comes back with new evidence (twice the occurrences) or in a new version |
+| "adia a melhoria 3" → "sim" | `nora melhorias adiar 3 --dias 7` | comes back after those days |
+| — | `nora melhorias estado 3 preparacao` | tracks development: `preparacao` → `em_teste` → `pronta_para_revisao` → `publicada` |
+| — | `nora melhorias fechar-dia` | makes today's report now |
 
-Pela conversa, ela só decide com o número claro e depois do seu "sim". "Não" cancela; mudar de assunto também. **Publicar** pede uma autorização à parte: `nora melhorias estado 3 publicada --autorizo-publicar`. Cada decisão fica registrada com quem, quando e o motivo.
+In conversation, she only decides with a clear number and after your "sim". "Não" cancels; so does changing the subject. **Publishing** needs a separate authorization: `nora melhorias estado 3 publicada --autorizo-publicar`. Each decision is recorded with who, when and the reason.
 
-## Ajustes (`config/local.toml`)
+## Settings (`config/local.toml`)
 
 ```toml
 [auto_melhoria]
-ativa = true                  # false: não observa nem propõe nada
+ativa = true                  # false: observes and proposes nothing
 hora_relatorio = "20:00"
 min_ocorrencias = 3
-latencia_resposta_ms = 2500   # até o primeiro pedaço da resposta
+latencia_resposta_ms = 2500   # until the first chunk of the answer
 latencia_ouvido_ms = 1500
 latencia_voz_ms = 2000
 dias_de_eventos = 30
-notificar = true              # notificação do Windows
-apresentar = "abrir"          # "abrir" o .md ou "terminal" (texto inteiro na conversa)
+notificar = true              # Windows notification
+apresentar = "abrir"          # "abrir" the .md or "terminal" (full text in the conversation)
 ```
 
-## O que ainda não existe (próximas etapas)
+## What does not exist yet (next stages)
 
-- **P3, pesquisa técnica:** o diagnóstico de hoje é por regras, sem modelo e **sem internet**. A pesquisa em documentação oficial, com fontes citadas e sem mandar nada pessoal, vai ser opcional e desligada por padrão.
-- **P4, desenvolvimento supervisionado:** hoje aprovar só gera a especificação. Levar a tarefa ao Codex numa branch isolada e incorporar depois de nova autorização ainda é um passo manual.
-- **Painel na HUD (v0.4.0 em desenvolvimento):** consulta propostas e confirma decisões
-  pelo mesmo domínio/banco, sem mudar código ou publicar. Ver [HUD](HUD.md).
-  Homologação integrada Windows/AMD pendente.
-- **Agendamento com a Nora fechada:** hoje o relatório só sai com a Nora aberta (ou na próxima vez que abrir). O agendador do sistema chega com as rotinas, na v0.6.0.
+- **P3, technical research:** today's diagnosis is rule-based, with no model and **no internet**. Research in official documentation, with cited sources and without sending anything personal, will be optional and off by default.
+- **P4, supervised development:** today approving only generates the specification. Taking the task to Codex on an isolated branch and merging it after a new authorization is still a manual step.
+- **HUD panel (v0.4.0 in development):** queries proposals and confirms decisions
+  through the same domain/database, without changing code or publishing. See [HUD](HUD.md).
+  Integrated Windows/AMD acceptance pending.
+- **Scheduling with Nora closed:** today the report only comes out with Nora open (or the next time she opens). The system scheduler arrives with routines, in v0.6.0.
 
-## Limites
+## Limits
 
-- As regras conhecem os problemas listados acima; um tipo novo de evento cai numa proposta genérica.
-- A notificação usa o PowerShell do Windows. Se o seu Windows bloquear notificações, o aviso aparece na próxima conversa.
-- A confiança e a prioridade são estimativas pela quantidade e pela gravidade dos eventos, não um teste do problema.
+- The rules know the problems listed above; a new kind of event falls into a generic proposal.
+- The notification uses Windows PowerShell. If your Windows blocks notifications, the notice appears in the next conversation.
+- Confidence and priority are estimates from the number and severity of the events, not a test of the problem.

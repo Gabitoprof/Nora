@@ -1,72 +1,72 @@
-# Referência 01: assistente 100% local (vídeo de demonstração)
+# Reference 01: 100% local assistant (demo video)
 
-> Vídeo de ~25 min (em inglês) mostrando um assistente de voz inspirado em ficção rodando totalmente local: cérebro via Ollama e voz clonada localmente.
-> Estudado em 30/10/2026 a partir do vídeo e da transcrição. Aqui ficam só as **ideias**; nome, marca e voz do vídeo não são usados no projeto (ver seção 6 do [`PROJETO_ASSISTENTE_IA.md`](../../PROJETO_ASSISTENTE_IA.md)).
+> A ~25 min video (in English) showing a fiction-inspired voice assistant running fully locally: brain through Ollama and a locally cloned voice.
+> Studied on 30/10/2026 from the video and its transcript. Only the **ideas** are kept here; the video's name, brand and voice are not used in the project (see section 6 of [`PROJETO_ASSISTENTE_IA.md`](../../PROJETO_ASSISTENTE_IA.md)).
 
 ---
 
-## 1. O que o vídeo mostra
+## 1. What the video shows
 
-| Momento | O que acontece |
+| Time | What happens |
 |---|---|
-| 0:00 | Comando de voz "troque para o cérebro local" → o assistente confirma qual modelo assumiu, com humor. |
-| 1:52 | **Interface:** página web em `localhost`, com um **grafo 3D de todos os arquivos e pastas** que o assistente pode acessar (o "segundo cérebro"), orbe com status e ferramentas conectadas. |
-| 2:44 | **Troca de cérebro por voz:** Qwen 3.5 9B ↔ Gemma 4 12B ↔ modelo na nuvem. O modelo ativo aparece na tela. |
-| 4:35 | **Troca de voz por voz:** voz na nuvem (ElevenLabs) ↔ voz local clonada (VoiceStudio) ↔ outras vozes clonadas. |
-| 9:42 | **Teste 1, segundo cérebro:** "puxe minha voz de marca" → abre as notas ligadas a esse tema e destaca os nós no grafo. |
-| 10:47 | **Teste 2, ferramentas:** "o que tenho amanhã na agenda?" → frase de espera ("deixa eu ver se tenho as ferramentas para isso"), consulta o Google Agenda e responde com comentário bem-humorado. A tela mostra **qual ferramenta foi usada**. |
-| 13:19 | **Teste 3, tarefa longa:** analisa um site abrindo um navegador limpo, rolando a página e montando um relatório técnico. Avisa quanto tempo vai levar e narra o progresso. |
-| 16:50 | Outras funções citadas: ligações, agendamentos, faturas. Acesso **controlado por permissão** ("se você não der acesso, ele não tem"). |
-| 17:43 | Comparação **nuvem × local** e instalação (Ollama + VoiceStudio). |
+| 0:00 | Voice command "switch to the local brain" → the assistant confirms which model took over, with humor. |
+| 1:52 | **Interface:** a web page on `localhost`, with a **3D graph of all the files and folders** the assistant can access (the "second brain"), an orb with status and connected tools. |
+| 2:44 | **Brain switching by voice:** Qwen 3.5 9B ↔ Gemma 4 12B ↔ a cloud model. The active model shows on screen. |
+| 4:35 | **Voice switching by voice:** cloud voice (ElevenLabs) ↔ local cloned voice (VoiceStudio) ↔ other cloned voices. |
+| 9:42 | **Test 1, second brain:** "pull my brand voice" → opens the notes linked to that topic and highlights the nodes in the graph. |
+| 10:47 | **Test 2, tools:** "what do I have on my calendar tomorrow?" → holding phrase ("let me see if I have the tools for that"), queries Google Calendar and answers with a humorous comment. The screen shows **which tool was used**. |
+| 13:19 | **Test 3, long task:** analyzes a website by opening a clean browser, scrolling the page and building a technical report. Says how long it will take and narrates progress. |
+| 16:50 | Other functions mentioned: calls, scheduling, invoices. Access **controlled by permission** ("if you don't give it access, it doesn't have it"). |
+| 17:43 | **Cloud × local** comparison and installation (Ollama + VoiceStudio). |
 
 ---
 
-## 2. Detalhes da interface (prints do vídeo)
+## 2. Interface details (screenshots from the video)
 
-- **Fundo:** grafo de nós coloridos por categoria (rotas, wiki, conceitos, skills, ferramentas, notas, arquivos), com controles de física (repulsão, peso das ligações).
-- **Barra lateral esquerda:** categorias do segundo cérebro com contagem de itens; ao pedir um tema, mostra a lista de notas relacionadas.
-- **Orbe** no canto: anel animado com status (`SPEAKING`), **selo do modelo ativo** (`QWEN3.5:9B`, `GEMMA4:12B`) e modos de visual (anel, núcleo, rosto).
-- **Painel de modos** ligáveis: visão (câmera), segurar, foco, reflexo.
-- **Rodapé:** texto da resposta com a **origem** ("via google calendar · gcal_events"), campo de texto e ícones das ferramentas.
-- **Indicadores de atividade:** "buscando ferramentas", "ferramenta executada via …", e um checklist de etapas durante tarefas longas.
+- **Background:** a graph of nodes colored by category (routes, wiki, concepts, skills, tools, notes, files), with physics controls (repulsion, link weight).
+- **Left sidebar:** second-brain categories with item counts; when a topic is requested, it shows the list of related notes.
+- **Orb** in the corner: an animated ring with status (`SPEAKING`), an **active model badge** (`QWEN3.5:9B`, `GEMMA4:12B`) and visual modes (ring, core, face).
+- **Panel of toggleable modes:** vision (camera), hold, focus, reflex.
+- **Footer:** the answer text with its **source** ("via google calendar · gcal_events"), a text field and tool icons.
+- **Activity indicators:** "searching tools", "tool executed via …", and a checklist of steps during long tasks.
 
 ---
 
-## 3. Comparação nuvem × local (do material do vídeo)
+## 3. Cloud × local comparison (from the video's material)
 
-| Aspecto | Nuvem | Local |
+| Aspect | Cloud | Local |
 |---|---|---|
-| Ouvir | Reconhecimento de fala do navegador (áudio vai para o Google) | Whisper na máquina, rápido o suficiente |
-| Pensar | Modelo grande da API, rápido e muito capaz | Modelo do Ollama; mais lento em notebook, rápido em máquina forte |
-| Falar | ElevenLabs, pago por mês | Voz clonada local; um pouco mais lenta |
-| Privacidade | Áudio e texto passam por terceiros | Nada sai da máquina |
-| Qualidade | Melhor raciocínio e uso de ferramentas | Bom, não genial; depende do tamanho do modelo |
-| Custo | Assinaturas e uso de API | Só energia |
+| Listening | Browser speech recognition (audio goes to Google) | Whisper on the machine, fast enough |
+| Thinking | Large API model, fast and very capable | Ollama model; slower on a laptop, fast on a strong machine |
+| Speaking | ElevenLabs, paid monthly | Local cloned voice; a bit slower |
+| Privacy | Audio and text go through third parties | Nothing leaves the machine |
+| Quality | Better reasoning and tool use | Good, not brilliant; depends on model size |
+| Cost | Subscriptions and API usage | Only electricity |
 
 ---
 
-## 4. O que aprendemos (e como entra no projeto)
+## 4. What we learned (and how it enters the project)
 
-| # | Ideia do vídeo | Como aplicar no nosso projeto | Etapa |
+| # | Idea from the video | How to apply it in our project | Stage |
 |---|---|---|---|
-| 1 | **Trocar de cérebro por voz** ("use o cérebro local", "troque para o Gemma") | Comando de voz que força o roteador para um modelo específico; lista de modelos instalados no config. O roteador automático continua existindo. | v0.3.0 |
-| 2 | **Trocar de voz por voz** | Várias vozes no config (local e nuvem), com troca por comando. | v0.3.0 |
-| 3 | **Selo do modelo e da voz ativos** | O HUD mostra sempre qual cérebro e qual voz estão em uso. | v0.4.0 |
-| 4 | **Grafo do segundo cérebro** | Usar o **vault do Obsidian** como segundo cérebro: o assistente indexa as notas `.md` (busca vetorial) e o HUD desenha o grafo, destacando as notas usadas na resposta. | v0.2.0 (índice) e v0.4.0 (grafo) |
-| 5 | **Frase de espera** enquanto usa ferramentas | Já previsto para a API; estender para **qualquer** ferramenta lenta. | v0.3.0 e v0.5.0 |
-| 6 | **Mostrar a origem** da resposta ("via Google Agenda") | Toda resposta que usou ferramenta ou nota traz a fonte no cartão do HUD. | v0.4.0 e v0.5.0 |
-| 7 | **Narrar tarefas longas** (estimativa de tempo e checklist de etapas) | Tarefas de agentes publicam progresso no HUD e a voz dá atualizações curtas. | v0.7.0 |
-| 8 | **Acesso por permissão** | Cada ferramenta MCP declara o que pode acessar; o usuário libera uma a uma. | v0.5.0 |
-| 9 | **Personalidade com humor, ajustável** | Nível de humor e formalidade como parâmetros da persona no config. | v0.0.0 (config) |
-| 10 | **Escolher o modelo pelo hardware** | Na nossa GPU de 16 GB, **Qwen 3.5 9B (~7,6 GB)** é um bom candidato padrão, com sobra para o Whisper; testar também modelos de 12–14B. | v0.1.0 |
-| 11 | **Testar uso de ferramentas no modelo local** | Modelos pequenos erram mais ao chamar ferramentas. O teste de compatibilidade da v0.1.0 deve medir também a **qualidade das chamadas de ferramenta**, não só a velocidade. | v0.1.0 |
-| 12 | **Agente que usa navegador** | Especialista que abre um navegador isolado para pesquisar ou analisar sites. | v0.7.0 |
+| 1 | **Switching brains by voice** ("use o cérebro local", "troque para o Gemma") | A voice command that forces the router to a specific model; a list of installed models in the config. The automatic router still exists. | v0.3.0 |
+| 2 | **Switching voices by voice** | Several voices in the config (local and cloud), switched by command. | v0.3.0 |
+| 3 | **Badge of the active model and voice** | The HUD always shows which brain and which voice are in use. | v0.4.0 |
+| 4 | **Second-brain graph** | Use the **Obsidian vault** as the second brain: the assistant indexes the `.md` notes (vector search) and the HUD draws the graph, highlighting the notes used in the answer. | v0.2.0 (index) and v0.4.0 (graph) |
+| 5 | **Holding phrase** while using tools | Already planned for the API; extend it to **any** slow tool. | v0.3.0 and v0.5.0 |
+| 6 | **Showing the source** of the answer ("via Google Agenda") | Every answer that used a tool or note carries the source on the HUD card. | v0.4.0 and v0.5.0 |
+| 7 | **Narrating long tasks** (time estimate and checklist of steps) | Agent tasks publish progress to the HUD and the voice gives short updates. | v0.7.0 |
+| 8 | **Access by permission** | Each MCP tool declares what it can access; the user grants them one by one. | v0.5.0 |
+| 9 | **Adjustable personality with humor** | Humor and formality levels as persona parameters in the config. | v0.0.0 (config) |
+| 10 | **Choosing the model by hardware** | On our 16 GB GPU, **Qwen 3.5 9B (~7.6 GB)** is a good default candidate, leaving room for Whisper; also test 12–14B models. | v0.1.0 |
+| 11 | **Testing tool use on the local model** | Small models make more mistakes when calling tools. The v0.1.0 compatibility test should also measure **tool call quality**, not just speed. | v0.1.0 |
+| 12 | **Agent that uses a browser** | A specialist that opens an isolated browser to research or analyze sites. | v0.7.0 |
 
 ---
 
-## 5. Cuidados
+## 5. Cautions
 
-- **Voz:** o vídeo clona a voz de um personagem de filme. **Não faremos isso:** a voz do assistente será original (voice design) ou uma voz pronta com licença livre.
-- **Licença do VoiceStudio:** o print do repositório mostra **AGPL-3.0**. Se usarmos, deve rodar como **programa separado** (instalado à parte, chamado pela rede local), sem copiar o código para o nosso repositório. Verificar antes de adotar.
-- **Desempenho:** o vídeo roda numa máquina Apple bem forte. Na nossa (AMD RX 9060 XT), a latência real só sai do teste da v0.1.0.
-- **Nome e visual:** grafo e orbe são ideias genéricas; não copiar o logo, as cores exatas nem o nome do personagem.
+- **Voice:** the video clones the voice of a movie character. **We will not do that:** the assistant's voice will be original (voice design) or a ready-made voice with an open license.
+- **VoiceStudio license:** the repository screenshot shows **AGPL-3.0**. If we use it, it must run as a **separate program** (installed separately, called over the local network), without copying the code into our repository. Check before adopting.
+- **Performance:** the video runs on a very strong Apple machine. On ours (AMD RX 9060 XT), the real latency only comes from the v0.1.0 test.
+- **Name and visuals:** the graph and the orb are generic ideas; do not copy the logo, the exact colors or the character's name.

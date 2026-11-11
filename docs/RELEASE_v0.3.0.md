@@ -1,41 +1,41 @@
-# Release v0.3.0 — Roteador de modelos
+# Release v0.3.0 — Model router
 
-Versão estável `v0.3.0`, preparada no branch `Pull_code` e integrada na `main` pelo PR [#5](https://github.com/Gabitoprof/Nora/pull/5), com a autorização do mantenedor em 05/11/2026.
+Stable version `v0.3.0`, prepared on the `Pull_code` branch and merged into `main` through PR [#5](https://github.com/Gabitoprof/Nora/pull/5), with the maintainer's authorization on 05/11/2026.
 
-## 1. Notas de lançamento
+## 1. Release notes
 
-**A Nora agora tem dois cérebros que trabalham juntos.** A conversa do dia a dia continua no seu PC, de graça e privada. As perguntas difíceis vão para a nuvem e voltam com a mesma voz, a mesma personalidade e a mesma memória.
+**Nora now has two brains that work together.** Everyday conversation stays on your PC, free and private. The hard questions go to the cloud and come back with the same voice, the same personality and the same memory.
 
-### Novidades
+### What's new
 
-- **Roteador de modelos:**
-  - o cérebro local (Ollama) conversa; código, contas, análises, planos e textos longos vão para o **ChatGPT**, com o **Claude** de reserva, e o local é a última reserva;
-  - enquanto a nuvem pensa, ela diz uma frase de espera;
-  - se você reclamar de uma resposta do local ("tá errado"), a pergunta ganha uma segunda chance na nuvem.
-- **Comandos falados:**
+- **Model router:**
+  - the local brain (Ollama) handles conversation; code, math, analyses, plans and long texts go to **ChatGPT**, with **Claude** as fallback, and the local model is the last fallback;
+  - while the cloud thinks, she says a holding phrase;
+  - if you complain about a local answer ("tá errado"), the question gets a second chance in the cloud.
+- **Spoken commands:**
   - "use o cérebro local", "use o ChatGPT", "use o Claude", "modo automático";
-  - "use o Claude para explicar fotossíntese" responde só aquela pergunta no Claude;
-  - **modo jogo:** libera a placa de vídeo e responde pela nuvem. Para sair, ela pede confirmação, e nunca volta a usar a placa sozinha.
-- **Emoção na voz:** ela escolhe o tom de cada frase. No ElevenLabs v3, ri, suspira e sussurra de verdade.
-- **Trocar a voz falando:** "troque para a voz do Piper", "volta pro ElevenLabs".
-- **Notas do Obsidian:** ela lê o seu vault (só leitura) e usa as notas para responder, dizendo de qual nota veio.
-- **Esquecer e apagar de vez:** "esquece isso" faz ela parar de usar o assunto; "apaga de vez ..." mostra o que vai sair e só apaga depois do seu "sim".
-- **Nenhuma resposta perdida:** se uma resposta cai no meio, é cancelada ou fica sem resposta, a pergunta fica guardada. "Termina a resposta que ficou pela metade" responde de novo, inteira.
-- **Auto-melhoria supervisionada:**
-  - uma vez por dia, ela junta o que deu errado (falhas, lentidão, reclamações) num relatório de propostas, sem guardar o texto das conversas;
-  - você aprova, recusa ou adia; nada muda no código sem você;
-  - nesta versão, sem internet e sem modelo de IA no diagnóstico.
+  - "use o Claude para explicar fotossíntese" answers only that question through Claude;
+  - **game mode:** frees the graphics card and answers through the cloud. To leave it, she asks for confirmation, and she never goes back to using the card on her own.
+- **Emotion in the voice:** she picks the tone of each sentence. On ElevenLabs v3, she actually laughs, sighs and whispers.
+- **Switching the voice by speaking:** "troque para a voz do Piper", "volta pro ElevenLabs".
+- **Obsidian notes:** she reads your vault (read only) and uses the notes to answer, saying which note it came from.
+- **Forget and delete for good:** "esquece isso" makes her stop using the subject; "apaga de vez ..." shows what will go and only deletes after your "sim".
+- **No answer lost:** if an answer drops midway, is cancelled or gets no answer, the question is kept. "Termina a resposta que ficou pela metade" answers again, in full.
+- **Supervised self-improvement:**
+  - once a day, she gathers what went wrong (failures, slowness, complaints) into a report of proposals, without storing the conversation text;
+  - you approve, reject or postpone; nothing changes in the code without you;
+  - in this version, no internet and no AI model in the diagnosis.
 
-### Correções desta preparação de release
+### Fixes in this release preparation
 
-- **Enter no `nora falar` com a auto-melhoria ligada:**
-  - um erro ao apresentar o relatório deixava para trás a leitura do teclado, e o Enter seguinte (o de parar de gravar) se perdia;
-  - abrir o relatório podia tirar o foco do terminal.
+- **Enter in `nora falar` with self-improvement on:**
+  - an error while presenting the report left the keyboard reader behind, and the next Enter (the one to stop recording) was lost;
+  - opening the report could take the focus away from the terminal.
   
-  Agora o relatório abre minimizado e sem foco, e o prompt reaparece depois dele.
-- **Busca por trecho na agenda e no `listar --contendo`** ([#3](https://github.com/Gabitoprof/Nora/issues/3)): maiúsculas acentuadas ("Álgebra" acha "álgebra") e sem curingas `_`/`%`.
+  Now the report opens minimized and without focus, and the prompt reappears after it.
+- **Substring search in the agenda and in `listar --contendo`** ([#3](https://github.com/Gabitoprof/Nora/issues/3)): accented capitals ("Álgebra" finds "álgebra") and no `_`/`%` wildcards.
 
-### Como atualizar
+### How to update
 
 ```bash
 git pull
@@ -49,111 +49,111 @@ python -m pip install -e ".[voz,memoria,nuvem]"
 nora --verificar
 ```
 
-A nuvem é opcional: precisa de `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY` no `.env`. Sem chave nenhuma, tudo continua no PC. Não há migração manual: os bancos ganham as tabelas novas sozinhos (`respostas_pendentes`, `esquecidos`, `data/auto_melhoria/`).
+The cloud is optional: it needs `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` in `.env`. With no key at all, everything stays on the PC. There is no manual migration: the databases get the new tables on their own (`respostas_pendentes`, `esquecidos`, `data/auto_melhoria/`).
 
-## 2. Relatório de qualidade
+## 2. Quality report
 
-### Escopo
+### Scope
 
-- **Base:** `Pull_code` em `70d39b7` (com o PR #4 já integrado), mais os commits desta preparação.
-- **Fora do release:** nenhum commit do branch `feat/v0.4.0-hud`. Conferido com `git log Pull_code..feat/v0.4.0-hud`: 5 commits, nenhum no `Pull_code`. O `hud/README.md` é o marcador da fundação, já presente na `main`.
-- **Fora de escopo, por decisão anterior:**
-  - P3 (pesquisa técnica na web);
-  - P4 (desenvolvimento automatizado);
-  - integração pessoal com o Claude Code;
-  - a HUD.
+- **Base:** `Pull_code` at `70d39b7` (with PR #4 already merged), plus the commits of this preparation.
+- **Out of the release:** no commit from the `feat/v0.4.0-hud` branch. Checked with `git log Pull_code..feat/v0.4.0-hud`: 5 commits, none in `Pull_code`. `hud/README.md` is the foundation marker, already present in `main`.
+- **Out of scope, by earlier decision:**
+  - P3 (technical web research);
+  - P4 (automated development);
+  - personal integration with Claude Code;
+  - the HUD.
 
-### Auditoria final
+### Final audit
 
-| Verificação | Resultado |
+| Check | Result |
 |---|---|
-| Regras do `CLAUDE.md` (pt-BR, Conventional Commits, nada pessoal no Git, licenças, `.env.example`, nada só-CUDA) | Ok. Nenhum arquivo de `data/`, `.env` ou `config/local.toml` versionado; nenhum segredo encontrado; "Jarvis/Marvel" só nas regras que os proíbem |
-| Licenças das dependências (`tests/test_licencas.py`) | Ok. Dependências novas da etapa: `openai` e `anthropic` (Apache-2.0), no extra `nuvem` |
-| Variáveis de ambiente (`tests/test_env_exemplo.py`) | Ok |
-| Testes sem os pacotes opcionais (anthropic, openai, numpy, sqlite-vec) | Ok |
-| Regressão do Enter no `nora falar` com auto-melhoria | **Encontrada e corrigida** (seção 2.1) |
-| Issue aberta [#3](https://github.com/Gabitoprof/Nora/issues/3) | **Reproduzida e corrigida** |
-| Correções anteriores (A1–A6, P1/P2, auditoria, AJ-01–AJ-03) | Preservadas; todos os testes de regressão passam |
-| Documentação da etapa (README, roadmap, objetivo, mapa mental `.md` e `.canvas`, guias, banco de ideias, CHANGELOG) | Revisada para o estado da v0.3.0 |
+| `CLAUDE.md` rules (pt-BR, Conventional Commits, nothing personal in Git, licenses, `.env.example`, nothing CUDA-only) | Ok. No `data/`, `.env` or `config/local.toml` file versioned; no secret found; "Jarvis/Marvel" only in the rules that forbid them |
+| Dependency licenses (`tests/test_licencas.py`) | Ok. New dependencies of the stage: `openai` and `anthropic` (Apache-2.0), in the `nuvem` extra |
+| Environment variables (`tests/test_env_exemplo.py`) | Ok |
+| Tests without the optional packages (anthropic, openai, numpy, sqlite-vec) | Ok |
+| Enter regression in `nora falar` with self-improvement | **Found and fixed** (section 2.1) |
+| Open issue [#3](https://github.com/Gabitoprof/Nora/issues/3) | **Reproduced and fixed** |
+| Earlier fixes (A1–A6, P1/P2, audit, AJ-01–AJ-03) | Preserved; all regression tests pass |
+| Stage documentation (README, roadmap, goal, mind map `.md` and `.canvas`, guides, idea bank, CHANGELOG) | Reviewed for the v0.3.0 state |
 
-### 2.1 Regressão do Enter no `nora falar`
+### 2.1 Enter regression in `nora falar`
 
-Com a auto-melhoria ligada (padrão), o PR #4 passou a ler o teclado numa thread de apoio (`melhorias.py::ler_entrada`), enquanto o laço da sessão apresenta os relatórios. Encontrei três caminhos em que um Enter se perdia:
+With self-improvement on (default), PR #4 started reading the keyboard on a helper thread (`melhorias.py::ler_entrada`), while the session loop presents the reports. I found three paths where an Enter was lost:
 
-| Causa | Como foi confirmada | Correção |
+| Cause | How it was confirmed | Fix |
 |---|---|---|
-| Um erro ao apresentar o relatório escapava do `ler_entrada`, e a thread de leitura ficava viva e engolia o Enter seguinte (o de parar de gravar). No `nora falar`, o erro também derrubava a conversa | **Reproduzida** por teste com um teclado que bloqueia como o real (`test_falha_ao_apresentar_nao_deixa_leitor_orfao_que_engole_o_enter`) | O erro é registrado (só o tipo) e o `ler_entrada` só volta com a linha que a sua própria thread leu |
-| O modo `abrir` (padrão) abria o `.md` com foco no Windows, e o Enter ia para o editor. No Linux, o `xdg-open` herdava o terminal da Nora | Leitura do código (`os.startfile` sem `show_cmd`; `Popen` herdando stdin). O foco no Windows **não pode ser reproduzido na nuvem** | Windows: abre **minimizado e sem ativar** (`SW_SHOWMINNOACTIVE`). Outros sistemas: sem stdin, stdout e stderr, em sessão própria. Teste: `test_abrir_o_relatorio_nao_rouba_o_teclado_da_sessao` |
-| O PowerShell da notificação herdava o teclado do console | Leitura do código (`subprocess.run` sem `stdin`) | `stdin=DEVNULL` (mesmo teste) |
-| (Usabilidade) Um relatório mostrado durante a espera escondia o "[Enter para falar]" | Teste | O prompt é reimpresso (`test_relatorio_que_aparece_na_espera_mostra_o_prompt_de_novo`) |
+| An error while presenting the report escaped `ler_entrada`, and the reading thread stayed alive and swallowed the next Enter (the one to stop recording). In `nora falar`, the error also brought down the conversation | **Reproduced** by a test with a keyboard that blocks like the real one (`test_falha_ao_apresentar_nao_deixa_leitor_orfao_que_engole_o_enter`) | The error is recorded (only the type) and `ler_entrada` only returns with the line its own thread read |
+| The `abrir` mode (default) opened the `.md` with focus on Windows, and the Enter went to the editor. On Linux, `xdg-open` inherited Nora's terminal | Code reading (`os.startfile` without `show_cmd`; `Popen` inheriting stdin). Focus on Windows **cannot be reproduced in the cloud** | Windows: opens **minimized and without activating** (`SW_SHOWMINNOACTIVE`). Other systems: no stdin, stdout and stderr, in its own session. Test: `test_abrir_o_relatorio_nao_rouba_o_teclado_da_sessao` |
+| The notification PowerShell inherited the console keyboard | Code reading (`subprocess.run` without `stdin`) | `stdin=DEVNULL` (same test) |
+| (Usability) A report shown during the wait hid the "[Enter para falar]" | Test | The prompt is printed again (`test_relatorio_que_aparece_na_espera_mostra_o_prompt_de_novo`) |
 
-Também rodei o laço real do `nora falar` (`conversar_por_voz`, com o `input` verdadeiro) num **pseudo-terminal Linux**, nos modos `abrir` e `terminal`: dois ciclos de Enter para falar e Enter para parar, respondidos e com o prompt de volta, antes e depois da correção. No Linux o fluxo básico já funcionava; o Windows real continua na lista de homologação.
+I also ran the real `nora falar` loop (`conversar_por_voz`, with the real `input`) in a **Linux pseudo-terminal**, in the `abrir` and `terminal` modes: two cycles of Enter to speak and Enter to stop, answered and with the prompt back, before and after the fix. On Linux the basic flow already worked; the real Windows stays on the acceptance list.
 
-### 2.2 Testes automatizados
+### 2.2 Automated tests
 
-| Execução | Resultado |
+| Run | Result |
 |---|---|
 | `ruff format --check .` | Ok |
 | `ruff check .` | Ok |
-| `pytest` (Linux, Python 3.12, local) | **270 passaram**, 2 pulados (Kokoro real e um teste de áudio sem dispositivo) |
-| `pytest` sem anthropic, openai, numpy e sqlite-vec | **252 passaram**, 13 pulados |
-| `nora --verificar` | Código 0 |
-| CI GitHub Actions (Windows e Ubuntu × Python 3.11 e 3.13) | Ver seção 2.3 |
+| `pytest` (Linux, Python 3.12, local) | **270 passed**, 2 skipped (real Kokoro and an audio test without a device) |
+| `pytest` without anthropic, openai, numpy and sqlite-vec | **252 passed**, 13 skipped |
+| `nora --verificar` | Exit code 0 |
+| GitHub Actions CI (Windows and Ubuntu × Python 3.11 and 3.13) | See section 2.3 |
 
-Encontrado na homologação (05/11): com o `.venv` recriado em outra versão do Python, o `nora ouvir` dizia "Falta a parte de áudio" com o pacote instalado. A mensagem agora mostra a causa real (`test_audio_que_nao_carrega_mostra_a_causa`).
+Found during acceptance (05/11): with the `.venv` recreated on another Python version, `nora ouvir` said "Falta a parte de áudio" (the audio part is missing) with the package installed. The message now shows the real cause (`test_audio_que_nao_carrega_mostra_a_causa`).
 
-Testes novos nesta preparação: `test_falha_ao_apresentar_nao_deixa_leitor_orfao_que_engole_o_enter`, `test_relatorio_que_aparece_na_espera_mostra_o_prompt_de_novo`, `test_abrir_o_relatorio_nao_rouba_o_teclado_da_sessao`, `test_busca_por_trecho_ignora_maiusculas_acentuadas_e_nao_usa_curingas`.
+New tests in this preparation: `test_falha_ao_apresentar_nao_deixa_leitor_orfao_que_engole_o_enter`, `test_relatorio_que_aparece_na_espera_mostra_o_prompt_de_novo`, `test_abrir_o_relatorio_nao_rouba_o_teclado_da_sessao`, `test_busca_por_trecho_ignora_maiusculas_acentuadas_e_nao_usa_curingas`.
 
 ### 2.3 CI
 
-Todas as execuções do candidato estão na seção 6. O critério para mudar a versão de `0.3.0.dev0` para `0.3.0` foi a CI verde nas quatro combinações no commit das correções (`389e3cc`).
+All the candidate's runs are in section 6. The criterion to change the version from `0.3.0.dev0` to `0.3.0` was green CI on all four combinations at the fixes commit (`389e3cc`).
 
-## 3. Testes manuais pendentes (Windows com GPU AMD)
+## 3. Pending manual tests (Windows with an AMD GPU)
 
-A CI não tem microfone, alto-falante, GPU, Ollama, whisper.cpp nem as chaves reais. Itens a validar no PC:
+CI has no microphone, speaker, GPU, Ollama, whisper.cpp or the real keys. Items to validate on the PC:
 
-**Básico**
-- [ ] Antes de tudo: `python --version` no `.venv` ativo mostra **3.13.x**. Na homologação de 05/11, o `.venv` estava com outra versão do Python e os pacotes de áudio compilados para a 3.13 não carregavam (`_cffi_backend`). A saída é recriar com `py -3.13 -m venv .venv --clear` e reinstalar.
-- [ ] `nora --verificar` com tudo ok: Ollama, whisper-server, voz principal e reserva, chaves e conexões de ChatGPT e Claude, notas, auto-melhoria.
-- [ ] `nora ouvir`: ativação por "Nora", transcrição, resposta falada; digitar com o microfone ligado.
+**Basics**
+- [ ] First of all: `python --version` in the active `.venv` shows **3.13.x**. In the 05/11 acceptance, the `.venv` was on another Python version and the audio packages compiled for 3.13 did not load (`_cffi_backend`). The fix is to recreate it with `py -3.13 -m venv .venv --clear` and reinstall.
+- [ ] `nora --verificar` with everything ok: Ollama, whisper-server, main and fallback voice, ChatGPT and Claude keys and connections, notes, self-improvement.
+- [ ] `nora ouvir`: activation by "Nora", transcription, spoken answer; typing with the microphone on.
 
-**Regressão do Enter (prioridade)**
-- [ ] `nora falar` com um relatório não mostrado (rode antes `nora melhorias fechar-dia` e feche a Nora): ao abrir, o relatório abre **minimizado** na barra de tarefas e o **primeiro Enter** já começa a gravar.
-- [ ] `nora falar`: dez ciclos seguidos de Enter para falar e Enter para parar, sem nenhum Enter perdido.
-- [ ] Com `hora_relatorio` a 2 minutos dali, deixe a Nora parada em "[Enter para falar]": o relatório aparece (minimizado, ou o texto na tela), o prompt volta e o Enter seguinte funciona.
-- [ ] O mesmo com `apresentar = "terminal"`, e no `nora conversar` (texto).
-- [ ] Ctrl+C no prompt fecha a Nora normalmente; acentos digitados chegam certos.
+**Enter regression (priority)**
+- [ ] `nora falar` with an unshown report (run `nora melhorias fechar-dia` first and close Nora): on opening, the report opens **minimized** in the taskbar and the **first Enter** already starts recording.
+- [ ] `nora falar`: ten cycles in a row of Enter to speak and Enter to stop, without any lost Enter.
+- [ ] With `hora_relatorio` 2 minutes away, leave Nora idle at "[Enter para falar]": the report appears (minimized, or the text on screen), the prompt comes back and the next Enter works.
+- [ ] The same with `apresentar = "terminal"`, and in `nora conversar` (text).
+- [ ] Ctrl+C at the prompt closes Nora normally; typed accents arrive correctly.
 
-**Roteador e voz**
-- [ ] Pergunta difícil ("escreve um script python...") → frase de espera → resposta do ChatGPT; com a chave da OpenAI errada, responde o Claude com o aviso `[cérebro]`.
-- [ ] "use o Claude para explicar fotossíntese" responde pelo Claude e o modo continua automático.
-- [ ] "modo jogo" libera a VRAM (Gerenciador de Tarefas); sem internet, ela avisa e a VRAM continua livre; "sai do modo jogo" pede "sim"; "como sair do modo jogo?" só explica.
-- [ ] "troque para a voz do Piper" e "volta pro ElevenLabs"; "o Piper é melhor que o Kokoro?" não troca.
+**Router and voice**
+- [ ] Hard question ("escreve um script python...") → holding phrase → ChatGPT answer; with a wrong OpenAI key, Claude answers with the `[cérebro]` notice.
+- [ ] "use o Claude para explicar fotossíntese" answers through Claude and the mode stays automatic.
+- [ ] "modo jogo" frees the VRAM (Task Manager); without internet, she warns and the VRAM stays free; "sai do modo jogo" asks for "sim"; "como sair do modo jogo?" only explains.
+- [ ] "troque para a voz do Piper" and "volta pro ElevenLabs"; "o Piper é melhor que o Kokoro?" does not switch.
 
-**Memória**
-- [ ] "esquece que eu ..." e depois "apaga de vez ..." → "sim, pode apagar"; "não" cancela.
-- [ ] `nora notas ler` e uma pergunta sobre uma nota.
-- [ ] Ctrl+C enquanto ela pensa → `nora pendencias` mostra a pergunta na hora → "termina a resposta que ficou pela metade".
+**Memory**
+- [ ] "esquece que eu ..." and then "apaga de vez ..." → "sim, pode apagar"; "não" cancels.
+- [ ] `nora notas ler` and a question about a note.
+- [ ] Ctrl+C while she thinks → `nora pendencias` shows the question immediately → "termina a resposta que ficou pela metade".
 
-**Auto-melhoria**
-- [ ] A notificação do Windows aparece e o clique abre o relatório. O script de PowerShell nunca rodou num Windows real.
-- [ ] O relatório em `data/auto_melhoria/relatorios/` não tem o texto das perguntas.
-- [ ] Calibrar com o bge-m3 e a GPU reais os limites `TROCA_ESQUECIDA` (0,6) e `latencia_*_ms`.
+**Self-improvement**
+- [ ] The Windows notification appears and clicking opens the report. The PowerShell script has never run on a real Windows.
+- [ ] The report in `data/auto_melhoria/relatorios/` does not have the text of the questions.
+- [ ] Calibrate with the real bge-m3 and GPU the `TROCA_ESQUECIDA` (0.6) and `latencia_*_ms` limits.
 
-## 4. Riscos residuais
+## 4. Residual risks
 
-| Risco | Impacto | Mitigação |
+| Risk | Impact | Mitigation |
 |---|---|---|
-| Alguns programas ignoram o "abrir minimizado e sem foco" (ex.: um editor que já está aberto e traz a própria janela para frente) | O Enter pode ir para o editor, como antes | Validar no PC; se acontecer, usar `[auto_melhoria] apresentar = "terminal"` |
-| A notificação do Windows (PowerShell + WinRT) não foi testada em Windows real | A notificação pode não aparecer | A falha fica registrada e o relatório aparece de qualquer forma na sessão |
-| Limites calibrados com vetores de teste (`TROCA_ESQUECIDA`, latências) | "Esquecer" pode esconder trechos demais ou de menos; propostas de lentidão podem sair demais ou de menos | Ajustáveis; `nora memoria apagar` mostra antes o que sai |
-| A triagem do roteador é por palavras-chave | Algumas perguntas vão para o lugar errado | Segunda chance, comandos e a proposta automática de `rota_suspeita`; o classificador com confiança fica para uma próxima versão |
-| O diagnóstico da auto-melhoria é por regras | Propostas genéricas por categoria | Decisão sempre humana; a pesquisa (P3) é opcional e futura |
-| A leitura do teclado em thread é nova no `nora falar` | Comportamento de console varia entre terminais do Windows | Testes de regressão e o roteiro manual acima (seção 3) |
+| Some programs ignore "open minimized and without focus" (e.g. an editor that is already open and brings its own window to the front) | The Enter may go to the editor, as before | Validate on the PC; if it happens, use `[auto_melhoria] apresentar = "terminal"` |
+| The Windows notification (PowerShell + WinRT) was not tested on a real Windows | The notification may not appear | The failure is recorded and the report appears in the session anyway |
+| Limits calibrated with test vectors (`TROCA_ESQUECIDA`, latencies) | "Forget" may hide too many or too few passages; slowness proposals may come out too often or too rarely | Adjustable; `nora memoria apagar` shows beforehand what goes |
+| The router's triage is keyword-based | Some questions go to the wrong place | Second chance, commands and the automatic `rota_suspeita` proposal; the classifier with confidence is left for a next version |
+| The self-improvement diagnosis is rule-based | Generic proposals per category | The decision is always human; research (P3) is optional and future |
+| Reading the keyboard on a thread is new in `nora falar` | Console behavior varies between Windows terminals | Regression tests and the manual script above (section 3) |
 
-## 5. Homologação final e publicação (com autorização)
+## 5. Final acceptance and publishing (with authorization)
 
-1. **Baixar o candidato** no PC (com a Nora fechada):
+1. **Download the candidate** on the PC (with Nora closed):
    ```bash
    cd B:\Nora
    ```
@@ -163,28 +163,28 @@ A CI não tem microfone, alto-falante, GPU, Ollama, whisper.cpp nem as chaves re
    ```bash
    B:\Nora\.venv\Scripts\python.exe -m pip install -e ".[voz,memoria,nuvem]"
    ```
-2. **Fazer os testes manuais** da seção 3 e anotar o resultado de cada item. Se algum falhar, o release para e a correção entra no `Pull_code`.
-3. **Revisar o Pull Request** `Pull_code` → `main` e conferir a CI verde no último commit.
-4. **Autorizar** (o mantenedor): merge do PR; tag `v0.3.0` no commit do merge na `main`; release no GitHub com as notas da seção 1.
-5. **Depois do release:** criar o `0.3.1.dev0` (ou começar a `0.4.0.dev0`) no branch de desenvolvimento.
+2. **Run the manual tests** in section 3 and note the result of each item. If any fails, the release stops and the fix goes into `Pull_code`.
+3. **Review the Pull Request** `Pull_code` → `main` and check green CI on the last commit.
+4. **Authorize** (the maintainer): merge the PR; tag `v0.3.0` on the merge commit in `main`; GitHub release with the notes from section 1.
+5. **After the release:** create `0.3.1.dev0` (or start `0.4.0.dev0`) on the development branch.
 
-## 6. Registro da CI
+## 6. CI record
 
-| Commit | Execução | Resultado |
+| Commit | Run | Result |
 |---|---|---|
-| `389e3cc` (correções do Enter e da busca) | [42087432996](https://github.com/Gabitoprof/Nora/actions/runs/42087432996) | Verde: Windows 3.11, Windows 3.13, Ubuntu 3.11, Ubuntu 3.13 (Ruff, pytest, `nora --verificar`) |
-| `df72267` (mensagem do áudio que não carrega) | [42110839485](https://github.com/Gabitoprof/Nora/actions/runs/42110839485) (push) e [42110850121](https://github.com/Gabitoprof/Nora/actions/runs/42110850121) (PR #5) | Verde nas quatro combinações |
+| `389e3cc` (Enter and search fixes) | [42087432996](https://github.com/Gabitoprof/Nora/actions/runs/42087432996) | Green: Windows 3.11, Windows 3.13, Ubuntu 3.11, Ubuntu 3.13 (Ruff, pytest, `nora --verificar`) |
+| `df72267` (message for audio that does not load) | [42110839485](https://github.com/Gabitoprof/Nora/actions/runs/42110839485) (push) and [42110850121](https://github.com/Gabitoprof/Nora/actions/runs/42110850121) (PR #5) | Green on all four combinations |
 
-## 7. Homologação realizada e decisão de release
+## 7. Acceptance performed and release decision
 
-Feita pelo mantenedor no Windows com GPU AMD em 05/11/2026:
+Done by the maintainer on Windows with an AMD GPU on 05/11/2026:
 
-- `nora --verificar` com a versão `0.3.0`. Encontrado e resolvido: o `.venv` estava com outra versão do Python; ele foi recriado em 3.13 e a mensagem do áudio passou a mostrar a causa (`df72267`).
-- **Regressão do Enter, aprovada:** com a auto-melhoria ligada, o relatório abriu na entrada do `nora falar`, o primeiro Enter começou a gravar e o segundo parou. O prompt voltou depois do erro do whisper-server, que estava fechado.
-- **Conversa por voz completa** com o whisper-server aberto: gravação, transcrição, resposta falada e prompt de volta.
+- `nora --verificar` with version `0.3.0`. Found and resolved: the `.venv` was on another Python version; it was recreated on 3.13 and the audio message started showing the cause (`df72267`).
+- **Enter regression, approved:** with self-improvement on, the report opened at the start of `nora falar`, the first Enter started recording and the second stopped it. The prompt came back after the whisper-server error, since it was closed.
+- **Full voice conversation** with the whisper-server open: recording, transcription, spoken answer and prompt back.
 
-**Decisão:** o mantenedor autorizou fechar a v0.3.0 com os demais itens da seção 3 (dez ciclos seguidos, relatório durante a espera, roteador, modo jogo, memória e notificação) para acompanhamento no uso. Eles continuam como pendências de validação.
+**Decision:** the maintainer authorized closing v0.3.0 with the other section 3 items (ten cycles in a row, report during the wait, router, game mode, memory and notification) to be followed up in use. They remain as pending validation items.
 
-**Para a `v0.3.1`, observado na homologação:**
-- **Voz:** a primeira frase curta é sintetizada sozinha, e a troca para o pedido seguinte muda o tom e cria uma pausa no ElevenLabs v3. Plano: juntar a primeira frase curta com a seguinte e testar continuidade (`previous_text`/`next_text`) e semente fixa.
-- **Ouvido:** o Whisper `small` erra fala menos clara. Plano: `large-v3-turbo` quantizado pelo Vulkan e vocabulário como dica também no `nora falar`.
+**For `v0.3.1`, observed during acceptance:**
+- **Voice:** the first short sentence is synthesized alone, and the switch to the next request changes the tone and creates a pause on ElevenLabs v3. Plan: join the first short sentence with the next one and test continuity (`previous_text`/`next_text`) and a fixed seed.
+- **Ear:** the Whisper `small` model gets less clear speech wrong. Plan: quantized `large-v3-turbo` through Vulkan and vocabulary as a hint also in `nora falar`.
