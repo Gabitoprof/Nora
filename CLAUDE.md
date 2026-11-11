@@ -1,54 +1,56 @@
 # CLAUDE.md
 
-Regras do projeto Nora para o Claude Code. Detalhes em `PROJETO_ASSISTENTE_IA.md`.
+Nora project rules for Claude Code. Details in `PROJETO_ASSISTENTE_IA.md`.
 
-## O que é
+## What it is
 
-Assistente de IA pessoal por voz em tempo real, local primeiro, com memória que evolui. Desenvolvido por etapas (`v0.0.0` → `v1.0.0`), cada uma uma versão funcional. Repositório público só para consulta, com todos os direitos reservados (até a v0.3.0, MIT); pensado para comercialização, e o que for aberto sai num repositório separado.
+A personal real-time voice AI assistant, local first, with a memory that evolves. Built in stages (`v0.0.0` → `v1.0.0`), each one a working version. The repository is public for reference only, all rights reserved (MIT up to v0.3.0); it is meant to be sold, and anything opened up goes to a separate repository.
 
-## Idioma
+## Language
 
-- Documentação, mensagens ao usuário e nomes no código em **português (pt-BR)**.
-- Commits em inglês, no padrão **Conventional Commits** (`feat:`, `fix:`, `docs:`...).
+- **Documentation and code comments/docstrings in English.**
+- **Everything the user sees or hears stays in Portuguese (pt-BR):** Nora's speech and persona, messages, CLI help, voice commands, HUD text, config keys and the generated Second Brain notes.
+- **Names in the code** (modules, functions, classes, variables, files) stay in **pt-BR**; do not rename them for translation.
+- Commits in English, following **Conventional Commits** (`feat:`, `fix:`, `docs:`...).
 
-## Arquitetura (seção 2 do documento)
+## Architecture (section 2 of the document)
 
-- Pipeline de voz, tudo em streaming: wake word (openWakeWord) → VAD (Silero) → STT (whisper.cpp com Vulkan) → LLM → TTS (Piper), com barge-in. Meta: menos de 1 s (MVP: menos de 2 s).
-- Cérebro híbrido: conversa no modelo **local** (Ollama, `keep_alive` para liberar VRAM); tarefas pesadas na **API** (Claude), com frase de espera e a mesma voz. Modo jogo tira o modelo da VRAM.
-- Memória: **SQLite + sqlite-vec** em `data/` (histórico bruto, memória curada, conhecimento). Histórico guardado desde o primeiro dia.
-- Toda ferramenta segue o padrão **MCP** (`mcp_servers/`). Orquestrador = persona; especialistas são ferramentas.
-- HUD web em `hud/` (TypeScript). Componentes separados, comunicando pela rede local (modo distribuído na v0.8.0).
+- Voice pipeline, all streaming: wake word (openWakeWord) → VAD (Silero) → STT (whisper.cpp with Vulkan) → LLM → TTS (Piper), with barge-in. Target: under 1 s (MVP: under 2 s).
+- Hybrid brain: conversation on the **local** model (Ollama, `keep_alive` to free VRAM); heavy tasks on the **API** (Claude), with a holding phrase and the same voice. Game mode unloads the model from VRAM.
+- Memory: **SQLite + sqlite-vec** in `data/` (raw history, curated memory, knowledge). History kept from day one.
+- Every tool follows the **MCP** standard (`mcp_servers/`). Orchestrator = persona; specialists are tools.
+- Web HUD in `hud/` (TypeScript). Separate components talking over the local network (distributed mode in v0.8.0).
 
-## Hardware alvo (seção 3)
+## Target hardware (section 3)
 
-- GPU **AMD RX 9060 XT 16 GB** (RDNA 4) no **Windows**: **evitar ferramentas só-CUDA**; usar Vulkan (ROCm no Linux). Backends sempre trocáveis (Vulkan, ROCm, CUDA, CPU).
-- VRAM: LLM ~9–10 GB + Whisper ~1–2 GB + folga.
+- **AMD RX 9060 XT 16 GB** GPU (RDNA 4) on **Windows**: **avoid CUDA-only tools**; use Vulkan (ROCm on Linux). Backends always swappable (Vulkan, ROCm, CUDA, CPU).
+- VRAM: LLM ~9–10 GB + Whisper ~1–2 GB + headroom.
 
-## Repositório público (seção 6), obrigatório
+## Public repository (section 6), mandatory
 
-- **Nada pessoal no repositório.** Chaves só em `.env`; config pessoal só em `config/local.toml`; `data/` nunca vai para o Git.
-- **Não usar** "Jarvis", Marvel ou referências visuais deles em nome, logo ou divulgação.
-- Nome do assistente sempre vindo da config.
-- Conferir a licença de cada modelo e voz; preferir redistribuíveis ou baixar à parte via script. Código AGPL não entra no repositório.
-- **`.env.example` acompanha o `.env`:** toda variável nova (chave, endereço, opção) entra no `.env.example` no mesmo commit, com um comentário do que é e onde conseguir, mas **sem valor pessoal** (chaves sempre vazias). O `tests/test_env_exemplo.py` confere que toda variável lida pelo código está lá e que nenhuma chave foi preenchida.
-- Toda dependência, programa, modelo ou voz nova entra em `docs/LICENCAS.md` no mesmo commit, com a licença conferida na fonte (o `tests/test_licencas.py` confere as dependências do `pyproject.toml`).
-- Voz original: não imitar voz de ator ou personagem real.
+- **Nothing personal in the repository.** Keys only in `.env`; personal config only in `config/local.toml`; `data/` never goes to Git.
+- **Do not use** "Jarvis", Marvel or their visual references in name, logo or promotion.
+- The assistant's name always comes from the config.
+- Check the license of every model and voice; prefer redistributable ones or download them separately via script. AGPL code does not go into the repository.
+- **`.env.example` follows `.env`:** every new variable (key, address, option) goes into `.env.example` in the same commit, with a comment on what it is and where to get it, but **no personal value** (keys always empty). `tests/test_env_exemplo.py` checks that every variable the code reads is there and that no key is filled in.
+- Every new dependency, program, model or voice goes into `docs/LICENCAS.md` in the same commit, with the license checked at the source (`tests/test_licencas.py` checks the `pyproject.toml` dependencies).
+- Original voice: do not imitate the voice of a real actor or character.
 
-## Fluxo de trabalho
+## Workflow
 
-- Versões `vMAIOR.MENOR.CORREÇÃO`: cada etapa sobe o MENOR, ajustes sobem a CORREÇÃO. Tag no Git e entrada no `CHANGELOG.md` por versão.
-- Ao concluir uma etapa: atualizar o status em `docs/MAPA_MENTAL.md` **e** `docs/MAPA_MENTAL.canvas` (⬜ → 🔄 → ✅).
-- Ao concluir uma etapa, **revisar e reescrever toda a documentação** para o estado novo, não só o CHANGELOG: `README.md` (status, o que ela faz, começando, comandos), roadmap da seção 5 do `PROJETO_ASSISTENTE_IA.md` (status e entregas reais), `docs/OBJETIVO.md`, o mapa mental (nós novos e status), os guias em `docs/` e o banco de ideias (o que virou realidade). Nada de texto que descreva uma versão antiga como atual.
-- Links em Markdown padrão (não `[[wikilinks]]`), para funcionar no GitHub e no Obsidian.
-- Antes de commitar: `ruff format .`, `ruff check .` e `pytest`.
+- Versions `vMAJOR.MINOR.PATCH`: each stage bumps MINOR, fixes bump PATCH. Git tag and a `CHANGELOG.md` entry per version.
+- When a stage is done: update the status in `docs/MAPA_MENTAL.md` **and** `docs/MAPA_MENTAL.canvas` (⬜ → 🔄 → ✅).
+- When a stage is done, **review and rewrite all documentation** for the new state, not only the CHANGELOG: `README.md` (status, what it does, getting started, commands), the section 5 roadmap of `PROJETO_ASSISTENTE_IA.md` (status and actual deliveries), `docs/OBJETIVO.md`, the mind map (new nodes and status), the guides in `docs/` and the idea bank (what became real). No text describing an old version as current.
+- Standard Markdown links (not `[[wikilinks]]`), so they work on GitHub and in Obsidian.
+- Before committing: `ruff format .`, `ruff check .` and `pytest`.
 
-## Homologação integrada
+## Integrated acceptance testing
 
-Seguir a estratégia e manter o [checklist cumulativo por módulo](docs/HOMOLOGACAO.md).
-Criar e executar testes de unidade, integração e regressão para as alterações, preservando
-os existentes. PR pronto exige CI verde em Windows e Linux no commit avaliado; isso não
-significa homologação funcional completa. A homologação final integrada será no Windows
-com GPU AMD ao fim da implementação planejada. Durante o desenvolvimento, testes manuais
-pontuais só quando indispensáveis para hardware ou integração externa. Não pedir repetição
-de testes manuais aprovados salvo impacto direto no componente; preservar suas evidências.
-Integração à `main`, merge, tags e publicação continuam sujeitos à autorização explícita.
+Follow the strategy and keep the [cumulative per-module checklist](docs/HOMOLOGACAO.md).
+Write and run unit, integration and regression tests for the changes, keeping the existing
+ones. A ready PR needs green CI on Windows and Linux on the evaluated commit; that does not
+mean full functional acceptance. The final integrated acceptance will be on Windows with the
+AMD GPU at the end of the planned implementation. During development, one-off manual tests
+only when essential for hardware or external integration. Do not ask to repeat approved
+manual tests unless the component is directly affected; keep their evidence.
+Merging into `main`, merges, tags and publishing still require explicit authorization.
