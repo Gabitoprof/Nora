@@ -38,7 +38,7 @@ def picotar(texto, tamanho=3):
     return [texto[i : i + tamanho] for i in range(0, len(texto), tamanho)]
 
 
-# --- frases -----------------------------------------------------------------------------------
+# --- sentences --------------------------------------------------------------------------------
 
 
 def test_separa_frases_conforme_o_texto_chega():
@@ -68,7 +68,7 @@ def test_numero_decimal_e_quebra_de_linha():
     assert separador.finalizar() == ["Amanhã eu confiro de novo para você"]
 
 
-# --- áudio ------------------------------------------------------------------------------------
+# --- audio ------------------------------------------------------------------------------------
 
 
 def test_wav_ida_e_volta():
@@ -77,7 +77,7 @@ def test_wav_ida_e_volta():
     assert duracao_wav(UM_SEGUNDO) == pytest.approx(1.0)
 
 
-# --- ouvido -----------------------------------------------------------------------------------
+# --- ear --------------------------------------------------------------------------------------
 
 
 def test_ouvido_envia_o_wav_e_le_o_texto(criar_raiz):
@@ -116,7 +116,7 @@ def test_ouvido_fora_do_ar(criar_raiz):
         OuvidoWhisper(config_com(criar_raiz), timeout=2).transcrever(UM_SEGUNDO)
 
 
-# --- voz --------------------------------------------------------------------------------------
+# --- voice ------------------------------------------------------------------------------------
 
 
 def test_voz_pede_o_audio_da_frase(criar_raiz):
@@ -170,7 +170,7 @@ def test_voz_fala_o_nome_com_a_pronuncia(criar_raiz):
         criar_voz(config).sintetizar("Oi, eu sou a Nora.")
         criar_voz(config_com(criar_raiz, piper=piper.url)).sintetizar("Oi, eu sou a Nora.")
     assert json.loads(piper.pedidos[0][2])["text"] == "Oi, eu sou a Nóra."
-    assert json.loads(piper.pedidos[1][2])["text"] == "Oi, eu sou a Nora."  # sem pronúncia
+    assert json.loads(piper.pedidos[1][2])["text"] == "Oi, eu sou a Nora."  # no pronunciation
 
 
 def test_kokoro_envia_voz_e_velocidade(criar_raiz):
@@ -240,13 +240,13 @@ def test_voz_reserva_quando_a_principal_falha(criar_raiz):
         import nora.voz
 
         original = nora.voz.ELEVENLABS_API
-        nora.voz.ELEVENLABS_API = "http://127.0.0.1:9/v1/text-to-speech"  # fora do ar
+        nora.voz.ELEVENLABS_API = "http://127.0.0.1:9/v1/text-to-speech"  # down
         try:
             assert voz.sintetizar("Oi!") == UM_SEGUNDO
         finally:
             nora.voz.ELEVENLABS_API = original
     assert "Usei a voz reserva" in voz.aviso
-    assert "Ele está aberto?" in voz.aviso  # o motivo vem no aviso
+    assert "Ele está aberto?" in voz.aviso  # the reason comes in the notice
 
 
 def test_sem_reserva_ou_reserva_igual_a_principal(criar_raiz):
@@ -277,7 +277,7 @@ def test_verificar_mostra_os_servicos_de_voz(criar_raiz):
     assert any("ElevenLabs" in linha and "falta ELEVENLABS_API_KEY" in linha for linha in nuvem)
 
 
-# --- conversa por voz -------------------------------------------------------------------------
+# --- voice conversation -----------------------------------------------------------------------
 
 
 def test_conversa_por_voz_de_ponta_a_ponta(criar_raiz):
@@ -304,10 +304,10 @@ def test_conversa_por_voz_de_ponta_a_ponta(criar_raiz):
     assert "Você: Qual é a capital do Brasil?" in texto
     assert f"Nora: {resposta}" in texto
     assert "começou a falar em" in texto
-    # as frases saem em ordem; as que já esperavam podem ir juntas num pedido só à voz
+    # sentences come out in order; those already waiting may go together in one voice request
     falado = " ".join(json.loads(audio)["text"] for audio in tocados)
     assert falado == f"{resposta} {resposta}"
-    assert len(whisper.pedidos) == 1  # a segunda pergunta foi digitada
+    assert len(whisper.pedidos) == 1  # the second question was typed
 
 
 def test_conversa_por_voz_segue_sem_os_servicos(criar_raiz):
@@ -362,7 +362,7 @@ def test_so_teclado_responde_falando_sem_microfone(criar_raiz):
             so_teclado=True,
         )
     assert "digite e ela responde falando" in saida.getvalue()
-    # "Oi!" é curto demais para ir sozinho e segue junto com a frase seguinte
+    # "Oi!" is too short to go alone and goes along with the next sentence
     assert [json.loads(a)["text"] for a in tocados] == ["Oi! Tudo bem?"]
 
 

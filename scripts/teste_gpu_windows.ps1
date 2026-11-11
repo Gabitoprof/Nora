@@ -1,7 +1,7 @@
-﻿# Teste de compatibilidade da GPU AMD com o Ollama (preparação da v0.1.0).
-# Uso, no PowerShell, dentro da pasta do repositório:
+﻿# AMD GPU compatibility test with Ollama (v0.1.0 preparation).
+# Usage, in PowerShell, inside the repository folder:
 #   powershell -ExecutionPolicy Bypass -File scripts\teste_gpu_windows.ps1
-# O resultado também é salvo em data\teste-gpu-<data>.txt (fora do Git).
+# The result is also saved to data\teste-gpu-<data>.txt (outside Git).
 
 param(
     [string]$Modelo = "qwen3.5:9b",

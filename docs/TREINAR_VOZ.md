@@ -1,110 +1,110 @@
-# Treinar uma voz própria (ComfyUI → Piper)
+# Training your own voice (ComfyUI → Piper)
 
-A ideia: usar o **ComfyUI para criar** a voz (pesado, lento, mas com a qualidade que você escolheu) e o **Piper para falar** no dia a dia (leve, roda no processador, responde em menos de meio segundo e não disputa a GPU com o cérebro).
+The idea: use **ComfyUI to create** the voice (heavy, slow, but with the quality you chose) and **Piper to speak** day to day (light, runs on the CPU, answers in under half a second and does not compete for the GPU with the brain).
 
 ```
-ComfyUI (sua voz)  ──►  500 a 1.000 frases faladas  ──►  treino do Piper (Colab, grátis)  ──►  voz leve na Nora
-   nora voz gerar-dataset                                    arquivo .onnx              motor = "piper"
+ComfyUI (your voice)  ──►  500 to 1,000 spoken sentences  ──►  Piper training (Colab, free)  ──►  light voice in Nora
+   nora voz gerar-dataset                                         .onnx file                 motor = "piper"
 ```
 
-## 0. Antes de começar: licença e direitos
+## 0. Before you start: license and rights
 
-- **Confira a licença do modelo de voz usado no ComfyUI** (na página do modelo): ela precisa permitir usar o áudio gerado para treinar outro modelo. Modelos só para uso não comercial limitam o uso da voz final do mesmo jeito.
-- A voz tem que ser **criada** (design de voz) ou de alguém que **autorizou**. Não use áudio do ElevenLabs para treinar: os termos deles não permitem.
-- **A voz treinada nunca fica mais natural do que a de origem.** O Piper copia o que recebe, inclusive o sotaque. Modelos de clonagem treinados sobretudo em chinês e inglês (ex.: Qwen3-TTS) falam português com sotaque estrangeiro, e a voz final herda isso. Antes de gerar centenas de frases, ouça umas 10 da origem com atenção; para o resultado mais natural, grave uma voz real (com autorização).
+- **Check the license of the voice model used in ComfyUI** (on the model page): it must allow using the generated audio to train another model. Non-commercial-only models limit the use of the final voice the same way.
+- The voice must be **created** (voice design) or belong to someone who **authorized** it. Do not use ElevenLabs audio for training: their terms do not allow it.
+- **The trained voice is never more natural than the source.** Piper copies what it receives, accent included. Cloning models trained mostly on Chinese and English (e.g. Qwen3-TTS) speak Portuguese with a foreign accent, and the final voice inherits it. Before generating hundreds of sentences, listen carefully to about 10 from the source; for the most natural result, record a real voice (with permission).
 
-## 1. Deixar a voz pronta no ComfyUI
+## 1. Get the voice ready in ComfyUI
 
-Siga [VOZ.md](VOZ.md#usar-uma-voz-feita-no-comfyui): fluxo exportado em formato API como `config/voz_comfyui.json`, com `{{texto}}` (ou `[voz.comfyui] campo`), e `[voz] motor = "comfyui"` no `config/local.toml`. Teste com `nora voz salvar "teste" --ouvir`.
+Follow [VOZ.md](VOZ.md#using-a-voice-made-in-comfyui): flow exported in API format as `config/voz_comfyui.json`, with `{{texto}}` (or `[voz.comfyui] campo`), and `[voz] motor = "comfyui"` in `config/local.toml`. Test with `nora voz salvar "teste" --ouvir`.
 
-**Dica:** fixe a semente (`seed`) no nó de voz. Com semente fixa, todas as frases saem com a mesma voz; com semente aleatória, a voz pode variar de uma frase para outra, e o treino aprende uma voz "média".
+**Tip:** fix the seed (`seed`) in the voice node. With a fixed seed, every sentence comes out with the same voice; with a random seed, the voice may vary from one sentence to the next, and training learns an "average" voice.
 
-## 2. Gerar o conjunto de treino
+## 2. Generate the training set
 
 ```powershell
 nora voz gerar-dataset --nome minha_voz
 ```
 
-- Usa a lista de frases do projeto (`recursos/frases_pt.txt`, 204 frases variadas, com perguntas, sons nasais e saudações curtas).
-- Para chegar a **500 a 1.000 frases**, use também um texto de **domínio público** (ex.: um livro de Machado de Assis do portal Domínio Público), que a Nora corta em frases sozinha:
+- Uses the project's sentence list (`recursos/frases_pt.txt`, 204 varied sentences, with questions, nasal sounds and short greetings).
+- To reach **500 to 1,000 sentences**, also use a **public-domain** text (e.g. a Machado de Assis book from the Domínio Público portal), which Nora splits into sentences on her own:
 
   ```powershell
   nora voz gerar-dataset --nome minha_voz --texto "C:\caminho\para\livro.txt" --limite 800
   ```
 
-- Usa **só a voz principal** (nunca a reserva), para não misturar vozes no conjunto.
-- **Pode interromper** (Ctrl+C, ou o ComfyUI fechou): rodando de novo, ela continua de onde parou.
-- Resultado em `data\dataset_voz\minha_voz\`: a pasta `wavs\` (0001.wav, 0002.wav... mono, 16 bits, 22.050 Hz) e o `metadata.csv` (`0001|texto da frase`), o formato que o treino do Piper usa.
+- Uses **only the main voice** (never the fallback), so voices are not mixed in the set.
+- **You can interrupt it** (Ctrl+C, or ComfyUI closed): running it again, it resumes where it stopped.
+- Result in `data\dataset_voz\minha_voz\`: the `wavs\` folder (0001.wav, 0002.wav... mono, 16-bit, 22,050 Hz) and `metadata.csv` (`0001|sentence text`), the format Piper training uses.
 
-Quanto tempo leva: o ComfyUI gasta alguns segundos por frase; 800 frases podem levar algumas horas. Deixe rodando e feche outros programas pesados (a GPU fica toda para o ComfyUI; o Ollama nem precisa estar aberto nesta etapa).
+How long it takes: ComfyUI spends a few seconds per sentence; 800 sentences may take a few hours. Leave it running and close other heavy programs (the GPU is all ComfyUI's; Ollama does not even need to be open at this stage).
 
-## 3. Conferir o conjunto (10 minutos que valem a pena)
+## 3. Check the set (10 minutes well spent)
 
-Áudio ruim no treino vira voz ruim depois. A Nora ajuda a achar os ruins: com o **whisper-server aberto** (o mesmo de `scripts\iniciar_voz_windows.ps1`), rode
+Bad audio in training becomes a bad voice later. Nora helps find the bad ones: with the **whisper-server open** (the same one from `scripts\iniciar_voz_windows.ps1`), run
 
 ```powershell
 nora voz conferir-dataset --nome minha_voz
 ```
 
-O Whisper ouve cada frase e compara com o texto esperado, e o áudio é medido. Cada frase ganha uma nota:
+Whisper listens to each sentence and compares it with the expected text, and the audio is measured. Each sentence gets a grade:
 
-| Nota | Quando |
+| Grade | When |
 |---|---|
-| **ruim** | palavras trocadas, faltando ou sobrando; nenhuma fala; curta demais; ritmo muito fora do normal (cortou ou arrastou) |
-| **conferir** | alguma palavra diferente ou números (o Whisper escreve "28" onde o texto diz "vinte e oito"); ritmo um pouco fora; silêncio de mais de 1 s no começo ou no fim; pausa longa no meio; volume baixo; áudio estourado |
-| **boa** | nada de estranho |
+| **ruim** (bad) | words swapped, missing or extra; no speech; too short; pace far off normal (cut or dragged) |
+| **conferir** (check) | some different word or numbers (Whisper writes "28" where the text says "vinte e oito"); pace slightly off; more than 1 s of silence at the start or end; long pause in the middle; low volume; clipped audio |
+| **boa** (good) | nothing odd |
 
-O resultado aparece na tela (pior primeiro, com o que era esperado e o que o Whisper ouviu) e numa planilha, `conferencia.csv`, dentro da pasta do conjunto (abre no Excel).
+The result shows on screen (worst first, with what was expected and what Whisper heard) and in a spreadsheet, `conferencia.csv`, inside the set's folder (opens in Excel).
 
-- **Ouça as "conferir"** e tire as que estiverem ruins: `nora voz conferir-dataset --nome minha_voz --tirar 0079 0088` (vão para `descartadas\`, saem do `metadata.csv` e não são refeitas).
-- **Tire as ruins de uma vez:** `nora voz conferir-dataset --nome minha_voz --descartar`. Elas vão para a pasta `descartadas\`, saem do `metadata.csv` e o `gerar-dataset` não as refaz (com a semente fixa, sairiam iguais).
-- **O que ele não pega:** sotaque e pronúncia. O Whisper entende "houje" como "hoje", então ouça umas 20 frases salteadas também. Palavras que saem erradas sempre vão para `[voz.pronuncias]` (veja [VOZ.md](VOZ.md)), antes de gerar o conjunto.
+- **Listen to the "conferir" ones** and remove the bad ones: `nora voz conferir-dataset --nome minha_voz --tirar 0079 0088` (they go to `descartadas\`, leave `metadata.csv` and are not regenerated).
+- **Remove the bad ones at once:** `nora voz conferir-dataset --nome minha_voz --descartar`. They go to the `descartadas\` folder, leave `metadata.csv` and `gerar-dataset` does not regenerate them (with a fixed seed, they would come out the same).
+- **What it does not catch:** accent and pronunciation. Whisper understands "houje" as "hoje", so also listen to about 20 random sentences. Words that always come out wrong go into `[voz.pronuncias]` (see [VOZ.md](VOZ.md)), before generating the set.
 
-## 4. Treinar no Kaggle (grátis, recomendado)
+## 4. Train on Kaggle (free, recommended)
 
-O treino precisa de GPU NVIDIA. O **Kaggle** empresta uma de graça por **30 horas por semana** e roda o treino **em segundo plano**, por até 12 horas, mesmo com o navegador e o PC desligados. O notebook está em [`scripts/treinar_piper_kaggle.ipynb`](../scripts/treinar_piper_kaggle.ipynb).
+Training needs an NVIDIA GPU. **Kaggle** lends one for free for **30 hours a week** and runs training **in the background**, for up to 12 hours, even with the browser and the PC off. The notebook is in [`scripts/treinar_piper_kaggle.ipynb`](../scripts/treinar_piper_kaggle.ipynb).
 
-**Uma vez só:** crie uma conta em [kaggle.com](https://www.kaggle.com) e confirme o celular (**Settings → Phone verification**). Sem isso, a GPU e a internet ficam bloqueadas.
+**Only once:** create an account at [kaggle.com](https://www.kaggle.com) and confirm your phone (**Settings → Phone verification**). Without it, the GPU and internet are blocked.
 
-**Cada treino:**
+**Each training:**
 
-1. **Dataset:** compacte `data\dataset_voz\minha_voz` em `minha_voz.zip`. No Kaggle: **Create → New Dataset**, envie o zip (ele descompacta sozinho) e clique em **Create**.
-2. **Notebook:** **Create → New Notebook → File → Import Notebook** e escolha `scripts\treinar_piper_kaggle.ipynb`.
-3. No painel da direita: **Accelerator** em **GPU P100** (ou **GPU T4 x2**), **Internet** ligada, e em **Add Input** (aba **Your Datasets**) o dataset do passo 1.
-4. Na célula 1, confira `NOME_VOZ` e `MAX_EPOCAS` (padrão 1.000, umas 3 a 4 horas).
-5. **Save Version → Save & Run All (Commit) → Save.** Pode fechar a página.
-6. Volte depois de algumas horas, abra a versão salva, vá na aba **Output** e baixe `pt_BR-minhavoz-medium.onnx`, `pt_BR-minhavoz-medium.onnx.json` e `teste.wav` (uma frase de teste).
+1. **Dataset:** zip `data\dataset_voz\minha_voz` into `minha_voz.zip`. On Kaggle: **Create → New Dataset**, upload the zip (it unzips on its own) and click **Create**.
+2. **Notebook:** **Create → New Notebook → File → Import Notebook** and choose `scripts\treinar_piper_kaggle.ipynb`.
+3. In the right panel: **Accelerator** on **GPU P100** (or **GPU T4 x2**), **Internet** on, and in **Add Input** (**Your Datasets** tab) the dataset from step 1.
+4. In cell 1, check `NOME_VOZ` and `MAX_EPOCAS` (default 1,000, about 3 to 4 hours).
+5. **Save Version → Save & Run All (Commit) → Save.** You can close the page.
+6. Come back after a few hours, open the saved version, go to the **Output** tab and download `pt_BR-minhavoz-medium.onnx`, `pt_BR-minhavoz-medium.onnx.json` and `teste.wav` (a test sentence).
 
-O treino para sozinho antes do limite de 12 horas e ainda exporta a voz. **Para treinar mais**, rode de novo com a saída da versão anterior em **Add Input** e um `MAX_EPOCAS` maior: ele continua do `last.ckpt` dela.
+Training stops on its own before the 12-hour limit and still exports the voice. **To train more**, run it again with the previous version's output in **Add Input** and a larger `MAX_EPOCAS`: it continues from its `last.ckpt`.
 
-## 4b. Ou no Google Colab (grátis)
+## 4b. Or on Google Colab (free)
 
-O Colab também funciona, mas a GPU grátis dura poucas horas por dia, e a aba precisa ficar aberta.
+Colab also works, but the free GPU lasts a few hours a day, and the tab must stay open.
 
 
-O treino precisa de GPU NVIDIA; o Colab empresta uma de graça por algumas horas por dia. O notebook pronto está em [`scripts/treinar_piper_colab.ipynb`](../scripts/treinar_piper_colab.ipynb) e usa o Piper atual ([piper1-gpl](https://github.com/OHF-Voice/piper1-gpl), GPL-3.0, baixado dentro do Colab, nunca no repositório).
+Training needs an NVIDIA GPU; Colab lends one for free for a few hours a day. The ready notebook is in [`scripts/treinar_piper_colab.ipynb`](../scripts/treinar_piper_colab.ipynb) and uses the current Piper ([piper1-gpl](https://github.com/OHF-Voice/piper1-gpl), GPL-3.0, downloaded inside Colab, never in the repository).
 
-1. Compacte a pasta `data\dataset_voz\minha_voz` (com `wavs\` e `metadata.csv`) em `minha_voz.zip` e envie para o Google Drive, numa pasta `Nora` (`Meu Drive/Nora/minha_voz.zip`).
-2. Abra o [Google Colab](https://colab.research.google.com), vá em **Arquivo → Fazer upload de notebook** e escolha `scripts\treinar_piper_colab.ipynb`.
-3. **Ambiente de execução → Alterar o tipo de ambiente de execução → GPU (T4)**.
-4. Na célula 1, ponha em `NOME_VOZ` o nome do conjunto (`minha_voz`). Rode as células em ordem.
+1. Zip the `data\dataset_voz\minha_voz` folder (with `wavs\` and `metadata.csv`) into `minha_voz.zip` and upload it to Google Drive, in a `Nora` folder (`My Drive/Nora/minha_voz.zip`).
+2. Open [Google Colab](https://colab.research.google.com), go to **File → Upload notebook** and choose `scripts\treinar_piper_colab.ipynb`.
+3. **Runtime → Change runtime type → GPU (T4)**.
+4. In cell 1, put the set's name (`minha_voz`) in `NOME_VOZ`. Run the cells in order.
 
-O que o notebook faz:
+What the notebook does:
 
-- Confere o conjunto (áudios em 22.050 Hz, frases sem áudio) e estima o tempo de treino.
-- Parte de uma voz pt-BR "medium" pronta do Piper (`rhasspy/piper-checkpoints`) e faz o **ajuste fino** com as suas frases, por 2.000 épocas (a receita do Piper para menos de 5 h de fala).
-- A cada 5 minutos grava o último ponto do treino em `Meu Drive/Nora/treino_minha_voz/` e mostra `[drive] salvo às HH:MM`: até esse horário, o treino está garantido. **Se o Colab desconectar**, abra de novo e rode as células outra vez: ele continua de onde parou.
-- Na célula 7 exporta para `.onnx` e toca uma frase de teste. Dá para ouvir no meio do treino: pare a célula 6, rode a 7 e depois a 6 de novo.
-- Na célula 8 salva no Drive os dois arquivos da voz: `pt_BR-minhavoz-medium.onnx` e `pt_BR-minhavoz-medium.onnx.json` (o nome perde o "_", porque o Piper usa "_" e "-" para separar idioma, nome e qualidade).
+- Checks the set (audio at 22,050 Hz, sentences without audio) and estimates the training time.
+- Starts from a ready Piper pt-BR "medium" voice (`rhasspy/piper-checkpoints`) and **fine-tunes** it with your sentences, for 2,000 epochs (Piper's recipe for less than 5 h of speech).
+- Every 5 minutes it saves the latest training checkpoint to `My Drive/Nora/treino_minha_voz/` and shows `[drive] salvo às HH:MM`: up to that time, the training is safe. **If Colab disconnects**, open it again and run the cells again: it continues where it stopped.
+- In cell 7 it exports to `.onnx` and plays a test sentence. You can listen mid-training: stop cell 6, run 7 and then 6 again.
+- In cell 8 it saves the two voice files to Drive: `pt_BR-minhavoz-medium.onnx` and `pt_BR-minhavoz-medium.onnx.json` (the name loses the "_", because Piper uses "_" and "-" to separate language, name and quality).
 
-Quanto tempo: com ~10 minutos de fala (as 154 frases da lista), umas 6 a 8 horas na T4, normalmente em duas ou três sessões do Colab grátis. Mais frases deixam a voz melhor, mas cada época fica mais lenta.
+How long: with ~10 minutes of speech (the 154 sentences of the list), about 6 to 8 hours on the T4, usually over two or three free Colab sessions. More sentences make the voice better, but each epoch gets slower.
 
-**Licença:** as vozes base do Piper costumam derivar de dados só para uso não comercial; a voz treinada é para uso pessoal e fica fora do Git (`models/`).
+**License:** Piper's base voices usually derive from non-commercial-only data; the trained voice is for personal use and stays out of Git (`models/`).
 
-## 5. Usar na Nora
+## 5. Use it in Nora
 
-1. Copie `pt_BR-minhavoz-medium.onnx` e `pt_BR-minhavoz-medium.onnx.json` para `B:\Nora\models\piper\`.
-2. No `config\local.toml`:
+1. Copy `pt_BR-minhavoz-medium.onnx` and `pt_BR-minhavoz-medium.onnx.json` to `B:\Nora\models\piper\`.
+2. In `config\local.toml`:
 
    ```toml
    [voz]
@@ -115,6 +115,6 @@ Quanto tempo: com ~10 minutos de fala (as 154 frases da lista), umas 6 a 8 horas
    voz = "pt_BR-minhavoz-medium"
    ```
 
-3. Inicie com `scripts\iniciar_voz_windows.ps1 -Voz piper -VozPiper pt_BR-minhavoz-medium` e teste: `nora voz salvar "Oi! Esta é a minha voz." --ouvir`.
+3. Start with `scripts\iniciar_voz_windows.ps1 -Voz piper -VozPiper pt_BR-minhavoz-medium` and test: `nora voz salvar "Oi! Esta é a minha voz." --ouvir`.
 
-Pronto: a mesma voz que você criou no ComfyUI, agora rápida, local e sem custo.
+Done: the same voice you created in ComfyUI, now fast, local and free.

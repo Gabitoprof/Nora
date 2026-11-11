@@ -1,37 +1,37 @@
-# Objetivo base do projeto
+# Project base goal
 
-> Nome: **Nora**, para o projeto e para o assistente (o nome do assistente é configurável).
-> Detalhes técnicos: [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md) · Visão em mapa: [`MAPA_MENTAL.md`](MAPA_MENTAL.md)
+> Name: **Nora**, for the project and for the assistant (the assistant's name is configurable).
+> Technical details: [`PROJETO_ASSISTENTE_IA.md`](../PROJETO_ASSISTENTE_IA.md) · Map view: [`MAPA_MENTAL.md`](MAPA_MENTAL.md)
 
-## Em uma frase
+## In one sentence
 
-Construir um **assistente de IA pessoal que conversa por voz em tempo real**, com nome, voz e personalidade próprios, que roda principalmente no meu computador, lembra do que conversamos e evolui com o uso.
+Build a **personal AI assistant that talks by voice in real time**, with its own name, voice and personality, that runs mainly on my computer, remembers what we talked about and evolves with use.
 
-## O que ele precisa ser
+## What it needs to be
 
-1. **Uma conversa natural, não um comando de voz.** Eu falo o nome dele, faço uma pergunta e ouço a resposta em menos de 2 segundos (a meta final é menos de 1 s). Posso interromper enquanto ele fala.
-2. **Local primeiro.** A conversa do dia a dia roda no meu PC, sem depender de internet nem pagar por uso. Só as tarefas pesadas vão para modelos externos (como o ChatGPT e o Claude), e a resposta volta com a mesma voz e personalidade.
-3. **Com memória que evolui.** Tudo o que conversamos fica guardado num banco local. Ele aprende meus fatos e preferências, esquece o que eu pedir e reaproveita boas respostas. Com o tempo, depende menos da nuvem, e propõe melhorias para si mesmo, que só entram com a minha aprovação.
-4. **Com iniciativa.** Ele não só responde: fala primeiro quando faz sentido, como num briefing da manhã, num lembrete ou quando percebe que cheguei.
-5. **Capaz de agir.** Por ferramentas no padrão MCP, ele controla o PC, consulta agenda e clima e, no futuro, a casa. Cada nova habilidade entra como um plugin, sem refazer o núcleo.
-6. **Com presença visual.** Uma interface em tela cheia, com um orbe que reage à voz e cartões com o conteúdo da conversa.
-7. **Privado.** Meus dados, memórias e imagens ficam no meu computador. Nada pessoal vai para o repositório.
+1. **A natural conversation, not a voice command.** I say its name, ask a question and hear the answer in under 2 seconds (the final target is under 1 s). I can interrupt it while it speaks.
+2. **Local first.** Everyday conversation runs on my PC, without depending on the internet or paying per use. Only heavy tasks go to external models (like ChatGPT and Claude), and the answer comes back in the same voice and personality.
+3. **With a memory that evolves.** Everything we talk about is kept in a local database. It learns my facts and preferences, forgets what I ask it to and reuses good answers. Over time it depends less on the cloud, and it proposes improvements to itself, which only go in with my approval.
+4. **With initiative.** It does not only answer: it speaks first when it makes sense, as in a morning briefing, a reminder or when it notices I arrived.
+5. **Able to act.** Through tools on the MCP standard, it controls the PC, checks the agenda and the weather and, in the future, the house. Each new skill comes in as a plugin, without rebuilding the core.
+6. **With visual presence.** A full-screen interface, with an orb that reacts to the voice and cards with the conversation content.
+7. **Private.** My data, memories and images stay on my computer. Nothing personal goes to the repository.
 
-## Como vamos chegar lá
+## How we will get there
 
-- **Por etapas**, cada uma entregando uma versão que funciona de verdade (v0.0.0 → v1.0.0).
-- **Documentado no repositório** e acompanhado no mapa mental, que é atualizado a cada etapa.
-- **Pensado para o meu hardware** (GPU AMD RX 9060 XT), mas com peças trocáveis (Vulkan, ROCm, CUDA e CPU) para rodar em outras máquinas.
-- **Open source:** no fim, qualquer pessoa pode instalar e criar o seu próprio assistente, com o nome e a voz que quiser.
+- **In stages**, each delivering a version that really works (v0.0.0 → v1.0.0).
+- **Documented in the repository** and tracked in the mind map, which is updated at every stage.
+- **Designed for my hardware** (AMD RX 9060 XT GPU), but with swappable parts (Vulkan, ROCm, CUDA and CPU) to run on other machines.
+- **Open source:** in the end, anyone can install it and create their own assistant, with whatever name and voice they want.
 
-## O que NÃO é o objetivo (por enquanto)
+## What is NOT the goal (for now)
 
-- Copiar personagens ou marcas existentes: o assistente tem identidade própria.
-- Treinar um modelo do zero: usamos modelos prontos, e a evolução vem da memória e, mais tarde, de ajuste fino (LoRA).
+- Copying existing characters or brands: the assistant has its own identity.
+- Training a model from scratch: we use ready-made models, and the evolution comes from memory and, later, fine-tuning (LoRA).
 
-## Como saber que deu certo (v1.0.0)
+## How to know it worked (v1.0.0)
 
-- Converso por voz com ele todos os dias, de forma fluida, como com uma pessoa.
-- Ele lembra de mim entre uma sessão e outra e toma iniciativa nos momentos certos.
-- Executa tarefas reais por voz.
-- Outra pessoa consegue instalar a partir do GitHub e usar com o seu próprio assistente.
+- I talk to it by voice every day, fluidly, as with a person.
+- It remembers me from one session to the next and takes initiative at the right moments.
+- It performs real tasks by voice.
+- Someone else can install it from GitHub and use it with their own assistant.

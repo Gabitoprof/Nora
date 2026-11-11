@@ -1,7 +1,7 @@
-﻿# Instala o ouvido (whisper.cpp) e as vozes locais (Kokoro e Piper) da Nora no Windows.
-# Uso, no PowerShell, na pasta do repositório e COM O AMBIENTE ATIVADO (.venv\Scripts\activate):
+﻿# Installs Nora's ear (whisper.cpp) and local voices (Kokoro and Piper) on Windows.
+# Usage, in PowerShell, in the repository folder and WITH THE ENVIRONMENT ACTIVATED (.venv\Scripts\activate):
 #   powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1
-# Tudo vai para ferramentas\ e models\, que ficam fora do Git.
+# Everything goes to ferramentas\ and models\, which stay outside Git.
 
 param(
     [string]$ModeloWhisper = "small",
@@ -26,7 +26,7 @@ $servidor = Get-ChildItem -Path $pastaWhisper -Recurse -Filter "whisper-server.e
 if ($servidor) {
     Write-Host "  já instalado: $($servidor.FullName)"
 } else {
-    # Procura, entre as versões recentes, a mais nova que publicou o zip para Windows.
+    # Looks, among the recent versions, for the newest one that published the Windows zip.
     $versoes = Invoke-RestMethod "https://api.github.com/repos/ggml-org/whisper.cpp/releases?per_page=15" `
         -Headers @{ "User-Agent" = "nora-instalador" }
     $escolha = $null
@@ -59,7 +59,7 @@ if (Test-Path $arquivoModelo) {
 }
 
 Write-Host "`n[3/5] Kokoro (voz local padrão, feminina pf_dora)"
-# Instala só o pacote do Kokoro (sem reinstalar a Nora, o que falharia com um "nora" aberto).
+# Installs only the Kokoro package (without reinstalling Nora, which would fail with a "nora" open).
 python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('kokoro_onnx') else 1)"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "  já instalado"

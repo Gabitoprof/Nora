@@ -1,4 +1,4 @@
-"""Voz: transforma texto em fala (WAV) pelo motor escolhido em [voz] motor."""
+"""Voice: turns text into speech (WAV) through the engine chosen in [voz] motor."""
 
 from __future__ import annotations
 
@@ -21,20 +21,21 @@ ELEVENLABS_API = "https://api.elevenlabs.io/v1/text-to-speech"
 
 @dataclass
 class VozComPronuncias:
-    """Aplica as pronúncias que a pessoa ensinou na conversa (guardadas na memória) antes de
-    mandar à voz. Lê a cada frase, então o que ela aprendeu vale na hora."""
+    """Applies the pronunciations the person taught in conversation (stored in memory) before
+    sending to the voice. Reads them on every sentence, so what she learned applies at once."""
 
     voz: object
-    fonte: object  # função que devolve {palavra: como falar}
+    fonte: object  # function that returns {word: how to say it}
 
     def sintetizar(self, texto: str) -> bytes:
         try:
             pronuncias = self.fonte()
-        except Exception:  # sem memória, fala sem as pronúncias aprendidas
+        except Exception:  # without memory, speaks without the learned pronunciations
             pronuncias = {}
         return self.voz.sintetizar(aplicar_pronuncias(texto, pronuncias))
 
-    # Atributos da voz de dentro (ex.: o aviso da reserva) passam direto, para ler e escrever.
+    # Attributes of the inner voice (e.g. the fallback notice) pass straight through, read and
+    # write.
     def __getattr__(self, nome):
         return getattr(self.voz, nome)
 
@@ -46,12 +47,12 @@ class VozComPronuncias:
 
 
 def com_pronuncias_aprendidas(voz, memoria):
-    """A voz, aplicando também as pronúncias aprendidas na memória (se houver memória)."""
+    """The voice, also applying the pronunciations learned in memory (if there is memory)."""
     return voz if memoria is None else VozComPronuncias(voz, memoria.pronuncias)
 
 
 def aplicar_pronuncias(texto: str, pronuncias: dict[str, str]) -> str:
-    """Troca palavras inteiras pelo jeito de falar (ex.: 'Nora' -> 'Nóra'), sem olhar maiúsculas."""
+    """Replaces whole words with how to say them (e.g. 'Nora' -> 'Nóra'), ignoring case."""
     for palavra, fala in pronuncias.items():
         texto = re.sub(rf"\b{re.escape(palavra)}\b", fala, texto, flags=re.IGNORECASE)
     return texto
@@ -62,7 +63,7 @@ ELEVENLABS_TAXA = 22_050
 
 @dataclass
 class VozHTTP:
-    """Servidor local que recebe POST /synthesize com JSON e devolve WAV (Kokoro, Piper)."""
+    """Local server that takes POST /synthesize with JSON and returns WAV (Kokoro, Piper)."""
 
     nome: str
     url: str
@@ -86,7 +87,7 @@ class VozHTTP:
 
 @dataclass
 class VozElevenLabs:
-    """Voz na nuvem do ElevenLabs; pede PCM 16 bits e devolve WAV."""
+    """ElevenLabs cloud voice; requests 16-bit PCM and returns WAV."""
 
     chave: str = field(repr=False)
     voz_id: str
@@ -94,10 +95,10 @@ class VozElevenLabs:
     pronuncias: dict = field(default_factory=dict)
     timeout: float = 60.0
     ultima_duracao: float = 0.0
-    intensidade: float = 0.5  # da emoção ([emocao]); 0 = sem emoção
+    intensidade: float = 0.5  # of the emotion ([emocao]); 0 = no emotion
 
     def _preparar(self, texto: str) -> tuple[str, dict | None]:
-        """O v3 entende audio tags; os outros modelos recebem a emoção como ajuste de voz."""
+        """v3 understands audio tags; the other models get the emotion as a voice adjustment."""
         if self.modelo.startswith("eleven_v3"):
             return para_v3(texto, self.intensidade), None
         return sem_emocoes(texto), ajustes_de_voz(texto, self.intensidade)
@@ -132,7 +133,7 @@ class VozElevenLabs:
 
 @dataclass
 class VozComReserva:
-    """Usa a voz principal; se ela falhar, fala com a reserva e deixa um aviso."""
+    """Uses the main voice; if it fails, speaks with the fallback and leaves a notice."""
 
     principal: VozHTTP | VozElevenLabs
     reserva: VozHTTP | VozElevenLabs
@@ -156,8 +157,8 @@ _PERGUNTA = re.compile(r"([^.!?…]*?)\?+(?=[\s\"'”)»]|$)")
 
 
 def realcar_perguntas(texto: str, modo: str) -> str:
-    """Reescreve as perguntas para a voz marcar melhor a entonação: "duplo" (??), "invertido"
-    (¿...?) ou "exclamado" (?!). Modo vazio devolve o texto como está."""
+    """Rewrites the questions so the voice marks the intonation better: "duplo" (??), "invertido"
+    (¿...?) or "exclamado" (?!). An empty mode returns the text as is."""
     if not modo:
         return texto
 
@@ -175,7 +176,7 @@ def realcar_perguntas(texto: str, modo: str) -> str:
 
 @dataclass
 class VozComRealce:
-    """Passa as perguntas pelo realce antes de mandar à voz."""
+    """Runs the questions through the emphasis before sending them to the voice."""
 
     voz: object
     modo: str
@@ -188,7 +189,8 @@ MARCADOR = "{{texto}}"
 
 
 def _trocar_texto(no, texto: str) -> tuple[object, int]:
-    """Troca {{texto}} pela frase em todos os textos do fluxo; devolve (fluxo, quantas trocas)."""
+    """Replaces {{texto}} with the sentence in all the flow's texts; returns (flow,
+    replacements)."""
     if isinstance(no, str):
         return no.replace(MARCADOR, texto), no.count(MARCADOR)
     if isinstance(no, dict):
@@ -206,14 +208,15 @@ def _trocar_texto(no, texto: str) -> tuple[object, int]:
 
 @dataclass
 class VozComfyUI:
-    """Usa um fluxo do ComfyUI como voz: troca {{texto}} pela frase, pede a execução pela API
-    (/prompt), espera terminar (/history) e baixa o áudio gerado (/view)."""
+    """Uses a ComfyUI flow as the voice: replaces {{texto}} with the sentence, requests the run
+    through the API (/prompt), waits for it to finish (/history) and downloads the generated audio
+    (/view)."""
 
     url: str
     fluxo: Path
     espera_s: float = 120.0
     pronuncias: dict = field(default_factory=dict)
-    campo: str = ""  # "ID.campo": onde vai a frase, em vez de {{texto}}
+    campo: str = ""  # "ID.campo": where the sentence goes, instead of {{texto}}
     intervalo: float = 0.2
     ultima_duracao: float = 0.0
 
@@ -322,7 +325,7 @@ class VozComfyUI:
 
 
 def _criar_motor(config: Config, motor: str, realce: str | None = None):
-    """O motor de voz pedido, com o realce de perguntas da config (ou o `realce` dado)."""
+    """The requested voice engine, with the config's question emphasis (or the given `realce`)."""
     motor_puro = _criar_motor_puro(config, motor)
     modo = config.voz.realce_pergunta if realce is None else realce
     return VozComRealce(motor_puro, modo) if modo else motor_puro
@@ -338,11 +341,11 @@ def _criar_motor_puro(config: Config, motor: str) -> VozHTTP | VozElevenLabs | V
         extras = {"voice": voz.kokoro.voz, "speed": voz.kokoro.velocidade}
         return VozHTTP("o Kokoro", voz.kokoro.url, extras, pronuncias)
     if motor == "piper":
-        # length_scale é o tempo de cada som: maior = mais devagar
+        # length_scale is the duration of each sound: higher = slower
         extras = {"length_scale": round(1 / voz.piper.velocidade, 3)}
-        if voz.piper.variacao:  # variação do som: mais alto = mais expressivo (e mais ruído)
+        if voz.piper.variacao:  # sound variation: higher = more expressive (and more noise)
             extras["noise_scale"] = voz.piper.variacao
-        if voz.piper.variacao_ritmo:  # variação do ritmo: mais alto = menos monótono
+        if voz.piper.variacao_ritmo:  # rhythm variation: higher = less monotone
             extras["noise_w_scale"] = voz.piper.variacao_ritmo
         return VozHTTP("o Piper", voz.piper.url, extras, pronuncias)
     if motor == "comfyui":
@@ -374,8 +377,8 @@ NOMES_DAS_VOZES = {
 
 
 class VozTrocavel:
-    """A voz da conversa, que dá para trocar falando ("usa a voz do Piper"). A troca vale até
-    fechar a Nora; ao abrir de novo, volta o que está em [voz] motor."""
+    """The conversation's voice, which can be switched by speaking ("usa a voz do Piper"). The
+    switch lasts until Nora closes; when she opens again, [voz] motor is back."""
 
     def __init__(self, config: Config) -> None:
         self.config = config
@@ -383,8 +386,8 @@ class VozTrocavel:
         self.voz = self._montar(self.motor)
 
     def _montar(self, motor: str):
-        """O motor pedido, com a reserva da config (ou a voz principal da config, se a reserva
-        for o próprio motor pedido)."""
+        """The requested engine, with the config's fallback (or the config's main voice, if the
+        fallback is the requested engine itself)."""
         principal = _criar_motor(self.config, motor)
         reserva = self.config.voz.reserva
         if reserva == motor:
@@ -406,15 +409,16 @@ class VozTrocavel:
             self.voz.aviso = valor
 
     def trocar(self, motor: str, frase: str) -> bytes:
-        """Passa a falar com `motor`, já dizendo `frase` com ele. Se a voz nova não responder,
-        levanta ServicoIndisponivel e continua a de antes (a reserva não entra no teste)."""
+        """Switches to speaking with `motor`, saying `frase` with it right away. If the new voice
+        does not answer, raises ServicoIndisponivel and keeps the previous one (the fallback is not
+        part of the test)."""
         nova = self._montar(motor)
         teste = nova.principal if isinstance(nova, VozComReserva) else nova
         try:
             wav = teste.sintetizar(frase)
         except ServicoIndisponivel:
             raise
-        except Exception as erro:  # config incompleta, fluxo do ComfyUI ausente...
+        except Exception as erro:  # incomplete config, missing ComfyUI flow...
             raise ServicoIndisponivel(str(erro)) from erro
         self.voz, self.motor = nova, motor
         return wav

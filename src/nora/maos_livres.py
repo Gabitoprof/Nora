@@ -1,7 +1,7 @@
-"""Conversa mãos livres (parte 3 da v0.1.0): a Nora fica ouvindo e responde quando a fala
-começa com o nome dela. Depois de responder, dá para continuar por alguns segundos sem dizer
-o nome. Enquanto ela fala, o que o microfone capta é descartado (ainda não há cancelamento de
-eco, então ela ouviria a própria voz)."""
+"""Hands-free conversation (part 3 of v0.1.0): Nora keeps listening and answers when the speech
+starts with her name. After answering, you can keep going for a few seconds without saying the
+name. While she speaks, what the microphone picks up is discarded (there is no echo cancellation
+yet, so she would hear her own voice)."""
 
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ MODELO_VAD = "models/silero_vad.onnx"
 
 
 def preparar_falas(config: Config, microfone: audio.Microfone):
-    """Liga o microfone ao VAD e devolve (gerador de falas, função para recomeçar a escuta,
-    função para pausar a escuta enquanto a Nora fala)."""
+    """Connects the microphone to the VAD and returns (utterance generator, function to restart
+    listening, function to pause listening while Nora speaks)."""
     vad = SileroVAD(baixar_modelo(RAIZ / MODELO_VAD))
     detector = DetectorDeFala(limiar=config.escuta.limiar, silencio_ms=config.escuta.silencio_ms)
 
@@ -43,7 +43,7 @@ def preparar_falas(config: Config, microfone: audio.Microfone):
 
 
 def _ler_teclado(entrada: Callable[[str], str], destino: queue.Queue) -> None:
-    """Lê linhas digitadas e as entrega ao laço principal (roda numa linha à parte)."""
+    """Reads typed lines and hands them to the main loop (runs on a separate thread)."""
     try:
         while True:
             linha = entrada("").strip()
@@ -75,8 +75,8 @@ def conversar_maos_livres(
     tocar = tocar or audio.tocador(config.audio)
     nome = config.assistente.nome
     palavra = config.assistente.palavra_de_ativacao
-    # Uma frase completa: com só "Nora, ", o Whisper às vezes entende que o nome já foi dito
-    # e não o escreve de novo.
+    # A full sentence: with only "Nora, ", Whisper sometimes assumes the name was already said
+    # and does not write it again.
     dica = f"Conversa com a assistente {nome}."
 
     def escrever(texto: str = "", fim: str = "\n") -> None:
@@ -87,7 +87,7 @@ def conversar_maos_livres(
         escrever(f"{nome}: {frase}")
         try:
             tocar(voz.sintetizar(frase))
-        except Exception as erro:  # a conversa segue mesmo sem voz
+        except Exception as erro:  # the conversation goes on even without voice
             escrever(f"[erro na voz] {erro}")
 
     escrever(f"Carregando {config.modelo_local.modelo} na memória...", fim="")
@@ -125,7 +125,7 @@ def conversar_maos_livres(
         def atender(texto: str, pedido: str, inicio: float, transcricao: float) -> None:
             nonlocal janela_ate
             if config.escuta.pausar_microfone:
-                pausar()  # para não se ouvir pela caixa de som
+                pausar()  # so she does not hear herself through the speaker
             if e_despedida(pedido):
                 dizer("Até mais!")
                 janela_ate = 0.0
@@ -144,7 +144,7 @@ def conversar_maos_livres(
         for fala in falas_detectadas:
             if agendador is not None:
                 agendador.apresentar_pendentes()
-            # O que foi digitado: não precisa do nome dela.
+            # What was typed: does not need her name.
             while not digitados.empty():
                 linha = digitados.get_nowait()
                 if linha is None:
@@ -177,7 +177,7 @@ def conversar_maos_livres(
 
             pedido = extrair_pedido(texto, palavra)
             if pedido is None and relogio() < janela_ate:
-                pedido = texto  # continuação da conversa, sem precisar do nome
+                pedido = texto  # continuing the conversation, without needing the name
             if pedido is None:
                 if mostrar_ignoradas:
                     escrever(f"  (ignorado: {texto})")

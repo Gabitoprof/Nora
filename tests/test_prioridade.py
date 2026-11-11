@@ -50,12 +50,12 @@ def test_abafa_uma_vez_durante_a_resposta_inteira(criar_raiz):
     for frase in ["Primeira frase.", "Segunda frase."]:
         locutor.falar(frase)
     locutor.terminar()
-    # abafa uma vez antes de tudo e devolve uma vez no fim (as frases podem ir juntas)
+    # ducks once before everything and restores once at the end (the sentences may go together)
     assert eventos[0] == "abafa" and eventos[-1] == "devolve"
     assert " ".join(eventos[1:-1]) == "Primeira frase. Segunda frase."
 
     sem = carregar(criar_raiz(local="[audio]\nprioridade = false\n"), ambiente={})
-    assert abafador(sem)().__enter__() is None  # nullcontext: não mexe em nada
+    assert abafador(sem)().__enter__() is None  # nullcontext: touches nothing
     com = carregar(criar_raiz(local="[audio]\nvolume_outros = 0.3\n"), ambiente={})
     assert abafador(com) is not None
 
@@ -71,7 +71,7 @@ def test_frases_que_esperam_vao_juntas_para_a_voz():
         def sintetizar(self, frase):
             pedidos.append(frase)
             if len(pedidos) == 1:
-                liberar.wait(2)  # a primeira frase demora; as outras ficam esperando
+                liberar.wait(2)  # the first sentence is slow; the others wait
             return frase.encode()
 
     tocados = []

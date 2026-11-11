@@ -1,10 +1,10 @@
-"""Índice das notas do Obsidian (v0.3.0): a Nora lê as notas do seu vault e usa os trechos
-parecidos com a pergunta para responder ("o que eu anotei sobre a prova de cálculo?").
+"""Obsidian notes index (v0.3.0): Nora reads the notes in your vault and uses the passages similar
+to the question to answer ("o que eu anotei sobre a prova de cálculo?").
 
-As notas são só lidas, nunca alteradas. Cada nota vira trechos (por título e parágrafos), cada
-trecho ganha um vetor de significado (o mesmo modelo de embeddings da memória) e tudo fica em
-<dados>/notas.db, que dá para apagar e refazer quando quiser. Só as notas novas ou alteradas
-desde a última vez são lidas de novo.
+The notes are only read, never changed. Each note becomes passages (by heading and paragraphs),
+each passage gets a meaning vector (the same embeddings model as memory) and everything lives in
+<dados>/notas.db, which can be deleted and rebuilt whenever you want. Only the notes that are new
+or changed since last time are read again.
 """
 
 from __future__ import annotations
@@ -17,30 +17,30 @@ from pathlib import Path
 
 from nora.memoria import _cosseno, _desempacotar, _empacotar
 
-TAMANHO_DO_TRECHO = 900  # caracteres, mais ou menos um parágrafo grande
-LOTE = 32  # trechos por pedido de embeddings
+TAMANHO_DO_TRECHO = 900  # characters, roughly one large paragraph
+LOTE = 32  # passages per embeddings request
 _PASTAS_IGNORADAS = {"node_modules", "__pycache__"}
 
 
 @dataclass(frozen=True)
 class Trecho:
-    caminho: str  # relativo ao vault
-    titulo: str  # "Nota > Seção"
+    caminho: str  # relative to the vault
+    titulo: str  # "Note > Section"
     texto: str
     similaridade: float = 0.0
 
 
 @dataclass(frozen=True)
 class Resumo:
-    lidas: int  # notas novas ou alteradas
+    lidas: int  # new or changed notes
     removidas: int
-    trechos: int  # total no índice
-    notas: int  # total no índice
+    trechos: int  # total in the index
+    notas: int  # total in the index
 
 
 def limpar_markdown(texto: str) -> str:
-    """Tira o que só o Obsidian entende: propriedades (frontmatter), comentários, imagens
-    embutidas, e deixa os [[links]] como texto."""
+    """Removes what only Obsidian understands: properties (frontmatter), comments, embedded
+    images, and leaves the [[links]] as text."""
     texto = re.sub(r"\A---\s*\n.*?\n---\s*\n", "", texto, flags=re.DOTALL)
     texto = re.sub(r"%%.*?%%", "", texto, flags=re.DOTALL)
     texto = re.sub(r"<!--.*?-->", "", texto, flags=re.DOTALL)
@@ -52,8 +52,8 @@ def limpar_markdown(texto: str) -> str:
 
 
 def dividir(nome: str, texto: str, tamanho: int = TAMANHO_DO_TRECHO) -> list[tuple[str, str]]:
-    """Corta a nota em trechos (título, texto): uma seção por título e, se ela for grande,
-    em pedaços de parágrafos inteiros."""
+    """Splits the note into passages (heading, text): one section per heading and, if it is large,
+    into pieces of whole paragraphs."""
     trechos: list[tuple[str, str]] = []
     caminho_titulos: list[tuple[int, str]] = []
     secao: list[str] = []
@@ -70,7 +70,7 @@ def dividir(nome: str, texto: str, tamanho: int = TAMANHO_DO_TRECHO) -> list[tup
             if pedaco and len(pedaco) + len(paragrafo) > tamanho:
                 trechos.append((titulo, pedaco))
                 pedaco = ""
-            while len(paragrafo) > tamanho:  # parágrafo enorme: corta no espaço mais próximo
+            while len(paragrafo) > tamanho:  # huge paragraph: cut at the nearest space
                 corte = paragrafo.rfind(" ", 0, tamanho) or tamanho
                 trechos.append((titulo, paragrafo[:corte].strip()))
                 paragrafo = paragrafo[corte:].strip()
@@ -119,7 +119,7 @@ class IndiceDeNotas:
             )
         self.vetorial = self._carregar_sqlite_vec()
 
-    # --- sqlite-vec (opcional, como na memória) -------------------------------------------------
+    # --- sqlite-vec (optional, as in memory) ----------------------------------------------------
 
     def _carregar_sqlite_vec(self) -> bool:
         try:
@@ -160,10 +160,10 @@ class IndiceDeNotas:
             (str(dimensao),),
         )
 
-    # --- ler o vault --------------------------------------------------------------------------
+    # --- reading the vault --------------------------------------------------------------------
 
     def _arquivos(self) -> dict[str, Path]:
-        """As notas (.md) do vault, sem pastas ocultas (.obsidian, .trash, .git) e ignoradas."""
+        """The vault's notes (.md), without hidden (.obsidian, .trash, .git) and ignored folders."""
         achadas = {}
         for arquivo in self.vault.rglob("*.md"):
             partes = arquivo.relative_to(self.vault).parts
@@ -192,8 +192,8 @@ class IndiceDeNotas:
         self._db.execute("DELETE FROM notas WHERE caminho = ?", (caminho,))
 
     def atualizar(self, aviso=None) -> Resumo:
-        """Lê as notas novas ou alteradas e esquece as apagadas. `aviso(lidas, total)` recebe o
-        andamento (para mostrar na tela)."""
+        """Reads the new or changed notes and forgets the deleted ones. `aviso(lidas, total)` gets
+        the progress (to show on screen)."""
         if not self.vault.is_dir():
             raise FileNotFoundError(f"A pasta das notas não existe: {self.vault}")
         arquivos = self._arquivos()
@@ -240,7 +240,7 @@ class IndiceDeNotas:
                 aviso(numero, len(mudadas))
         return Resumo(len(mudadas), len(removidas), self.contar_trechos(), self.contar_notas())
 
-    # --- buscar ---------------------------------------------------------------------------------
+    # --- search ---------------------------------------------------------------------------------
 
     def buscar(self, texto: str, k: int = 3, minimo: float = 0.0) -> list[Trecho]:
         if k <= 0 or not self.contar_trechos():
@@ -288,7 +288,7 @@ class IndiceDeNotas:
 
 
 def abrir_notas(config) -> IndiceDeNotas | None:
-    """O índice das notas da config, ou None se não houver pasta de notas configurada."""
+    """The config's notes index, or None if no notes folder is configured."""
     notas = config.notas
     if notas.pasta is None:
         return None

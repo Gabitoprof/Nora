@@ -1,4 +1,5 @@
-"""Notas do Obsidian: dividir, ler o vault, atualizar só o que mudou, buscar e usar na conversa."""
+"""Obsidian notes: splitting, reading the vault, updating only what changed, searching and using
+them in conversation."""
 
 import os
 
@@ -47,7 +48,7 @@ def test_limpa_e_divide_por_titulos():
         "Cálculo > Prova",
         "Cálculo > Prova > Material",
     ]
-    assert "# não" in trechos[-1][1]  # título dentro de código não abre seção
+    assert "# não" in trechos[-1][1]  # a heading inside code does not open a section
     grande = dividir("Longa", "\n\n".join(["palavra " * 60] * 5), tamanho=500)
     assert len(grande) > 1 and all(len(c) <= 500 for _, c in grande)
 
@@ -57,19 +58,19 @@ def test_le_o_vault_atualiza_so_o_que_mudou_e_busca(tmp_path, vetorial):
     vault = criar_vault(tmp_path)
     embeddings = Embeddings()
     indice = IndiceDeNotas(tmp_path / "notas.db", vault, embeddings, ignorar=["Diário"])
-    indice.vetorial = indice.vetorial and vetorial  # com e sem o sqlite-vec
+    indice.vetorial = indice.vetorial and vetorial  # with and without sqlite-vec
     resumo = indice.atualizar()
-    assert resumo.lidas == 2 and resumo.notas == 2  # sem .obsidian, .trash e Diário
+    assert resumo.lidas == 2 and resumo.notas == 2  # without .obsidian, .trash and Diário
     achados = indice.buscar("quando é a prova de derivadas?", k=2)
     assert achados[0].titulo == "Cálculo > Prova de cálculo"
     assert achados[0].caminho == "Faculdade/Cálculo.md"
 
     pedidos = embeddings.pedidos
-    assert indice.atualizar().lidas == 0 and embeddings.pedidos == pedidos  # nada mudou
+    assert indice.atualizar().lidas == 0 and embeddings.pedidos == pedidos  # nothing changed
 
     nota = vault / "Receitas/Bolo.md"
     escrever(nota, "Bolo de chocolate: cacau, ovos e açúcar.\n")
-    os.utime(nota, (1, 1))  # garante outra data de modificação
+    os.utime(nota, (1, 1))  # ensures a different modification date
     (vault / "Faculdade/Cálculo.md").unlink()
     resumo = indice.atualizar()
     assert (resumo.lidas, resumo.removidas, resumo.notas) == (1, 1, 1)

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nora"
 dynamic = ["version"]
-description = "Assistente de IA pessoal por voz, em tempo real e local primeiro."
+description = "Personal real-time voice AI assistant, local first."
 readme = "README.md"
 license = "LicenseRef-Proprietary"
 requires-python = ">=3.11"
@@ -14,21 +14,21 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
-# Microfone e alto-falante (conversa por voz).
+# Microphone and speaker (voice conversation).
 voz = [
     "sounddevice>=0.5",
     "numpy>=1.24",
     "onnxruntime>=1.16",
-    # Ler áudios em FLAC/MP3/WAV 32 bits (ex.: o que o ComfyUI gera).
+    # Reading 32-bit FLAC/MP3/WAV audio (e.g. what ComfyUI generates).
     "soundfile>=0.12",
-    # Abaixar o som dos outros programas enquanto a Nora fala (Windows).
+    # Lowering the volume of other programs while Nora speaks (Windows).
     "pycaw>=20240210; sys_platform == 'win32'",
 ]
-# Voz local Kokoro (servidor separado; usa phonemizer/espeak-ng, GPL-3.0).
+# Kokoro local voice (separate server; uses phonemizer/espeak-ng, GPL-3.0).
 kokoro = ["kokoro-onnx>=0.4"]
-# Cérebro na nuvem (v0.3.0): ChatGPT (OpenAI) e Claude (Anthropic) para as perguntas difíceis.
+# Cloud brain (v0.3.0): ChatGPT (OpenAI) and Claude (Anthropic) for the hard questions.
 nuvem = ["anthropic>=1.0", "openai>=1.0"]
-# Busca vetorial rápida da memória (sem ela, a busca é feita em Python puro, mais lenta).
+# Fast vector search for memory (without it, search runs in pure Python, more slowly).
 memoria = ["sqlite-vec>=0.1.6"]
 
 [project.scripts]

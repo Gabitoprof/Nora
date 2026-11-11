@@ -1,7 +1,7 @@
 # HUD
 
-Interface visual da Nora (web, TypeScript), planejada para a **v0.4.0**: orbe que reage à voz, cartões com o conteúdo das respostas, relógio, modelo e voz ativos e, mais tarde, o grafo do segundo cérebro (notas do Obsidian).
+Nora's visual interface (web, TypeScript), planned for **v0.4.0**: an orb that reacts to the voice, cards with the content of the answers, clock, active model and voice and, later, the second brain graph (Obsidian notes).
 
-Ainda vazio. Veja `docs/MAPA_MENTAL.md`.
+Still empty. See `docs/MAPA_MENTAL.md`.
 
-- Criar um passo  a passo de guia para os usuários terem experiências individuais, cada Nora tem sua identidade.
+- Create a step-by-step guide so users have individual experiences; each Nora has its own identity.

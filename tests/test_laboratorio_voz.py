@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-np = pytest.importorskip("numpy")  # o laboratório mistura vozes com numpy (extra [voz])
+np = pytest.importorskip("numpy")  # the lab mixes voices with numpy ([voz] extra)
 
 from nora.audio import duracao_wav  # noqa: E402
 from nora.cli import laboratorio_de_voz  # noqa: E402
@@ -49,7 +49,7 @@ def test_mistura_de_vozes_e_voz_desconhecida():
     s = sintetizador_falso()
     s.sintetizar("oi", "pf_dora:0.75 + af_heart:0.25")
     assert s.kokoro.estilos == [pytest.approx(0.75 * 1 + 0.25 * 3)]
-    s.sintetizar("oi")  # a voz padrão, sozinha
+    s.sintetizar("oi")  # the default voice, alone
     assert s.kokoro.estilos[-1] == pytest.approx(1.0)
     with pytest.raises(ValueError, match="Voz desconhecida: xx_nada"):
         s.sintetizar("oi", "pf_dora + xx_nada")

@@ -1,12 +1,13 @@
-"""Emoção na voz: a Nora marca cada frase com uma etiqueta interna ({alegre}, {risada}...) e
-cada motor de voz a traduz do seu jeito.
+"""Emotion in the voice: Nora marks each sentence with an internal tag ({alegre}, {risada}...) and
+each voice engine translates it its own way.
 
-- ElevenLabs v3: vira audio tag ([happy], [laughs], [whispers]...), que muda o tom de verdade.
-- ElevenLabs Flash/Turbo/Multilingual: vira ajuste de voz por pedido (estabilidade, estilo,
-  velocidade), porque esses modelos não entendem as tags.
-- Piper, Kokoro e ComfyUI: a etiqueta só é tirada.
+- ElevenLabs v3: becomes an audio tag ([happy], [laughs], [whispers]...), which really changes
+  the tone.
+- ElevenLabs Flash/Turbo/Multilingual: becomes a per-request voice adjustment (stability, style,
+  speed), because those models do not understand the tags.
+- Piper, Kokoro and ComfyUI: the tag is just removed.
 
-A tela, o histórico e a memória nunca veem as etiquetas.
+The screen, the history and the memory never see the tags.
 """
 
 from __future__ import annotations
@@ -19,11 +20,11 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Emocao:
     nome: str
-    tag_v3: str  # audio tag do ElevenLabs v3
-    estabilidade: float  # ElevenLabs: menor = mais expressiva
-    estilo: float  # ElevenLabs: exagero do estilo da voz
+    tag_v3: str  # ElevenLabs v3 audio tag
+    estabilidade: float  # ElevenLabs: lower = more expressive
+    estilo: float  # ElevenLabs: voice style exaggeration
     velocidade: float  # ElevenLabs: 0.7 a 1.2
-    reacao: bool = False  # risada, suspiro: no máximo poucas por resposta
+    reacao: bool = False  # laugh, sigh: only a few per answer at most
 
 
 EMOCOES = {
@@ -45,7 +46,7 @@ NOMES = ("alegre", "empolgada", "carinhosa", "calma", "séria", "triste", "curio
          "risada", "suspiro")  # fmt: skip
 NEUTRA = {"estabilidade": 0.5, "estilo": 0.0, "velocidade": 1.0}
 
-# {palavra} entre chaves; aceita espaços e acentos ({ séria }).
+# {word} in braces; accepts spaces and accents ({ séria }).
 _ETIQUETA = re.compile(r"\{\s*([^{}\s]{2,20})\s*\}")
 
 
@@ -60,18 +61,19 @@ def _espacos(texto: str) -> str:
 
 
 def emocoes_em(texto: str) -> list[Emocao]:
-    """As emoções conhecidas marcadas no texto, em ordem."""
+    """The known emotions tagged in the text, in order."""
     return [EMOCOES[c] for c in map(_chave, _ETIQUETA.findall(texto)) if c in EMOCOES]
 
 
 def sem_emocoes(texto: str) -> str:
-    """O texto sem as etiquetas (para a tela, a memória e vozes que não as entendem)."""
+    """The text without the tags (for the screen, the memory and voices that do not understand
+    them)."""
     return _espacos(_ETIQUETA.sub(" ", texto))
 
 
 def para_v3(texto: str, intensidade: float = 0.5) -> str:
-    """Troca as etiquetas pelas audio tags do ElevenLabs v3. Com intensidade baixa, ficam só
-    as emoções (sem risadas e suspiros); com zero, nenhuma."""
+    """Replaces the tags with ElevenLabs v3 audio tags. With low intensity, only the emotions stay
+    (no laughs or sighs); with zero, none."""
 
     def trocar(achado: re.Match) -> str:
         emocao = EMOCOES.get(_chave(achado.group(1)))
@@ -83,13 +85,15 @@ def para_v3(texto: str, intensidade: float = 0.5) -> str:
 
 
 def ajustes_de_voz(texto: str, intensidade: float = 0.5) -> dict[str, float] | None:
-    """Ajustes do ElevenLabs (Flash e outros sem tags) para a primeira emoção do texto, mais
-    fortes ou mais fracos conforme a intensidade; None se não há emoção."""
+    """ElevenLabs adjustments (Flash and others without tags) for the text's first emotion,
+    stronger or weaker according to the intensity; None if there is no emotion."""
     emocoes = emocoes_em(texto)
     if not emocoes or intensidade <= 0:
         return None
     emocao = emocoes[0]
-    peso = min(1.0, intensidade * 2)  # 0.5 = o ajuste cheio; acima disso não exagera mais
+    peso = min(
+        1.0, intensidade * 2
+    )  # 0.5 = the full adjustment; above that it does not exaggerate further
     return {
         "stability": round(NEUTRA["estabilidade"] + (emocao.estabilidade - 0.5) * peso, 2),
         "style": round(emocao.estilo * peso, 2),
@@ -98,8 +102,8 @@ def ajustes_de_voz(texto: str, intensidade: float = 0.5) -> dict[str, float] | N
 
 
 class FiltroDeTela:
-    """Tira as etiquetas de um texto que chega aos pedaços (uma etiqueta pode vir partida em
-    dois pedaços: "{ale" + "gre} Que bom!")."""
+    """Removes the tags from text arriving in chunks (a tag may come split across two chunks:
+    "{ale" + "gre} Que bom!")."""
 
     def __init__(self) -> None:
         self._pendente = ""
@@ -114,7 +118,7 @@ class FiltroDeTela:
         else:
             self._pendente = ""
         texto = re.sub(r"[ \t]{2,}", " ", _ETIQUETA.sub("", texto))
-        # a etiqueta tirada não deixa espaço sobrando (no começo ou entre dois pedaços)
+        # the removed tag leaves no extra space (at the start or between two chunks)
         if not self._comecou or self._ultimo in " \t\n":
             texto = texto.lstrip(" \t") if self._comecou else texto.lstrip()
         if texto:
@@ -127,7 +131,7 @@ class FiltroDeTela:
 
 
 def instrucoes(intensidade: float, reacoes: int) -> str:
-    """O pedido à persona: como marcar as emoções."""
+    """The instruction to the persona: how to tag the emotions."""
     if intensidade < 0.34:
         dose = "Use emoção com moderação: só quando ela for clara."
     elif intensidade < 0.67:

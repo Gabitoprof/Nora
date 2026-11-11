@@ -19,7 +19,7 @@ DIMENSAO = 256
 
 
 def vetor_de(texto):
-    """Embedding falso: saco de palavras com hash. Textos com palavras em comum ficam perto."""
+    """Fake embedding: a hashed bag of words. Texts with words in common end up close."""
     vetor = [0.0] * DIMENSAO
     for palavra in re.findall(r"\w+", texto.lower()):
         if len(palavra) > 2:
@@ -34,13 +34,13 @@ class EmbeddingsFalsos:
 
 
 class OllamaComMemoria(ServicoFalso):
-    """Ollama falso: /api/embed com vetores falsos, /api/chat respondendo em streaming ou,
-    quando pedem JSON (curadoria), devolvendo os fatos combinados."""
+    """Fake Ollama: /api/embed with fake vectors, /api/chat answering as a stream or, when JSON is
+    requested (curation), returning the agreed facts."""
 
     def __init__(self, resposta="Anotado!", fatos=()):
         self.conversas = []
         self.fatos = list(fatos)
-        self.extras = {}  # outras chaves da curadoria (pronuncias, preferencias)
+        self.extras = {}  # other curation keys (pronuncias, preferencias)
 
         def responder(caminho, cabecalhos, corpo):
             pedido = json.loads(corpo)
@@ -116,8 +116,8 @@ def test_embeddings_e_curadoria_pelo_ollama(criar_raiz):
         vetores = EmbeddingsOllama(config).vetores(["oi", "tchau"])
         fatos = extrair_fatos(config, "amanhã é meu aniversário", "Parabéns!", "30/10/2026")
     assert len(vetores) == 2 and len(vetores[0]) == DIMENSAO
-    # formato antigo (texto puro) ainda é aceito, sem área; vazios e não-texto são descartados;
-    # a data escrita no texto vira data da agenda (aniversário: todo ano)
+    # the old format (plain text) is still accepted, without an area; empty and non-text are
+    # dropped; the date written in the text becomes an agenda date (birthday: every year)
     assert fatos == [
         FatoExtraido("Gabriel faz aniversário em 12 de março", "", date(2027, 3, 12), True)
     ]
@@ -138,7 +138,7 @@ def test_curadoria_com_json_quebrado_devolve_nada(criar_raiz):
 
 
 def test_lembra_entre_sessoes(criar_raiz):
-    """O critério da v0.2.0: um fato dito numa conversa é lembrado numa conversa nova."""
+    """The v0.2.0 criterion: a fact said in one conversation is remembered in a new conversation."""
     local = '[usuario]\nnome = "Gabriel"\n[memoria]\nativa = true\nsimilaridade_minima = 0.2\n'
     fato = "Gabriel tem prova de cálculo na sexta-feira"
     with OllamaComMemoria(fatos=[fato]) as ollama:
@@ -157,11 +157,11 @@ def test_lembra_entre_sessoes(criar_raiz):
 
     enviado = ollama.conversas[-1]["messages"]
     notas = [m["content"] for m in enviado if m["role"] == "system"]
-    assert len(notas) == 2  # a persona e a nota da memória
+    assert len(notas) == 2  # the persona and the memory note
     assert fato in notas[1]
     assert enviado[-1] == {"role": "user", "content": "Quando é a minha prova de cálculo?"}
     assert [f.texto for f in segunda.lembrancas] == [fato]
-    # a nota da memória não fica guardada na conversa, só é enviada
+    # the memory note is not kept in the conversation, it is only sent
     assert all(fato not in m["content"] for m in segunda.mensagens)
 
 
@@ -177,7 +177,7 @@ def test_sem_modelo_de_embeddings_a_conversa_segue(criar_raiz):
         config = carregar(criar_raiz(local=local), ambiente={"OLLAMA_HOST": ollama.url})
         conversa = nova_conversa(config)
         conversa.memoria.lembrar = lambda *a, **k: (1, True)
-        conversa.memoria.contar = lambda: 1  # finge que já há fatos, para tentar buscar
+        conversa.memoria.contar = lambda: 1  # pretend there are facts already, to try searching
         assert "".join(conversa.perguntar("oi")) == "Oi!"
     assert "ollama pull bge-m3" in conversa.avisos_pendentes()[0]
 
@@ -212,7 +212,7 @@ def test_comando_memoria_e_importar(criar_raiz, capsys, monkeypatch):
             "nora.cli.carregar", lambda: carregar(raiz, ambiente={"OLLAMA_HOST": ollama.url})
         )
         assert main(["memoria", "importar"]) == 0
-        assert main(["memoria", "importar"]) == 0  # de novo: nada pendente
+        assert main(["memoria", "importar"]) == 0  # again: nothing pending
         assert main(["memoria", "lembrar", "Gabriel", "prefere", "chá"]) == 0
         assert main(["memoria", "listar"]) == 0
         assert main(["memoria", "esquecer", "1"]) == 0
@@ -223,7 +223,7 @@ def test_comando_memoria_e_importar(criar_raiz, capsys, monkeypatch):
     assert "0 trocas para ler" in texto
     assert "Guardado" in texto
     assert "2 fatos em" in texto
-    assert "Página" not in texto  # só uma página
+    assert "Página" not in texto  # only one page
     assert "Esquecido (nº 1)." in texto
     assert "1 trocas guardadas" in texto
 
@@ -238,14 +238,14 @@ def test_persona_sabe_que_tem_memoria(criar_raiz):
 
 
 def test_listar_em_paginas_e_com_filtro(memoria):
-    # cada fato com uma palavra própria, para nenhum ser confundido com outro e juntado
+    # each fact with its own word, so none is mistaken for another and merged
     for numero in range(25):
         assunto = "cachorro" if numero % 5 == 0 else "assunto"
         memoria.lembrar(f"Gabriel anotou item{numero:02d} sobre {assunto}")
     assert memoria.contar() == 25
     primeira = memoria.listar(limite=20)
     assert len(primeira) == 20
-    assert primeira[0].texto == "Gabriel anotou item24 sobre assunto"  # o mais recente
+    assert primeira[0].texto == "Gabriel anotou item24 sobre assunto"  # the most recent
     assert len(memoria.listar(limite=20, pular=20)) == 5
     assert len(memoria.listar()) == 25
     com_cachorro = memoria.listar(contendo="cachorro")
@@ -254,8 +254,8 @@ def test_listar_em_paginas_e_com_filtro(memoria):
 
 
 def test_lembra_de_tudo_mesmo_sem_fato_anotado(criar_raiz):
-    """Memória total: a troca inteira fica guardada e volta numa conversa nova, mesmo quando a
-    curadoria não acha nenhum fato para anotar."""
+    """Total memory: the whole exchange is kept and comes back in a new conversation, even when
+    curation finds no fact to note."""
     local = (
         '[usuario]\nnome = "Gabriel"\n[memoria]\nativa = true\nsimilaridade_minima = 0.2\n'
         "fatos_por_pergunta = 0\n"
@@ -265,8 +265,8 @@ def test_lembra_de_tudo_mesmo_sem_fato_anotado(criar_raiz):
         primeira = nova_conversa(config)
         "".join(primeira.perguntar("achei meu gato embaixo da escada"))
         primeira.encerrar()
-        assert primeira.memoria.contar() == 0  # nenhum fato anotado...
-        assert primeira.memoria.contar_trocas() == 1  # ...mas a troca ficou guardada
+        assert primeira.memoria.contar() == 0  # no fact noted...
+        assert primeira.memoria.contar_trocas() == 1  # ...but the exchange was kept
         primeira.memoria.fechar()
 
         segunda = nova_conversa(config)
@@ -295,7 +295,7 @@ def test_banco_antigo_ganha_a_tabela_de_trocas(tmp_path):
     if not antiga.vetorial:
         pytest.skip("sqlite-vec não instalado")
     antiga.lembrar("Gabriel tem prova em 21/11")
-    antiga._db.execute("DROP TABLE vec_trocas")  # como era antes desta versão
+    antiga._db.execute("DROP TABLE vec_trocas")  # as it was before this version
     antiga._db.commit()
     antiga.fechar()
 
@@ -330,9 +330,9 @@ def test_curadoria_com_areas(criar_raiz):
 
 def test_areas_na_memoria(memoria):
     memoria.lembrar("Gabriel toma remédio para pressão", area="Saúde")
-    memoria.lembrar("Gabriel faz fisioterapia às terças", area="saude")  # mesma área
+    memoria.lembrar("Gabriel faz fisioterapia às terças", area="saude")  # same area
     memoria.lembrar("Gabriel trabalha com design", area="trabalho")
-    memoria.lembrar("Gabriel gosta de café")  # sem área
+    memoria.lembrar("Gabriel gosta de café")  # no area
     assert memoria.areas() == [("saúde", 2), ("trabalho", 1)]
     assert [f.texto for f in memoria.listar(area="SAUDE")] == [
         "Gabriel faz fisioterapia às terças",
@@ -340,7 +340,7 @@ def test_areas_na_memoria(memoria):
     ]
     assert memoria.contar_contendo(area="trabalho") == 1
     assert memoria.buscar("design")[0].area == "trabalho"
-    # atualizar um fato sem área não apaga a área que ele já tinha
+    # updating a fact without an area does not erase the area it already had
     memoria.lembrar("Gabriel trabalha com design")
     assert memoria.areas() == [("saúde", 2), ("trabalho", 1)]
 
@@ -378,7 +378,7 @@ def test_comando_areas(criar_raiz, capsys, monkeypatch):
     assert "[saúde] Gabriel corre às 6h" in texto
 
 
-# --- esquecer e apagar de vez (relatório de fechamento da v0.3.0, A2) ---------------------------
+# --- forget and delete for good (v0.3.0 closing report, A2) -------------------------------------
 
 PROVA = "Ana tem prova de cálculo no dia 21"
 PERGUNTA = "Ana tem prova de cálculo no dia 21, me ajuda?"
@@ -394,23 +394,23 @@ def _com_prova(m):
 
 def test_esquecido_nao_volta_pelas_conversas_nem_depois_de_reiniciar(memoria):
     _com_prova(memoria)
-    assert memoria.buscar_trocas("prova de cálculo dia 21", minimo=0.3)  # antes: o trecho volta
+    # before: the passage comes back
+    assert memoria.buscar_trocas("prova de cálculo dia 21", minimo=0.3)
     assert memoria.esquecer_parecido(PROVA)
     assert memoria.buscar("prova de cálculo dia 21", minimo=0.3) == []
-    assert (
-        memoria.buscar_trocas("prova de cálculo dia 21", minimo=0.3) == []
-    )  # o trecho antigo não volta
-    assert memoria.buscar_trocas("pizza de calabresa", minimo=0.3)  # o resto continua
+    # the old passage does not come back
+    assert memoria.buscar_trocas("prova de cálculo dia 21", minimo=0.3) == []
+    assert memoria.buscar_trocas("pizza de calabresa", minimo=0.3)  # the rest stays
 
     caminho, vetorial = memoria.caminho, memoria.vetorial
     memoria.fechar()
     reaberta = Memoria(caminho, EmbeddingsFalsos())
     reaberta.vetorial = reaberta.vetorial and vetorial
     assert reaberta.buscar_trocas("prova de cálculo dia 21", minimo=0.3) == []
-    # importar conversas antigas não traz o fato de volta
+    # importing old conversations does not bring the fact back
     assert reaberta.lembrar(PROVA, origem="historico 2026-11-01") == (0, False)
     assert reaberta.contar() == 0
-    # mas se a pessoa contar de novo, numa conversa nova, ela volta a lembrar
+    # but if the person tells it again, in a new conversation, she remembers it again
     _, novo = reaberta.lembrar(PROVA, origem="2026-11-05_10-00-00")
     assert novo and reaberta.contar() == 1
     reaberta.fechar()
@@ -427,7 +427,7 @@ def test_apagar_de_vez_mostra_antes_e_apaga_tambem_o_historico(tmp_path):
     m = Memoria(tmp_path / "memoria.db", EmbeddingsFalsos())
     _com_prova(m)
 
-    previa = m.apagar_de_vez(PROVA, confirmar=False)  # só mostra o que sairia
+    previa = m.apagar_de_vez(PROVA, confirmar=False)  # only shows what would go
     assert [f.texto for f in previa.fatos] == [PROVA]
     assert [t.pergunta for t in previa.trocas] == [PERGUNTA]
     assert m.contar() == 1 and m.contar_trocas() == 2
@@ -437,7 +437,7 @@ def test_apagar_de_vez_mostra_antes_e_apaga_tambem_o_historico(tmp_path):
     assert apagar_do_historico(tmp_path, feito.textos) == 2
     conteudo = historico.arquivo.read_text("utf-8")
     assert "cálculo" not in conteudo and "calabresa" in conteudo
-    assert [t[2] for t in trocas(historico.arquivo)] == [PIZZA[0]]  # o importar pula o apagado
+    assert [t[2] for t in trocas(historico.arquivo)] == [PIZZA[0]]  # import skips the deleted one
     m.fechar()
 
 
@@ -466,11 +466,11 @@ def test_comando_apagar_mostra_e_so_apaga_com_confirmar(criar_raiz, capsys, monk
     assert "cálculo" not in historico.arquivo.read_text("utf-8")
 
 
-# --- apagar de vez pela conversa (com confirmação) -----------------------------------------------
+# --- delete for good in conversation (with confirmation) -----------------------------------------
 
 
 class CerebroAnotador:
-    """Cérebro falso que só responde perguntas normais (o pedido de apagar não chega nele)."""
+    """Fake brain that only answers normal questions (the delete request does not reach it)."""
 
     def __init__(self):
         from nora.cerebro import Medidas
@@ -506,8 +506,8 @@ def test_apagar_de_vez_pela_conversa_pede_confirmacao(criar_raiz):
     assert pedido_de_apagar("Nora, apaga de vez a prova de cálculo") == "a prova de cálculo"
     assert pedido_de_apagar("apaga a prova de cálculo para sempre") == "a prova de cálculo"
     assert pedido_de_apagar("apaga tudo sobre a viagem") == "a viagem"
-    assert pedido_de_apagar("apaga isso de vez") == ""  # sem assunto: ela pergunta qual
-    assert pedido_de_apagar("esquece que eu falei da viagem") is None  # isso é só esquecer
+    assert pedido_de_apagar("apaga isso de vez") == ""  # no subject: she asks which
+    assert pedido_de_apagar("esquece que eu falei da viagem") is None  # this is just forgetting
     assert pedido_de_apagar("apaga a luz") is None
     assert confirmacao("sim, pode apagar para sempre") == "sim"
     assert confirmacao("Nora, não!") == "nao" and confirmacao("qual a capital?") is None
@@ -515,14 +515,15 @@ def test_apagar_de_vez_pela_conversa_pede_confirmacao(criar_raiz):
     conversa, m, cerebro, antiga = _conversa_com_prova(criar_raiz)
     resposta = "".join(conversa.perguntar("Nora, apaga de vez a prova de cálculo do dia 21"))
     assert "1 fato e 1 trecho de conversa" in resposta and "sim, pode apagar" in resposta
-    assert m.contar() == 1 and cerebro.pedidos == []  # nada apagado ainda; cérebro não chamado
+    assert m.contar() == 1 and cerebro.pedidos == []  # nothing deleted yet; brain not called
     assert any("apagaria" in aviso for aviso in conversa.avisos_pendentes())
 
     resposta = "".join(conversa.perguntar("sim, pode apagar"))
     assert "apaguei de vez" in resposta.lower()
     assert m.contar() == 0 and m.contar_trocas() == 1
     assert "cálculo" not in antiga.arquivo.read_text("utf-8")
-    assert "cálculo" not in conversa.historico.arquivo.read_text("utf-8")  # nem o próprio pedido
+    # not even the request itself
+    assert "cálculo" not in conversa.historico.arquivo.read_text("utf-8")
     assert cerebro.pedidos == []
 
 
@@ -533,8 +534,9 @@ def test_apagar_de_vez_pela_conversa_cancela_e_expira(criar_raiz):
     assert m.contar() == 1
 
     "".join(conversa.perguntar("apaga de vez a prova de cálculo do dia 21"))
-    assert "".join(conversa.perguntar("qual a capital da França?")) == "Paris."  # mudou de assunto
-    assert "".join(conversa.perguntar("sim")) == "Paris."  # o pedido já expirou
+    # changed the subject
+    assert "".join(conversa.perguntar("qual a capital da França?")) == "Paris."
+    assert "".join(conversa.perguntar("sim")) == "Paris."  # the request has already expired
     assert m.contar() == 1
 
     resposta = "".join(conversa.perguntar("apaga isso de vez"))
@@ -542,7 +544,7 @@ def test_apagar_de_vez_pela_conversa_cancela_e_expira(criar_raiz):
     assert "Não achei" in "".join(conversa.perguntar("apaga de vez o cachorro do vizinho"))
 
 
-# --- respostas pendentes (A5 da revisão consolidada) ---------------------------------------------
+# --- pending answers (A5 of the consolidated review) ---------------------------------------------
 
 
 def _conversa_com_roteador(criar_raiz, local, cliente=None):
@@ -564,7 +566,8 @@ def test_resposta_interrompida_vira_pendencia_que_sobrevive_e_e_retomada(criar_r
     assert "".join(conversa.perguntar("me explica a fotossíntese")) == "Uma re"
     conversa.esperar_memoria()
     pendentes = m.pendentes()
-    assert len(pendentes) == 1 and m.contar_trocas() == 0  # o pedaço não vira troca nem fato
+    # the partial answer becomes neither an exchange nor a fact
+    assert len(pendentes) == 1 and m.contar_trocas() == 0
     p = pendentes[0]
     assert (p.pergunta, p.parcial, p.motivo) == (
         "me explica a fotossíntese",
@@ -573,13 +576,13 @@ def test_resposta_interrompida_vira_pendencia_que_sobrevive_e_e_retomada(criar_r
     )
     assert p.provedor.startswith("local")
 
-    # sobrevive a reiniciar
+    # survives a restart
     caminho = m.caminho
     m.fechar()
     m = Memoria(caminho, EmbeddingsFalsos())
     assert [x.pergunta for x in m.pendentes()] == ["me explica a fotossíntese"]
 
-    # retomada: nova resposta inteira, identificada, que fecha a pendência
+    # resumption: a new whole, labeled answer that closes the pending item
     conversa.memoria = m
     roteador.local = LocalFalso(resposta="A fotossíntese transforma luz em energia.")
     resposta = "".join(conversa.perguntar("termina a resposta que ficou pela metade"))
@@ -592,14 +595,14 @@ def test_resposta_interrompida_vira_pendencia_que_sobrevive_e_e_retomada(criar_r
 
 
 def test_respostas_completas_e_comandos_nao_geram_pendencia(criar_raiz):
-    """E curadoria = false continua guardando a troca completa."""
+    """And curadoria = false still stores the complete exchange."""
     from test_roteador import LocalFalso
 
     conversa, m, _ = _conversa_com_roteador(criar_raiz, LocalFalso())
     "".join(conversa.perguntar("oi, tudo bem?"))
     "".join(conversa.perguntar("modo jogo"))
     conversa.esperar_memoria()
-    assert m.pendentes() == [] and m.contar_trocas() == 1  # o comando também não é troca
+    assert m.pendentes() == [] and m.contar_trocas() == 1  # the command is not an exchange either
     assert '"situacao": "comando"' in conversa.historico.arquivo.read_text("utf-8")
 
 
@@ -609,17 +612,17 @@ def test_pendencia_de_cancelamento_e_de_queda_do_programa(criar_raiz):
     conversa, m, _ = _conversa_com_roteador(criar_raiz, LocalFalso(resposta="Resposta bem longa."))
     fluxo = conversa.perguntar("conta uma história")
     next(fluxo)
-    fluxo.close()  # a pessoa interrompeu (Ctrl+C) enquanto ela falava
+    fluxo.close()  # the person interrupted (Ctrl+C) while she was speaking
     assert [p.motivo for p in m.pendentes()] == ["cancelada"]
 
-    # o programa caiu no meio de uma resposta: na próxima vez, ela vira pendência
+    # the program crashed in the middle of an answer: next time, it becomes a pending item
     m.abrir_resposta("caiu-123", "sessao-antiga", "qual a distância da Lua?")
-    assert len(m.pendentes()) == 1  # aberta ainda não é pendência
+    assert len(m.pendentes()) == 1  # open is not pending yet
     assert m.recuperar_abertas(exceto_sessao="sessao-nova") == 1
-    assert m.recuperar_abertas(exceto_sessao="sessao-nova") == 0  # sem duplicar
+    assert m.recuperar_abertas(exceto_sessao="sessao-nova") == 0  # without duplicating
     assert sorted(p.motivo for p in m.pendentes()) == ["cancelada", "encerramento"]
 
-    # cancelar e apagar de vez
+    # cancel and delete for good
     historia = next(p for p in m.pendentes() if p.pergunta == "conta uma história")
     assert m.cancelar_pendencia(historia.id) and not m.cancelar_pendencia(historia.id)
     assert len(m.pendentes()) == 1
@@ -647,8 +650,8 @@ def test_comando_pendencias_lista_e_cancela(criar_raiz, capsys, monkeypatch):
 
 
 class CerebroQueEhInterrompido:
-    """Solta um pedaço e então chega o Ctrl+C enquanto ela ainda espera o resto (o
-    KeyboardInterrupt nasce dentro do gerador, não fora dele)."""
+    """Yields a chunk and then Ctrl+C arrives while she still waits for the rest (the
+    KeyboardInterrupt is raised inside the generator, not outside it)."""
 
     def __init__(self):
         from nora.cerebro import Medidas
@@ -664,8 +667,8 @@ class CerebroQueEhInterrompido:
 
 
 def test_ctrl_c_no_meio_vira_pendencia_na_hora(criar_raiz):
-    """Auditoria P0: Ctrl+C real (KeyboardInterrupt dentro do fluxo) já deixa a pendência
-    gravada, sem esperar abrir outra sessão, e nada vai para a curadoria."""
+    """Audit P0: a real Ctrl+C (KeyboardInterrupt inside the flow) stores the pending item right
+    away, without waiting for another session, and nothing goes to curation."""
     from nora.conversa import nova_conversa
 
     config = carregar(criar_raiz(local="[memoria]\nativa = true\ncuradoria = false\n"), ambiente={})
@@ -676,26 +679,26 @@ def test_ctrl_c_no_meio_vira_pendencia_na_hora(criar_raiz):
         for pedaco in conversa.perguntar("conta a história do Brasil"):
             partes.append(pedaco)
     assert partes == ["Começo da "]
-    pendentes = m.pendentes()  # já, na mesma sessão
+    pendentes = m.pendentes()  # right away, in the same session
     assert [(p.pergunta, p.parcial, p.motivo) for p in pendentes] == [
         ("conta a história do Brasil", "Começo da", "cancelada")
     ]
     conversa.esperar_memoria()
     assert m.contar_trocas() == 0 and not conversa.ocupada
     historico = conversa.historico.arquivo.read_text("utf-8")
-    assert historico.count('"situacao": "cancelada"') == 1  # uma vez só, sem duplicar
+    assert historico.count('"situacao": "cancelada"') == 1  # only once, without duplicating
 
 
 def test_busca_por_trecho_ignora_maiusculas_acentuadas_e_nao_usa_curingas(memoria):
-    """Issue #3: LIKE só ignora maiúsculas ASCII e trata _ e % como curingas."""
+    """Issue #3: LIKE only ignores ASCII case and treats _ and % as wildcards."""
     from datetime import date as Data
 
     memoria.marcar(Data(2026, 11, 21), "prova de álgebra", False, "estudos")
     memoria.marcar(Data(2026, 11, 22), "entregar prova 1", False, "estudos")
     memoria.marcar(Data(2026, 11, 23), "meta de 50 por cento", False, "trabalho")
     assert [e.texto for e in memoria.eventos_contendo("Álgebra")] == ["prova de álgebra"]
-    assert memoria.eventos_contendo("prova_1") == []  # "_" não é curinga
-    assert memoria.eventos_contendo("50%") == []  # "%" também não
+    assert memoria.eventos_contendo("prova_1") == []  # "_" is not a wildcard
+    assert memoria.eventos_contendo("50%") == []  # neither is "%"
     memoria.lembrar("Ana estuda Álgebra Linear", area="estudos")
     memoria.lembrar("Meta de 50% no trimestre", area="trabalho")
     assert memoria.contar_contendo("álgebra") == 1

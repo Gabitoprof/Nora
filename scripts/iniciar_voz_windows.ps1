@@ -1,8 +1,8 @@
-﻿# Inicia o ouvido (whisper-server) e a voz local (Kokoro por padrão, ou Piper) em janelas próprias.
-# Com a voz do ElevenLabs (nuvem), use -Voz nenhuma: só o ouvido é iniciado.
-# Uso, na pasta do repositório:
+﻿# Starts the ear (whisper-server) and the local voice (Kokoro by default, or Piper) in their own windows.
+# With the ElevenLabs voice (cloud), use -Voz nenhuma: only the ear is started.
+# Usage, in the repository folder:
 #   powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1
-# Depois, em outro terminal com o ambiente ativado: nora falar --medir
+# Then, in another terminal with the environment activated: nora falar --medir
 
 param(
     [string]$ModeloWhisper = "small",
@@ -30,8 +30,8 @@ Start-Process -FilePath $servidor.FullName -WorkingDirectory $servidor.Directory
     "-m", "`"$arquivoModelo`"", "-l", "pt", "-t", $threads, "--host", "127.0.0.1", "--port", $PortaWhisper
 )
 
-# As vozes abrem numa janela do PowerShell que continua aberta se o servidor parar com erro,
-# para a mensagem ficar visível (antes a janela sumia junto com o erro).
+# The voices open in a PowerShell window that stays open if the server stops with an error,
+# so the message stays visible (before, the window disappeared along with the error).
 function Iniciar-Janela([string]$titulo, [string]$comando) {
     $script = "`$Host.UI.RawUI.WindowTitle = '$titulo'; Set-Location '$raiz'; $comando; " +
         "Write-Host ''; Write-Host '$titulo parou. Leia a mensagem acima; feche esta janela quando quiser.'"

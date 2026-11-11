@@ -1,11 +1,11 @@
-"""Auto-melhoria supervisionada (MVP): uma vez por dia, a Nora junta o que o observador anotou,
-agrupa por causa provável, transforma o que se repetiu em propostas e salva um relatório em
-<dados>/auto_melhoria/relatorios/AAAA-MM-DD.md. Ela só propõe: cada proposta espera a decisão da
-pessoa (aprovar, recusar ou adiar). Aprovar gera uma tarefa para desenvolver; nada muda no
-código, nada é instalado nem publicado sozinho.
+"""Supervised self-improvement (MVP): once a day, Nora gathers what the observer recorded, groups
+it by probable cause, turns what repeated into proposals and saves a report to
+<dados>/auto_melhoria/relatorios/AAAA-MM-DD.md. She only proposes: each proposal waits for the
+person's decision (approve, reject or postpone). Approving generates a development task; nothing
+changes in the code, nothing is installed or published on its own.
 
-Nesta versão o diagnóstico é por regras (sem modelo e sem internet): é leve, não usa a placa de
-vídeo e não manda nada para fora do PC. A pesquisa na web (etapa P3) ainda não existe.
+In this version the diagnosis is rule-based (no model and no internet): it is light, does not use
+the graphics card and sends nothing outside the PC. Web research (stage P3) does not exist yet.
 """
 
 from __future__ import annotations
@@ -62,11 +62,11 @@ CREATE TABLE IF NOT EXISTS fechamentos (
     falha_aviso TEXT NOT NULL DEFAULT ''
 );
 """
-# Linha de pendência dos relatórios antigos: "- nº 3: <pergunta> (cancelada, 0 tentativa(s))".
+# Pending-item line of the old reports: "- nº 3: <pergunta> (cancelada, 0 tentativa(s))".
 _PERGUNTA_NO_RELATORIO = re.compile(
     r"^- nº (\d+): .* \(([a-z_]+), (\d+) tentativa\(s\)\)$", re.MULTILINE
 )
-# Estados de uma proposta. "publicada" só com autorização explícita.
+# States of a proposal. "publicada" only with explicit authorization.
 ABERTAS = ("proposta",)
 DECIDIDAS = ("aprovada", "recusada", "adiada")
 DESENVOLVIMENTO = ("preparacao", "em_teste", "pronta_para_revisao", "publicada")
@@ -81,9 +81,9 @@ SEGUINTE = {
 
 @dataclass(frozen=True)
 class Regra:
-    """Como descrever um tipo de problema (o texto da proposta)."""
+    """How to describe a kind of problem (the proposal text)."""
 
-    titulo: str  # com {motor} e {n}
+    titulo: str  # with {motor} and {n}
     causa: str
     solucao: str
     beneficio: str
@@ -273,12 +273,12 @@ def _hora(texto: str) -> time:
     return time(int(horas), int(minutos))
 
 
-# --- diagnóstico (por regras, sem modelo) -----------------------------------------------------
+# --- diagnosis (rule-based, no model) ---------------------------------------------------------
 
 
 def diagnosticar(eventos: list[dict], cfg) -> list[dict]:
-    """Agrupa os eventos por causa provável e devolve os grupos que se repetiram o bastante.
-    Uma ocorrência só não vira proposta (cfg.min_ocorrencias)."""
+    """Groups the events by probable cause and returns the groups that repeated enough.
+    A single occurrence does not become a proposal (cfg.min_ocorrencias)."""
     limites = {
         ("llm", "resposta"): cfg.latencia_resposta_ms,
         ("stt", "transcricao"): cfg.latencia_ouvido_ms,
@@ -288,13 +288,13 @@ def diagnosticar(eventos: list[dict], cfg) -> list[dict]:
     totais: dict[tuple[str, str], int] = {}
     for evento in eventos:
         etapa, tipo, motor = evento["etapa"], evento["tipo"], evento["motor"]
-        if (etapa, tipo) in limites:  # medida de tempo: só conta quando passou do limite
+        if (etapa, tipo) in limites:  # time measurement: only counts when it went over the limit
             totais[(etapa, motor)] = totais.get((etapa, motor), 0) + 1
             if evento["duracao_ms"] <= limites[(etapa, tipo)]:
                 continue
             tipo = "latencia_alta"
         elif tipo in ("resposta", "escalou", "comando", "transcricao", "voz", "cancelada"):
-            continue  # normal ou escolha da pessoa: não é problema
+            continue  # normal or the person's choice: not a problem
         grupos.setdefault((etapa, tipo, motor), []).append(evento)
     achados = []
     for (etapa, tipo, motor), lista in grupos.items():
@@ -358,7 +358,7 @@ def diagnosticar(eventos: list[dict], cfg) -> list[dict]:
     )
 
 
-# --- banco, fechamento do dia e relatório -----------------------------------------------------
+# --- database, closing the day and report -----------------------------------------------------
 
 
 class Melhorias:
@@ -375,15 +375,15 @@ class Melhorias:
         with self._db:
             self._db.executescript(ESQUEMA)
             colunas = {c[1] for c in self._db.execute("PRAGMA table_info(fechamentos)")}
-            if "falha_aviso" not in colunas:  # bancos de antes do registro de falhas
+            if "falha_aviso" not in colunas:  # databases from before the failure log
                 self._db.execute(
                     "ALTER TABLE fechamentos ADD COLUMN falha_aviso TEXT NOT NULL DEFAULT ''"
                 )
         self._limpar_perguntas_dos_relatorios()
 
     def _limpar_perguntas_dos_relatorios(self) -> None:
-        """Relatórios feitos antes desta correção traziam o começo das perguntas pendentes:
-        tira o texto e deixa só número, motivo e tentativas."""
+        """Reports made before this fix included the beginning of the pending questions: removes
+        the text and leaves only number, reason and attempts."""
         for relatorio in (self.pasta / "relatorios").glob("*.md"):
             try:
                 texto = relatorio.read_text(encoding="utf-8")
@@ -393,7 +393,7 @@ class Melhorias:
             except OSError:
                 pass
 
-    # propostas ------------------------------------------------------------------------------
+    # proposals ------------------------------------------------------------------------------
 
     def _proposta(self, linha) -> Proposta:
         pid, chave, criada, atualizada, categoria, titulo, dados, status, adiada = linha
@@ -421,9 +421,9 @@ class Melhorias:
         return [self._proposta(linha) for linha in linhas]
 
     def _atualizar(self, achado: dict, dia: date) -> tuple[str, Proposta]:
-        """Grava o achado. Devolve ('nova' | 'esperando' | 'acompanhamento' | 'oculta', proposta).
-        Recusada só volta com evidência nova (o dobro de ocorrências) ou outra versão; adiada
-        volta na data marcada."""
+        """Stores the finding. Returns ('nova' | 'esperando' | 'acompanhamento' | 'oculta',
+        proposal). A rejected one only comes back with new evidence (twice the occurrences) or
+        another version; a postponed one comes back on the set date."""
         agora = _agora()
         dados = json.dumps(achado["dados"], ensure_ascii=False)
         with self._trava, self._db:
@@ -458,8 +458,9 @@ class Melhorias:
         return grupo, self.proposta(pid)
 
     def decidir(self, proposta_id: int, acao: str, quem: str, motivo: str = "", dias: int = 7):
-        """aprovar, recusar ou adiar. Aprovar gera a tarefa de desenvolvimento (um arquivo), mas
-        não muda o código. Devolve a proposta atualizada (ou None se não existe ou já foi)."""
+        """aprovar, recusar or adiar. Approving generates the development task (a file), but does
+        not change the code. Returns the updated proposal (or None if it does not exist or was
+        already decided)."""
         status = {"aprovar": "aprovada", "recusar": "recusada", "adiar": "adiada"}[acao]
         proposta = self.proposta(proposta_id)
         if proposta is None or proposta.status not in ABERTAS:
@@ -488,7 +489,8 @@ class Melhorias:
         return self.proposta(proposta_id)
 
     def avancar(self, proposta_id: int, estado: str, quem: str, autorizo_publicar=False):
-        """Move uma proposta aprovada pelo desenvolvimento. Publicar pede autorização à parte."""
+        """Moves an approved proposal through development. Publishing needs a separate
+        authorization."""
         proposta = self.proposta(proposta_id)
         if proposta is None or SEGUINTE.get(proposta.status) != estado:
             return None
@@ -513,7 +515,7 @@ class Melhorias:
             ).fetchall()
 
     def _escrever_tarefa(self, proposta: Proposta) -> Path:
-        """A especificação para desenvolver a melhoria (para o Codex ou outra pessoa)."""
+        """The specification to develop the improvement (for Codex or someone else)."""
         pasta = self.pasta / "tarefas"
         pasta.mkdir(parents=True, exist_ok=True)
         caminho = pasta / f"melhoria-{proposta.id}.md"
@@ -537,7 +539,7 @@ class Melhorias:
         )
         return caminho
 
-    # fechamento do dia ------------------------------------------------------------------------
+    # closing the day --------------------------------------------------------------------------
 
     def ultimo_fechamento(self) -> tuple[str, str] | None:
         with self._trava:
@@ -546,15 +548,15 @@ class Melhorias:
             ).fetchone()
 
     def dia_a_fechar(self, agora: datetime | None = None) -> date | None:
-        """O dia cujo relatório está faltando, ou None. Depois da hora marcada é hoje; antes, é
-        ontem (o PC estava desligado na hora). Um relatório por dia, sem repetir."""
+        """The day whose report is missing, or None. After the set time it is today; before, it is
+        yesterday (the PC was off at that time). One report per day, without repeating."""
         agora = agora or datetime.now()
         alvo = agora.date()
         if agora.time() < _hora(self.cfg.hora_relatorio):
             alvo -= timedelta(days=1)
         ultimo = self.ultimo_fechamento()
         if ultimo is None:
-            if not self.observador.eventos():  # primeiro uso: só marca o começo
+            if not self.observador.eventos():  # first use: only marks the start
                 with self._trava, self._db:
                     self._db.execute(
                         "INSERT INTO fechamentos(data, inicio, fim, criado, caminho, mostrado) "
@@ -566,7 +568,7 @@ class Melhorias:
         return alvo if ultimo[0] < alvo.isoformat() else None
 
     def fechar(self, dia: date, agora: datetime | None = None, pendentes=()) -> Fechamento:
-        """Analisa os eventos desde o fechamento anterior, grava as propostas e o relatório."""
+        """Analyzes the events since the previous closing, stores the proposals and the report."""
         agora = agora or datetime.now()
         fim = agora.isoformat(timespec="seconds")
         with self._trava:
@@ -608,8 +610,8 @@ class Melhorias:
         return fechamento
 
     def nao_mostrados(self) -> list[tuple[str, str, int]]:
-        """Relatórios ainda não apresentados: (data, caminho, propostas). Só viram "mostrados"
-        com marcar_mostrado, depois de aparecerem de fato."""
+        """Reports not presented yet: (date, path, proposals). They only become "shown" with
+        marcar_mostrado, after they actually appear."""
         with self._trava:
             return self._db.execute(
                 "SELECT data, caminho, propostas FROM fechamentos "
@@ -621,7 +623,7 @@ class Melhorias:
             self._db.execute("UPDATE fechamentos SET mostrado = 1 WHERE data = ?", (data,))
 
     def registrar_falha_do_aviso(self, data: str, motivo: str) -> None:
-        """Guarda por que o relatório não apareceu (ele tenta de novo na próxima sessão)."""
+        """Stores why the report did not appear (it tries again in the next session)."""
         with self._trava, self._db:
             self._db.execute(
                 "UPDATE fechamentos SET falha_aviso = ? WHERE data = ?",
@@ -703,8 +705,8 @@ def _relatorio(f: Fechamento, pendentes: list) -> str:
         linhas += ["## Em acompanhamento (já decididas)", ""]
         linhas += [f"- Nº {p.id} — {p.titulo} ({p.status})" for p in f.acompanhamento] + [""]
     if pendentes:
-        # Só número, motivo e data: o texto da pergunta é pessoal e não vai para o relatório
-        # (ele aparece só com um pedido explícito: nora pendencias).
+        # Only number, reason and date: the question text is personal and does not go into the
+        # report (it only appears on an explicit request: nora pendencias).
         linhas += ["## Respostas que ficaram pela metade", ""]
         linhas += [
             f"- nº {p.id} ({p.motivo}, {p.tentativas} tentativa(s)), de {p.criada[:10]}"
@@ -719,12 +721,12 @@ def _relatorio(f: Fechamento, pendentes: list) -> str:
     return "\n".join(linhas)
 
 
-# --- aviso: notificação do Windows e abrir o relatório ----------------------------------------
+# --- notice: Windows notification and opening the report --------------------------------------
 
 
 def notificar(titulo: str, texto: str, caminho: Path) -> bool:
-    """Notificação do Windows que abre o relatório ao clicar. Fora do Windows, ou se falhar,
-    devolve False (o aviso também aparece na próxima conversa)."""
+    """Windows notification that opens the report on click. Outside Windows, or if it fails,
+    returns False (the notice also appears in the next conversation)."""
     if sys.platform != "win32":
         return False
     xml = (
@@ -748,7 +750,7 @@ def notificar(titulo: str, texto: str, caminho: Path) -> bool:
         resultado = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
             capture_output=True,
-            stdin=subprocess.DEVNULL,  # o PowerShell não pode disputar o teclado da sessão
+            stdin=subprocess.DEVNULL,  # PowerShell must not compete for the session's keyboard
             timeout=20,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
@@ -757,14 +759,15 @@ def notificar(titulo: str, texto: str, caminho: Path) -> bool:
         return False
 
 
-# ShellExecute: mostra minimizada e sem ativar. O programa do .md não toma o foco do terminal,
-# onde a pessoa está no meio de um "[Enter para falar]" (senão o Enter iria para o editor).
+# ShellExecute: shows minimized and without activating. The .md program does not take the focus
+# from the terminal, where the person is mid "[Enter para falar]" (or Enter would go to the editor).
 SW_SHOWMINNOACTIVE = 7
 
 
 def abrir_arquivo(caminho: Path) -> bool:
-    """Abre o relatório no programa padrão sem roubar o teclado da sessão: no Windows, a janela
-    abre minimizada e sem foco; fora dele, o programa não herda o terminal (stdin) da Nora."""
+    """Opens the report in the default program without stealing the session's keyboard: on Windows,
+    the window opens minimized and without focus; elsewhere, the program does not inherit
+    Nora's terminal (stdin)."""
     try:
         if sys.platform == "win32":
             os.startfile(caminho, "open", show_cmd=SW_SHOWMINNOACTIVE)  # noqa: S606
@@ -781,13 +784,13 @@ def abrir_arquivo(caminho: Path) -> bool:
         return False
 
 
-# --- agendador mínimo (enquanto a Nora está aberta) -------------------------------------------
+# --- minimal scheduler (while Nora is open) ---------------------------------------------------
 
 
 class Agendador(threading.Thread):
-    """Confere a cada minuto se o relatório do dia está faltando e, quando a Nora não está
-    ocupada (respondendo ou no modo jogo), fecha o dia. A primeira conferência é logo ao abrir:
-    cobre o dia em que o PC estava desligado na hora."""
+    """Checks every minute whether the day's report is missing and, when Nora is not busy
+    (answering or in game mode), closes the day. The first check is right on opening: it
+    covers the day the PC was off at that time."""
 
     def __init__(
         self,
@@ -825,7 +828,7 @@ class Agendador(threading.Thread):
             try:
                 self.conferir()
             except Exception as erro:
-                # Não registrar a mensagem/traceback: provedores podem incluir texto pessoal.
+                # Do not log the message/traceback: providers may include personal text.
                 logging.getLogger(__name__).error("Falha no agendador: %s", type(erro).__name__)
             self._parar.wait(self.intervalo)
 
@@ -841,9 +844,9 @@ def apresentar(
     modo: str,
     escrever: Callable[[str], None],
 ) -> bool:
-    """Mostra um relatório novo sem a pessoa pedir: abre o .md (modo "abrir") ou escreve o
-    texto inteiro na conversa (modo "terminal", ou se abrir falhar). Só então marca como
-    mostrado. Devolve se apareceu."""
+    """Shows a new report without the person asking: opens the .md ("abrir" mode) or writes the
+    whole text in the conversation ("terminal" mode, or if opening fails). Only then marks it
+    as shown. Returns whether it appeared."""
     dia = f"{data[8:10]}/{data[5:7]}"
     if not caminho.is_file():
         melhorias.registrar_falha_do_aviso(data, f"arquivo não encontrado: {caminho}")
@@ -889,15 +892,15 @@ def abrir_melhorias(config, observador: Observador | None = None) -> Melhorias |
 
 
 def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
-    """Liga a auto-melhoria numa sessão (nora conversar, falar, ouvir): mostra os relatórios
-    ainda não vistos e começa o agendador do dia."""
+    """Plugs self-improvement into a session (nora conversar, falar, ouvir): shows the reports not
+    seen yet and starts the day's scheduler."""
     melhorias = getattr(conversa, "melhorias", None)
     if melhorias is None:
         return None
     cfg = conversa.config.auto_melhoria
 
     def ao_fechar(fechamento: Fechamento) -> None:
-        """O dia fechou com a Nora desocupada: notifica sem escrever na interface."""
+        """The day closed with Nora free: notifies without writing to the interface."""
         if fechamento.caminho is None:
             return
         texto = f"Relatório de melhorias pronto: {fechamento.resumo}."
@@ -906,7 +909,7 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
                 "Nora: melhorias do dia", texto + " Clique para abrir.", fechamento.caminho
             ):
                 melhorias.registrar_falha_do_aviso(fechamento.data, "a notificação falhou")
-        # A apresentação pertence ao loop da interface; esta thread só fecha e notifica.
+        # Presentation belongs to the interface loop; this thread only closes and notifies.
 
     def ocupado() -> bool:
         return bool(getattr(conversa, "ocupada", False) or getattr(conversa.cerebro, "jogo", False))
@@ -918,13 +921,13 @@ def iniciar(conversa, escrever: Callable[[str], None]) -> Agendador | None:
     tentados: set[str] = set()
 
     def apresentar_pendentes() -> bool:
-        """Apresenta os relatórios novos; devolve se escreveu algo na tela."""
+        """Presents the new reports; returns whether it wrote anything on screen."""
         if ocupado():
             return False
         escreveu = False
         for data, caminho, quantas in melhorias.nao_mostrados():
             if data in tentados:
-                continue  # uma tentativa por sessão; falhas continuam pendentes no banco
+                continue  # one attempt per session; failures stay pending in the database
             tentados.add(data)
             apresentar(melhorias, data, Path(caminho), quantas, cfg.apresentar, escrever)
             escreveu = True
@@ -942,13 +945,13 @@ def ler_entrada(
     agendador: Agendador | None,
     reimprimir: Callable[[str], None] | None = None,
 ) -> str:
-    """Mantém a interface atendendo relatórios enquanto o teclado espera uma linha.
+    """Keeps the interface handling reports while the keyboard waits for a line.
 
-    Só o loop chamador escreve relatórios; a thread de entrada apenas lê o teclado.
-    Não antecipa a próxima leitura (a gravação por Enter usa a mesma entrada). Esta função só
-    volta com a linha que a sua própria thread leu: um erro ao apresentar um relatório não pode
-    deixar essa thread para trás, senão ela engoliria o Enter seguinte (o de parar de gravar).
-    Se um relatório aparecer durante a espera, `reimprimir` mostra o prompt de novo.
+    Only the calling loop writes reports; the input thread only reads the keyboard.
+    It does not read ahead (Enter-to-record uses the same input). This function only returns
+    with the line its own thread read: an error while presenting a report must not leave that
+    thread behind, or it would swallow the next Enter (the one that stops recording).
+    If a report appears during the wait, `reimprimir` shows the prompt again.
     """
     if agendador is None:
         return entrada(prompt)
@@ -964,7 +967,8 @@ def ler_entrada(
     while True:
         try:
             mostrou = agendador.apresentar_pendentes()
-        except Exception as erro:  # a auto-melhoria nunca tira o teclado da conversa
+        # self-improvement never takes the keyboard away from the conversation
+        except Exception as erro:
             logging.getLogger(__name__).error(
                 "Falha ao apresentar relatório: %s", type(erro).__name__
             )

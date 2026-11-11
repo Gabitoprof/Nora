@@ -1,4 +1,4 @@
-"""O .env.example acompanha o .env: toda variável que o código lê está nele, sem valor pessoal."""
+""".env.example follows .env: every variable the code reads is in it, with no personal value."""
 
 import re
 from pathlib import Path

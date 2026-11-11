@@ -15,7 +15,7 @@ TAXA = 22_050
 
 
 def fala(segundos: float, antes: float = 0.1, depois: float = 0.1) -> bytes:
-    """Um 'áudio de fala' falso: tom com volume variando, entre silêncios."""
+    """A fake 'speech audio': a tone with varying volume, between silences."""
     t = numpy.arange(int(TAXA * segundos)) / TAXA
     tom = 0.3 * numpy.sin(2 * numpy.pi * 220 * t) * (0.6 + 0.4 * numpy.sin(2 * numpy.pi * 3 * t))
     sinal = numpy.concatenate(
@@ -25,7 +25,7 @@ def fala(segundos: float, antes: float = 0.1, depois: float = 0.1) -> bytes:
 
 
 class OuvidoFalso:
-    """Devolve a transcrição combinada para cada duração de áudio (16 kHz)."""
+    """Returns the agreed transcription for each audio duration (16 kHz)."""
 
     def __init__(self, respostas):
         self.respostas = respostas
@@ -101,7 +101,7 @@ def test_separa_boas_ruins_e_para_ouvir_e_descarta(tmp_path):
 
     voz = Voz()
     gerar_dataset(voz, textos, pasta, saida=lambda _: None)
-    assert voz.falas == []  # a descartada não é refeita
+    assert voz.falas == []  # the discarded one is not redone
     assert "0003|" not in (pasta / "metadata.csv").read_text(encoding="utf-8")
 
 

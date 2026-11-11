@@ -1,7 +1,7 @@
-"""Carrega e valida a config da Nora.
+"""Loads and validates Nora's config.
 
-Ordem: config/nora.toml (padrão) -> config/local.toml (pessoal, fora do Git)
--> variáveis de ambiente e .env (segredos).
+Order: config/nora.toml (default) -> config/local.toml (personal, outside Git)
+-> environment variables and .env (secrets).
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 
 
 class ConfigError(Exception):
-    """Config ausente ou inválida."""
+    """Missing or invalid config."""
 
 
 @dataclass(frozen=True)
@@ -62,8 +62,8 @@ class VozPiper:
     url: str
     voz: str
     velocidade: float = 1.0
-    variacao: float = 0.0  # noise_scale do Piper; 0 = o padrão do modelo
-    variacao_ritmo: float = 0.0  # noise_w_scale do Piper; 0 = o padrão do modelo
+    variacao: float = 0.0  # Piper's noise_scale; 0 = the model's default
+    variacao_ritmo: float = 0.0  # Piper's noise_w_scale; 0 = the model's default
 
 
 @dataclass(frozen=True)
@@ -118,19 +118,20 @@ class Memoria:
 @dataclass(frozen=True)
 class AutoMelhoria:
     ativa: bool = True
-    hora_relatorio: str = "20:00"  # HH:MM, hora local do relatório diário
-    min_ocorrencias: int = 3  # menos que isso num dia não vira proposta
-    latencia_resposta_ms: int = 2500  # até o primeiro pedaço da resposta
-    latencia_ouvido_ms: int = 1500  # transcrição
-    latencia_voz_ms: int = 2000  # da primeira frase pronta até começar a falar
-    dias_de_eventos: int = 30  # eventos mais velhos são apagados no fechamento
-    notificar: bool = True  # notificação do Windows quando o relatório fica pronto
-    apresentar: str = "abrir"  # abrir: abre o .md; terminal: mostra o texto inteiro na conversa
+    hora_relatorio: str = "20:00"  # HH:MM, local time of the daily report
+    min_ocorrencias: int = 3  # fewer than this in a day does not become a proposal
+    latencia_resposta_ms: int = 2500  # until the first chunk of the answer
+    latencia_ouvido_ms: int = 1500  # transcription
+    latencia_voz_ms: int = 2000  # from the first ready sentence until speech starts
+    dias_de_eventos: int = 30  # older events are deleted when the day closes
+    notificar: bool = True  # Windows notification when the report is ready
+    # abrir: opens the .md; terminal: shows the full text in the conversation
+    apresentar: str = "abrir"
 
 
 @dataclass(frozen=True)
 class Notas:
-    pasta: Path | None = None  # o vault do Obsidian; None = sem notas
+    pasta: Path | None = None  # the Obsidian vault; None = no notes
     trechos_por_pergunta: int = 3
     similaridade_minima: float = 0.5
     ignorar: tuple[str, ...] = ()
@@ -183,7 +184,7 @@ class Roteador:
     modo: str = "automatico"
     escalar: bool = True
     triagem: bool = True
-    complexas: str = "openai"  # quem responde as complexas; a outra nuvem é a reserva
+    complexas: str = "openai"  # who answers the complex ones; the other cloud is the fallback
 
 
 @dataclass(frozen=True)
@@ -273,7 +274,7 @@ def _notas(dados: dict[str, Any], raiz: Path) -> Notas:
 
 
 def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
-    """Junta dois dicionários de config; as chaves de `extra` vencem."""
+    """Merges two config dictionaries; the keys from `extra` win."""
     resultado = dict(base)
     for chave, valor in extra.items():
         if isinstance(valor, dict) and isinstance(resultado.get(chave), dict):
@@ -284,11 +285,11 @@ def mesclar(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
 
 
 def ler_env(caminho: Path) -> dict[str, str]:
-    """Lê um arquivo .env simples (CHAVE=valor, # comentários)."""
+    """Reads a simple .env file (CHAVE=valor, # comments)."""
     if not caminho.is_file():
         return {}
     valores = {}
-    # utf-8-sig: o Bloco de Notas pode salvar com BOM, que grudaria no nome da primeira chave
+    # utf-8-sig: Notepad may save with a BOM, which would stick to the first key's name
     for linha in caminho.read_text(encoding="utf-8-sig").splitlines():
         linha = linha.strip()
         if not linha or linha.startswith("#") or "=" not in linha:
@@ -434,7 +435,7 @@ def _caminho(texto: str, raiz: Path) -> Path:
 
 
 def carregar(raiz: Path = RAIZ, ambiente: dict[str, str] | None = None) -> Config:
-    """Lê os arquivos de config a partir de `raiz` e devolve uma Config validada."""
+    """Reads the config files from `raiz` and returns a validated Config."""
     ambiente = {**ler_env(raiz / ".env"), **(os.environ if ambiente is None else ambiente)}
 
     padrao = Path(ambiente.get("ELLA_CONFIG") or raiz / "config/nora.toml")

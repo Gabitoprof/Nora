@@ -1,67 +1,67 @@
-# Usando o repositório no Obsidian
+# Using the repository in Obsidian
 
-O repositório inteiro funciona como um **vault** do Obsidian: documentação, mapa mental e notas de cada etapa ficam nos mesmos arquivos `.md` que vão para o GitHub.
+The whole repository works as an Obsidian **vault**: documentation, mind map and the notes for each stage live in the same `.md` files that go to GitHub.
 
-## Configuração (uma vez)
+## Setup (once)
 
-1. Clone o repositório no PC.
-2. No Obsidian: **Open folder as vault** → escolha a pasta do repositório.
-3. Instale o plugin da comunidade **Git** (de Vinzent03) para fazer commit, pull e push sem sair do Obsidian.
-   - Sugestão: ativar *auto pull* ao abrir o vault, para receber o que for feito no Claude Code.
+1. Clone the repository on your PC.
+2. In Obsidian: **Open folder as vault** → choose the repository folder.
+3. Install the **Git** community plugin (by Vinzent03) to commit, pull and push without leaving Obsidian.
+   - Suggestion: turn on *auto pull* when opening the vault, to receive what is done in Claude Code.
 
-## O que abrir
+## What to open
 
-| Arquivo | O que é | Onde aparece |
+| File | What it is | Where it shows |
 |---|---|---|
-| `docs/MAPA_MENTAL.canvas` | Mapa mental visual e editável (Canvas) | Só no Obsidian |
-| `docs/MAPA_MENTAL.md` | Mapa mental, roadmap e fluxo em Mermaid | Obsidian **e** GitHub |
-| `PROJETO_ASSISTENTE_IA.md` | Documento completo do projeto | Obsidian e GitHub |
+| `docs/MAPA_MENTAL.canvas` | Visual, editable mind map (Canvas) | Only in Obsidian |
+| `docs/MAPA_MENTAL.md` | Mind map, roadmap and flow in Mermaid | Obsidian **and** GitHub |
+| `PROJETO_ASSISTENTE_IA.md` | Full project document | Obsidian and GitHub |
 
-## Convenções
+## Conventions
 
-- **Links:** usar links Markdown padrão (`[texto](caminho.md)`) em vez de `[[wikilinks]]`, para funcionarem também no GitHub.
-- **A cada etapa concluída:** atualizar o status no `MAPA_MENTAL.md` e no `MAPA_MENTAL.canvas` (⬜ → 🔄 → ✅).
-- **Notas pessoais** (que não devem ir para o GitHub): colocar em `data/` ou numa pasta ignorada pelo Git.
+- **Links:** use standard Markdown links (`[texto](caminho.md)`) instead of `[[wikilinks]]`, so they also work on GitHub.
+- **Each completed stage:** update the status in `MAPA_MENTAL.md` and in `MAPA_MENTAL.canvas` (⬜ → 🔄 → ✅).
+- **Personal notes** (that must not go to GitHub): put them in `data/` or in a folder ignored by Git.
 
-## A Nora lendo as suas notas (v0.3.0)
+## Nora reading your notes (v0.3.0)
 
-A Nora pode ler as notas do **seu** vault do Obsidian (o pessoal, não precisa ser o do projeto) e usar o que você escreveu para responder: "o que eu anotei sobre a prova de cálculo?", "qual era a receita do bolo?". Ela **só lê**: nunca cria, altera nem apaga nota.
+Nora can read the notes in **your** Obsidian vault (your personal one, it does not need to be the project's) and use what you wrote to answer: "o que eu anotei sobre a prova de cálculo?", "qual era a receita do bolo?". She **only reads**: she never creates, changes or deletes a note.
 
-### Ligar (uma vez)
+### Turn it on (once)
 
-1. No `config/local.toml`, ponha o caminho do vault. Use barras `/` (ou aspas simples), porque a barra invertida do Windows tem outro sentido no TOML:
+1. In `config/local.toml`, put the vault path. Use forward slashes `/` (or single quotes), because the Windows backslash means something else in TOML:
 
    ```toml
    [notas]
    pasta = "C:/Users/voce/Documents/Obsidian"
-   # pastas que ela não deve ler (as ocultas, como .obsidian e .trash, já ficam de fora)
+   # folders she must not read (hidden ones, like .obsidian and .trash, are already left out)
    ignorar = ["Diário", "Privado"]
    ```
 
-2. Leia as notas pela primeira vez (pode levar alguns minutos num vault grande; usa o `bge-m3` do Ollama, o mesmo da memória):
+2. Read the notes for the first time (it may take a few minutes on a large vault; it uses Ollama's `bge-m3`, the same as memory):
 
    ```bash
    nora notas ler
    ```
 
-3. Confira: `nora --verificar` mostra a linha `Notas (Obsidian)` com quantas notas estão no índice.
+3. Check: `nora --verificar` shows the `Notas (Obsidian)` line with how many notes are in the index.
 
-Depois disso, toda vez que você abre uma conversa, ela lê em segundo plano só as notas novas ou alteradas (e esquece as apagadas), sem atrasar o começo. Para desligar isso: `atualizar_ao_abrir = false`.
+After that, every time you open a conversation, she reads in the background only the new or changed notes (and forgets the deleted ones), without delaying the start. To turn this off: `atualizar_ao_abrir = false`.
 
-### Como ela usa
+### How she uses them
 
-- Cada nota é dividida em trechos (por título e parágrafos). Antes de responder, ela busca os trechos mais parecidos com a pergunta (`trechos_por_pergunta`, padrão 3, acima de `similaridade_minima`, padrão 0.5) e lê junto, como faz com a memória.
-- Quando usa uma nota, ela diz de qual veio ("na sua nota Cálculo, a prova é dia 21").
-- Com `--medir`, cada resposta mostra quantas notas ela leu.
-- Links `[[...]]`, propriedades (frontmatter), imagens e comentários `%%...%%` são limpos antes.
+- Each note is split into passages (by heading and paragraphs). Before answering, she searches the passages most similar to the question (`trechos_por_pergunta`, default 3, above `similaridade_minima`, default 0.5) and reads them along, as she does with memory.
+- When she uses a note, she says which one it came from ("na sua nota Cálculo, a prova é dia 21").
+- With `--medir`, each answer shows how many notes she read.
+- `[[...]]` links, properties (frontmatter), images and `%%...%%` comments are cleaned up first.
 
-| Comando | O que faz |
+| Command | What it does |
 |---|---|
-| `nora notas ler` | Lê as notas novas ou alteradas agora |
-| `nora notas buscar prova de cálculo` | Mostra os trechos que ela acharia para esse texto |
-| `nora notas status` | Quantas notas e trechos estão no índice |
+| `nora notas ler` | Reads the new or changed notes now |
+| `nora notas buscar prova de cálculo` | Shows the passages she would find for that text |
+| `nora notas status` | How many notes and passages are in the index |
 
-### Privacidade
+### Privacy
 
-- O índice fica em `data/notas.db`, só no seu PC (fora do Git). Dá para apagar o arquivo e rodar `nora notas ler` de novo quando quiser.
-- Os trechos usados numa resposta vão junto com a pergunta para quem responde. Se a pergunta for para o ChatGPT ou o Claude, esses trechos vão para a nuvem também. Coloque em `ignorar` as pastas que nunca devem sair do PC, ou use "use o cérebro local".
+- The index lives in `data/notas.db`, only on your PC (outside Git). You can delete the file and run `nora notas ler` again whenever you want.
+- The passages used in an answer go along with the question to whoever answers. If the question goes to ChatGPT or Claude, those passages go to the cloud too. Put in `ignorar` the folders that must never leave the PC, or use "use o cérebro local".

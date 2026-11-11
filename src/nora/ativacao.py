@@ -1,7 +1,7 @@
-"""Palavra de ativação por transcrição: a fala só vira pedido se começar com o nome dela.
+"""Wake word by transcription: speech only becomes a request if it starts with her name.
 
-O Whisper pode escrever o nome de jeitos parecidos; por isso a comparação ignora acentos,
-maiúsculas, letras dobradas e um "h" no fim ("Nora" = "NORA" = "Norah" = "Nóra").
+Whisper may write the name in similar ways; so the comparison ignores accents, capitals,
+doubled letters and a trailing "h" ("Nora" = "NORA" = "Norah" = "Nóra").
 """
 
 from __future__ import annotations
@@ -31,13 +31,13 @@ def normalizar(texto: str) -> str:
 
 
 def _encolher(palavra: str) -> str:
-    """Forma comparável: sem letras dobradas e sem "h" no fim ('norah' -> 'nora')."""
+    """Comparable form: no doubled letters and no trailing "h" ('norah' -> 'nora')."""
     return re.sub(r"(.)\1+", r"\1", palavra).removesuffix("h") or palavra
 
 
 def extrair_pedido(texto: str, palavra_de_ativacao: str) -> str | None:
-    """Se a fala começa com a palavra de ativação (talvez depois de 'oi', 'ei'...), devolve o
-    resto da fala ("" se só chamou o nome). Senão, devolve None."""
+    """If the speech starts with the wake word (maybe after 'oi', 'ei'...), returns the rest of
+    the speech ("" if only the name was called). Otherwise, returns None."""
     alvo = [_encolher(p) for p in normalizar(palavra_de_ativacao).split()]
     tokens = list(_PALAVRA.finditer(texto))
     if not alvo or not tokens:

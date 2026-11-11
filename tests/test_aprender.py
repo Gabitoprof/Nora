@@ -1,4 +1,5 @@
-"""Aprender pela conversa: pronúncias corrigidas e preferências sobre o jeito de falar."""
+"""Learning from conversation: corrected pronunciations and preferences about the way of
+speaking."""
 
 import json
 
@@ -14,7 +15,7 @@ from nora.voz import com_pronuncias_aprendidas
 
 
 class OllamaQueAprende(OllamaComMemoria):
-    """Ollama falso cuja curadoria também devolve pronúncias e preferências."""
+    """Fake Ollama whose curation also returns pronunciations and preferences."""
 
     def __init__(self, pronuncias=(), preferencias=()):
         super().__init__()
@@ -39,14 +40,14 @@ def test_curadoria_le_pronuncias_e_preferencias(criar_raiz):
     assert curadoria.preferencias == ["Não repita a pergunta."]
     instrucao = json.loads(servidor.pedidos[0][2])["messages"][0]["content"]
     assert '"pronuncias"' in instrucao and '"preferencias"' in instrucao
-    assert "segunda" in instrucao  # dia da semana de 02/11/2026
+    assert "segunda" in instrucao  # weekday of 02/11/2026
 
 
 def test_memoria_guarda_pronuncias_e_preferencias(tmp_path):
     memoria = Memoria(tmp_path / "memoria.db", EmbeddingsFalsos())
     assert memoria.ensinar_pronuncia("Hoje", "ôje")
-    assert not memoria.ensinar_pronuncia("hoje", "ôji")  # atualiza, não duplica
-    assert not memoria.ensinar_pronuncia("casa", "Casa")  # igual: ignora
+    assert not memoria.ensinar_pronuncia("hoje", "ôji")  # updates, does not duplicate
+    assert not memoria.ensinar_pronuncia("casa", "Casa")  # same: ignored
     assert memoria.pronuncias() == {"hoje": "ôji"}
     assert memoria.preferir("Seja mais direta.") == (1, True)
     assert memoria.preferir("Seja mais direta.") == (1, False)
@@ -75,7 +76,7 @@ def test_voz_usa_a_pronuncia_aprendida_na_hora(tmp_path):
     voz.sintetizar("Hoje está bonito.")
     assert interna.textos == ["Hoje está bonito.", "ôje está bonito."]
     assert voz.aviso == "a principal falhou"
-    voz.aviso = ""  # o aviso da reserva é limpo na voz de dentro
+    voz.aviso = ""  # the fallback notice is cleared on the inner voice
     assert interna.aviso == ""
     assert com_pronuncias_aprendidas(interna, None) is interna
     memoria.fechar()
@@ -114,7 +115,7 @@ def test_comandos_de_pronuncias_e_preferencias(criar_raiz, capsys, monkeypatch):
             "nora.cli.carregar", lambda: carregar(raiz, ambiente={"OLLAMA_HOST": ollama.url})
         )
         assert main(["memoria", "pronuncias", "hoje", "ôje"]) == 0
-        assert main(["memoria", "pronuncias", "casa"]) == 1  # falta como falar
+        assert main(["memoria", "pronuncias", "casa"]) == 1  # missing how to say it
         assert main(["memoria", "pronuncias"]) == 0
         assert main(["memoria", "pronuncias", "--esquecer", "hoje"]) == 0
         assert main(["memoria", "pronuncias", "--esquecer", "hoje"]) == 1
@@ -149,5 +150,7 @@ def test_apagar_e_corrigir_pela_conversa(criar_raiz):
         conversa.memoria.fechar()
 
     assert f"esqueci: {errado}" in avisos
-    assert textos == [certo]  # o errado saiu, o certo entrou (sem anotar o pedido de apagar)
-    assert agenda == [certo]  # e a agenda acompanha
+    assert textos == [
+        certo
+    ]  # the wrong one left, the right one came in (without recording the delete request)
+    assert agenda == [certo]  # and the agenda follows

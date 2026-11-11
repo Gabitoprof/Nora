@@ -1,5 +1,5 @@
-"""Curadoria da memória: depois de cada troca, o modelo local anota o que vale lembrar sobre a
-pessoa (fatos duradouros, datas, planos e acontecimentos marcantes). Roda em segundo plano."""
+"""Memory curation: after each exchange, the local model notes what is worth remembering about the
+person (lasting facts, dates, plans and remarkable events). Runs in the background."""
 
 from __future__ import annotations
 
@@ -77,12 +77,12 @@ class FatoExtraido(NamedTuple):
 
 
 class Curadoria(NamedTuple):
-    """O que vale guardar de uma troca."""
+    """What is worth keeping from an exchange."""
 
     fatos: list[FatoExtraido]
-    pronuncias: list[tuple[str, str]]  # (palavra, como falar)
+    pronuncias: list[tuple[str, str]]  # (word, how to say it)
     preferencias: list[str]
-    esquecer: list[str] = []  # fatos que a pessoa pediu para apagar ou corrigiu
+    esquecer: list[str] = []  # facts the person asked to delete or corrected
 
 
 def _dia(hoje: str) -> date:
@@ -93,7 +93,7 @@ def _dia(hoje: str) -> date:
 
 
 def _ler_data(valor, texto: str, dia: date) -> tuple[date | None, bool]:
-    """A data que o modelo deu ou, se faltou ou veio errada, a que estiver escrita no texto."""
+    """The date the model gave or, if missing or wrong, the one written in the text."""
     if isinstance(valor, str) and valor.strip():
         try:
             return date.fromisoformat(valor.strip()[:10]), False
@@ -104,7 +104,7 @@ def _ler_data(valor, texto: str, dia: date) -> tuple[date | None, bool]:
 
 
 def extrair_fatos(*args, **kwargs) -> list[FatoExtraido]:
-    """Só os fatos da troca (veja curar)."""
+    """Only the exchange's facts (see curar)."""
     return curar(*args, **kwargs).fatos
 
 
@@ -117,8 +117,8 @@ def curar(
     timeout: float = 120.0,
     anterior: str = "",
 ) -> Curadoria:
-    """Os fatos que valem guardar desta troca (com área e, se tiverem, data), as pronúncias
-    corrigidas e as preferências sobre o jeito de falar."""
+    """The facts worth keeping from this exchange (with area and, if any, date), the corrected
+    pronunciations and the preferences about the way of speaking."""
     usuario = config.nome_usuario or "a pessoa"
     dia = _dia(hoje)
     lista_areas = ", ".join(areas) if areas else "nenhuma ainda"
@@ -162,7 +162,7 @@ def curar(
         return Curadoria([], [], [], [])
     resultado = []
     for fato in fatos if isinstance(fatos, list) else []:
-        if isinstance(fato, str):  # formato antigo, sem área nem data
+        if isinstance(fato, str):  # old format, with no area or date
             fato = {"texto": fato}
         elif not isinstance(fato, dict):
             continue

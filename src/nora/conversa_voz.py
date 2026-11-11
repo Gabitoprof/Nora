@@ -1,8 +1,8 @@
-"""Conversa por voz (parte 2 da v0.1.0): aperta Enter, fala, e a Nora responde falando.
+"""Voice conversation (part 2 of v0.1.0): press Enter, speak, and Nora answers by speaking.
 
-Ouvido (whisper-server), cérebro (Ollama) e voz (Piper) são serviços separados. A resposta é
-cortada em frases enquanto o modelo escreve: uma linha sintetiza a próxima frase enquanto outra
-toca a atual, então a Nora começa a falar antes de terminar de pensar.
+Ear (whisper-server), brain (Ollama) and voice (Piper) are separate services. The answer is split
+into sentences while the model writes: one thread synthesizes the next sentence while another
+plays the current one, so Nora starts speaking before she finishes thinking.
 """
 
 from __future__ import annotations
@@ -43,13 +43,13 @@ def _e_pergunta(frase: str) -> bool:
     return frase.rstrip(" \"'”)»").endswith("?")
 
 
-# Até quantos caracteres de frases que já estão esperando vão juntos num pedido à voz.
+# Up to how many characters of sentences already waiting go together in one voice request.
 LIMITE_DO_LOTE = 400
 
 
 @dataclass
 class Tempos:
-    """Segundos de cada etapa de uma fala, contados a partir do fim da gravação."""
+    """Seconds of each stage of an utterance, counted from the end of the recording."""
 
     transcricao: float = 0.0
     primeira_frase: float = 0.0
@@ -58,7 +58,7 @@ class Tempos:
 
 
 class Locutor:
-    """Recebe frases e as fala em ordem: uma linha sintetiza, outra toca."""
+    """Takes sentences and speaks them in order: one thread synthesizes, another plays."""
 
     def __init__(
         self,
@@ -83,22 +83,23 @@ class Locutor:
         self._frases.put(frase)
 
     def terminar(self) -> None:
-        """Espera tudo o que foi pedido ser falado."""
+        """Waits for everything requested to be spoken."""
         self._frases.put(_FIM)
         self._sintese.join()
         self._toque.join()
 
     def _sintetizar(self) -> None:
-        """Sintetiza as frases em ordem. Se várias já estão esperando (a voz é mais lenta que
-        o modelo, como no ComfyUI), junta-as num pedido só: menos pedidos, menos pausas."""
+        """Synthesizes the sentences in order. If several are already waiting (the voice is slower
+        than the model, as with ComfyUI), joins them in one request: fewer requests, fewer
+        pauses."""
         acabou = False
         while not acabou:
             frase = self._frases.get()
             if frase is _FIM:
                 break
             lote = [frase]
-            # Uma pergunta sempre fecha o pedido: com o "?" no fim, a voz sobe a entonação; no
-            # meio do texto, muitos modelos achatam.
+            # A question always closes the request: with the "?" at the end, the voice raises the
+            # intonation; in the middle of the text, many models flatten it.
             while sum(len(f) for f in lote) < LIMITE_DO_LOTE and not _e_pergunta(lote[-1]):
                 try:
                     proxima = self._frases.get_nowait()
@@ -120,19 +121,19 @@ class Locutor:
         wav = self._audios.get()
         if wav is _FIM:
             return
-        with self.abafar():  # os outros programas ficam mais baixos enquanto ela fala
+        with self.abafar():  # the other programs get quieter while she speaks
             while wav is not _FIM:
                 if not self.tempos.comeco_da_voz:
                     self.tempos.comeco_da_voz = time.perf_counter() - self.inicio
                 try:
                     self.tocar(wav)
-                except Exception as erro:  # um problema no alto-falante não derruba a conversa
+                except Exception as erro:  # a speaker problem does not bring down the conversation
                     self.tempos.erros.append(f"Falha ao tocar o áudio: {erro}")
                 wav = self._audios.get()
 
 
 def abafador(config: Config):
-    """O que fazer com os outros programas enquanto a Nora fala, conforme [audio] prioridade."""
+    """What to do with the other programs while Nora speaks, per [audio] prioridade."""
     if not config.audio.prioridade:
         return nullcontext
     return lambda: abafar_outros(config.audio.volume_outros)
@@ -148,8 +149,9 @@ def responder_falando(
     escrever: Callable[..., None],
     medir: bool,
 ) -> Tempos:
-    """Pede a resposta ao cérebro, mostra o texto e fala frase por frase enquanto ele escreve.
-    Um pedido de troca de voz ("usa a voz do Piper") é atendido aqui, sem passar pelo cérebro."""
+    """Asks the brain for the answer, shows the text and speaks sentence by sentence while it
+    writes. A voice switch request ("usa a voz do Piper") is handled here, without going to the
+    brain."""
     pedido = pedido_de_voz(texto)
     if pedido:
         return trocar_de_voz(conversa, voz, tocar, texto, pedido, escrever)
@@ -164,7 +166,7 @@ def responder_falando(
                 locutor.tempos.primeira_frase = time.perf_counter() - inicio
             locutor.falar(frase)
 
-    tela = FiltroDeTela()  # a tela não mostra as etiquetas de emoção; a voz recebe tudo
+    tela = FiltroDeTela()  # the screen does not show the emotion tags; the voice gets everything
     try:
         for pedaco in conversa.perguntar(texto):
             escrever(tela.alimentar(pedaco), fim="")
@@ -204,7 +206,7 @@ def responder_falando(
 
 
 def _observar_voz(conversa: Conversa, voz, tempos: Tempos, usou_reserva: bool) -> None:
-    """Tempos do ouvido e da voz e falhas da voz, para a auto-melhoria (sem texto)."""
+    """Ear and voice times and voice failures, for self-improvement (no text)."""
     observador = getattr(conversa, "observador", None)
     if observador is None:
         return
@@ -253,8 +255,9 @@ def conversar_por_voz(
     tocar: Callable[[bytes], None] | None = None,
     so_teclado: bool = False,
 ) -> int:
-    """Conversa com resposta falada. Por padrão, Enter grava a fala e texto digitado vale como
-    pergunta; com `so_teclado`, não usa microfone: a pessoa digita e a Nora responde falando."""
+    """Conversation with a spoken answer. By default, Enter records speech and typed text counts as
+    a question; with `so_teclado`, no microphone is used: the person types and Nora answers by
+    speaking."""
     saida = saida or sys.stdout
     conversa = nova_conversa(config, cerebro)
     ouvido = ouvido or OuvidoWhisper(config)

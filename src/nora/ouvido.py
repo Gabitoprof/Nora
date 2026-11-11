@@ -1,4 +1,4 @@
-"""Ouvido: transcreve fala em texto pelo whisper-server (whisper.cpp)."""
+"""Ear: transcribes speech into text through whisper-server (whisper.cpp)."""
 
 from __future__ import annotations
 
@@ -12,14 +12,14 @@ from dataclasses import dataclass
 from nora.config import Config
 from nora.servico import enviar
 
-# O Whisper descreve sons em vez de fala entre colchetes ou parênteses, ex.: [MÚSICA DE FUNDO],
-# (risos), [BLANK_AUDIO]. Isso não é fala da pessoa e não deve virar pergunta.
+# Whisper describes sounds instead of speech in brackets or parentheses, e.g. [MÚSICA DE FUNDO],
+# (risos), [BLANK_AUDIO]. That is not the person's speech and must not become a question.
 _SO_DESCRICAO = re.compile(r"^(\s*[\[(][^\])]*[\])]\s*)+$")
 _DESCRICAO = re.compile(r"\s*[\[(][^\])]*[\])]\s*")
 
 
 def limpar_transcricao(texto: str) -> str:
-    """Tira as descrições de som do Whisper; devolve "" se não sobrou fala."""
+    """Removes Whisper's sound descriptions; returns "" if no speech is left."""
     texto = " ".join(texto.split())
     if not texto or _SO_DESCRICAO.match(texto):
         return ""
@@ -33,10 +33,10 @@ class OuvidoWhisper:
     ultima_duracao: float = 0.0
 
     def transcrever(self, wav: bytes, dica: str = "") -> str:
-        """Envia um WAV ao whisper-server e devolve o texto reconhecido.
+        """Sends a WAV to whisper-server and returns the recognized text.
 
-        `dica` é um texto de contexto para o Whisper (ex.: o nome da assistente), que o ajuda a
-        escrever nomes do jeito certo."""
+        `dica` is a context text for Whisper (e.g. the assistant's name), which helps it spell
+        names the right way."""
         fronteira = uuid.uuid4().hex
         campos = {
             "response_format": "json",

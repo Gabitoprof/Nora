@@ -1,9 +1,9 @@
-"""Observador da auto-melhoria: anota, sem atrapalhar a conversa, como foi cada etapa (tempos,
-falhas, quem respondeu, reclamações). Só métricas e categorias: nunca o texto do que foi dito
-nem áudio. Fica em <dados>/auto_melhoria/auto_melhoria.db; o fechamento do dia (melhorias.py)
-lê daqui.
+"""Self-improvement observer: records, without getting in the way of the conversation, how each
+stage went (times, failures, who answered, complaints). Only metrics and categories: never the
+text of what was said nor audio. It lives in <dados>/auto_melhoria/auto_melhoria.db; closing the
+day (melhorias.py) reads from here.
 
-Tipos de evento: resposta, escalou, erro_provedor, timeout, resposta_vazia, stream_interrompido,
+Event types: resposta, escalou, erro_provedor, timeout, resposta_vazia, stream_interrompido,
 sem_resposta, cancelada, feedback_negativo, rota_suspeita, comando, transcricao, voz.
 """
 
@@ -68,7 +68,7 @@ class Observador:
         correlacao: str = "",
         quando: datetime | None = None,
     ) -> None:
-        """Anota um evento. Nunca levanta erro: o observador não pode derrubar a conversa."""
+        """Records an event. Never raises: the observer must not bring down the conversation."""
         gravidade = gravidade or ("erro" if tipo in GRAVES else "info")
         momento = (quando or datetime.now()).isoformat(timespec="seconds")
         try:
@@ -94,7 +94,7 @@ class Observador:
             pass
 
     def eventos(self, depois: str = "", ate: str = "9999") -> list[dict]:
-        """Os eventos com `depois < quando <= ate` (datas ISO)."""
+        """The events with `depois < quando <= ate` (ISO dates)."""
         with self._trava:
             cursor = self._db.execute(
                 f"SELECT {CAMPOS} FROM eventos WHERE quando > ? AND quando <= ? ORDER BY quando",
@@ -114,7 +114,7 @@ class Observador:
 
 
 def abrir_observador(config) -> Observador | None:
-    """O observador da config, ou None se a auto-melhoria estiver desligada."""
+    """The config's observer, or None if self-improvement is off."""
     if not config.auto_melhoria.ativa:
         return None
     try:

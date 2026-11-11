@@ -1,4 +1,4 @@
-"""Toda dependência do pyproject.toml precisa estar em docs/LICENCAS.md, com a licença."""
+"""Every pyproject.toml dependency must be in docs/LICENCAS.md, with its license."""
 
 import re
 import tomllib

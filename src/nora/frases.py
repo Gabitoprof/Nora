@@ -1,12 +1,12 @@
-"""Corta a resposta do modelo em frases, conforme ela chega, para a voz começar cedo."""
+"""Splits the model's answer into sentences as it arrives, so the voice starts early."""
 
 from __future__ import annotations
 
 import re
 
-# Fim de frase: . ! ? … (talvez seguido de aspas ou parênteses) e espaço; ou quebra de linha.
+# End of sentence: . ! ? … (maybe followed by quotes or parentheses) and a space; or a line break.
 _FIM = re.compile(r"(?<=[.!?…])[\"'”)\]]*\s+|\n+")
-# Abreviações comuns que terminam em ponto e não fecham a frase.
+# Common abbreviations that end in a period and do not close the sentence.
 _ABREVIACOES = {
     "sr.",
     "sra.",
@@ -32,7 +32,7 @@ class SeparadorDeFrases:
         self._buffer = ""
 
     def alimentar(self, pedaco: str) -> list[str]:
-        """Recebe um pedaço do texto e devolve as frases que já ficaram completas."""
+        """Takes a chunk of text and returns the sentences that are already complete."""
         self._buffer += pedaco
         frases: list[str] = []
         inicio = 0
@@ -47,6 +47,6 @@ class SeparadorDeFrases:
         return frases
 
     def finalizar(self) -> list[str]:
-        """Devolve o que sobrou no fim da resposta."""
+        """Returns what is left at the end of the answer."""
         resto, self._buffer = self._buffer.strip(), ""
         return [resto] if resto else []

@@ -1,16 +1,16 @@
-"""Memória entre conversas (v0.2.0), com busca por significado, em duas camadas:
+"""Memory across conversations (v0.2.0), with meaning-based search, in layers:
 
-- fatos: resumos curtos anotados pela curadoria ("Ana tem prova em 21/11");
-- trocas: cada pergunta e resposta inteira, para ela lembrar de tudo o que foi dito;
-- agenda: os fatos com data (prova, viagem, aniversário), para achar pelo dia ("amanhã");
-- pronúncias e preferências: o que a pessoa ensinou sobre como a Nora deve falar.
+- facts: short summaries noted by curation ("Ana tem prova em 21/11");
+- exchanges: each whole question and answer, so she remembers everything that was said;
+- agenda: the facts with a date (exam, trip, birthday), to find them by day ("amanhã");
+- pronunciations and preferences: what the person taught about how Nora should speak.
 
-Cada item tem um vetor (embedding). Antes de responder, a Nora busca os fatos e os trechos de
-conversa mais parecidos com a pergunta e os lê junto. Fica tudo em <dados>/memoria.db, só na
-máquina da pessoa.
+Each item has a vector (embedding). Before answering, Nora searches the facts and the
+conversation passages most similar to the question and reads them along. Everything lives in
+<dados>/memoria.db, only on the person's machine.
 
-A busca usa o sqlite-vec quando ele está instalado (`pip install -e ".[memoria]"`); sem ele,
-compara os vetores em Python, o que basta para alguns milhares de fatos.
+Search uses sqlite-vec when it is installed (`pip install -e ".[memoria]"`); without it, it
+compares the vectors in Python, which is enough for a few thousand facts.
 """
 
 from __future__ import annotations
@@ -25,21 +25,21 @@ from pathlib import Path
 
 from nora.agenda import Evento, datas_no_texto, ocorrencia
 
-# Acima disso, dois fatos são considerados o mesmo; o mais novo substitui o antigo.
+# Above this, two facts are considered the same; the newer replaces the older.
 MESMO_FATO = 0.9
-# Depois de um "esquece isso": um trecho de conversa tão parecido assim com o que foi esquecido
-# não volta nas buscas, e um fato tão parecido assim não volta pelo importar.
+# After an "esquece isso": a conversation passage this similar to what was forgotten
+# does not come back in searches, and a fact this similar does not come back through import.
 TROCA_ESQUECIDA = 0.6
 FATO_ESQUECIDO = 0.85
 
 
-# Depois disso, uma resposta pendente deixa de ser retomada (não fica gastando API à toa).
+# After this, a pending answer is no longer resumed (so it does not waste API calls).
 MAX_TENTATIVAS = 3
 
 
 @dataclass(frozen=True)
 class Pendente:
-    """Uma resposta que ficou pela metade (ou nem começou) e pode ser retomada."""
+    """An answer left halfway (or never started) that can be resumed."""
 
     id: int
     interacao: str
@@ -55,11 +55,11 @@ class Pendente:
 
 @dataclass(frozen=True)
 class Apagamento:
-    """O que "apagar de vez" tira (ou tiraria, na prévia) da memória."""
+    """What "apagar de vez" removes (or would remove, in the preview) from memory."""
 
     fatos: list
     trocas: list
-    textos: set[str]  # perguntas e respostas apagadas, para tirar também do histórico
+    textos: set[str]  # deleted questions and answers, to remove them from the history too
 
 
 @dataclass(frozen=True)
@@ -96,7 +96,8 @@ def _cosseno(a: list[float], b: list[float]) -> float:
 
 
 def _contem(texto: str | None, trecho: str | None) -> int:
-    """Se o texto tem o trecho, sem olhar maiúsculas (inclusive acentuadas) e sem curingas."""
+    """Whether the text contains the substring, ignoring case (accented capitals included) and
+    without wildcards."""
     return int(bool(texto) and (trecho or "").casefold() in texto.casefold())
 
 
@@ -111,8 +112,9 @@ class Memoria:
         self.embeddings = embeddings
         self._trava = threading.RLock()
         self._db = sqlite3.connect(str(caminho), check_same_thread=False)
-        # Busca por trecho: o LIKE do SQLite só ignora maiúsculas sem acento ("Á" ≠ "á") e trata
-        # "_" e "%" como curingas. contem() compara em Python, com casefold e sem curingas.
+        # Substring search: SQLite's LIKE only ignores case for unaccented letters ("Á" ≠ "á") and
+        # treats "_" and "%" as wildcards. contem() compares in Python, with casefold and no
+        # wildcards.
         self._db.create_function("contem", 2, _contem, deterministic=True)
         self._db.executescript(
             """
@@ -176,14 +178,14 @@ class Memoria:
             """
         )
         colunas = {linha[1] for linha in self._db.execute("PRAGMA table_info(fatos)")}
-        if "area" not in colunas:  # bancos criados antes das áreas
+        if "area" not in colunas:  # databases created before areas
             self._db.execute("ALTER TABLE fatos ADD COLUMN area TEXT NOT NULL DEFAULT ''")
             self._db.commit()
         self.vetorial = self._carregar_sqlite_vec()
-        if self.meta("agenda_preenchida") is None:  # bancos de antes da agenda
+        if self.meta("agenda_preenchida") is None:  # databases from before the agenda
             self.preencher_agenda()
 
-    # --- índice vetorial ------------------------------------------------------------------
+    # --- vector index ---------------------------------------------------------------------
 
     def _carregar_sqlite_vec(self) -> bool:
         try:
@@ -202,8 +204,8 @@ class Memoria:
         )
 
     def _garantir_indice(self, dimensao: int) -> None:
-        """Cria os índices do sqlite-vec (fatos e trocas) quando a dimensão dos vetores é
-        conhecida, e os recria se ela mudar (ex.: outro modelo de embeddings)."""
+        """Creates the sqlite-vec indexes (facts and exchanges) when the vector dimension is
+        known, and recreates them if it changes (e.g. another embeddings model)."""
         if not self.vetorial:
             return
         mesma = self.meta("dimensao") == str(dimensao)
@@ -238,7 +240,7 @@ class Memoria:
                 (chave, valor),
             )
 
-    # --- fatos ----------------------------------------------------------------------------
+    # --- facts ----------------------------------------------------------------------------
 
     def _parecidos(
         self, vetor: list[float], k: int, tabela: str = "fatos"
@@ -250,7 +252,8 @@ class Memoria:
                 "ORDER BY distance",
                 (_empacotar(vetor), k),
             ).fetchall()
-            # distância nula: vetor sem direção (ex.: texto sem palavras); conta como nada parecido
+            # null distance: a vector with no direction (e.g. text without words); counts as nothing
+            # similar
             return [
                 (item_id, 0.0 if distancia is None else 1.0 - distancia)
                 for item_id, distancia in linhas
@@ -262,10 +265,10 @@ class Memoria:
         ]
         return sorted(todos, key=lambda par: par[1], reverse=True)[:k]
 
-    # --- áreas -----------------------------------------------------------------------------
+    # --- areas -----------------------------------------------------------------------------
 
     def areas(self) -> list[tuple[str, int]]:
-        """As áreas da memória (saúde, trabalho...) com quantos fatos cada uma tem."""
+        """The memory areas (saúde, trabalho...) with how many facts each one has."""
         with self._trava:
             return self._db.execute(
                 "SELECT area, COUNT(*) FROM fatos WHERE area != '' GROUP BY area "
@@ -273,8 +276,8 @@ class Memoria:
             ).fetchall()
 
     def normalizar_area(self, area: str) -> str:
-        """Nome curto em minúsculas; se já existe uma área com o mesmo nome (sem olhar acentos),
-        usa a que existe: "Saude" vira "saúde" se "saúde" já existir."""
+        """Short lowercase name; if an area with the same name already exists (ignoring accents),
+        uses the existing one: "Saude" becomes "saúde" if "saúde" already exists."""
         from nora.ativacao import normalizar
 
         area = " ".join(area.lower().split())[:40]
@@ -286,19 +289,20 @@ class Memoria:
                 return existente
         return area
 
-    # --- fatos ----------------------------------------------------------------------------
+    # --- facts ----------------------------------------------------------------------------
 
     def lembrar(self, texto: str, origem: str = "", area: str = "") -> tuple[int, bool]:
-        """Guarda um fato na área dada. Se já existe um quase igual, troca pelo novo texto.
-        Devolve (id, se é um fato novo)."""
+        """Stores a fact in the given area. If a near-identical one exists, replaces it with the new
+        text. Returns (id, whether it is a new fact)."""
         texto = " ".join(texto.split())
         vetor = self.embeddings.vetor(texto)
         area = self.normalizar_area(area)
         with self._trava, self._db:
             esquecidos = self._esquecidos_parecidos(vetor, FATO_ESQUECIDO)
             if esquecidos and origem.startswith("historico"):
-                return 0, False  # a pessoa pediu para esquecer: conversa antiga não traz de volta
-            for esquecido_id in esquecidos:  # contou de novo numa conversa nova: volta a valer
+                # the person asked to forget: an old conversation does not bring it back
+                return 0, False
+            for esquecido_id in esquecidos:  # told again in a new conversation: it counts again
                 self._db.execute("DELETE FROM esquecidos WHERE id = ?", (esquecido_id,))
             self._garantir_indice(len(vetor))
             agora = _agora()
@@ -331,7 +335,7 @@ class Memoria:
             return fato_id, True
 
     def buscar(self, texto: str, k: int = 5, minimo: float = 0.0) -> list[Fato]:
-        """Os fatos mais parecidos com o texto, do mais para o menos parecido."""
+        """The facts most similar to the text, from most to least similar."""
         if k <= 0 or not self.contar():
             return []
         vetor = self.embeddings.vetor(texto)
@@ -361,8 +365,8 @@ class Memoria:
     def listar(
         self, limite: int | None = None, pular: int = 0, contendo: str = "", area: str = ""
     ) -> list[Fato]:
-        """Fatos do mais recente para o mais antigo; `contendo` filtra por um trecho do texto e
-        `area` por uma área."""
+        """Facts from newest to oldest; `contendo` filters by a substring of the text and `area` by
+        an area."""
         filtro, parametros = self._filtro(contendo, self.normalizar_area(area))
         consulta = "SELECT id, texto, criado, atualizado, area FROM fatos" + filtro
         consulta += " ORDER BY atualizado DESC, id DESC LIMIT ? OFFSET ?"
@@ -377,10 +381,11 @@ class Memoria:
             return self._db.execute("SELECT COUNT(*) FROM fatos" + filtro, parametros).fetchone()[0]
 
     def esquecer_parecido(self, texto: str, minimo: float = 0.75) -> list[Fato]:
-        """Deixa de usar o que foi pedido para esquecer: apaga o fato mais parecido com o texto
-        (e outros quase iguais a ele) e anota o pedido, para que trechos de conversas antigas
-        sobre isso não voltem nas buscas nem pelo importar. As conversas guardadas continuam no
-        histórico; para tirar de lá também, use apagar_de_vez. Devolve os fatos apagados."""
+        """Stops using what was asked to be forgotten: deletes the fact most similar to the text
+        (and others nearly identical to it) and records the request, so passages of old
+        conversations about it come back neither in searches nor through import. The stored
+        conversations stay in the history; to remove them from there too, use apagar_de_vez. Returns
+        the deleted facts."""
         apagados = self._fatos_para_esquecer(texto, minimo)
         for fato in apagados:
             self.esquecer(fato.id)
@@ -398,9 +403,9 @@ class Memoria:
     def apagar_de_vez(
         self, texto: str, confirmar: bool = False, minimo: float = 0.75
     ) -> Apagamento:
-        """Tira da memória os fatos e os trechos de conversa sobre o texto. Sem `confirmar`, só
-        mostra o que sairia. O histórico em arquivo é limpo à parte, com os `textos` devolvidos
-        (historico.apagar_do_historico)."""
+        """Removes from memory the facts and conversation passages about the text. Without
+        `confirmar`, only shows what would go. The file history is cleaned separately, with the
+        returned `textos` (historico.apagar_do_historico)."""
         fatos = self._fatos_para_esquecer(texto, minimo)
         vetor = self.embeddings.vetor(texto)
         with self._trava:
@@ -425,15 +430,16 @@ class Memoria:
             self._apagar_pendencias_sobre(texto)
         return Apagamento(fatos, trocas, textos)
 
-    # --- respostas pendentes (pela metade, canceladas, ou que caíram com o programa) ----------
+    # --- pending answers (half-finished, cancelled, or lost when the program crashed) ---------
 
     _CAMPOS_PENDENTE = (
         "id, interacao, sessao, pergunta, parcial, motivo, provedor, criada, status, tentativas"
     )
 
     def abrir_resposta(self, interacao: str, sessao: str, pergunta: str) -> None:
-        """Marca que uma resposta começou. Se o programa cair antes de terminar, ela vira pendência
-        na próxima vez (recuperar_abertas). Terminada, some (concluir_resposta)."""
+        """Marks that an answer started. If the program crashes before it finishes, it becomes a
+        pending item next time (recuperar_abertas). Once finished, it goes away
+        (concluir_resposta)."""
         agora = _agora()
         with self._trava, self._db:
             self._db.execute(
@@ -453,7 +459,8 @@ class Memoria:
     def marcar_pendente(
         self, interacao: str, sessao: str, pergunta: str, parcial: str, motivo: str, provedor: str
     ) -> None:
-        """A resposta não terminou: guarda a pergunta e o pedaço que saiu (nunca como fato)."""
+        """The answer did not finish: stores the question and the part that came out (never as a
+        fact)."""
         agora = _agora()
         with self._trava, self._db:
             self._db.execute(
@@ -466,7 +473,8 @@ class Memoria:
             )
 
     def recuperar_abertas(self, exceto_sessao: str) -> int:
-        """Respostas abertas de outras sessões: o programa caiu no meio. Viram pendências."""
+        """Open answers from other sessions: the program crashed midway. They become pending
+        items."""
         with self._trava, self._db:
             return self._db.execute(
                 "UPDATE respostas_pendentes SET status = 'pendente', motivo = 'encerramento', "
@@ -475,7 +483,7 @@ class Memoria:
             ).rowcount
 
     def pendentes(self) -> list[Pendente]:
-        """As que ainda podem ser retomadas, da mais nova para a mais antiga."""
+        """The ones that can still be resumed, from newest to oldest."""
         with self._trava:
             linhas = self._db.execute(
                 f"SELECT {self._CAMPOS_PENDENTE} FROM respostas_pendentes "
@@ -484,7 +492,7 @@ class Memoria:
         return [Pendente(*linha) for linha in linhas]
 
     def tentar_pendencia(self, pendente_id: int) -> int:
-        """Conta uma nova tentativa; depois de MAX_TENTATIVAS ela é cancelada. Devolve o total."""
+        """Counts a new attempt; after MAX_TENTATIVAS it is cancelled. Returns the total."""
         with self._trava, self._db:
             self._db.execute(
                 "UPDATE respostas_pendentes SET tentativas = tentativas + 1, "
@@ -517,7 +525,7 @@ class Memoria:
             )
 
     def _apagar_pendencias_sobre(self, texto: str) -> None:
-        """Esquecer ou apagar um assunto tira também as pendências sobre ele."""
+        """Forgetting or deleting a subject also removes the pending items about it."""
         vetor = self.embeddings.vetor(texto)
         with self._trava:
             linhas = self._db.execute("SELECT id, pergunta FROM respostas_pendentes").fetchall()
@@ -539,7 +547,7 @@ class Memoria:
             )
 
     def _esquecidos_parecidos(self, vetor: list[float], minimo: float) -> list[int]:
-        """Os pedidos de esquecer parecidos com o vetor (ids)."""
+        """The forget requests similar to the vector (ids)."""
         return [
             esquecido_id
             for esquecido_id, dados in self._db.execute("SELECT id, vetor FROM esquecidos")
@@ -554,7 +562,7 @@ class Memoria:
                 self._db.execute("DELETE FROM vec_fatos WHERE rowid = ?", (fato_id,))
             return apagados > 0
 
-    # --- agenda (fatos com data) ---------------------------------------------------------
+    # --- agenda (facts with a date) ------------------------------------------------------
 
     def marcar(
         self,
@@ -564,7 +572,8 @@ class Memoria:
         area: str = "",
         fato_id: int | None = None,
     ) -> int:
-        """Põe um evento na agenda. Se ele vem de um fato que já tinha data, troca a antiga."""
+        """Puts an event in the agenda. If it comes from a fact that already had a date, replaces
+        the old one."""
         texto = " ".join(texto.split())
         with self._trava, self._db:
             if fato_id is not None:
@@ -583,7 +592,7 @@ class Memoria:
     def marcar_do_fato(
         self, fato_id: int, texto: str, area: str = "", hoje: date | None = None
     ) -> list[int]:
-        """Põe na agenda as datas escritas no texto do fato ("prova em 21/11")."""
+        """Puts in the agenda the dates written in the fact's text ("prova em 21/11")."""
         datas = datas_no_texto(texto, hoje or date.today())
         if not datas:
             return []
@@ -600,7 +609,7 @@ class Memoria:
             return ids
 
     def preencher_agenda(self, hoje: date | None = None) -> int:
-        """Passa os fatos que já existiam pela agenda (uma vez, em bancos antigos)."""
+        """Runs the pre-existing facts through the agenda (once, on old databases)."""
         with self._trava:
             fatos = self._db.execute(
                 "SELECT id, texto, area FROM fatos WHERE id NOT IN "
@@ -617,7 +626,7 @@ class Memoria:
         ]
 
     def agenda(self, inicio: date, fim: date) -> list[tuple[date, Evento]]:
-        """Os eventos que caem no período, em ordem de data (os anuais, no ano do período)."""
+        """The events that fall in the period, in date order (yearly ones, in the period's year)."""
         with self._trava:
             linhas = self._db.execute(
                 "SELECT id, data, anual, texto, area, fato_id FROM agenda "
@@ -632,7 +641,7 @@ class Memoria:
         return sorted(achados, key=lambda par: (par[0], par[1].id))
 
     def eventos_contendo(self, trecho: str) -> list[Evento]:
-        """Eventos cujo texto tem o trecho (sem olhar maiúsculas), do mais antigo."""
+        """Events whose text contains the substring (ignoring case), oldest first."""
         with self._trava:
             linhas = self._db.execute(
                 "SELECT id, data, anual, texto, area, fato_id FROM agenda "
@@ -649,10 +658,10 @@ class Memoria:
         with self._trava:
             return self._db.execute("SELECT COUNT(*) FROM agenda").fetchone()[0]
 
-    # --- como falar: pronúncias e preferências -------------------------------------------
+    # --- how to speak: pronunciations and preferences ------------------------------------
 
     def ensinar_pronuncia(self, palavra: str, fala: str) -> bool:
-        """Guarda como falar uma palavra ("hoje" -> "ôje"). Devolve se é nova."""
+        """Stores how to say a word ("hoje" -> "ôje"). Returns whether it is new."""
         palavra, fala = " ".join(palavra.split()).lower(), " ".join(fala.split())
         if not palavra or not fala or palavra == fala.lower():
             return False
@@ -681,7 +690,7 @@ class Memoria:
             )
 
     def preferir(self, texto: str) -> tuple[int, bool]:
-        """Guarda uma preferência sobre o jeito de falar. Devolve (número, se é nova)."""
+        """Stores a preference about the way of speaking. Returns (number, whether it is new)."""
         texto = " ".join(texto.split())
         with self._trava, self._db:
             linha = self._db.execute(
@@ -707,10 +716,10 @@ class Memoria:
                 > 0
             )
 
-    # --- trocas (tudo o que foi dito) -----------------------------------------------------
+    # --- exchanges (everything that was said) ---------------------------------------------
 
     def guardar_troca(self, pergunta: str, resposta: str, quando: str, sessao: str) -> int:
-        """Guarda uma pergunta e resposta inteiras, para serem lembradas depois."""
+        """Stores a whole question and answer, to be remembered later."""
         vetor = self.embeddings.vetor(f"{pergunta}\n{resposta}")
         with self._trava, self._db:
             self._garantir_indice(len(vetor))
@@ -728,8 +737,8 @@ class Memoria:
     def buscar_trocas(
         self, texto: str, k: int = 3, minimo: float = 0.0, exceto_sessao: str = ""
     ) -> list[Troca]:
-        """Os trechos de conversa mais parecidos com o texto (sem os da sessão atual, que já
-        estão na conversa)."""
+        """The conversation passages most similar to the text (without those from the current
+        session, which are already in the conversation)."""
         if k <= 0 or not self.contar_trocas():
             return []
         vetor = self.embeddings.vetor(texto)
@@ -750,7 +759,7 @@ class Memoria:
                 if not linha or linha[2] == exceto_sessao:
                     continue
                 vetor_troca = _desempacotar(linha[5])
-                if any(  # a pessoa pediu para esquecer isso
+                if any(  # the person asked to forget this
                     len(e) == len(vetor_troca) and _cosseno(e, vetor_troca) >= TROCA_ESQUECIDA
                     for e in esquecidos
                 ):
@@ -774,7 +783,7 @@ class Memoria:
 
 
 def abrir_memoria(config) -> Memoria | None:
-    """A memória da config, ou None se estiver desligada."""
+    """The config's memory, or None if it is off."""
     if not config.memoria.ativa:
         return None
     from nora.embeddings import EmbeddingsOllama

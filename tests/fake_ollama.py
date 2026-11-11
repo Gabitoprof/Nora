@@ -1,4 +1,4 @@
-"""Servidor falso que imita a API /api/chat do Ollama em streaming."""
+"""Fake server that imitates Ollama's streaming /api/chat API."""
 
 from __future__ import annotations
 

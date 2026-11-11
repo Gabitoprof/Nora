@@ -1,4 +1,4 @@
-"""Auto-melhoria: observador, fechamento do dia, relatório, decisões e aviso."""
+"""Self-improvement: observer, closing the day, report, decisions and notice."""
 
 from datetime import date, datetime, timedelta
 
@@ -20,8 +20,8 @@ def _conversa(criar_raiz, local=None, openai=None, cliente=None, toml=""):
 def test_observador_anota_tentativas_comandos_e_reclamacoes_sem_texto(criar_raiz):
     conversa, roteador = _conversa(criar_raiz, openai=OpenAIFalso(erro=ConnectionError("rede")))
     "".join(conversa.perguntar("escreve um script python que renomeia fotos"))
-    "".join(conversa.perguntar("qual o maior planeta?"))  # o local responde
-    "".join(conversa.perguntar("tá errado isso"))  # reclamação da resposta do local
+    "".join(conversa.perguntar("qual o maior planeta?"))  # the local model answers
+    "".join(conversa.perguntar("tá errado isso"))  # complaint about the local answer
     "".join(conversa.perguntar("modo jogo"))
     eventos = conversa.observador.eventos()
     tipos = [(e["etapa"], e["tipo"], e["motor"]) for e in eventos]
@@ -33,7 +33,7 @@ def test_observador_anota_tentativas_comandos_e_reclamacoes_sem_texto(criar_raiz
     reclamacao = next(e for e in eventos if e["tipo"] == "feedback_negativo")
     assert reclamacao["correlacao"] and reclamacao["correlacao"] != reclamacao["interacao"]
     assert all(e["versao"] for e in eventos)
-    # o texto da conversa não vai para o banco do observador
+    # the conversation text does not go to the observer's database
     banco = caminho_do_banco(roteador.config.pasta_dados).read_bytes()
     assert b"renomeia" not in banco and b"planeta" not in banco
 
@@ -41,7 +41,7 @@ def test_observador_anota_tentativas_comandos_e_reclamacoes_sem_texto(criar_raiz
 def test_observador_nao_derruba_a_conversa(tmp_path):
     observador = Observador(tmp_path / "a.db")
     observador.fechar()
-    observador.registrar("llm", "resposta")  # banco fechado: ignora, sem erro
+    observador.registrar("llm", "resposta")  # database closed: ignored, no error
 
 
 def test_auto_melhoria_desligada_nao_observa(criar_raiz):
@@ -51,7 +51,7 @@ def test_auto_melhoria_desligada_nao_observa(criar_raiz):
     assert not caminho_do_banco(roteador.config.pasta_dados).exists()
 
 
-# --- fechamento do dia, relatório e decisões (P2) ------------------------------------------------
+# --- closing the day, report and decisions (P2) --------------------------------------------------
 
 
 DIA = datetime(2026, 11, 3, 10, 0)
@@ -72,9 +72,9 @@ def _eventos(m, tipo="erro_provedor", motor="ChatGPT (gpt-5.5)", n=4, quando=DIA
 def test_eventos_repetidos_viram_uma_proposta_com_evidencia(criar_raiz):
     m = _melhorias(criar_raiz)
     _eventos(m, n=6)
-    _eventos(m, "resposta", "local (qwen3.5:9b)", n=3, duracao_ms=4000)  # lentas
-    _eventos(m, "resposta", "local (qwen3.5:9b)", n=5, duracao_ms=500)  # rápidas: normais
-    _eventos(m, "timeout", "Claude Sonnet 5.5", n=1)  # uma vez só: não vira proposta
+    _eventos(m, "resposta", "local (qwen3.5:9b)", n=3, duracao_ms=4000)  # slow
+    _eventos(m, "resposta", "local (qwen3.5:9b)", n=5, duracao_ms=500)  # fast: normal
+    _eventos(m, "timeout", "Claude Sonnet 5.5", n=1)  # only once: does not become a proposal
     fechamento = m.fechar(DIA.date(), DIA + timedelta(hours=10))
     titulos = [p.titulo for p in fechamento.novas]
     assert titulos == [
@@ -88,9 +88,9 @@ def test_eventos_repetidos_viram_uma_proposta_com_evidencia(criar_raiz):
     assert (
         "Nº 1 — ChatGPT (gpt-5.5) falhou 6 vezes" in texto and "nora melhorias aprovar 1" in texto
     )
-    assert "Fontes:** nenhuma" in texto  # sem internet
+    assert "Fontes:** nenhuma" in texto  # no internet
 
-    # no dia seguinte, o mesmo problema atualiza a mesma proposta (sem duplicar)
+    # the next day, the same problem updates the same proposal (without duplicating)
     _eventos(m, n=4, quando=DIA + timedelta(days=1))
     seguinte = m.fechar(DIA.date() + timedelta(days=1), DIA + timedelta(days=1, hours=10))
     assert seguinte.novas == [] and [p.id for p in seguinte.esperando] == [1]
@@ -107,23 +107,23 @@ def test_dia_sem_problemas_nao_inventa_diagnostico(criar_raiz):
 
 def test_um_relatorio_por_dia_na_hora_marcada_e_recupera_o_dia_perdido(criar_raiz):
     m = _melhorias(criar_raiz, toml='[auto_melhoria]\nhora_relatorio = "20:00"\n')
-    assert m.dia_a_fechar(DIA) is None  # primeiro uso, sem eventos: só marca o começo
+    assert m.dia_a_fechar(DIA) is None  # first use, no events: only marks the start
     _eventos(m, n=3, quando=DIA)
-    assert m.dia_a_fechar(DIA.replace(hour=19)) is None  # antes da hora: nada
+    assert m.dia_a_fechar(DIA.replace(hour=19)) is None  # before the time: nothing
     noite = DIA.replace(hour=20, minute=5)
     assert m.dia_a_fechar(noite) == DIA.date()
     m.fechar(DIA.date(), noite)
-    assert m.dia_a_fechar(noite + timedelta(minutes=30)) is None  # um por dia
+    assert m.dia_a_fechar(noite + timedelta(minutes=30)) is None  # one per day
 
-    # o PC ficou desligado no dia 4 às 20:00; no dia 5 de manhã, sai o relatório do dia 4
+    # the PC was off on day 4 at 20:00; on the morning of day 5, day 4's report comes out
     _eventos(m, n=3, quando=DIA + timedelta(days=1))
     manha_dia_5 = DIA + timedelta(days=2, hours=-2)
     assert m.dia_a_fechar(manha_dia_5) == date(2026, 11, 4)
     perdido = m.fechar(date(2026, 11, 4), manha_dia_5)
-    assert perdido.eventos == 3  # só os eventos depois do fechamento anterior
+    assert perdido.eventos == 3  # only the events after the previous closing
     assert m.dia_a_fechar(manha_dia_5) is None
     assert [d for d, _, _ in m.nao_mostrados()] == ["2026-11-03", "2026-11-04"]
-    assert len(m.nao_mostrados()) == 2  # só deixam a lista quando aparecem de fato
+    assert len(m.nao_mostrados()) == 2  # they only leave the list when they actually appear
     for data, _, _ in m.nao_mostrados():
         m.marcar_mostrado(data)
     assert m.nao_mostrados() == []
@@ -135,10 +135,10 @@ def test_agendador_espera_a_nora_desocupada_e_avisa(criar_raiz):
     fechados, ocupada = [], [True]
     noite = DIA.replace(hour=21)
     agendador = Agendador(m, lambda: ocupada[0], fechados.append, relogio=lambda: noite)
-    assert agendador.conferir() is None and fechados == []  # respondendo ou no modo jogo
+    assert agendador.conferir() is None and fechados == []  # answering or in game mode
     ocupada[0] = False
     assert agendador.conferir() is not None and len(fechados) == 1
-    assert agendador.conferir() is None  # não repete
+    assert agendador.conferir() is None  # does not repeat
 
 
 def test_decisoes_aprovar_recusar_adiar(criar_raiz):
@@ -153,23 +153,23 @@ def test_decisoes_aprovar_recusar_adiar(criar_raiz):
     assert aprovada.status == "aprovada"
     tarefa = m.pasta / "tarefas" / f"melhoria-{aprovada.id}.md"
     assert "Publicar exige nova autorização" in tarefa.read_text("utf-8")
-    assert m.decidir(ids["erro_provedor"], "recusar", "teste") is None  # já decidida
-    assert m.avancar(aprovada.id, "publicada", "teste") is None  # pulando etapas
+    assert m.decidir(ids["erro_provedor"], "recusar", "teste") is None  # already decided
+    assert m.avancar(aprovada.id, "publicada", "teste") is None  # skipping stages
     for estado in ("preparacao", "em_teste", "pronta_para_revisao"):
         assert m.avancar(aprovada.id, estado, "teste").status == estado
-    assert m.avancar(aprovada.id, "publicada", "teste") is None  # sem autorização
+    assert m.avancar(aprovada.id, "publicada", "teste") is None  # without authorization
     assert m.avancar(aprovada.id, "publicada", "teste", autorizo_publicar=True)
     assert [a for _, a, _, _ in m.decisoes(aprovada.id)][0] == "aprovar"
 
     m.decidir(ids["timeout"], "recusar", "teste")
     m.decidir(ids["resposta_vazia"], "adiar", "teste", dias=3)
     dia2 = DIA + timedelta(days=1)
-    _eventos(m, "timeout", "Claude Sonnet 5.5", n=4, quando=dia2)  # pouca coisa nova
+    _eventos(m, "timeout", "Claude Sonnet 5.5", n=4, quando=dia2)  # little that is new
     _eventos(m, "resposta_vazia", "ChatGPT (gpt-5.5)", n=3, quando=dia2)
     f2 = m.fechar(dia2.date(), dia2 + timedelta(hours=10))
-    assert f2.novas == []  # recusada sem evidência nova e adiada não voltam
+    assert f2.novas == []  # rejected without new evidence and postponed ones do not come back
     dia5 = DIA + timedelta(days=5)
-    _eventos(m, "timeout", "Claude Sonnet 5.5", n=8, quando=dia5)  # o dobro: evidência nova
+    _eventos(m, "timeout", "Claude Sonnet 5.5", n=8, quando=dia5)  # twice as many: new evidence
     _eventos(m, "resposta_vazia", "ChatGPT (gpt-5.5)", n=3, quando=dia5)
     f5 = m.fechar(dia5.date(), dia5 + timedelta(hours=10))
     assert sorted(p.categoria for p in f5.novas) == ["resposta_vazia", "timeout"]
@@ -215,7 +215,7 @@ def test_decidir_pela_conversa_pede_numero_claro_e_confirmacao(criar_raiz):
     assert pedido_de_melhoria("Nora, aprova a melhoria 3") == ("aprovar", 3)
     assert pedido_de_melhoria("recusa a melhoria três") == ("recusar", 3)
     assert pedido_de_melhoria("adia a melhoria número 2") == ("adiar", 2)
-    assert pedido_de_melhoria("aprova isso") is None  # sem "melhoria"
+    assert pedido_de_melhoria("aprova isso") is None  # without "melhoria"
 
     conversa, roteador = _conversa(criar_raiz)
     _eventos(conversa.melhorias, n=3)
@@ -228,16 +228,16 @@ def test_decidir_pela_conversa_pede_numero_claro_e_confirmacao(criar_raiz):
     "".join(conversa.perguntar("aprova a melhoria um"))
     assert "aprovada" in "".join(conversa.perguntar("sim"))
     assert conversa.melhorias.proposta(1).status == "aprovada"
-    assert roteador.local.pedidos == []  # nada disso passou pelo cérebro
+    assert roteador.local.pedidos == []  # none of this went through the brain
 
 
 def test_inicio_da_sessao_abre_o_relatorio_novo(criar_raiz, monkeypatch):
-    """Auditoria P1: o relatório novo aparece inteiro sem a pessoa digitar nada."""
+    """Audit P1: the new report appears in full without the person typing anything."""
     from nora import melhorias as modulo
 
     monkeypatch.setattr(
         modulo.Agendador, "start", lambda self: None
-    )  # sem thread: não depende da hora
+    )  # no thread: does not depend on the time
 
     abertos = []
     monkeypatch.setattr(modulo, "abrir_arquivo", lambda c: abertos.append(c) or True)
@@ -250,7 +250,7 @@ def test_inicio_da_sessao_abre_o_relatorio_novo(criar_raiz, monkeypatch):
     assert conversa.melhorias.nao_mostrados() == []
     linhas.clear()
     modulo.iniciar(conversa, linhas.append).parar()
-    assert abertos == [caminho] and linhas == []  # uma vez só
+    assert abertos == [caminho] and linhas == []  # only once
 
 
 def test_se_nao_abrir_mostra_o_texto_inteiro_e_registra_a_falha(criar_raiz, monkeypatch):
@@ -258,7 +258,7 @@ def test_se_nao_abrir_mostra_o_texto_inteiro_e_registra_a_falha(criar_raiz, monk
 
     monkeypatch.setattr(
         modulo.Agendador, "start", lambda self: None
-    )  # sem thread: não depende da hora
+    )  # no thread: does not depend on the time
 
     monkeypatch.setattr(modulo, "abrir_arquivo", lambda c: False)
     conversa, _ = _conversa(criar_raiz)
@@ -266,7 +266,7 @@ def test_se_nao_abrir_mostra_o_texto_inteiro_e_registra_a_falha(criar_raiz, monk
     caminho = conversa.melhorias.fechar(DIA.date(), DIA + timedelta(hours=10)).caminho
     linhas = []
     modulo.iniciar(conversa, linhas.append).parar()
-    assert caminho.read_text("utf-8") in linhas  # o relatório inteiro, não um resumo
+    assert caminho.read_text("utf-8") in linhas  # the whole report, not a summary
     assert "não consegui abrir" in conversa.melhorias.falha_do_aviso("2026-11-03")
     assert conversa.melhorias.nao_mostrados() == []
 
@@ -298,7 +298,7 @@ def test_relatorio_na_sessao_atual_sem_nova_entrada(criar_raiz, monkeypatch, mod
     agendador.relogio = lambda: DIA.replace(hour=21)
 
     def entrada(prompt):
-        agendador.conferir()  # o dia fecha enquanto o teclado está esperando
+        agendador.conferir()  # the day closes while the keyboard is waiting
         assert exibido.wait(3), "o relatório exigiu uma nova entrada"
         return "sair"
 
@@ -307,7 +307,7 @@ def test_relatorio_na_sessao_atual_sem_nova_entrada(criar_raiz, monkeypatch, mod
     if not abre:
         assert caminho.read_text("utf-8") in linhas
     assert bool(abertos) == (modo == "abrir")
-    assert set(threads) == {principal}  # nunca escreve a partir do agendador
+    assert set(threads) == {principal}  # never writes from the scheduler
     assert conversa.melhorias.nao_mostrados() == []
     agendador.apresentar_pendentes()
     assert conversa.melhorias.dia_a_fechar(DIA.replace(hour=22)) is None
@@ -319,7 +319,7 @@ def test_no_modo_jogo_o_relatorio_espera(criar_raiz, monkeypatch):
 
     monkeypatch.setattr(
         modulo.Agendador, "start", lambda self: None
-    )  # sem thread: não depende da hora
+    )  # no thread: does not depend on the time
 
     abertos = []
     monkeypatch.setattr(modulo, "abrir_arquivo", lambda c: abertos.append(c) or True)
@@ -332,7 +332,7 @@ def test_no_modo_jogo_o_relatorio_espera(criar_raiz, monkeypatch):
 
 
 def test_retomada_marca_a_nora_ocupada_e_o_relatorio_espera(criar_raiz):
-    """Auditoria P1: durante a retomada de uma resposta, o agendador não fecha o dia."""
+    """Audit P1: while an answer is being resumed, the scheduler does not close the day."""
     from test_memoria import EmbeddingsFalsos
 
     from nora.cerebro import Medidas
@@ -360,12 +360,13 @@ def test_retomada_marca_a_nora_ocupada_e_o_relatorio_espera(criar_raiz):
     )
     resposta = "".join(conversa.perguntar("termina a resposta que ficou pela metade"))
     assert resposta.endswith("quilômetros.")
-    assert vistos == {"ocupada": True, "fechou": None}  # esperou a retomada acabar
-    assert not conversa.ocupada and agendador.conferir() is not None  # depois, fecha
+    assert vistos == {"ocupada": True, "fechou": None}  # waited for the resumption to end
+    assert not conversa.ocupada and agendador.conferir() is not None  # afterwards, it closes
 
 
 def test_relatorio_nao_mostra_perguntas_e_limpa_os_antigos(criar_raiz):
-    """Auditoria P1: o relatório não reproduz o texto das perguntas (nem os já gravados)."""
+    """Audit P1: the report does not reproduce the text of the questions (nor the ones already
+    written)."""
     from nora.memoria import Pendente
 
     m = _melhorias(criar_raiz)
@@ -385,7 +386,7 @@ def test_relatorio_nao_mostra_perguntas_e_limpa_os_antigos(criar_raiz):
     assert "segredo" not in texto and "cofre" not in texto
     assert "nº 7" in texto and "cancelada" in texto and "nora pendencias" in texto
 
-    # relatório gravado antes desta correção, com o texto da pergunta
+    # report written before this fix, with the question text
     antigo = m.pasta / "relatorios" / "2026-11-01.md"
     antigo.write_text(
         "## Respostas que ficaram pela metade\n\n"
@@ -393,15 +394,15 @@ def test_relatorio_nao_mostra_perguntas_e_limpa_os_antigos(criar_raiz):
         encoding="utf-8",
     )
     m.fechar_banco()
-    _melhorias(criar_raiz)  # ao abrir, limpa
+    _melhorias(criar_raiz)  # on opening, it cleans up
     limpo = antigo.read_text("utf-8")
     assert "segredo" not in limpo and "- nº 3 (cancelada, 0 tentativa(s))" in limpo
     assert "- outra linha" in limpo
 
 
 def test_sem_resposta_no_modo_jogo_nao_sugere_usar_o_local(criar_raiz):
-    """Auditoria P2: a proposta não sugere quebrar o modo jogo; ao sair dele (com "sim"),
-    a Nora oferece retomar as perguntas que ficaram sem resposta."""
+    """Audit P2: the proposal does not suggest breaking game mode; when leaving it (with "sim"),
+    Nora offers to resume the questions left unanswered."""
     from test_memoria import EmbeddingsFalsos
 
     from nora.melhorias import REGRAS
@@ -421,13 +422,13 @@ def test_sem_resposta_no_modo_jogo_nao_sugere_usar_o_local(criar_raiz):
     assert [p.motivo for p in conversa.memoria.pendentes()] == ["sem_resposta"]
     conversa.avisos_pendentes()
     "".join(conversa.perguntar("sai do modo jogo"))
-    assert roteador.jogo  # ainda não: falta o "sim"
+    assert roteador.jogo  # not yet: the "sim" is missing
     assert not any("modo jogo" in a for a in conversa.avisos_pendentes())
     "".join(conversa.perguntar("sim"))
     assert not roteador.jogo
     oferta = [a for a in conversa.avisos_pendentes() if "sem resposta no modo jogo" in a]
     assert oferta and "termina a resposta" in oferta[0]
-    assert len(conversa.memoria.pendentes()) == 1  # só oferece; não responde sozinha
+    assert len(conversa.memoria.pendentes()) == 1  # only offers; does not answer on her own
 
 
 @pytest.mark.parametrize("bloqueio", ["ocupada", "jogo"])
@@ -469,12 +470,12 @@ def test_arquivo_ausente_continua_pendente_e_pode_ser_restaurado(criar_raiz, mon
     assert "Restaure" in linhas[0]
     for _ in range(5):
         agendador.apresentar_pendentes()
-    assert len(linhas) == 1  # sem avisos repetidos
+    assert len(linhas) == 1  # no repeated notices
     caminho.write_bytes(copia)
     modulo.iniciar(conversa, linhas.append)
-    assert caminho.read_bytes() == copia  # a restauração preserva os bytes originais
+    assert caminho.read_bytes() == copia  # the restoration keeps the original bytes
     assert caminho.read_text(encoding="utf-8") == texto
-    assert texto in linhas  # apresentação em modo texto normaliza CRLF/LF
+    assert texto in linhas  # text-mode presentation normalizes CRLF/LF
     assert m.nao_mostrados() == []
 
 
@@ -504,7 +505,7 @@ def test_falha_de_leitura_nao_derruba_conversa(criar_raiz, monkeypatch, falha):
     assert ("UnicodeDecodeError" if falha is UnicodeError else falha.__name__) in diagnostico
     assert "texto pessoal" not in diagnostico
     assert "continua pendente" in linhas[0]
-    assert "".join(conversa.perguntar("oi"))  # conversa segue funcionando
+    assert "".join(conversa.perguntar("oi"))  # the conversation keeps working
     monkeypatch.setattr(Path, "read_text", original)
     assert modulo.apresentar(m, "2026-11-03", caminho, 0, "terminal", linhas.append)
     assert m.nao_mostrados() == []
@@ -584,7 +585,7 @@ def test_loops_entregam_relatorio_sem_pergunta(criar_raiz, monkeypatch, interfac
 
         def falas():
             agendadores[0].conferir()
-            yield None  # folga do VAD, sem nenhuma fala ou digitação
+            yield None  # VAD break, with no speech or typing
 
         assert (
             ouvir.conversar_maos_livres(
@@ -600,11 +601,11 @@ def test_loops_entregam_relatorio_sem_pergunta(criar_raiz, monkeypatch, interfac
     assert conversa.melhorias.nao_mostrados() == []
 
 
-# --- regressão do Enter no `nora falar` com a auto-melhoria ligada ------------------------------
+# --- Enter regression in `nora falar` with self-improvement on ----------------------------------
 
 
 class Teclado:
-    """Teclado de verdade em miniatura: cada chamada espera a próxima linha digitada."""
+    """A real keyboard in miniature: each call waits for the next typed line."""
 
     def __init__(self):
         import queue
@@ -620,8 +621,8 @@ class Teclado:
 
 
 def test_falha_ao_apresentar_nao_deixa_leitor_orfao_que_engole_o_enter():
-    """Se apresentar o relatório der erro enquanto ela espera o Enter, o Enter seguinte (o de
-    parar de gravar) não pode ir para uma thread de leitura que ficou para trás."""
+    """If presenting the report errors while she waits for Enter, the next Enter (the one that
+    stops recording) must not go to a reading thread left behind."""
     import threading
 
     from nora.melhorias import ler_entrada
@@ -640,11 +641,11 @@ def test_falha_ao_apresentar_nao_deixa_leitor_orfao_que_engole_o_enter():
         import time
 
         time.sleep(0.3)
-        teclado.digitar("")  # Enter para falar
+        teclado.digitar("")  # Enter to speak
 
     threading.Thread(target=digitar_depois, daemon=True).start()
     assert ler_entrada(teclado, "[Enter para falar] ", AgendadorQueFalha()) == ""
-    teclado.digitar("")  # Enter para parar de gravar: tem que chegar na gravação
+    teclado.digitar("")  # Enter to stop recording: it has to reach the recording
     assert teclado("  (gravando...) ") == ""
     leitores = [t for t in threading.enumerate() if t.name == "nora-entrada" and t.is_alive()]
     assert leitores == []
@@ -679,8 +680,9 @@ def test_relatorio_que_aparece_na_espera_mostra_o_prompt_de_novo():
 
 
 def test_abrir_o_relatorio_nao_rouba_o_teclado_da_sessao(tmp_path, monkeypatch):
-    """No Windows abre minimizado e sem foco (o Enter continua indo para a Nora); fora dele, o
-    programa não herda o terminal. A notificação também não usa o teclado da sessão."""
+    """On Windows it opens minimized and without focus (Enter keeps going to Nora); elsewhere, the
+    program does not inherit the terminal. The notification does not use the session's
+    keyboard either."""
     import os
     import subprocess
     import sys
