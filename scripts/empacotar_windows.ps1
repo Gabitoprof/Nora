@@ -1,11 +1,11 @@
-﻿# Gera o nora.exe (sem assinatura) e o instalador da Nora no Windows.
-# Uso, na pasta do repositório, num ambiente LIMPO e ativado (só o necessário vai para o .exe):
+﻿# Builds nora.exe (unsigned) and Nora's installer on Windows.
+# Usage, in the repository folder, in a CLEAN, activated environment (only what is needed goes into the .exe):
 #   py -3.13 -m venv .venv-empacotar
 #   .venv-empacotar\Scripts\activate
 #   powershell -ExecutionPolicy Bypass -File scripts\empacotar_windows.ps1
-# Precisa do Node.js 22 (HUD) e, para o instalador, do Inno Setup 6 (https://jrsoftware.org).
-# Sem o Inno Setup, gera só o .zip. Resultado em dist\: Nora-<versão>-instalador.exe e .zip.
-# A CI faz o mesmo (.github/workflows/empacotar.yml) e publica os arquivos na execução.
+# Needs Node.js 22 (HUD) and, for the installer, Inno Setup 6 (https://jrsoftware.org).
+# Without Inno Setup, only the .zip is built. Output in dist\: Nora-<versão>-instalador.exe and .zip.
+# CI does the same (.github/workflows/empacotar.yml) and publishes the files in the run.
 
 param([switch]$SemInstalador)
 
@@ -33,7 +33,7 @@ Set-Content -Path $arquivoCommit -Value $commit -Encoding ASCII -NoNewline
 Write-Host "Nora $versao, commit $commit"
 
 try {
-    # De novo, agora com o _commit.txt dentro do pacote instalado.
+    # Again, now with _commit.txt inside the installed package.
     Rodar "pacote da Nora com o commit" { python -m pip install --no-deps --force-reinstall . }
     $hud = Join-Path $raiz "hud\dist"
     Rodar "PyInstaller (pasta, não arquivo único: abre mais rápido)" {
@@ -61,7 +61,7 @@ $casa = Join-Path $env:TEMP ("nora-teste-" + [guid]::NewGuid().ToString("N"))
 $env:NORA_HOME = $casa
 try {
     $codificacao = [Console]::OutputEncoding
-    [Console]::OutputEncoding = [Text.Encoding]::UTF8  # o nora.exe escreve UTF-8 quando redirecionado
+    [Console]::OutputEncoding = [Text.Encoding]::UTF8  # nora.exe writes UTF-8 when redirected
     try { $saida = & $exe --verificar 2>&1 | Out-String } finally { [Console]::OutputEncoding = $codificacao }
     if ($LASTEXITCODE) { throw "nora.exe --verificar falhou:`n$saida" }
     if ($saida -notmatch "$([regex]::Escape($versao)) \(commit $commit\)") { throw "versão/commit errados:`n$saida" }

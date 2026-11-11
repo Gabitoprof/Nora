@@ -1,12 +1,12 @@
-﻿# Pacote de dependências da Nora: instala sozinho o que o nora.exe usa e não vem nele.
-#   - Visual C++ Redistributable (x64), se faltar
-#   - Ollama (cérebro local) e os modelos (qwen3.5:9b e bge-m3, ~7 GB)
-#   - whisper.cpp (ouvido) e o modelo do Whisper (~470 MB no small)
-# Tudo pelo winget (já vem no Windows 10/11) e pelos sites oficiais. Vai para a pasta da Nora
-# (%APPDATA%\Nora, ou NORA_HOME). Pode rodar de novo: o que já está instalado é pulado.
-# Uso (o instalador da Nora oferece rodar no fim; ou pelo menu Iniciar > Nora):
+﻿# Nora's dependency pack: installs on its own what nora.exe uses and does not include.
+#   - Visual C++ Redistributable (x64), if missing
+#   - Ollama (local brain) and the models (qwen3.5:9b and bge-m3, ~7 GB)
+#   - whisper.cpp (ear) and the Whisper model (~470 MB for small)
+# All through winget (built into Windows 10/11) and the official sites. It goes to Nora's folder
+# (%APPDATA%\Nora, or NORA_HOME). It can run again: what is already installed is skipped.
+# Usage (Nora's installer offers to run it at the end; or from Start menu > Nora):
 #   powershell -ExecutionPolicy Bypass -File instalar_dependencias.ps1
-# Opções: -ModeloWhisper large-v3-turbo-q5_0  -ModeloLocal qwen3.5:9b  -SemModelosOllama
+# Options: -ModeloWhisper large-v3-turbo-q5_0  -ModeloLocal qwen3.5:9b  -SemModelosOllama
 
 param(
     [string]$ModeloWhisper = "small",
@@ -36,7 +36,7 @@ function Winget([string]$id) {
         throw "O winget não está neste Windows. Instale o 'Instalador de Aplicativo' (App Installer) pela Microsoft Store e rode de novo."
     }
     winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements
-    # -1978335189: já instalado, sem atualização
+    # -1978335189: already installed, no update
     if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne -1978335189) { throw "winget install $id terminou com código $LASTEXITCODE" }
 }
 function Ollama() {
@@ -84,7 +84,7 @@ Etapa "whisper.cpp (ouvido)" {
     $pastaWhisper = Join-Path $ferramentas "whisper"
     $servidor = Get-ChildItem -Path $pastaWhisper -Recurse -Filter "whisper-server.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($servidor) { Write-Host "  já instalado: $($servidor.FullName)"; return }
-    # A versão mais nova que publicou o zip para Windows (processador).
+    # The newest version that published the Windows (CPU) zip.
     $versoes = Invoke-RestMethod "https://api.github.com/repos/ggml-org/whisper.cpp/releases?per_page=15" -Headers @{ "User-Agent" = "nora-instalador" }
     $escolha = $null
     foreach ($versao in $versoes) {
@@ -108,7 +108,7 @@ Etapa "Modelo do Whisper ($ModeloWhisper)" {
     Write-Host "  baixando (pode demorar)..."
     $parcial = "$arquivo.parcial"
     Invoke-WebRequest "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-$ModeloWhisper.bin" -OutFile $parcial
-    Move-Item $parcial $arquivo -Force  # só vale depois de baixar inteiro
+    Move-Item $parcial $arquivo -Force  # only counts once fully downloaded
     Write-Host "  baixado: $arquivo"
 }
 

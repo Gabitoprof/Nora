@@ -1,5 +1,5 @@
-﻿# Abre a Nora instalada: liga o Ollama e o ouvido (whisper-server) se ainda não estiverem rodando,
-# abre a HUD no navegador e começa a escuta contínua (nora ouvir --hud). Atalho: menu Iniciar > Nora.
+﻿# Opens the installed Nora: starts Ollama and the ear (whisper-server) if they are not running yet,
+# opens the HUD in the browser and starts continuous listening (nora ouvir --hud). Shortcut: Start menu > Nora.
 
 param([int]$PortaHud = 8765, [int]$PortaWhisper = 8178)
 
@@ -20,7 +20,7 @@ if (-not (Responde 11434)) {
 
 if (-not (Responde $PortaWhisper)) {
     $servidor = Get-ChildItem -Path (Join-Path $pasta "ferramentas\whisper") -Recurse -Filter "whisper-server.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-    # O modelo mais preciso que estiver baixado.
+    # The most accurate model that is downloaded.
     $modelo = foreach ($nome in "large-v3-turbo-q5_0", "large-v3-turbo", "medium", "small", "base") {
         $arquivo = Join-Path $pasta "models\ggml-$nome.bin"
         if (Test-Path $arquivo) { $arquivo; break }
@@ -34,7 +34,7 @@ if (-not (Responde $PortaWhisper)) {
     }
 }
 
-# A HUD abre no navegador assim que o servidor dela subir.
+# The HUD opens in the browser as soon as its server is up.
 Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile", "-Command", "Start-Sleep -Seconds 5; Start-Process 'http://127.0.0.1:$PortaHud/'"
 & (Join-Path $programa "nora.exe") ouvir --hud --hud-porta $PortaHud
 if ($LASTEXITCODE) { Read-Host "A Nora fechou com erro ($LASTEXITCODE). Aperte Enter para fechar" | Out-Null }

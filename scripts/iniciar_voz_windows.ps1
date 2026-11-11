@@ -1,11 +1,11 @@
-﻿# Inicia o ouvido (whisper-server) e a voz local (Kokoro por padrão, ou Piper) em janelas próprias.
-# Com a voz do ElevenLabs (nuvem), use -Voz nenhuma: só o ouvido é iniciado.
-# Uso, na pasta do repositório:
+﻿# Starts the ear (whisper-server) and the local voice (Kokoro by default, or Piper) in their own windows.
+# With the ElevenLabs voice (cloud), use -Voz nenhuma: only the ear is started.
+# Usage, in the repository folder:
 #   powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1
-# Depois, em outro terminal com o ambiente ativado: nora falar --medir
-# Ouvido mais preciso (baixe antes com instalar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0):
+# Then, in another terminal with the environment activated: nora falar --medir
+# More accurate ear (download it first with instalar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0):
 #   powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0
-# -Feixe 5 testa 5 caminhos de transcrição em vez de 1 (busca em feixe): erra menos, demora mais.
+# -Feixe 5 tries 5 transcription paths instead of 1 (beam search): fewer errors, slower.
 
 param(
     [string]$ModeloWhisper = "small",
@@ -36,8 +36,8 @@ $argumentos = @(
 if ($Feixe -gt 1) { $argumentos += @("-bs", $Feixe) }
 Start-Process -FilePath $servidor.FullName -WorkingDirectory $servidor.DirectoryName -ArgumentList $argumentos
 
-# As vozes abrem numa janela do PowerShell que continua aberta se o servidor parar com erro,
-# para a mensagem ficar visível (antes a janela sumia junto com o erro).
+# The voices open in a PowerShell window that stays open if the server stops with an error,
+# so the message stays visible (before, the window disappeared along with the error).
 function Iniciar-Janela([string]$titulo, [string]$comando) {
     $script = "`$Host.UI.RawUI.WindowTitle = '$titulo'; Set-Location '$raiz'; $comando; " +
         "Write-Host ''; Write-Host '$titulo parou. Leia a mensagem acima; feche esta janela quando quiser.'"

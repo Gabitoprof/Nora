@@ -67,7 +67,7 @@ const tela = document.getElementById("tela"), ctx = tela.getContext("2d");
 const reduzir = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const corArea = a => (DADOS.legenda.areas[a] || "#9CA3AF");
 
-// --- dados -------------------------------------------------------------------------------
+// --- data --------------------------------------------------------------------------------
 const nos = DADOS.nos.map((n, i) => ({ ...n, i, x: 0, y: 0, vx: 0, vy: 0, grau: 0 }));
 const porId = new Map(nos.map(n => [n.id, n]));
 const ligacoes = DADOS.ligacoes.filter(l => porId.has(l.de) && porId.has(l.para))
@@ -81,7 +81,7 @@ for (const n of nos) {
   n.recente = n.atualizado && (agora - Date.parse(n.atualizado)) < SEMANA;
   n.cor = n.tipo === "area" || n.tipo === "memoria" ? corArea(n.area) : COR_TIPO[n.tipo];
 }
-// posição inicial: áreas num círculo, o resto perto da sua área
+// starting position: areas in a circle, the rest near their area
 const areas = nos.filter(n => n.tipo === "area");
 areas.forEach((n, k) => { const ang = 2 * Math.PI * k / Math.max(1, areas.length);
   n.x = Math.cos(ang) * 320; n.y = Math.sin(ang) * 320; });
@@ -91,9 +91,9 @@ for (const n of nos) if (n.tipo !== "area") {
   n.x = base.x + (Math.random() - .5) * 160; n.y = base.y + (Math.random() - .5) * 160;
 }
 
-// --- filtros -----------------------------------------------------------------------------
+// --- filters -----------------------------------------------------------------------------
 const filtro = { areas: new Set(), tipos: new Set(), emocoes: new Set(), busca: "" };
-const GRANDE = nos.length > 900;  // grafo grande: começa só com áreas, nomes e meses
+const GRANDE = nos.length > 900;  // large graph: starts with only areas, names and months
 let tudo = !GRANDE;
 function caixa(onde, chave, valor, rotulo, cor, halo) {
   const l = document.createElement("label");
@@ -126,7 +126,7 @@ function visivel(n) {
   return true;
 }
 
-// --- física (força dirigida, leve) -------------------------------------------------------
+// --- physics (force-directed, light) -----------------------------------------------------
 function passo() {
   const vis = nos.filter(n => n.mostra);
   for (let i = 0; i < vis.length; i++) {
@@ -151,7 +151,7 @@ function passo() {
   }
 }
 
-// --- câmera e desenho --------------------------------------------------------------------
+// --- camera and drawing ------------------------------------------------------------------
 let cam = { x: 0, y: 0, z: 1 }, foco = null, arrastado = null, sobre = null;
 const inicio = performance.now();
 function redimensionar() { const r = devicePixelRatio || 1;
@@ -163,7 +163,7 @@ function desenhar(t) {
   for (const n of nos) n.mostra = visivel(n);
   passo();
   ctx.clearRect(0, 0, innerWidth, innerHeight);
-  // revelação: as ligações reais surgem em ~2,5 s (sem animação se o sistema pedir menos movimento)
+  // reveal: the real links appear over ~2.5 s (no animation if the system asks for reduced motion)
   const revelado = reduzir ? Infinity : (t - inicio) / 2500 * ligacoes.length;
   const destaque = foco ? vizinhos.get(foco.id) : null;
   for (const l of ligacoes) {
@@ -174,7 +174,7 @@ function desenhar(t) {
     ctx.strokeStyle = perto ? "rgba(230,235,255,.75)" : foco ? "rgba(120,130,160,.08)" : "rgba(140,150,190,.22)";
     ctx.lineWidth = (perto ? 1.6 : 0.8) * (l.tipo === "menciona" ? 1.2 : 1);
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + (x2 - x1) * cresce, y1 + (y2 - y1) * cresce); ctx.stroke();
-    if (!reduzir && (perto || !foco) && cresce === 1) {  // impulso percorrendo a ligação
+    if (!reduzir && (perto || !foco) && cresce === 1) {  // pulse running along the link
       const p = ((t / 2600) + l.ordem * 0.137) % 1;
       ctx.fillStyle = perto ? "rgba(255,255,255,.9)" : "rgba(180,200,255,.35)";
       ctx.beginPath(); ctx.arc(x1 + (x2 - x1) * p, y1 + (y2 - y1) * p, perto ? 1.8 : 1.1, 0, 7); ctx.fill();
@@ -185,17 +185,17 @@ function desenhar(t) {
     const [x, y] = naTela(n.x, n.y), r = n.raio * Math.sqrt(cam.z);
     const apagado = foco && n !== foco && !destaque.has(n.id);
     ctx.globalAlpha = apagado ? 0.18 : 1;
-    if (n.emocao && DADOS.legenda.emocoes[n.emocao]) {  // halo: tom da conversa
+    if (n.emocao && DADOS.legenda.emocoes[n.emocao]) {  // halo: conversation tone
       const g = ctx.createRadialGradient(x, y, r, x, y, r * 2.6);
       g.addColorStop(0, DADOS.legenda.emocoes[n.emocao] + "AA"); g.addColorStop(1, DADOS.legenda.emocoes[n.emocao] + "00");
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.6, 0, 7); ctx.fill();
     }
-    if (n.recente && !reduzir) {  // pulso: atualizada há pouco
+    if (n.recente && !reduzir) {  // pulse: recently updated
       const k = (t / 1400 + n.i * 0.21) % 1;
       ctx.strokeStyle = `rgba(255,255,255,${0.45 * (1 - k)})`; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(x, y, r + 2 + k * 10, 0, 7); ctx.stroke();
     }
-    // brilho de neurônio (desligado em grafos muito grandes, para o navegador ficar leve)
+    // neuron glow (off on very large graphs, to keep the browser light)
     if (!GRANDE || tudo === false) { ctx.shadowColor = n.cor; ctx.shadowBlur = n.tipo === "memoria" ? 8 : 16; }
     ctx.fillStyle = n.cor; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
     ctx.shadowBlur = 0;
@@ -212,7 +212,7 @@ function desenhar(t) {
 }
 requestAnimationFrame(desenhar);
 
-// --- interação ---------------------------------------------------------------------------
+// --- interaction -------------------------------------------------------------------------
 function noEm(px, py) {
   const [x, y] = noMundo(px, py); let melhor = null, dist = Infinity;
   for (const n of nos) { if (!n.mostra) continue;
@@ -242,7 +242,7 @@ addEventListener("keydown", ev => { if (ev.key === "Escape") { foco = null; fech
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]); }
 function linkObsidian(n) {
   if (!n.caminho) return "";
-  if (DADOS.raiz) {  // caminho completo: o Obsidian acha o vault que contém o arquivo
+  if (DADOS.raiz) {  // full path: Obsidian finds the vault that contains the file
     const sep = DADOS.raiz.includes("\\") ? "\\" : "/";
     const arquivo = DADOS.raiz.replace(/[\\/]+$/, "") + sep + n.caminho.split("/").join(sep);
     return `obsidian://open?path=${encodeURIComponent(arquivo)}`;

@@ -1,9 +1,9 @@
-﻿# Homologação v0.4.0 no Windows: roda sozinho tudo o que não precisa de você e grava os números.
-# Uso, na pasta do repositório, com o ambiente ativado (.venv\Scripts\activate):
+﻿# v0.4.0 acceptance on Windows: runs on its own everything that does not need you and records the numbers.
+# Usage, in the repository folder, with the environment activated (.venv\Scripts\activate):
 #   powershell -ExecutionPolicy Bypass -File scripts\homologacao_windows.ps1
-# Sem a medição de desempenho (só testes): acrescente -SemDesempenho
-# Só a medição (sem os testes): -SoMedir. Teste contínuo de 25 min no fim: -Continuo (-Minutos 30).
-# O resultado vai para data\homologacao\AAAA-MM-DD_HHMM.txt (fora do Git). Mande esse arquivo.
+# Without the performance measurement (tests only): add -SemDesempenho
+# Only the measurement (no tests): -SoMedir. A 25 min continuous test at the end: -Continuo (-Minutos 30).
+# The result goes to data\homologacao\AAAA-MM-DD_HHMM.txt (outside Git). Send that file.
 
 param(
     [switch]$SemDesempenho,
@@ -21,7 +21,7 @@ if (-not $env:VIRTUAL_ENV) { throw "Ative o ambiente antes: .venv\Scripts\activa
 $pasta = Join-Path $raiz "data\homologacao"
 New-Item -ItemType Directory -Force -Path $pasta | Out-Null
 $arquivo = Join-Path $pasta ((Get-Date -Format "yyyy-MM-dd_HHmm") + ".txt")
-# UTF-8 nos dois PowerShell (o Tee-Object do 5.1 gravaria em UTF-16).
+# UTF-8 in both PowerShells (5.1's Tee-Object would write UTF-16).
 function Anotar([string]$texto) { Write-Host $texto; Add-Content -Path $arquivo -Value $texto -Encoding UTF8 }
 $script:falhas = @()
 function Etapa([string]$nome, [scriptblock]$bloco, [int]$Ultimas = 15) {
@@ -29,7 +29,7 @@ function Etapa([string]$nome, [scriptblock]$bloco, [int]$Ultimas = 15) {
     $inicio = Get-Date
     $global:LASTEXITCODE = 0
     try {
-        # Avisos no stderr (npm, vite) chegam como ErrorRecord: mostra só o texto, sem linhas vazias.
+        # Warnings on stderr (npm, vite) arrive as ErrorRecord: show only the text, without empty lines.
         & $bloco 2>&1 | ForEach-Object {
             if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { "$_" }
         } | Where-Object { $_.Trim() -ne "" } | Select-Object -Last $Ultimas | ForEach-Object { Anotar "  $_" }
@@ -61,10 +61,10 @@ if (-not $SoMedir) {
     Etapa "nora --verificar" { nora --verificar } -Ultimas 80
 }
 
-# --- Medição de desempenho (roadmap "Imagem para as falas", item 9) -------------------------------
-# Tudo com a Nora real rodando (Qwen, Whisper e ElevenLabs ao mesmo tempo): `nora ouvir --hud`
-# num terminal, o ouvido aberto, e a HUD no navegador. As classes CIM abaixo têm o mesmo nome em
-# qualquer idioma do Windows (os contadores do Get-Counter mudam de nome em português).
+# --- Performance measurement (roadmap "Imagem para as falas", item 9) -----------------------------
+# All with the real Nora running (Qwen, Whisper and ElevenLabs at the same time): `nora ouvir --hud`
+# in a terminal, the ear open, and the HUD in the browser. The CIM classes below have the same name in
+# any Windows language (the Get-Counter counters change names in Portuguese).
 $nucleos = [Environment]::ProcessorCount
 $dados = python -c "from nora.config import carregar; print(carregar().pasta_dados)" 2>$null
 if (-not $dados) { $dados = Join-Path $raiz "data" }
@@ -158,7 +158,7 @@ if ($Continuo) {
             $a.hora, $a.cpu_total, $a.vram_total_mb, $a.memoria_navegador_mb, $a.quadro_p95_ms, $restante)
         Start-Sleep -Seconds $Intervalo
     }
-    $n = [Math]::Max(1, [int](120 / $Intervalo))  # primeiros e últimos ~2 min
+    $n = [Math]::Max(1, [int](120 / $Intervalo))  # first and last ~2 min
     $comeco = $linhas | Select-Object -First $n
     $final = $linhas | Select-Object -Last $n
     foreach ($campo in "cpu_total", "vram_total_mb", "memoria_navegador_mb", "memoria_js_mb", "quadro_p95_ms", "contextos_webgl") {

@@ -1,7 +1,7 @@
-﻿; Instalador da Nora (Inno Setup 6). Gerado por scripts\empacotar_windows.ps1, que passa
-; /DVersao e /DCommit. Instala sem pedir administrador, na pasta do usuário. A config pessoal e
-; a memória ficam em %APPDATA%\Nora e NÃO são apagadas ao desinstalar.
-; Sem assinatura digital por enquanto: o Windows avisa na primeira vez (docs\INSTALACAO.md).
+﻿; Nora's installer (Inno Setup 6). Built by scripts\empacotar_windows.ps1, which passes
+; /DVersao and /DCommit. Installs without asking for admin, in the user folder. The personal config
+; and the memory live in %APPDATA%\Nora and are NOT deleted on uninstall.
+; No digital signature for now: Windows warns the first time (docs\INSTALACAO.md).
 
 #ifndef Versao
   #define Versao "0.0.0-dev"
