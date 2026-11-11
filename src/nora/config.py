@@ -104,9 +104,8 @@ class Voz:
     piper: VozPiper
     elevenlabs: VozElevenLabs
     comfyui: VozComfyUI
-    juntar_curta: int = (
-        0  # a voice request with fewer characters waits for the next sentence; 0 = no
-    )
+    # a voice request with fewer characters waits for the next sentence; 0 = no
+    juntar_curta: int = 0
 
 
 @dataclass(frozen=True)
@@ -138,9 +137,8 @@ class AutoMelhoria:
     latencia_voz_ms: int = 2000  # from the first ready sentence until speech starts
     dias_de_eventos: int = 30  # older events are deleted when the day closes
     notificar: bool = True  # Windows notification when the report is ready
-    apresentar: str = (
-        "abrir"  # abrir: opens the .md; terminal: shows the full text in the conversation
-    )
+    # abrir: opens the .md; terminal: shows the full text in the conversation
+    apresentar: str = "abrir"
 
 
 @dataclass(frozen=True)

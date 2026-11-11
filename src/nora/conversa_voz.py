@@ -263,9 +263,8 @@ class LocutorDialogo:
         self.emocao = ""
         self.turno = None
         self._toque: threading.Thread | None = None
-        self.cortada = (
-            False  # dropped midway without a reliable boundary: the answer can be repeated
-        )
+        # dropped midway without a reliable boundary: the answer can be repeated
+        self.cortada = False
         self.reservas: list[str] = []  # reason for each switch to the fallback (diagnostics)
         try:
             # Opens (or reuses) the connection now, while the brain is still thinking.

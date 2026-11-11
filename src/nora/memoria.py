@@ -306,10 +306,8 @@ class Memoria:
         with self._trava, self._db:
             esquecidos = self._esquecidos_parecidos(vetor, FATO_ESQUECIDO)
             if esquecidos and origem.startswith("historico"):
-                return (
-                    0,
-                    False,
-                )  # the person asked to forget: an old conversation does not bring it back
+                # the person asked to forget: an old conversation does not bring it back
+                return 0, False
             for esquecido_id in esquecidos:  # told again in a new conversation: it counts again
                 self._db.execute("DELETE FROM esquecidos WHERE id = ?", (esquecido_id,))
             self._garantir_indice(len(vetor))

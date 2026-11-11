@@ -988,9 +988,8 @@ def ler_entrada(
     while True:
         try:
             mostrou = agendador.apresentar_pendentes()
-        except (
-            Exception
-        ) as erro:  # self-improvement never takes the keyboard away from the conversation
+        # self-improvement never takes the keyboard away from the conversation
+        except Exception as erro:
             logging.getLogger(__name__).error(
                 "Falha ao apresentar relatório: %s", type(erro).__name__
             )

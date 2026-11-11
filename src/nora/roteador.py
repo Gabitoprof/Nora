@@ -299,14 +299,12 @@ class Roteador:
             self.situacao = "comando"  # state change: not a fact for memory
             yield self._trocar(comando, pergunta)
             return
-        if (
-            comando == "local"
-        ):  # "use o cérebro local para ...": only this question, on the local model
+        # "use o cérebro local para ...": only this question, on the local model
+        if comando == "local":
             yield from self._local(mensagens, escalar=False)
             return
-        if (
-            comando == "nuvem"
-        ):  # "use o Claude para ...": only this question, on the requested cloud
+        # "use o Claude para ...": only this question, on the requested cloud
+        if comando == "nuvem":
             chamado = provedor_em(pergunta)
             yield from self._nuvem(mensagens, pesada=True, espera=True, chamado=chamado)
             return
@@ -366,9 +364,8 @@ class Roteador:
         envio = (
             mensagens + [{"role": "system", "content": INSTRUCAO_ESCALAR}] if escalar else mensagens
         )
-        escreveu = (
-            False  # after saying something, switching brains would stitch two answers together
-        )
+        # after saying something, switching brains would stitch two answers together
+        escreveu = False
         subir = False
         comeco_tentativa, primeiro = time.perf_counter(), None
         try:
@@ -454,9 +451,8 @@ class Roteador:
                     comeco_tentativa,
                     primeiro,
                 )
-                if (
-                    escreveu
-                ):  # half was already spoken: switching brains now would repeat the beginning
+                # half was already spoken: switching brains now would repeat the beginning
+                if escreveu:
                     self.situacao = "interrompida"
                     self.avisos.append(f"{falha} A resposta ficou pela metade.")
                     return

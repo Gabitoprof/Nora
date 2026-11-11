@@ -162,9 +162,8 @@ class Conversa:
         self.ocupada = False  # answering now: self-improvement waits
         self.falando = False  # the voice is still playing the answer: the Second Brain waits
         self.segundo_cerebro = None  # the notes synchronizer, if on ([segundo_cerebro])
-        self._melhoria_pendente: tuple[str, int] | None = (
-            None  # (action, no.) waiting for the "sim"
-        )
+        # (action, no.) waiting for the "sim"
+        self._melhoria_pendente: tuple[str, int] | None = None
         self.ultima_interacao = ""  # so the voice records its times in the same interaction
         self._anterior: tuple[str, str] = ("", "")  # (interaction, who answered), for complaints
         self.trechos_de_notas: list[Trecho] = []  # note passages used in the last answer
@@ -343,9 +342,8 @@ class Conversa:
                 _, nova = self.memoria.preferir(preferencia)
                 if nova:
                     self._avisar(f"vou lembrar de: {preferencia}")
-            for texto in (
-                curadoria.esquecer
-            ):  # before the new facts: in a correction, the wrong one goes out
+            # before the new facts: in a correction, the wrong one goes out
+            for texto in curadoria.esquecer:
                 apagados = self.memoria.esquecer_parecido(texto)
                 for apagado in apagados:
                     self._avisar(f"esqueci: {apagado.texto}")

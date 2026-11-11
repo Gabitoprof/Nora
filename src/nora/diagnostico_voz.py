@@ -16,9 +16,8 @@ ARQUIVO = "diagnostico_voz.json"
 log = logging.getLogger("nora.voz")
 
 # ElevenLabs continuity: the intonation carrying from one sentence to the next.
-ATIVA = (
-    "ativa"  # v4: one connection per conversation; HTTP: with the previous sentence (previous_text)
-)
+# v4: one connection per conversation; HTTP: with the previous sentence (previous_text)
+ATIVA = "ativa"
 DESATIVADA = "desativada"  # continuidade = false in the config
 NAO_SUPORTADA = "não suportada"  # the model refused the previous sentence (HTTP)
 ERRO = "erro"  # the dialogue (v4) failed and Nora fell back
