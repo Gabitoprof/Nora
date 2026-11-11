@@ -1,11 +1,11 @@
-"""O .env.example acompanha o .env: toda variável que o código lê está nele, sem valor pessoal."""
+""".env.example follows .env: every variable the code reads is in it, with no personal value."""
 
 import re
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 SENSIVEIS = re.compile(r"(KEY|TOKEN|SECRET|SENHA|PASSWORD)")
-# Variáveis do próprio sistema operacional, que o código só lê (não são opções da Nora).
+# Variables of the operating system itself, which the code only reads (not Nora options).
 DO_SISTEMA = {"APPDATA"}
 
 

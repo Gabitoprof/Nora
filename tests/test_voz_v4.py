@@ -1,4 +1,4 @@
-"""ElevenLabs v4 (diálogo por WebSocket) com um servidor falso local: sem rede, sem chave real."""
+"""ElevenLabs v4 (WebSocket dialogue) with a local fake server: no network, no real key."""
 
 import base64
 import io
@@ -28,13 +28,13 @@ CHAVE = "chave-de-teste-secreta"
 
 
 def pcm_de(texto: str) -> bytes:
-    """PCM falso que carrega o texto (para conferir a ordem) com a duração do alinhamento."""
+    """Fake PCM that carries the text (to check the order) with the alignment's duration."""
     tamanho = round(len(texto) * MS_POR_CARACTERE / 1000 * TAXA) * 2
     return (texto.encode() * (tamanho // max(1, len(texto.encode())) + 1))[:tamanho]
 
 
 class DialogoFalso:
-    """Servidor WebSocket do Text to Dialogue, só o que a Nora usa."""
+    """Text to Dialogue WebSocket server, only what Nora uses."""
 
     def __init__(self, modo="normal", pedacos=1, atraso=0.0):
         self.modo, self.pedacos, self.atraso = modo, pedacos, atraso
@@ -75,7 +75,7 @@ class DialogoFalso:
             self.entradas = getattr(self, "entradas", 0) + 1
             if self.modo in ("cai_no_meio", "cai_sem_alinhamento") and self.entradas >= 2:
                 time.sleep(0.05)
-                ws.close(code=1011)  # o servidor cai depois da 1ª frase já ter áudio
+                ws.close(code=1011)  # the server drops after the 1st sentence already has audio
                 return
             if self.modo == "erro":
                 ws.send(
@@ -98,8 +98,8 @@ class DialogoFalso:
                 parte = pcm[i * corte : (i + 1) * corte if i < self.pedacos - 1 else None]
                 envio = {"audio": base64.b64encode(parte).decode()}
                 if self.modo == "trechos":
-                    # alinhamento repartido: cada trecho traz as palavras do seu áudio, com
-                    # tempos relativos ao próprio trecho
+                    # split alignment: each chunk carries the words of its audio, with
+                    # times relative to the chunk itself
                     palavras = texto.split()
                     if i < len(palavras):
                         envio["alignment"] = {
@@ -137,7 +137,7 @@ def config_v4(criar_raiz, extra="", modelo="eleven_v4_turbo", ambiente=None):
 
 @pytest.fixture
 def v4(criar_raiz, monkeypatch):
-    """Monta a voz v4 apontando para o servidor falso."""
+    """Builds the v4 voice pointing at the fake server."""
 
     def montar(servidor, extra="", http=None):
         monkeypatch.setattr(
@@ -180,7 +180,7 @@ def test_streaming_numa_conexao_so_com_new_turn_e_flush(v4):
         locutor = falar(dialogo, transformar, voz, frases, tocados)
         segunda = []
         falar(dialogo, transformar, voz, ["De novo."], segunda)
-    assert len(servidor.conexoes) == 1  # a segunda resposta reaproveitou a conexão
+    assert len(servidor.conexoes) == 1  # the second answer reused the connection
     conexao = servidor.conexoes[0]
     consulta = urllib.parse.parse_qs(urllib.parse.urlsplit(conexao["caminho"]).query)
     assert consulta == {
@@ -199,7 +199,7 @@ def test_streaming_numa_conexao_so_com_new_turn_e_flush(v4):
     assert [e.get("new_turn", False) for e in entradas] == [True, False, False, True]
     assert all(e["voice_id"] == "voz-da-nora" for e in entradas)
     assert len(servidor.mensagens("flush")) == 2
-    # um toque só por resposta, com o áudio de todas as frases, em ordem
+    # a single playback per answer, with the audio of all sentences, in order
     assert tocados == [b"".join(pcm_de(f + " ") for f in frases)]
     assert segunda == [pcm_de("De novo. ")]
     assert locutor.reserva is None and not locutor.tempos.erros
@@ -218,7 +218,7 @@ def test_texto_vai_antes_do_audio_voltar_e_toca_conforme_chega(v4):
         locutor = LocutorDialogo(dialogo, transformar, voz, tocar, time.perf_counter())
         locutor.falar("Uma frase comprida para chegar em pedaços.")
         locutor.terminar()
-    assert len(partes) >= 3  # o áudio chegou e tocou em partes, não de uma vez no fim
+    assert len(partes) >= 3  # the audio arrived and played in parts, not all at once at the end
     assert quando[-1] - quando[0] >= 0.1
     assert locutor.tempos.comeco_da_voz > 0
 
@@ -249,7 +249,7 @@ def test_alinhamento_relativo_ao_pedaco_vira_tempo_da_fala_toda():
     turno._receber(um_segundo, alinhar)
     turno._receber(um_segundo, {**alinhar, "chars": list("tu")})
     palavras = turno.audio.palavras
-    # o 2º pedaço começa depois de 1 s de áudio (o tempo veio relativo ao pedaço)
+    # the 2nd chunk starts after 1 s of audio (the time came relative to the chunk)
     assert palavras == [{"texto": "Oitu", "inicio_ms": 0.0, "fim_ms": 1200.0, "destaque": False}]
     assert turno.recebeu_alinhamento
 
@@ -265,7 +265,7 @@ def ponte(monkeypatch):
 
 
 class SaidaFalsa:
-    """sounddevice falso: chama o callback de saída em blocos, como a placa de som."""
+    """Fake sounddevice: calls the output callback in blocks, like the sound card."""
 
     PortAudioError = RuntimeError
 
@@ -288,7 +288,7 @@ class SaidaFalsa:
                         dono.tocado.extend(saida)
                         break
                     dono.tocado.extend(saida)
-                    time.sleep(512 / TAXA)  # em tempo real, como a placa de som
+                    time.sleep(512 / TAXA)  # in real time, like the sound card
                 finished_callback()
                 return self
 
@@ -306,7 +306,7 @@ def tocar_na_saida(eventos):
         hud.reproducao(True)
         try:
             audio._tocar_partes(saida, som, 0, None)
-            time.sleep(0.2)  # a HUD publica numa linha própria, a 20 Hz
+            time.sleep(0.2)  # the HUD publishes on its own thread, at 20 Hz
         finally:
             hud.reproducao(False)
         while not fila.empty():
@@ -354,15 +354,15 @@ def test_keep_alive_entre_as_respostas_e_fecha_quando_ociosa():
         prazo = time.monotonic() + 3
         while sessao.aberta() and time.monotonic() < prazo:
             time.sleep(0.05)
-        assert not sessao.aberta()  # ociosa: fechou sozinha
+        assert not sessao.aberta()  # idle: closed on its own
         sessao.novo_turno().cancelar()
-    assert len(servidor.conexoes) == 2  # a próxima resposta abriu outra
+    assert len(servidor.conexoes) == 2  # the next answer opened another one
 
 
 def test_keep_alive_enquanto_o_cerebro_pensa():
     with DialogoFalso() as servidor:
         sessao = SessaoDialogo(CHAVE, "v", "eleven_v4_turbo", url=servidor.url, manter_viva_s=0.2)
-        turno = sessao.novo_turno()  # aberto, nada enviado ainda
+        turno = sessao.novo_turno()  # open, nothing sent yet
         time.sleep(0.7)
         assert servidor.mensagens("keep_alive")
         turno.enviar("Pronto.")
@@ -382,15 +382,15 @@ def test_barge_in_fecha_a_sessao_e_a_proxima_nao_mistura_audio(v4):
         locutor.cancelar()
         locutor.terminar()
         assert locutor.turno.cancelado and not locutor.tempos.erros
-        assert locutor.reserva is None  # cortar não é falha: nada de reserva
+        assert locutor.reserva is None  # cutting is not a failure: no fallback
         prazo = time.monotonic() + 3
         while servidor.fechadas < 1 and time.monotonic() < prazo:
             time.sleep(0.02)
-        assert servidor.fechadas == 1  # a conexão do barge-in foi fechada
+        assert servidor.fechadas == 1  # the barge-in connection was closed
         nova = []
         falar(dialogo, transformar, voz, ["Segunda."], nova)
     assert len(servidor.conexoes) == 2
-    assert nova == [pcm_de("Segunda. ")]  # nada da primeira resposta
+    assert nova == [pcm_de("Segunda. ")]  # nothing from the first answer
     assert len(tocados[0]) < len(pcm_de("Primeira resposta que vai ser cortada no meio. "))
 
 
@@ -408,7 +408,7 @@ def test_erro_do_dialogo_cai_no_flash_por_http_e_guarda_o_motivo(v4):
         locutor = falar(dialogo, transformar, voz, ["Oi.", "Tudo bem?"], tocados)
     assert locutor.reserva is not None
     assert "unsupported_model (400)" in locutor.motivo_reserva
-    assert "texto do servidor" not in locutor.motivo_reserva  # só o código, não a mensagem
+    assert "texto do servidor" not in locutor.motivo_reserva  # only the code, not the message
     assert "eleven_flash_v2_5" in dialogo.aviso
     corpos = [json.loads(p[2]) for p in nuvem.pedidos]
     assert {c["model_id"] for c in corpos} == {"eleven_flash_v2_5"}
@@ -431,8 +431,8 @@ def test_turno_sem_audio_e_falha_e_cai_no_flash(v4, modo, motivo):
         tocados = []
         locutor = falar(dialogo, transformar, voz, ["Oi."], tocados)
     assert locutor.reserva is not None and motivo in locutor.motivo_reserva
-    assert "Oi." not in locutor.motivo_reserva  # o motivo não leva o texto
-    assert len(nuvem.pedidos) == 1 and tocados  # a resposta saiu pelo flash
+    assert "Oi." not in locutor.motivo_reserva  # the reason does not carry the text
+    assert len(nuvem.pedidos) == 1 and tocados  # the answer came out through flash
 
 
 def test_sessao_reabre_depois_de_um_turno_que_falhou():
@@ -456,7 +456,7 @@ def test_sem_conexao_cai_no_flash_desde_o_inicio(v4):
         tocados = []
         locutor = falar(dialogo, transformar, voz, ["Oi."], tocados)
         assert locutor.reserva is not None and "diálogo do ElevenLabs" in locutor.motivo_reserva
-        # em pausa: a próxima resposta já vai direto pelo HTTP
+        # paused: the next answer goes straight through HTTP
         assert dialogo.em_reserva
         falar(dialogo, transformar, voz, ["De novo."], tocados)
     assert len(nuvem.pedidos) == 2
@@ -514,7 +514,7 @@ def test_verificar_mostra_flash_e_continuidade_desativada(criar_raiz):
 
 
 def _turno_com(trechos):
-    """Turno que recebe (pcm_ms, chars, inicios) em sequência; devolve as palavras finais."""
+    """A turn that receives (pcm_ms, chars, inicios) in sequence; returns the final words."""
     sessao = SessaoDialogo("x", "v", "eleven_v4_turbo")
     turno = elevenlabs_dialogo.Turno(sessao)
     for duracao_ms, chars, inicios in trechos:
@@ -529,12 +529,12 @@ def _turno_com(trechos):
 
 
 def test_alinhamento_relativo_ao_trecho_vira_posicao_no_pcm():
-    # 3 trechos de 500 ms; cada um traz "ab " com tempos a partir de 0 (relativos ao trecho)
+    # 3 chunks of 500 ms; each carries "ab " with times from 0 (relative to the chunk)
     turno = _turno_com(
         [(500, "um ", [0, 60, 120]), (500, "do ", [0, 60, 120]), (500, "tr", [0, 60])]
     )
     inicios = [p["inicio_ms"] for p in turno.audio.palavras]
-    assert inicios == [0.0, 500.0, 1000.0]  # cada palavra onde o seu áudio está no PCM
+    assert inicios == [0.0, 500.0, 1000.0]  # each word where its audio is in the PCM
     assert turno.referencia == "trecho"
 
 
@@ -547,7 +547,8 @@ def test_alinhamento_absoluto_no_turno_nao_soma_de_novo():
 
 
 def test_referencia_decidida_uma_vez_nao_salta_no_meio_da_fala():
-    # 2º trecho decide "trecho"; o 3º vem com tempo grande (parece absoluto), mas continua relativo
+    # the 2nd chunk decides "trecho"; the 3rd comes with a large time (looks absolute), but stays
+    # relative
     turno = _turno_com(
         [(500, "um ", [0, 60, 120]), (500, "do ", [0, 60, 120]), (500, "tr", [700, 760])]
     )
@@ -564,8 +565,8 @@ def test_silencio_inicial_desloca_as_palavras_junto_com_o_som():
 
 
 def test_servidor_falso_com_varios_trechos_de_offsets_conhecidos(v4):
-    """Vários trechos de áudio por frase, alinhamento relativo a cada trecho: as palavras ficam na
-    posição real do PCM (a soma das durações dos trechos anteriores)."""
+    """Several audio chunks per sentence, alignment relative to each chunk: the words land at the
+    real PCM position (the sum of the previous chunks' durations)."""
     with DialogoFalso(pedacos=3, modo="trechos") as servidor:
         _, voz, dialogo, transformar = v4(servidor)
         turno = dialogo.novo_turno()
@@ -574,7 +575,7 @@ def test_servidor_falso_com_varios_trechos_de_offsets_conhecidos(v4):
         assert turno.terminado.wait(5)
         palavras = turno.audio.palavras
     assert [p["texto"] for p in palavras] == ["abc", "def"]
-    # "def" começa no 2º trecho: posição = duração do 1º trecho
+    # "def" starts in the 2nd chunk: position = duration of the 1st chunk
     pcm_total = len(pcm_de("abc def "))
     primeiro_ms = (pcm_total // 3 // 2 * 2) / 2 / TAXA * 1000
     assert palavras[1]["inicio_ms"] == pytest.approx(primeiro_ms, abs=1)
@@ -610,8 +611,9 @@ def test_falha_depois_do_audio_continua_na_reserva_sem_repetir(v4):
         time.sleep(0.4)
         locutor.falar("Terceira frase.")
         locutor.terminar()
-    assert tocados[0] == pcm_de("Primeira frase inteira. ")  # o que já tinha chegado tocou inteiro
-    # a reserva continua da 2ª frase: nada da 1ª se repete, e na ordem
+    # what had already arrived played in full
+    assert tocados[0] == pcm_de("Primeira frase inteira. ")
+    # the fallback continues from the 2nd sentence: nothing from the 1st repeats, and in order
     assert " ".join(ditos).split() == ["Segunda", "frase.", "Terceira", "frase."]
     assert ordem[0] == "v4" and set(ordem[1:]) == {"flash"}
     assert locutor.reservas and "eleven_flash_v2_5" in dialogo.aviso
@@ -633,7 +635,7 @@ def test_falha_sem_alinhamento_para_de_modo_claro_e_permite_repetir(v4):
         time.sleep(0.4)
         locutor.falar("Mais uma.")
         locutor.terminar()
-    assert locutor.cortada and not ditos  # sem limite confiável: não chuta onde continuar
+    assert locutor.cortada and not ditos  # no reliable boundary: does not guess where to continue
     assert any("repete a resposta que caiu" in e for e in locutor.tempos.erros)
     assert locutor.texto == "Uma frase. Outra frase. Mais uma."
 
@@ -643,7 +645,7 @@ def test_texto_restante_corta_em_palavra_e_ignora_etiquetas():
 
     frases = ["{alegre} Oi, Gabriel!", "Tudo certo por aqui."]
     assert texto_restante(frases, list("[happy] Oi, Gabriel! ")) == "Tudo certo por aqui."
-    assert texto_restante(frases, list("Oi, Gabriel! Tu")) == "certo por aqui."  # pula a palavra
+    assert texto_restante(frases, list("Oi, Gabriel! Tu")) == "certo por aqui."  # skips the word
     assert texto_restante(frases, list("Oi Gabriel Tudo certo por aqui")) == ""
     assert texto_restante(frases, []) is None
     assert texto_restante(frases, list("x" * 200)) is None
@@ -671,7 +673,7 @@ def test_cancelar_e_retomar_nao_repete_nem_embaralha_palavras(v4):
         nova.falar("Agora a nova resposta.")
         nova.terminar()
         palavras = [p["texto"] for p in nova.turno.audio.palavras]
-    assert palavras == ["Agora", "a", "nova", "resposta."]  # sem sobras, na ordem
+    assert palavras == ["Agora", "a", "nova", "resposta."]  # no leftovers, in order
 
 
 def test_repete_a_resposta_que_caiu_sem_chamar_o_cerebro(criar_raiz):
@@ -725,7 +727,7 @@ def test_diagnostico_da_resposta_que_trocou_para_a_reserva_no_meio(criar_raiz, m
     medida = diagnostico_voz.ler(config.pasta_dados)
     assert medida.via == "dialogo + http (reserva)" and medida.continuidade == diagnostico_voz.ERRO
     assert medida.geracoes >= 2 and medida.reservas
-    assert "Primeira" not in " ".join(ditos)  # a reserva não repetiu o que já tocou
+    assert "Primeira" not in " ".join(ditos)  # the fallback did not repeat what already played
     bruto = (config.pasta_dados / diagnostico_voz.ARQUIVO).read_text(encoding="utf-8")
     for proibido in (CHAVE, "secreta", "Primeira", "Segunda"):
         assert proibido not in bruto

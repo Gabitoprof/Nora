@@ -1,4 +1,4 @@
-"""Servidor HTTP falso e genérico para testar os clientes dos serviços locais."""
+"""Generic fake HTTP server to test the local services' clients."""
 
 from __future__ import annotations
 

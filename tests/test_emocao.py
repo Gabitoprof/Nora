@@ -1,4 +1,5 @@
-"""Emoção na voz: etiquetas internas, traduzidas por motor e invisíveis na tela e na memória."""
+"""Emotion in the voice: internal tags, translated per engine and invisible on screen and in
+memory."""
 
 import io
 import json
@@ -25,10 +26,10 @@ def test_etiquetas_saem_ou_viram_audio_tags():
     assert para_v3(RESPOSTA) == (
         "[happy] Que bom te ver! [laughs] Essa foi ótima. Tudo certo? [serious] Atenção ao prazo."
     )
-    # intensidade baixa: sem risadas e suspiros; zero: nenhuma emoção
+    # low intensity: no laughs or sighs; zero: no emotion
     assert "[laughs]" not in para_v3(RESPOSTA, 0.2) and "[happy]" in para_v3(RESPOSTA, 0.2)
     assert para_v3(RESPOSTA, 0) == sem_emocoes(RESPOSTA)
-    # etiqueta desconhecida some, sem virar tag
+    # an unknown tag disappears, without becoming an audio tag
     assert para_v3("{zangadissima} Ok.") == "Ok."
 
 
@@ -94,10 +95,10 @@ def test_conversa_esconde_as_etiquetas_e_aprende_com_a_reacao(criar_raiz):
     assert "Nora: Que bom te ver! Essa foi ótima." in texto and "{" not in texto
     assert "{alegre}" not in guardado and "Que bom te ver!" in guardado
     pedidos = [json.loads(c) for caminho, _, c in ollama.pedidos if caminho == "/api/chat"]
-    # as curadorias rodam em segundo plano e podem chegar em qualquer ordem: acha pelo conteúdo
+    # curations run in the background and may arrive in any order: find by content
     trocas = [p["messages"][1]["content"] for p in pedidos if p.get("format") == "json"]
     reacao = next(t for t in trocas if "kkkk essa foi boa" in t)
-    # na troca da reação, a curadoria vê o tom da resposta anterior (com as etiquetas)
+    # in the reaction exchange, curation sees the tone of the previous answer (with the tags)
     assert reacao.startswith("Resposta anterior da assistente: {alegre} Que bom te ver!")
     primeira = next(t for t in trocas if "me conta uma piada" in t)
     assert "Resposta anterior" not in primeira

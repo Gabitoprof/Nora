@@ -40,7 +40,7 @@ def test_datas_escritas_no_texto():
     assert datas_no_texto("Ana faz aniversário em 12 de março", DOMINGO) == [
         (date(2027, 3, 12), True)
     ]
-    # sem ano: a data mais perto de hoje (um acontecimento de ontem fica no passado)
+    # no year: the date closest to today (an event from yesterday stays in the past)
     assert datas_no_texto("Em 31/10 o gato fugiu", DOMINGO) == [(date(2026, 10, 31), False)]
     assert datas_no_texto("Ana gosta de chá", DOMINGO) == []
     assert datas_no_texto("data inválida 31/02/2026", DOMINGO) == []
@@ -64,7 +64,7 @@ def test_agenda_na_memoria(tmp_path):
     memoria = Memoria(tmp_path / "memoria.db", EmbeddingsFalsos())
     fato_id, _ = memoria.lembrar("Ana tem prova em 21/11/2026")
     memoria.marcar(date(2026, 11, 21), "Ana tem prova em 21/11/2026", fato_id=fato_id)
-    memoria.marcar(date(2026, 11, 20), "Ana tem prova em 20/11/2026", fato_id=fato_id)  # mudou
+    memoria.marcar(date(2026, 11, 20), "Ana tem prova em 20/11/2026", fato_id=fato_id)  # changed
     memoria.marcar(date(1990, 3, 12), "Ana faz aniversário em 12 de março", anual=True)
     novembro = memoria.agenda(date(2026, 11, 1), date(2026, 11, 30))
     assert [(dia, e.texto) for dia, e in novembro] == [
@@ -75,7 +75,7 @@ def test_agenda_na_memoria(tmp_path):
     assert [e.texto for e in memoria.eventos_contendo("anivers")] == [
         "Ana faz aniversário em 12 de março"
     ]
-    memoria.esquecer(fato_id)  # esquecer o fato tira da agenda também
+    memoria.esquecer(fato_id)  # forgetting the fact removes it from the agenda too
     assert memoria.agenda(date(2026, 11, 1), date(2026, 11, 30)) == []
     assert memoria.contar_agenda() == 1
     assert memoria.desmarcar(marco[0][1].id) and not memoria.desmarcar(999)
@@ -148,5 +148,5 @@ def test_comandos_da_agenda(criar_raiz, capsys, monkeypatch):
     texto = capsys.readouterr().out
     assert f"Marcado para {daqui:%d/%m/%Y} (nº 1)." in texto
     assert f"{daqui:%d/%m/%Y} (daqui a 3 dias)  prova de cálculo" in texto
-    assert "prova de cálculo" in texto.split("fatos em")[1]  # também virou fato
+    assert "prova de cálculo" in texto.split("fatos em")[1]  # it also became a fact
     assert "Tirado da agenda (nº 1)" in texto

@@ -18,7 +18,7 @@ class VozFalsa:
         if frase == self.falhar_em:
             raise ServicoIndisponivel("ComfyUI fechado")
         self.falas.append(frase)
-        return para_wav(b"\x01\x00\xff\xff" * 24_000, taxa=24_000, canais=2)  # 1 s estéreo
+        return para_wav(b"\x01\x00\xff\xff" * 24_000, taxa=24_000, canais=2)  # 1 s stereo
 
 
 def test_gera_no_formato_do_piper_e_continua_de_onde_parou(tmp_path):
@@ -28,7 +28,7 @@ def test_gera_no_formato_do_piper_e_continua_de_onde_parou(tmp_path):
         gerar_dataset(VozFalsa(falhar_em="Terceira frase."), frases, pasta, saida=lambda _: None)
     voz = VozFalsa()
     assert gerar_dataset(voz, frases, pasta, saida=lambda _: None) == 1
-    assert voz.falas == ["Terceira frase."]  # só a que faltava
+    assert voz.falas == ["Terceira frase."]  # only the missing one
     amostras, taxa, canais = ler_wav((pasta / "wavs" / "0001.wav").read_bytes())
     assert (taxa, canais) == (22_050, 1)
     assert len(amostras) // 2 == 22_050

@@ -1,4 +1,4 @@
-"""Uma versão só para o produto: o Python (nora.__version__) e a HUD (hud/package.json)."""
+"""A single version for the product: Python (nora.__version__) and the HUD (hud/package.json)."""
 
 import json
 import re
@@ -10,7 +10,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 
 
 def para_npm(versao: str) -> str:
-    """PEP 440 → semver do npm: "0.4.0.dev0" → "0.4.0-dev.0"; "0.4.0" fica igual."""
+    """PEP 440 → npm semver: "0.4.0.dev0" → "0.4.0-dev.0"; "0.4.0" stays the same."""
     base, _, dev = versao.partition(".dev")
     return f"{base}-dev.{dev or 0}" if ".dev" in versao else versao
 

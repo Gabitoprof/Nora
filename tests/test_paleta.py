@@ -1,5 +1,5 @@
-"""A paleta de emoções é uma só (src/nora/paleta.json, dentro do pacote), para a HUD e o Second
-Brain."""
+"""There is a single emotion palette (src/nora/paleta.json, inside the package), for the HUD and the
+Second Brain."""
 
 import re
 
@@ -15,7 +15,7 @@ def test_toda_emocao_da_nora_tem_cor():
 
 
 def test_cores_do_prompt_da_hud():
-    # Tabela do prompt da HUD v0.4.0: calma turquesa, tristeza lavanda, curiosidade terracota.
+    # Table from the HUD v0.4.0 prompt: calma turquoise, tristeza lavender, curiosidade terracotta.
     assert cor("calma") == "#66D4CB"
     assert cor("triste") == "#AA9ACF"
     assert cor("curiosa") == "#DF876A"
@@ -39,28 +39,28 @@ def test_paleta_fica_no_pacote_e_nao_tem_copia():
 
     raiz = Path(__file__).resolve().parents[1]
     assert modulo.ARQUIVO == raiz / "src" / "nora" / "paleta.json"
-    # Nenhuma cópia que possa divergir: a HUD importa o arquivo do pacote.
+    # No copy that could diverge: the HUD imports the package file.
     copias = [p for p in raiz.glob("hud/**/paleta*.json") if "node_modules" not in p.parts]
     assert copias == []
     assert '"../../src/nora/paleta.json"' in (raiz / "hud/src/state.ts").read_text("utf-8")
 
 
 def test_aliases_revisados():
-    # Serenidade é calma; sussurro e suspiro são jeitos de falar, não tristeza: ficam na calma.
+    # Serenity is calm; whisper and sigh are ways of speaking, not sadness: they stay in calma.
     for nome in ("serenidade", "sussurro", "suspiro"):
         assert grupo(nome) == "calma", nome
-    # Preocupação é um tom sério, não curiosidade.
+    # Worry is a serious tone, not curiosity.
     for nome in ("preocupacao", "preocupação", "preocupada"):
         assert grupo(nome) == "seriedade", nome
-    # Tabela aprovada: cada grupo com a sua cor principal.
+    # Approved table: each group with its main color.
     cores = paleta()["cores"]
     assert cores == {
-        "neutra": "#C9C9C9",  # prata
-        "alegria": "#F0C66A",  # dourado
-        "carinho": "#E3A4BD",  # rosa suave
-        "calma": "#66D4CB",  # turquesa
-        "seriedade": "#80A8F6",  # azul
-        "tristeza": "#AA9ACF",  # lavanda
-        "curiosidade": "#DF876A",  # terracota
+        "neutra": "#C9C9C9",  # silver
+        "alegria": "#F0C66A",  # gold
+        "carinho": "#E3A4BD",  # soft pink
+        "calma": "#66D4CB",  # turquoise
+        "seriedade": "#80A8F6",  # blue
+        "tristeza": "#AA9ACF",  # lavender
+        "curiosidade": "#DF876A",  # terracotta
     }
     assert grupo("triste") == "tristeza" and grupo("curiosa") == "curiosidade"

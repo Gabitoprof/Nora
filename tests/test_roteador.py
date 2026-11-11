@@ -1,4 +1,5 @@
-"""Roteador de modelos: local conversa, a nuvem (ChatGPT, depois Claude) pega as difíceis."""
+"""Model router: local handles conversation, the cloud (ChatGPT, then Claude) takes the hard
+ones."""
 
 import re
 from types import SimpleNamespace
@@ -41,7 +42,7 @@ class FluxoFalso:
 
 
 class ClienteFalso:
-    """Imita o SDK anthropic: messages.stream e beta.messages.stream."""
+    """Imitates the anthropic SDK: messages.stream and beta.messages.stream."""
 
     def __init__(self, resposta="Resposta do Claude.", parada="end_turn", erro=None):
         self.pedidos = []
@@ -89,7 +90,7 @@ class LocalFalso:
 
 
 class OpenAIFalso:
-    """Imita o SDK openai: responses.create(stream=True) devolve eventos."""
+    """Imitates the openai SDK: responses.create(stream=True) returns events."""
 
     def __init__(self, resposta="Resposta do ChatGPT.", erro=None, recusa=False, quebra=False):
         self.pedidos = []
@@ -126,7 +127,7 @@ def montar(criar_raiz, local=None, cliente=None, toml="", openai=None):
     rapido = CerebroNuvem(config, nuvem.rapido, nuvem.esforco_rapido, cliente=cliente)
     pesado = CerebroNuvem(config, nuvem.pesado, nuvem.esforco_pesado, cliente=cliente)
     extras = {}
-    if openai:  # sem cliente falso, o ChatGPT fica indisponível (sem OPENAI_API_KEY)
+    if openai:  # without a fake client, ChatGPT is unavailable (no OPENAI_API_KEY)
         extras = {
             "rapido_openai": CerebroOpenAI(config, gpt.rapido, gpt.esforco_rapido, cliente=openai),
             "pesado_openai": CerebroOpenAI(config, gpt.pesado, gpt.esforco_pesado, cliente=openai),
@@ -148,7 +149,7 @@ def test_comandos_e_pedidos_de_pergunta_dificil():
     assert comando_em("volta pro modo automático") == "automatico"
     assert comando_em("qual a capital da França?") is None
     longa = "me explica o que é o modelo local de negócios que as empresas usam hoje em dia"
-    assert comando_em(longa) is None  # frase longa é pergunta
+    assert comando_em(longa) is None  # a long sentence is a question
     assert pede_pesado("pensa com calma: quanto é 17 vezes 23?")
     assert pede_pesado("pergunta pro Claude como funciona um transistor")
     assert not pede_pesado("fala mais devagar, com calma")
@@ -158,7 +159,7 @@ def test_conversa_do_dia_a_dia_fica_no_local(criar_raiz):
     roteador, cliente = montar(criar_raiz)
     assert falar(roteador, "oi, tudo bem?") == "Resposta local."
     assert cliente.pedidos == [] and roteador.origem.startswith("local")
-    # o local recebe a instrução de passar adiante as difíceis
+    # the local model gets the instruction to pass the hard ones on
     assert ESCALAR in roteador.local.pedidos[0][-1]["content"]
 
 
@@ -169,11 +170,11 @@ def test_local_passa_a_dificil_para_o_claude_com_frase_de_espera(criar_raiz):
     espera, resto = resposta.split(" ", 1)[0], resposta
     assert any(resto.startswith(f) for f in FRASES_DE_ESPERA), espera
     assert resposta.endswith("Resposta do Claude.") and ESCALAR not in resposta
-    assert local.fechado  # parou de ouvir o local
+    assert local.fechado  # stopped listening to the local model
     pedido = cliente.pedidos[0]
     assert pedido["model"] == "claude-sonnet-5-5" and pedido["system"] == "Você é a Nora."
     assert pedido["output_config"] == {"effort": "medium"}
-    assert pedido["beta"] and pedido["fallbacks"] == "default"  # recusa resolvida no servidor
+    assert pedido["beta"] and pedido["fallbacks"] == "default"  # refusal handled on the server
     assert roteador.origem == "Claude Sonnet 5.5"
 
 
@@ -191,13 +192,13 @@ def test_pedido_direto_vai_para_o_claude(criar_raiz):
 def test_comandos_trocam_o_cerebro(criar_raiz):
     roteador, cliente = montar(criar_raiz)
     assert "só com o cérebro local" in falar(roteador, "use o cérebro local")
-    falar(roteador, "pensa com calma: algo difícil")  # no modo local, nem o pedido sobe
+    falar(roteador, "pensa com calma: algo difícil")  # in local mode, not even the request goes up
     assert cliente.pedidos == []
     assert "tudo pelo Claude" in falar(roteador, "usa o Claude")
     assert falar(roteador, "oi") == "Resposta do Claude."
-    assert cliente.pedidos[-1]["model"] == "claude-haiku-5-5"  # conversa: o rápido
+    assert cliente.pedidos[-1]["model"] == "claude-haiku-5-5"  # conversation: the fast one
     assert cliente.pedidos[-1]["output_config"] == {"effort": "low"}
-    assert not cliente.pedidos[-1]["beta"]  # o Haiku não tem recusa no servidor
+    assert not cliente.pedidos[-1]["beta"]  # Haiku has no server-side refusal handling
     assert "Modo jogo ligado" in falar(roteador, "modo jogo") and roteador.local.descarregou
     assert roteador.aquecer() == 0.0
     assert "Confirma" in falar(roteador, "sai do modo jogo") and roteador.jogo
@@ -222,7 +223,7 @@ def test_sem_chave_o_roteador_e_so_o_local(criar_raiz):
     roteador = Roteador(config, local)
     assert not roteador.nuvem_disponivel()
     assert falar(roteador, "pensa com calma: algo difícil") == "Resposta local."
-    assert ESCALAR not in local.pedidos[0][-1]["content"]  # sem Claude, nada de escalar
+    assert ESCALAR not in local.pedidos[0][-1]["content"]  # without Claude, no escalating
     assert "falta a ANTHROPIC_API_KEY" in falar(roteador, "usa o Claude")
 
 
@@ -265,13 +266,13 @@ def test_triagem_manda_as_pesadas_direto_e_segunda_chance(criar_raiz):
     resposta = falar(roteador, "monta um plano de estudos de cálculo para 3 semanas")
     assert resposta.endswith("Resposta do Claude.") and roteador.local.pedidos == []
 
-    # o local responde a conversa; a reclamação seguinte vai para o Claude
+    # the local model answers the conversation; the following complaint goes to Claude
     falar(roteador, "qual o maior planeta?")
     assert roteador.origem.startswith("local")
     antes = len(cliente.pedidos)
     assert falar(roteador, "tá errado isso").endswith("Resposta do Claude.")
     assert len(cliente.pedidos) == antes + 1
-    # reclamar de uma resposta que já veio do Claude não repete a subida
+    # complaining about an answer that already came from Claude does not escalate again
     assert roteador.origem.startswith("Claude")
     assert insatisfeito("não entendi") and not insatisfeito("obrigado!")
 
@@ -286,7 +287,7 @@ def test_triagem_desligada_e_aviso_quando_falta_o_claude(criar_raiz):
     assert falar(sem_claude, "pensa com calma: monta um plano de estudos") == "Resposta local."
     falar(sem_claude, "escreve um script python")
     avisos = sem_claude.avisos_pendentes()
-    assert len(avisos) == 1 and "falta a ANTHROPIC_API_KEY" in avisos[0]  # avisa uma vez só
+    assert len(avisos) == 1 and "falta a ANTHROPIC_API_KEY" in avisos[0]  # warns only once
 
 
 def test_testar_conexao_diz_o_que_falta(criar_raiz, monkeypatch):
@@ -295,7 +296,7 @@ def test_testar_conexao_diz_o_que_falta(criar_raiz, monkeypatch):
     from nora.cerebro_nuvem import testar_conexao
 
     assert "ANTHROPIC_API_KEY" in testar_conexao(carregar(criar_raiz(), ambiente={}))
-    monkeypatch.setitem(sys.modules, "anthropic", None)  # pacote não instalado
+    monkeypatch.setitem(sys.modules, "anthropic", None)  # package not installed
     config = carregar(criar_raiz(), ambiente={"ANTHROPIC_API_KEY": "x"})
     assert "pip install" in testar_conexao(config)
 
@@ -310,9 +311,9 @@ def test_chatgpt_e_o_padrao_das_dificeis_e_o_claude_a_reserva(criar_raiz):
     assert pedido["reasoning"] == {"effort": "medium"} and pedido["stream"]
     assert pedido["input"][-1]["role"] == "user"
     assert roteador.origem == "ChatGPT (gpt-5.5)" and roteador.medidas.tokens == 4
-    assert falar(roteador, "oi") == "Resposta local."  # a conversa continua no local
+    assert falar(roteador, "oi") == "Resposta local."  # the conversation stays on the local model
 
-    # o ChatGPT falha, recusa ou não responde: pede ao Claude
+    # ChatGPT fails, refuses or does not answer: asks Claude
     for falho in (
         OpenAIFalso(erro=ConnectionError("rede")),
         OpenAIFalso(recusa=True),
@@ -344,7 +345,7 @@ def test_escolher_a_nuvem_pelo_nome(criar_raiz):
         "Resposta do Claude."
     )
     assert gpt.pedidos == []
-    # comando: a conversa toda vai para quem foi escolhido (o modelo rápido na conversa)
+    # command: the whole conversation goes to whoever was chosen (the fast model in conversation)
     assert "tudo pelo ChatGPT" in falar(roteador, "use o ChatGPT")
     assert falar(roteador, "oi") == "Resposta do ChatGPT."
     assert gpt.pedidos[-1]["reasoning"] == {"effort": "low"}
@@ -354,10 +355,10 @@ def test_escolher_a_nuvem_pelo_nome(criar_raiz):
 
 
 def test_sem_chave_da_openai_o_claude_responde_calado_e_avisa_se_pedido(criar_raiz):
-    roteador, claude = montar(criar_raiz)  # só o Claude configurado
+    roteador, claude = montar(criar_raiz)  # only Claude configured
     assert not roteador.disponivel("openai")
     assert falar(roteador, "escreve um script python").endswith("Resposta do Claude.")
-    assert roteador.avisos_pendentes() == []  # ChatGPT só não configurado: sem aviso
+    assert roteador.avisos_pendentes() == []  # ChatGPT merely not configured: no notice
     assert falar(roteador, "pergunta pro ChatGPT o que é um motor").endswith("Resposta do Claude.")
     assert "OPENAI_API_KEY" in roteador.avisos_pendentes()[0]
 
@@ -387,7 +388,8 @@ def test_cerebro_openai_sem_chave_e_testar_conexao(criar_raiz, monkeypatch):
 
 
 def test_modo_jogo_sem_nuvem_nao_reacende_o_cerebro_local(criar_raiz):
-    """A1: no modo jogo, se a nuvem falhar, o local não é chamado (a placa de vídeo fica livre)."""
+    """A1: in game mode, if the cloud fails, the local model is not called (the graphics card stays
+    free)."""
     sem_rede = ClienteFalso(erro=ConnectionError("rede caiu"))
     roteador, _ = montar(criar_raiz, cliente=sem_rede)
     falar(roteador, "modo jogo")
@@ -398,18 +400,19 @@ def test_modo_jogo_sem_nuvem_nao_reacende_o_cerebro_local(criar_raiz):
     assert roteador.situacao == "sem resposta"
     assert any("cérebro local" in aviso for aviso in roteador.avisos_pendentes())
 
-    config = carregar(criar_raiz(), ambiente={})  # nenhuma nuvem configurada
+    config = carregar(criar_raiz(), ambiente={})  # no cloud configured
     sozinho = Roteador(config, LocalFalso())
     falar(sozinho, "modo jogo")
     sozinho.local.pedidos.clear()
     assert "modo jogo" in falar(sozinho, "oi") and sozinho.local.pedidos == []
     falar(sozinho, "sai do modo jogo")
     falar(sozinho, "sim")
-    assert falar(sozinho, "oi") == "Resposta local."  # fora do modo jogo, volta ao normal
+    assert falar(sozinho, "oi") == "Resposta local."  # outside game mode, back to normal
 
 
 def test_comando_com_pergunta_responde_a_pergunta(criar_raiz):
-    """A3: "use o Claude para explicar X" responde X pelo Claude, sem só trocar o modo."""
+    """A3: "use o Claude para explicar X" answers X through Claude, instead of only switching
+    mode."""
     assert comando_em("use o Claude para explicar fotossíntese") is None
     assert comando_em("usa o Claude agora") == "nuvem"
     assert comando_em("Nora, use o cérebro local, por favor") == "local"
@@ -417,12 +420,13 @@ def test_comando_com_pergunta_responde_a_pergunta(criar_raiz):
     roteador, claude = montar(criar_raiz, openai=gpt)
     resposta = falar(roteador, "use o Claude para explicar fotossíntese")
     assert resposta.endswith("Resposta do Claude.") and gpt.pedidos == []
-    assert roteador.modo == "automatico"  # não trocou o modo da conversa
+    assert roteador.modo == "automatico"  # did not switch the conversation mode
     assert "fotossíntese" in claude.pedidos[-1]["messages"][-1]["content"]
 
     pedidos = len(claude.pedidos)
     resposta = falar(roteador, "use o cérebro local pra calcular 17 x 23")
-    assert resposta == "Resposta local." and len(claude.pedidos) == pedidos  # só esta, no local
+    # only this one, on the local model
+    assert resposta == "Resposta local." and len(claude.pedidos) == pedidos
     assert roteador.modo == "automatico"
 
     resposta = falar(roteador, "modo jogo, quanto falta pro meu aniversário?")
@@ -431,7 +435,7 @@ def test_comando_com_pergunta_responde_a_pergunta(criar_raiz):
 
 
 def test_falha_do_local_no_meio_nao_emenda_outra_resposta(criar_raiz):
-    """A4 e A5: o local caiu depois de falar: nada de resposta da nuvem colada no fim."""
+    """A4 and A5: the local model dropped after speaking: no cloud answer stitched on at the end."""
     local = LocalFalso(resposta="Uma resposta comprida do local.", cair_depois=2)
     roteador, claude = montar(criar_raiz, local=local, toml="[roteador]\nescalar = false\n")
     resposta = falar(roteador, "oi, tudo bem?")
@@ -439,13 +443,13 @@ def test_falha_do_local_no_meio_nao_emenda_outra_resposta(criar_raiz):
     assert roteador.situacao == "interrompida"
     assert "pela metade" in roteador.avisos_pendentes()[0]
 
-    # com o {pensar} ligado, o mesmo vale depois do começo já ter sido falado
+    # with {pensar} on, the same applies after the beginning was already spoken
     local = LocalFalso(resposta="Uma resposta comprida do local.", cair_depois=4)
     roteador, claude = montar(criar_raiz, local=local)
     assert falar(roteador, "oi") == "Uma resposta" and claude.pedidos == []
     assert roteador.situacao == "interrompida"
 
-    # antes de falar qualquer coisa, a reserva continua valendo
+    # before saying anything, the fallback still applies
     roteador, _ = montar(criar_raiz, local=LocalFalso(falhar=True))
     assert falar(roteador, "oi") == "Resposta do Claude." and roteador.situacao == "completa"
 
@@ -459,7 +463,7 @@ def test_falha_da_nuvem_no_meio_fica_marcada(criar_raiz):
 def test_resposta_interrompida_fica_marcada_no_historico_e_nao_vai_para_a_memoria(
     criar_raiz, monkeypatch
 ):
-    """A5: o histórico guarda a situação real e a curadoria não recebe a resposta parcial."""
+    """A5: the history stores the real situation and curation does not get the partial answer."""
     from nora.conversa import Conversa
 
     curadas = []
@@ -474,17 +478,17 @@ def test_resposta_interrompida_fica_marcada_no_historico_e_nao_vai_para_a_memori
 
     roteador.local = LocalFalso()
     "".join(conversa.perguntar("e agora?"))
-    assert len(curadas) == 1  # resposta completa: segue para a memória
+    assert len(curadas) == 1  # complete answer: goes on to memory
 
 
 def test_sair_do_modo_jogo_pede_confirmacao_e_pergunta_nao_muda_nada(criar_raiz):
-    """A1 (revisão consolidada): pergunta sobre o modo jogo não o desliga; o pedido de sair
-    espera um "sim", resolvido por regra, sem chamar nenhum cérebro."""
+    """A1 (consolidated review): a question about game mode does not turn it off; the request to
+    leave waits for a "sim", resolved by rule, without calling any brain."""
     roteador, claude = montar(criar_raiz)
     falar(roteador, "modo jogo")
     assert comando_em("como sair do modo jogo?") is None
     falar(roteador, "como sair do modo jogo?")
-    assert roteador.jogo  # foi respondida como pergunta, pela nuvem
+    assert roteador.jogo  # it was answered as a question, by the cloud
 
     roteador.local.pedidos.clear()
     pedidos = len(claude.pedidos)
@@ -493,20 +497,21 @@ def test_sair_do_modo_jogo_pede_confirmacao_e_pergunta_nao_muda_nada(criar_raiz)
     assert "Tudo bem" in falar(roteador, "não") and roteador.jogo
 
     falar(roteador, "sai do modo jogo")
-    assert falar(roteador, "qual a capital da França?") == "Resposta do Claude."  # outro assunto
+    assert falar(roteador, "qual a capital da França?") == "Resposta do Claude."  # another subject
     assert roteador.jogo
-    assert "Confirma" not in falar(roteador, "sim")  # a confirmação já tinha expirado
+    assert "Confirma" not in falar(roteador, "sim")  # the confirmation had already expired
     assert roteador.jogo
 
     falar(roteador, "sai do modo jogo")
     assert "desligado" in falar(roteador, "sim, pode sair") and not roteador.jogo
-    assert roteador.local.pedidos == []  # nada disso usou o cérebro local
-    assert len(claude.pedidos) == pedidos + 2  # só a pergunta e o "sim" expirado foram à nuvem
+    assert roteador.local.pedidos == []  # none of this used the local brain
+    # only the question and the expired "sim" went to the cloud
+    assert len(claude.pedidos) == pedidos + 2
     assert "não estou no modo jogo" in falar(roteador, "sai do modo jogo").lower()
 
 
 def test_tentativas_ficam_anotadas_com_a_categoria_da_falha(criar_raiz):
-    """A4: cada cérebro tentado fica anotado (motor, resultado, tempo) para o diagnóstico."""
+    """A4: each brain tried is recorded (engine, result, time) for diagnostics."""
 
     def resultados(roteador):
         return [(t["motor"], t["resultado"]) for t in roteador.tentativas]
@@ -532,4 +537,4 @@ def test_tentativas_ficam_anotadas_com_a_categoria_da_falha(criar_raiz):
     falar(roteador, "me fala das formigas")
     assert [r for _, r in resultados(roteador)] == ["escalou", "resposta"]
     falar(roteador, "oi")
-    assert len(roteador.tentativas) == 2  # a lista recomeça a cada resposta
+    assert len(roteador.tentativas) == 2  # the list restarts on every answer

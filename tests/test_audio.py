@@ -33,7 +33,8 @@ def test_dispositivo_da_config():
 
 
 class SounddeviceFalso:
-    """Imita o sounddevice: o fifine aparece no MME (0) e no WASAPI (1); a câmera no MME (2)."""
+    """Imitates sounddevice: the fifine shows up on MME (0) and WASAPI (1); the camera on MME
+    (2)."""
 
     class PortAudioError(Exception):
         pass
@@ -121,14 +122,14 @@ def test_se_o_mme_falha_usa_o_mesmo_microfone_no_wasapi_em_estereo(monkeypatch):
     falso = SounddeviceFalso(funciona=lambda indice, canais: indice == 1 and canais == 2)
     monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
     wav = audio.gravar_ate_enter(lambda _: "")
-    assert falso.tentativas[:2] == [(0, 1), (0, 2)]  # o padrão (MME) primeiro, mono e estéreo
-    assert falso.tentativas[-2:] == [(1, 1), (1, 2)]  # depois o WASAPI, que abre em estéreo
+    assert falso.tentativas[:2] == [(0, 1), (0, 2)]  # the default (MME) first, mono and stereo
+    assert falso.tentativas[-2:] == [(1, 1), (1, 2)]  # then WASAPI, which opens in stereo
     assert {indice for indice, _ in falso.tentativas} == {0, 1}
     assert falso.aberto_com["samplerate"] == 48_000
     amostras = array("h")
     amostras.frombytes(audio.ler_wav(wav)[0])
     assert len(amostras) == 16_000
-    assert set(amostras) == {7}  # ficou só o canal esquerdo
+    assert set(amostras) == {7}  # only the left channel remained
 
 
 def test_microfone_bluetooth_so_abre_em_16k(monkeypatch):
@@ -186,7 +187,7 @@ def test_acha_a_versao_wdm_ks_do_fone_bluetooth(monkeypatch):
     monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
     audio.gravar_ate_enter(lambda _: "")
     assert falso.aberto_com["device"] == 3
-    assert 2 not in {indice for indice, _ in falso.tentativas}  # não tentou o fifine
+    assert 2 not in {indice for indice, _ in falso.tentativas}  # did not try the fifine
 
 
 def test_microfone_que_abre_mas_nao_comeca_passa_para_o_proximo(monkeypatch):
@@ -196,7 +197,7 @@ def test_microfone_que_abre_mas_nao_comeca_passa_para_o_proximo(monkeypatch):
     assert falso.aberto_com["device"] == 1
     assert audio.duracao_wav(wav) == pytest.approx(1.0)
     assert falso.parados == 1
-    assert falso.fechados >= 2  # o que falhou ao começar e o que gravou
+    assert falso.fechados >= 2  # the one that failed on start and the one that recorded
 
 
 def test_erro_do_microfone_vira_mensagem_clara(monkeypatch):
@@ -209,11 +210,11 @@ def test_erro_do_microfone_vira_mensagem_clara(monkeypatch):
         erro.value
     )
     assert "padrão Microfone (fifine Microphone) [MME]" in str(erro.value)
-    assert {indice for indice, _ in falso.tentativas} == {0, 1}  # não tentou a câmera
+    assert {indice for indice, _ in falso.tentativas} == {0, 1}  # did not try the camera
 
 
 class SaidaFalsa:
-    """Imita um RawOutputStream que só aceita callback (como o WDM-KS) e uma taxa."""
+    """Imitates a RawOutputStream that only accepts a callback (like WDM-KS) and one rate."""
 
     class PortAudioError(Exception):
         pass
@@ -265,8 +266,8 @@ def test_toca_por_callback_e_converte_para_a_taxa_da_saida(monkeypatch):
     assert falso.taxas == [24_000, 16_000]
     tocado = array("h")
     tocado.frombytes(bytes(falso.tocado))
-    assert tocado.count(5) == 16_000  # o áudio inteiro, convertido
-    assert set(tocado[16_000:]) <= {0}  # o resto do último bloco é silêncio
+    assert tocado.count(5) == 16_000  # the whole audio, converted
+    assert set(tocado[16_000:]) <= {0}  # the rest of the last block is silence
 
 
 def test_saida_que_nao_abre_cai_na_padrao_e_avisa(monkeypatch):
@@ -280,7 +281,7 @@ def test_saida_que_nao_abre_cai_na_padrao_e_avisa(monkeypatch):
 
     falso.RawOutputStream = so_a_padrao
     monkeypatch.setattr(audio, "_sounddevice", lambda: falso)
-    audio.avisos_de_saida()  # começa limpo
+    audio.avisos_de_saida()  # starts clean
     audio.tocar_wav(audio.para_wav(pcm([5] * 16_000)), alto_falante=17)
     assert array("h", bytes(falso.tocado)).count(5) == 16_000
     avisos = audio.avisos_de_saida()
@@ -300,7 +301,7 @@ def test_reamostrar_com_qualidade_corta_o_que_nao_cabe_na_taxa_nova():
     np = pytest.importorskip("numpy")
     taxa = 44_100
     t = np.arange(taxa) / taxa
-    # 1 kHz (voz) + 15 kHz (acima do limite de 11.025 Hz da taxa de 22.050)
+    # 1 kHz (voice) + 15 kHz (above the 11,025 Hz limit of the 22,050 rate)
     sinal = 8000 * np.sin(2 * np.pi * 1000 * t) + 8000 * np.sin(2 * np.pi * 15_000 * t)
     entrada = sinal.astype("<i2").tobytes()
     saida = np.frombuffer(audio.reamostrar_qualidade(entrada, taxa, 22_050), dtype="<i2")
@@ -308,13 +309,14 @@ def test_reamostrar_com_qualidade_corta_o_que_nao_cabe_na_taxa_nova():
     espectro = np.abs(np.fft.rfft(saida))
     freq = np.fft.rfftfreq(len(saida), 1 / 22_050)
     voz = espectro[np.argmin(abs(freq - 1000))]
-    dobra = espectro[np.argmin(abs(freq - (22_050 - 15_000)))]  # onde o chiado apareceria
-    assert dobra < voz / 100  # os 15 kHz não viraram chiado em 7 kHz
+    dobra = espectro[np.argmin(abs(freq - (22_050 - 15_000)))]  # where the hiss would appear
+    assert dobra < voz / 100  # the 15 kHz did not become hiss at 7 kHz
     assert audio.reamostrar_qualidade(entrada, taxa, taxa) == entrada
 
 
 def test_audio_que_nao_carrega_mostra_a_causa(monkeypatch):
-    """Pacote instalado para outra versão do Python: a mensagem diz o motivo real, não "falta"."""
+    """Package installed for another Python version: the message gives the real reason, not
+    "falta"."""
     import builtins
 
     import pytest

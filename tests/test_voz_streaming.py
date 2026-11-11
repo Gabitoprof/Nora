@@ -1,4 +1,4 @@
-"""v0.3.1: a voz do ElevenLabs em streaming começa a tocar com a primeira parte do áudio."""
+"""v0.3.1: the streaming ElevenLabs voice starts playing with the first part of the audio."""
 
 import json
 import threading
@@ -15,7 +15,7 @@ from nora.voz import VozComReserva, VozElevenLabs, em_partes
 
 
 class NuvemAosPedacos:
-    """ElevenLabs falso: manda a primeira parte do áudio e segura o resto até `liberar`."""
+    """Fake ElevenLabs: sends the first part of the audio and holds the rest until `liberar`."""
 
     def __init__(self, partes, status=200):
         self.partes, self.status = partes, status
@@ -72,7 +72,7 @@ def test_elevenlabs_entrega_a_primeira_parte_antes_do_resto(monkeypatch):
     with NuvemAosPedacos(partes) as nuvem:
         voz = _eleven(nuvem.url, monkeypatch)
         som = voz.sintetizar_em_partes("Daqui a 24 dias será domingo.")
-        assert som.primeira.wait(3)  # a primeira parte chegou com o resto ainda preso
+        assert som.primeira.wait(3)  # the first part arrived with the rest still held
         assert not som.baixado.is_set()
         nuvem.liberar.set()
         assert som.tudo() == b"".join(partes)
@@ -143,7 +143,7 @@ def test_locutor_toca_em_streaming_e_pede_uma_frase_por_vez():
     locutor.falar("Segunda frase também longa.")
     locutor.terminar()
     assert tocados == ["Primeira frase longa o bastante.", "Segunda frase também longa."]
-    assert voz.pedidos[1][1] - voz.pedidos[0][1] >= 0.09  # esperou o primeiro chegar inteiro
+    assert voz.pedidos[1][1] - voz.pedidos[0][1] >= 0.09  # waited for the first one to arrive whole
     assert locutor.tempos.comeco_da_voz > 0 and not locutor.tempos.erros
 
 
@@ -158,7 +158,7 @@ def test_locutor_avisa_quando_a_voz_cai_no_meio():
 
 
 class SomFalso:
-    """sounddevice falso: chama o callback em blocos, como a placa de som."""
+    """Fake sounddevice: calls the callback in blocks, like the sound card."""
 
     class PortAudioError(Exception):
         pass
@@ -216,7 +216,7 @@ def test_toca_o_silencio_inicial_e_todas_as_partes_em_ordem():
 
 def test_saida_que_recusa_a_taxa_recebe_o_audio_convertido(monkeypatch):
     sd = SomFalso(recusar_taxa=22_050, padrao=44_100)
-    pcm = b"\x10\x00" * 2205  # 0,1 s
+    pcm = b"\x10\x00" * 2205  # 0.1 s
     _tocar_partes(sd, AudioEmPartes(iter([pcm]), 22_050), silencio_ms=0, alto_falante=None)
     assert sd.taxas == [44_100]
     assert len(bytes(sd.tocado).rstrip(b"\x00")) == pytest.approx(len(pcm) * 2, abs=8)
@@ -253,7 +253,7 @@ def test_hud_recebe_motor_real_quando_o_primeiro_pcm_chega(monkeypatch):
         som = _eleven(nuvem.url, monkeypatch).sintetizar_em_partes("Olá, teste local.")
         assert som.primeira.wait(3)
         assert eventos == [("voz_ativa", {"motor": "ElevenLabs"})]
-        assert not som.baixado.is_set()  # informar o motor não espera baixar tudo
+        assert not som.baixado.is_set()  # reporting the engine does not wait for the full download
         nuvem.liberar.set()
         som.tudo()
     assert len(eventos) == 1
@@ -307,7 +307,7 @@ def test_wrappers_preservam_stream_e_personalizacoes_sem_esperar_pcm(monkeypatch
         def sintetizar(self, texto):
             raise AssertionError("Não converter streaming em WAV antes de tocar")
 
-    # A pronúncia aprendida e o realce de pergunta continuam passando pelo mesmo domínio.
+    # The learned pronunciation and the question emphasis still go through the same domain.
     voz = VozComPronuncias(VozComRealce(Voz(), "duplo"), lambda: {"Nora": "Nóra"})
     assert em_partes(voz, "Nora, tudo bem?") is fluxo
     assert chamadas == ["Nóra, tudo bem??"]

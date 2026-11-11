@@ -60,7 +60,7 @@ def test_detector_junta_a_fala_com_um_pouco_de_antes_e_o_silencio_final():
     completas = [s for s in saidas if s]
     assert len(completas) == 1
     valores = completas[0][::BYTES_POR_QUADRO]
-    assert list(valores) == [1, 1, 2, 2, 2, 2, 3, 3, 3]  # 2 quadros de antes + fala + silêncio
+    assert list(valores) == [1, 1, 2, 2, 2, 2, 3, 3, 3]  # 2 frames from before + speech + silence
     assert not detector.em_fala
 
 
@@ -69,7 +69,7 @@ def test_detector_ignora_estalo_curto_e_corta_fala_longa_demais():
     entrada = [0.9, 0.1, 0.1]
     assert not any(curto.alimentar(quadro(1), c) for c in entrada)
 
-    longo = DetectorDeFala(silencio_ms=1000, maximo_s=0.32)  # 10 quadros
+    longo = DetectorDeFala(silencio_ms=1000, maximo_s=0.32)  # 10 frames
     saidas = [longo.alimentar(quadro(1), 0.9) for _ in range(12)]
     assert saidas.index(next(s for s in saidas if s)) == 9
 
@@ -89,8 +89,8 @@ def test_quadros_e_falas_de_blocos_irregulares():
 
 
 def test_microfone_captando_sem_parar_ainda_da_folga_para_o_teclado():
-    """Com áudio chegando sem parar (e ninguém falando), o laço precisa receber None de vez em
-    quando para ler o que foi digitado; antes, o texto só era lido depois de uma fala."""
+    """With audio arriving nonstop (and nobody speaking), the loop needs to get None now and then
+    to read what was typed; before, the text was only read after an utterance."""
 
     class VadCalado:
         def probabilidade(self, q):
@@ -98,7 +98,7 @@ def test_microfone_captando_sem_parar_ainda_da_folga_para_o_teclado():
 
     silencio = [b"\x00\x00" * 512] * 25
     saida = list(falas(silencio, VadCalado(), DetectorDeFala()))
-    assert saida.count(None) == 2  # uma folga a cada 10 quadros
+    assert saida.count(None) == 2  # one break every 10 frames
 
 
 # --- hands-free conversation --------------------------------------------------------------------
@@ -107,16 +107,16 @@ def test_microfone_captando_sem_parar_ainda_da_folga_para_o_teclado():
 def test_conversa_maos_livres(criar_raiz):
     transcricoes = iter(
         [
-            "Música alta tocando",  # ignorada: não chamou a Nora
+            "Música alta tocando",  # ignored: did not call Nora
             "Nora, qual é a capital do Brasil?",
-            "E da Argentina?",  # dentro da janela: não precisa do nome
-            "E do Chile?",  # fora da janela: ignorada
-            "Nora",  # só o nome
-            "Tchau",  # despedida dentro da janela
+            "E da Argentina?",  # inside the window: the name is not needed
+            "E do Chile?",  # outside the window: ignored
+            "Nora",  # just the name
+            "Tchau",  # goodbye inside the window
         ]
     )
-    # cada consulta ao relógio: ignorada, fim da 1ª resposta, continuação, fim da 2ª,
-    # "Chile" (janela já fechada), depois do "Nora", "Tchau"
+    # each clock read: ignored, end of the 1st answer, continuation, end of the 2nd,
+    # "Chile" (window already closed), after "Nora", "Tchau"
     instantes = iter([0.0, 1.0, 2.0, 3.0, 100.0, 101.0, 102.0])
 
     def whisper(caminho, cabecalhos, corpo):
@@ -163,8 +163,8 @@ def test_conversa_maos_livres(criar_raiz):
         "Oi, pode falar.",
         "Até mais!",
     ]
-    assert len(recomecos) == 4  # depois de cada resposta, a escuta recomeça do zero
-    assert len(pausas) == 4  # e fica pausada enquanto ela fala
+    assert len(recomecos) == 4  # after each answer, listening restarts from scratch
+    assert len(pausas) == 4  # and stays paused while she speaks
     gravadas = sorted((config.pasta_dados / "falas").glob("*.wav"))
     assert len(gravadas) == 6
 
@@ -193,7 +193,7 @@ def test_sem_pausar_o_microfone(criar_raiz):
 
 
 def test_digitar_enquanto_ouve(criar_raiz):
-    """Quem tem dificuldade na fala pode digitar; a resposta sai falada e não precisa do nome."""
+    """Whoever has difficulty speaking can type; the answer comes out spoken and needs no name."""
     import threading
     import time
 
@@ -207,7 +207,7 @@ def test_digitar_enquanto_ouve(criar_raiz):
             digitado.set()
 
     def microfone_parado():
-        # sem ninguém falando: só "sinais de vida", até o teclado pedir para sair
+        # with nobody speaking: only "signs of life", until the keyboard asks to quit
         for _ in range(200):
             yield None
             time.sleep(0.01)
@@ -232,5 +232,6 @@ def test_digitar_enquanto_ouve(criar_raiz):
     assert "Você (digitado): que horas são?" in texto
     assert "Você (digitado): Nora, e amanhã?" in texto
     perguntas = [p["messages"][-1]["content"] for p in ollama.pedidos if p["messages"]]
-    assert perguntas == ["que horas são?", "e amanhã?"]  # o nome digitado sai do pedido
-    assert len(falado) == 2  # as duas respostas foram faladas
+    # the typed name is removed from the request
+    assert perguntas == ["que horas são?", "e amanhã?"]
+    assert len(falado) == 2  # both answers were spoken

@@ -68,7 +68,7 @@ def test_variavel_de_ambiente_vence_o_env(criar_raiz):
 
 
 def test_sem_config_na_pasta_usa_o_padrao_do_pacote(tmp_path):
-    # Instalada, a pasta do usuário não tem config/nora.toml: vale o padrão de dentro do pacote.
+    # Installed, the user folder has no config/nora.toml: the default inside the package applies.
     from nora.caminhos import CONFIG_PADRAO
 
     assert carregar(tmp_path, ambiente={}).arquivos == (CONFIG_PADRAO,)

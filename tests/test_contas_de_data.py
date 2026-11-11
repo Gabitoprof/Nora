@@ -1,4 +1,4 @@
-"""v0.3.1: as contas de data vão prontas para o modelo, que errava "daqui a 23 dias"."""
+"""v0.3.1: the date math goes ready-made to the model, which used to get "daqui a 23 dias" wrong."""
 
 from datetime import date
 
@@ -11,7 +11,7 @@ from nora.config import carregar
 from nora.conversa import Conversa
 from nora.historico import Historico
 
-HOJE = date(2026, 11, 5)  # quinta-feira
+HOJE = date(2026, 11, 5)  # Thursday
 
 
 @pytest.mark.parametrize(
@@ -44,7 +44,8 @@ def test_pergunta_seguinte_sem_unidade_usa_a_da_anterior():
         "- daqui a 24 dias: domingo, 29 de novembro de 2026"
     ]
     assert contas_de_data("E daqui a 24?", HOJE, "bom dia") == []
-    # "daqui a 22 dias" → "e daqui a 23" → "daqui a 50": a unidade vem da última que tinha
+    # "daqui a 22 dias" → "e daqui a 23" → "daqui a 50": the unit comes from the last one that had
+    # one
     assert contas_de_data("Daqui a 50.", HOJE, ["Dia daqui a 22 dias.", "E daqui a 23."]) == [
         "- daqui a 50 dias: sexta-feira, 25 de dezembro de 2026"
     ]

@@ -1,5 +1,5 @@
-"""Second Brain (v0.3.1): memórias consolidadas → notas do Obsidian, grafo e mapa, sempre fora
-do caminho da fala. Dados fictícios."""
+"""Second Brain (v0.3.1): consolidated memories → Obsidian notes, graph and map, always off the
+speech path. Made-up data."""
 
 import json
 import os
@@ -101,8 +101,8 @@ def test_exporta_memorias_com_propriedades_links_e_sem_areas_privadas(ambiente):
     assert "[[Nora Brain/Nomes/Unifictícia|Unifictícia]]" in nota
     prova_nota = frontmatter(next(pasta.glob("Memórias/Lia tem prova*")).read_text("utf-8"))
     assert prova_nota["camada"] == "episodica" and prova_nota["data"] == "2026-11-21"
-    assert "emocao" not in prova_nota  # sem etiqueta de tom: não inventa emoção
-    # "Lia" é a própria pessoa e "Bia" só aparece uma vez: não viram nó
+    assert "emocao" not in prova_nota  # no tone tag: no made-up emotion
+    # "Lia" is the person herself and "Bia" appears only once: they do not become nodes
     assert not (pasta / "Nomes/Lia.md").exists() and not (pasta / "Nomes/Bia.md").exists()
     assert "Hospital" not in "".join(p.read_text("utf-8") for p in pasta.rglob("*.md"))
     assert prova
@@ -122,7 +122,8 @@ def test_correcao_troca_a_nota_e_esquecer_tira_do_vault_e_do_grafo(ambiente):
     config, memoria, sincronizador, pasta = ambiente()
     prova, estudo, _ = memorias_de_exemplo(memoria)
     sincronizador.sincronizar()
-    # correção: o mesmo fato com texto novo (mesmo id) troca a nota, sem deixar a antiga
+    # correction: the same fact with new text (same id) replaces the note, without leaving the old
+    # one
     memoria.lembrar(
         "Lia estuda com a Bia na Unifictícia às quartas e sextas", "2026-11-06", "estudos"
     )
@@ -132,7 +133,7 @@ def test_correcao_troca_a_nota_e_esquecer_tira_do_vault_e_do_grafo(ambiente):
         "Lia estuda com a Bia na Unifictícia às quartas e sextas.md",
         "Lia tem prova de Cálculo na Unifictícia em 21-11-2026.md",
     ]
-    # esquecer: a nota sai, o nome que ficou com uma menção só sai, e o grafo acompanha
+    # forget: the note goes, the name left with a single mention goes, and the graph follows
     memoria.esquecer(estudo)
     resumo = sincronizador.sincronizar()
     assert resumo.removidas >= 2
@@ -151,7 +152,7 @@ def test_nota_editada_ou_sua_nunca_e_sobrescrita_nem_apagada(ambiente):
     _, estudo, _ = memorias_de_exemplo(memoria)
     (pasta / "Áreas").mkdir(parents=True)
     minha = pasta / "Áreas/Estudos.md"
-    minha.write_text("minha nota", encoding="utf-8")  # já existia, não é da Nora
+    minha.write_text("minha nota", encoding="utf-8")  # already existed, not Nora's
     sincronizador.sincronizar()
     assert minha.read_text(encoding="utf-8") == "minha nota"
     editada = next(pasta.glob("Memórias/Lia estuda*"))
@@ -172,7 +173,7 @@ def test_queda_no_meio_retoma_sem_duplicar_nem_conflito(ambiente, monkeypatch):
 
     def cair_depois_de_escrever(caminho, hash_):
         if hash_ is not None and next(quedas, False):
-            raise OSError("queda de energia")  # o arquivo foi escrito, o registro não
+            raise OSError("queda de energia")  # the file was written, the record was not
         original(caminho, hash_)
 
     monkeypatch.setattr(sincronizador, "_registrar", cair_depois_de_escrever)
@@ -194,7 +195,7 @@ def test_escrita_atomica_nao_deixa_arquivo_pela_metade(tmp_path, monkeypatch):
     with pytest.raises(OSError):
         escrever_atomico(alvo, "versão nova")
     assert alvo.read_text(encoding="utf-8") == "versão inteira"
-    assert [p.name for p in tmp_path.iterdir()] == ["nota.md"]  # sem temporário perdido
+    assert [p.name for p in tmp_path.iterdir()] == ["nota.md"]  # no stray temporary file
 
 
 def test_vault_indisponivel_registra_erro_sem_levantar(ambiente):
@@ -263,15 +264,15 @@ def test_grafo_segue_o_contrato_versionado(ambiente):
         assert no["tipo"] in contrato["grafo"]["tipos_de_no"]
         assert no.get("emocao", "") in {"", *contrato["emocoes"]["nomes"]}
     for ligacao in grafo["ligacoes"]:
-        assert {ligacao["de"], ligacao["para"]} <= ids  # nenhuma ligação solta
+        assert {ligacao["de"], ligacao["para"]} <= ids  # no dangling link
         assert ligacao["tipo"] in contrato["grafo"]["tipos_de_ligacao"] and ligacao["base"]
     assert set(grafo["legenda"]["emocoes"]) == set(contrato["emocoes"]["nomes"])
     assert "saúde" not in grafo["legenda"]["areas"]
 
 
 def test_cores_de_emocao_sao_as_da_hud():
-    # Uma fonte só: src/nora/paleta.json (a HUD importa o mesmo arquivo). Tabela do prompt da HUD:
-    # calma turquesa, tristeza lavanda, curiosidade terracota.
+    # A single source: src/nora/paleta.json (the HUD imports the same file). HUD prompt table:
+    # calma turquoise, tristeza lavender, curiosidade terracotta.
     from nora.paleta import cor
 
     assert CORES_DAS_EMOCOES == {nome: cor(nome) for nome in CORES_DAS_EMOCOES}
@@ -288,12 +289,12 @@ def test_mapa_escapa_texto_e_esconde_conteudo_por_padrao(ambiente):
     pagina = (config.pasta_dados / "segundo_cerebro/mapa.html").read_text("utf-8")
     assert "<script>alert(1)" not in pagina and "\\u003c/script>" in pagina
     assert "let mostrarTexto = false;" in pagina
-    assert "cdn" not in pagina.lower() and "https://" not in pagina  # nada de internet
+    assert "cdn" not in pagina.lower() and "https://" not in pagina  # no internet
 
 
 def test_tom_predominante_das_etiquetas():
     assert tom_predominante("{curiosa} Hum! {alegre} Boa. {curiosa} E aí?") == "curiosa"
-    assert tom_predominante("{risada} Haha. {sussurro} psiu") == ""  # reações não são tom
+    assert tom_predominante("{risada} Haha. {sussurro} psiu") == ""  # reactions are not a tone
     assert tom_predominante("sem etiqueta") == ""
 
 
@@ -310,8 +311,8 @@ def test_grafo_grande_e_incremental(ambiente):
     tempo_segunda = time.perf_counter() - inicio
     assert not primeira.erro and primeira.escritas == primeira.notas
     assert segunda.escritas == 0 and segunda.removidas == 0
-    assert tempo_segunda < tempo_primeira  # só compara; não reescreve o vault
-    # a memória junta fatos quase iguais; o vault tem uma nota por fato guardado
+    assert tempo_segunda < tempo_primeira  # only compares; does not rewrite the vault
+    # memory merges near-identical facts; the vault has one note per stored fact
     assert len(list((pasta / "Memórias").glob("*.md"))) == memoria.contar() > 1000
 
 
@@ -342,13 +343,13 @@ def test_trabalhador_espera_a_nora_ficar_livre():
     trabalhador = Trabalhador(falso, ocupado=ocupada.is_set, intervalo=60, folga=0.02)
     trabalhador.start()
     time.sleep(0.2)
-    assert falso.rodadas == []  # respondendo ou falando: não roda
+    assert falso.rodadas == []  # answering or speaking: does not run
     ocupada.clear()
     for _ in range(100):
         if falso.rodadas:
             break
         time.sleep(0.02)
-    assert falso.rodadas == ["nora-segundo-cerebro"]  # nunca na linha da conversa
+    assert falso.rodadas == ["nora-segundo-cerebro"]  # never on the conversation thread
     trabalhador.avisar()
     for _ in range(100):
         if len(falso.rodadas) == 2:
@@ -356,12 +357,12 @@ def test_trabalhador_espera_a_nora_ficar_livre():
         time.sleep(0.02)
     assert len(falso.rodadas) == 2
     trabalhador.encerrar(espera=2)
-    assert falso.fechado and len(falso.rodadas) == 3  # a última, ao fechar
+    assert falso.fechado and len(falso.rodadas) == 3  # the last one, on closing
 
 
 def test_conversa_responde_sem_esperar_o_second_brain(criar_raiz, monkeypatch):
-    """Nova memória durante a resposta: a resposta sai na hora; a exportação vem depois, na
-    linha do Second Brain, mesmo com ela lenta (3 s)."""
+    """New memory during the answer: the answer comes out at once; the export comes later, on the
+    Second Brain thread, even when it is slow (3 s)."""
     from nora.conversa import nova_conversa
 
     chamadas = []
@@ -380,13 +381,13 @@ def test_conversa_responde_sem_esperar_o_second_brain(criar_raiz, monkeypatch):
         config = carregar(raiz, ambiente={"OLLAMA_HOST": ollama.url})
         conversa = nova_conversa(config)
         assert conversa.segundo_cerebro is not None
-        time.sleep(0.1)  # a rodada de abertura já começou (e demora 3 s)
+        time.sleep(0.1)  # the opening round already started (and takes 3 s)
         inicio = time.perf_counter()
         resposta = "".join(conversa.perguntar("eu gosto de chá"))
         assert time.perf_counter() - inicio < 1.0
         assert resposta == "Anotado!"
         conversa.esperar_memoria()
-        assert set(chamadas) == {"nora-segundo-cerebro"}  # nunca na linha da conversa
+        assert set(chamadas) == {"nora-segundo-cerebro"}  # never on the conversation thread
         conversa.segundo_cerebro._parar.set()
         conversa.segundo_cerebro = None
         conversa.memoria.fechar()
@@ -463,12 +464,12 @@ def test_comando_de_voz_abre_o_mapa_pronto(ambiente, monkeypatch, criar_raiz):
     )  # noqa: E501
     with OllamaFalso(["não devia chegar aqui"]) as ollama:
         conversa = nova_conversa(config, memoria=None, notas=None, observador=None)
-        assert conversa.segundo_cerebro is None  # sem memória, não liga
+        assert conversa.segundo_cerebro is None  # without memory, it does not turn on
         assert "ainda não ficou pronto" in "".join(conversa.perguntar("mostre seu segundo cérebro"))
         memorias_de_exemplo(memoria)
         sincronizador.sincronizar()
         assert "Abrindo" in "".join(conversa.perguntar("abra o mapa da memória"))
-        assert ollama.pedidos == []  # comando: não passou pelo modelo nem refez nada
+        assert ollama.pedidos == []  # command: did not go through the model or redo anything
     assert abertos == [(config.pasta_dados / "segundo_cerebro/mapa.html", True)]
     desligado = nova_conversa(carregar(criar_raiz(), ambiente={}), memoria=None, notas=None,
                               observador=None)  # fmt: skip
@@ -517,17 +518,17 @@ def test_link_do_obsidian_usa_o_caminho_e_mapa_velho_e_refeito(ambiente):
     memorias_de_exemplo(memoria)
     sincronizador.sincronizar()
     grafo = json.loads((config.pasta_dados / "segundo_cerebro/grafo.json").read_text("utf-8"))
-    # ?path= acha o vault pelo arquivo: o nome da pasta de [notas] pode não ser o nome do vault
+    # ?path= finds the vault by the file: the [notas] folder name may not be the vault name
     assert grafo["raiz"] == str(pasta.resolve())
     mapa = config.pasta_dados / "segundo_cerebro/mapa.html"
     assert "obsidian://open?path=" in mapa.read_text("utf-8")
     mapa.write_text("versão antiga da página", encoding="utf-8")
-    sincronizador.sincronizar()  # nada mudou na memória, mas a página está desatualizada
+    sincronizador.sincronizar()  # nothing changed in memory, but the page is outdated
     assert "obsidian://open?path=" in mapa.read_text("utf-8")
 
 
 def test_vault_que_nao_existe_nao_vira_pasta_nova(criar_raiz):
-    # ex.: o caminho de exemplo da documentação copiado sem trocar o usuário
+    # e.g. the documentation's example path copied without changing the user
     raiz = criar_raiz(local=LOCAL.replace('pasta = "vault"', 'pasta = "vault-que-nao-existe"'))
     config = carregar(raiz, ambiente={})
     memoria = Memoria(config.pasta_dados / "memoria.db", EmbeddingsFalsos())

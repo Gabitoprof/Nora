@@ -1,4 +1,4 @@
-"""Sinais sintéticos, tempo real do áudio, privacidade e limites da HUD."""
+"""Synthetic signals, real audio timing, privacy and HUD limits."""
 
 import json
 import math
@@ -343,7 +343,7 @@ def test_snapshot_nao_reanima_pcm_antigo_e_limita_unicode(ponte):
 
 
 class SaidaFalsa:
-    """sounddevice falso: chama o callback de saída em blocos, como a placa de som."""
+    """Fake sounddevice: calls the output callback in blocks, like the sound card."""
 
     PortAudioError = RuntimeError
 
@@ -390,13 +390,13 @@ def test_falha_da_hud_e_contada_e_a_fala_continua(ponte, monkeypatch, caplog):
     with caplog.at_level("WARNING", logger="nora.hud"):
         audio._tocar(saida, som, 16000, 1, None)
         audio._tocar(saida, som, 16000, 1, None)
-    # o áudio inteiro foi para o alto-falante, nas duas vezes, apesar da HUD quebrada
+    # the whole audio went to the speaker, both times, despite the broken HUD
     assert bytes(saida.tocado[: len(som)]) == som
     contagem = falhas_hud.contagem()
     assert contagem["audio.entregar: ValueError"] >= 2
     linhas = [r.getMessage() for r in caplog.records if "audio.entregar" in r.getMessage()]
-    assert len(linhas) == 1  # uma linha por tipo; as próximas só contam
-    assert "texto pessoal" not in caplog.text  # nunca a mensagem do erro
+    assert len(linhas) == 1  # one line per type; the next ones are only counted
+    assert "texto pessoal" not in caplog.text  # never the error message
 
 
 def test_falha_no_observador_em_streaming_e_contada(ponte, monkeypatch):
@@ -422,7 +422,7 @@ def test_falha_no_observador_em_streaming_e_contada(ponte, monkeypatch):
 def test_registro_de_falha_nunca_levanta(monkeypatch):
     from nora import falhas_hud
 
-    monkeypatch.setattr(falhas_hud, "_contagem", None)  # até o contador quebrado
+    monkeypatch.setattr(falhas_hud, "_contagem", None)  # even with the counter broken
     falhas_hud.registrar("qualquer", RuntimeError("x"))
 
 
@@ -441,7 +441,7 @@ def test_fim_natural_avisa_a_hud_com_posicao_igual_a_duracao(ponte):
     assert len(fim) == 1 and fim[0]["interrompida"] is False
     assert fim[0]["posicao_ms"] == fim[0]["duracao_ms"] == pytest.approx(200, abs=1)
     assert fim[0]["id"] == ponte._id_reproducao
-    assert set(fim[0]) == {"id", "posicao_ms", "duracao_ms", "interrompida"}  # sem texto
+    assert set(fim[0]) == {"id", "posicao_ms", "duracao_ms", "interrompida"}  # no text
 
 
 def test_barge_in_avisa_interrompida_antes_do_fim(ponte):
@@ -491,19 +491,19 @@ def test_contrato_rejeita_fim_invalido_ou_antigo(ponte):
 
 def test_sem_som_nao_avisa_fim(ponte):
     fila = ponte.assinar()
-    hud.reproducao(False, (0.0, 0.0, False))  # nunca começou a tocar
+    hud.reproducao(False, (0.0, 0.0, False))  # never started playing
     assert not _eventos(fila, "reproducao_encerrada")
 
 
 def test_privado_nao_guarda_palavras_alinhadas_no_backend(ponte):
     palavras = [{"texto": "segredo", "inicio_ms": 0.0, "fim_ms": 100.0, "destaque": False}]
-    ponte.privacidade(False)  # Privado
+    ponte.privacidade(False)  # Private
     obs = hud.preparar_reproducao(None, 16000, 1)
     obs.alinhar(palavras)
     assert obs.tempos is None
-    ponte.privacidade(True)  # liberou depois que a fala começou: época antiga, continua sem
+    ponte.privacidade(True)  # allowed after the utterance started: old epoch, still without
     obs.alinhar(palavras)
     assert obs.tempos is None
-    novo = hud.preparar_reproducao(None, 16000, 1)  # fala nova, já liberada
+    novo = hud.preparar_reproducao(None, 16000, 1)  # new utterance, already allowed
     novo.alinhar(palavras)
     assert novo.tempos["precisao"] == "alinhada"

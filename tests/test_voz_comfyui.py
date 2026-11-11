@@ -18,8 +18,8 @@ FLUXO = {
 
 
 class ComfyFalso:
-    """Imita a API do ComfyUI: /prompt enfileira, /history fica pronto na 2ª consulta, /view
-    devolve o arquivo de áudio."""
+    """Imitates the ComfyUI API: /prompt queues, /history is ready on the 2nd query, /view
+    returns the audio file."""
 
     def __init__(self, audio: bytes, saidas=None, erro=False):
         self.recebidos = []
@@ -101,11 +101,11 @@ def test_comfyui_gera_a_fala_pelo_fluxo(tmp_path):
         wav = voz.sintetizar("Oi, eu sou a Nora.")
     enviado = comfy.recebidos[0]["prompt"]
     assert enviado["3"]["inputs"]["text"] == "Oi, eu sou a Nóra."
-    assert enviado["3"]["inputs"]["seed"] == 42  # o resto do fluxo não muda
+    assert enviado["3"]["inputs"]["seed"] == 42  # the rest of the flow does not change
     assert comfy.recebidos[0]["client_id"].startswith("nora-")
     assert comfy.vista["filename"] == ["nora_00001_.flac"]
     amostras, taxa, canais = ler_wav(wav)
-    assert (taxa, canais) == (24_000, 1)  # o FLAC estéreo virou WAV mono de 16 bits
+    assert (taxa, canais) == (24_000, 1)  # the stereo FLAC became a 16-bit mono WAV
     assert duracao_wav(wav) == pytest.approx(1.0)
 
 

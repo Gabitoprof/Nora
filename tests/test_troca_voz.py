@@ -1,4 +1,5 @@
-"""Trocar a voz falando: entende o pedido, troca na hora e continua a de antes se falhar."""
+"""Switching the voice by speaking: understands the request, switches at once and keeps the
+previous one if it fails."""
 
 import io
 
@@ -18,7 +19,7 @@ def test_entende_os_pedidos_de_troca():
     assert pedido_de_voz("fala com a voz do Piper") == PedidoDeVoz("trocar", "piper")
     assert pedido_de_voz("volta para a voz normal") == PedidoDeVoz("trocar")
     assert pedido_de_voz("qual voz você está usando?") == PedidoDeVoz("qual")
-    # perguntas e outros comandos não são troca de voz
+    # questions and other commands are not voice switches
     assert pedido_de_voz("fale sobre o Kokoro") is None
     assert pedido_de_voz("use o Claude") is None
     assert pedido_de_voz("fala mais devagar") is None
@@ -58,7 +59,7 @@ def test_troca_e_volta(criar_raiz, monkeypatch):
     resposta, wav = atender_pedido(voz, PedidoDeVoz("trocar", "piper"), "elevenlabs")
     assert resposta == "Pronto, agora falo com a voz do Piper." and wav == b"piper"
     assert voz.motor == "piper"
-    assert voz.voz.reserva.nome == "elevenlabs"  # a principal da config vira a reserva
+    assert voz.voz.reserva.nome == "elevenlabs"  # the config's main voice becomes the fallback
     assert voz.sintetizar("oi") == b"piper"
     assert atender_pedido(voz, PedidoDeVoz("qual"), "elevenlabs")[0].endswith("do Piper.")
     assert "Já estou" in atender_pedido(voz, PedidoDeVoz("trocar", "piper"), "elevenlabs")[0]
@@ -87,14 +88,14 @@ def test_na_conversa_por_voz_o_pedido_nao_vai_ao_cerebro(criar_raiz, monkeypatch
     )
     assert tocados == [b"piper"] and voz.motor == "piper"
     assert any("agora falo com a voz do Piper" in linha for linha in linhas)
-    assert conversa.mensagens[-1]["role"] != "user"  # nada foi para o cérebro
+    assert conversa.mensagens[-1]["role"] != "user"  # nothing went to the brain
     assert "comando de voz" in conversa.historico.arquivo.read_text("utf-8")
 
 
 def test_confirmacao_da_troca_leva_o_texto_para_a_hud(criar_raiz, monkeypatch):
-    """Regressão: a confirmação ("agora falo com a voz do Piper") tocava sem contexto_fala, e a
-    HUD ficava sem o texto e sem as palavras nesse caminho. Tem que tocar dentro do contexto,
-    como o Locutor faz com as frases da resposta."""
+    """Regression: the confirmation ("agora falo com a voz do Piper") played without contexto_fala,
+    and the HUD got neither the text nor the words on that path. It has to play inside the
+    context, as Locutor does with the answer's sentences."""
     from nora import hud_audio
 
     voz, _ = trocavel(criar_raiz, monkeypatch)
@@ -105,7 +106,7 @@ def test_confirmacao_da_troca_leva_o_texto_para_a_hud(criar_raiz, monkeypatch):
         "troque para a voz do piper", 0.0, 0.0, lambda *a, **k: None, False,
     )  # fmt: skip
     assert len(textos) == 1 and "agora falo com a voz do Piper" in textos[0]
-    assert getattr(hud_audio._contexto, "texto", "") == ""  # o contexto não vaza depois
+    assert getattr(hud_audio._contexto, "texto", "") == ""  # the context does not leak afterwards
 
 
 def test_no_modo_texto_avisa_que_nao_tem_voz(criar_raiz):
@@ -125,7 +126,7 @@ def test_no_modo_texto_avisa_que_nao_tem_voz(criar_raiz):
 
 
 def test_perguntas_sobre_vozes_nao_trocam_a_voz():
-    """A6: só troca com pedido claro; perguntar sobre um motor não muda nada."""
+    """A6: only switches on a clear request; asking about an engine changes nothing."""
     for frase in [
         "qual voz é melhor, a do Piper ou a do Kokoro?",
         "o Piper é melhor que o Kokoro?",
@@ -138,7 +139,7 @@ def test_perguntas_sobre_vozes_nao_trocam_a_voz():
         "a voz do piper ficou boa",
     ]:
         assert pedido_de_voz(frase) is None, frase
-    # pedidos claros continuam valendo
+    # clear requests still work
     assert pedido_de_voz("pode usar a voz do Piper?") == PedidoDeVoz("trocar", "piper")
     assert pedido_de_voz("troca do Kokoro para o Piper") == PedidoDeVoz("trocar", "piper")
     assert pedido_de_voz("muda pra voz do ElevenLabs") == PedidoDeVoz("trocar", "elevenlabs")

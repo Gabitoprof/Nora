@@ -1,5 +1,5 @@
-"""v0.3.1: a voz não muda de tom nem pausa entre a primeira frase curta e a seguinte, e o
-ouvido recebe o vocabulário como dica."""
+"""v0.3.1: the voice neither changes tone nor pauses between the first short sentence and the
+next, and the ear gets the vocabulary as a hint."""
 
 import json
 import threading
@@ -32,7 +32,7 @@ def test_frase_curta_espera_a_proxima_e_vai_junto():
     voz = VozAnotada()
     locutor = Locutor(voz, lambda wav: None, 0.0, juntar=60, espera=2.0)
     locutor.falar("Hahaha, esse atchim!")
-    time.sleep(0.2)  # o modelo ainda está escrevendo a próxima frase
+    time.sleep(0.2)  # the model is still writing the next sentence
     locutor.falar("Saúde! Espero que não seja gripe chegando, viu?")
     locutor.falar("Toma um chá quente e descansa um pouco hoje à noite.")
     locutor.terminar()
@@ -47,7 +47,7 @@ def test_frase_curta_nao_espera_para_sempre():
     falou = threading.Event()
     locutor = Locutor(voz, lambda wav: falou.set(), 0.0, juntar=60, espera=0.1)
     locutor.falar("Oi!")
-    assert falou.wait(2)  # sem próxima frase, fala sozinha depois da espera
+    assert falou.wait(2)  # with no next sentence, it speaks alone after the wait
     locutor.terminar()
     assert voz.pedidos == ["Oi!"]
 
@@ -96,7 +96,7 @@ def test_elevenlabs_manda_semente_e_frase_anterior(monkeypatch):
         voz = _eleven(nuvem.url, monkeypatch, semente=42, relogio=lambda: agora[0])
         voz.sintetizar("Hahaha, esse atchim!")
         voz.sintetizar("Saúde!")
-        agora[0] += 120  # muito tempo depois: outra conversa, sem a frase anterior
+        agora[0] += 120  # much later: another conversation, without the previous sentence
         voz.sintetizar("Bom dia!")
     corpos = [json.loads(corpo) for _, _, corpo in nuvem.pedidos]
     assert [c["seed"] for c in corpos] == [42, 42, 42]
@@ -123,8 +123,8 @@ def test_elevenlabs_que_recusa_frase_anterior_segue_sem_ela(monkeypatch):
     with ServicoFalso(responder) as nuvem:
         voz = _eleven(nuvem.url, monkeypatch)
         voz.sintetizar("Um.")
-        voz.sintetizar("Dois.")  # recusado com o contexto, repete sem ele
-        voz.sintetizar("Três.")  # e não tenta mais
+        voz.sintetizar("Dois.")  # refused with the context, retries without it
+        voz.sintetizar("Três.")  # and does not try again
     enviados = [set(json.loads(corpo)) for _, _, corpo in nuvem.pedidos]
     assert ["previous_text" in e for e in enviados] == [False, True, False, False]
     assert voz.continuidade is False

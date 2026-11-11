@@ -1,4 +1,4 @@
-"""HUD opcional: contrato, privacidade, HTTP local e núcleo único."""
+"""Optional HUD: contract, privacy, local HTTP and single core."""
 
 import json
 from array import array
@@ -86,7 +86,7 @@ def test_texto_exige_consentimento_e_ocultar_limpa_filas():
     evento = fila.get_nowait()
     assert evento["tipo"] == "privacidade" and evento["dados"]["privacidade"]
     assert not ponte.publicar("texto_visivel", texto="outra mensagem")
-    assert PonteHUD().snapshot()["privacidade"]  # outra sessão não herda o opt-in
+    assert PonteHUD().snapshot()["privacidade"]  # another session does not inherit the opt-in
 
 
 @pytest.mark.parametrize(
@@ -290,7 +290,7 @@ def test_falando_somente_no_callback_real_de_saida(monkeypatch):
 
             esperar(lambda: ponte.snapshot()["nivel_audio"] > 0.49)
             assert ponte.snapshot()["nivel_audio"] == pytest.approx(0.5)
-            # O fim do LLM não pode anunciar repouso enquanto o áudio está tocando.
+            # The end of the LLM must not announce rest while the audio is playing.
             assert not ponte.publicar("ociosa")
             self.kwargs["finished_callback"]()
             return self
@@ -429,7 +429,7 @@ def test_token_valido_nao_autoriza_mutacao_vinda_de_link_externo(servidor):
     ],
 )
 def test_outra_pagina_nao_le_eventos_nem_estado(servidor, rota, headers):
-    """Uma página de outro site (ou DNS rebinding) não lê a fala nem o estado da HUD."""
+    """A page from another site (or DNS rebinding) reads neither the speech nor the HUD state."""
     _, http = servidor
     assert pedido(http, rota, headers=headers)[0] == 403
 

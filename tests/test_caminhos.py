@@ -1,4 +1,4 @@
-"""Pastas da Nora no repositório e instalada (.exe, wheel)."""
+"""Nora's folders in the repository and installed (.exe, wheel)."""
 
 import sys
 from pathlib import Path
