@@ -1,427 +1,427 @@
-# Homologação cumulativa da Nora
+# Nora cumulative acceptance testing
 
-## Estratégia de desenvolvimento e aceite
+## Development and acceptance strategy
 
-A homologação final será integrada, ao término da implementação planejada, no Windows
-com GPU AMD, cobrindo todos os módulos em conjunto. Durante o desenvolvimento:
+The final acceptance will be integrated, at the end of the planned implementation, on Windows
+with an AMD GPU, covering all modules together. During development:
 
-- Criar e executar testes de unidade, integração e regressão adequados a cada alteração.
-  Preservar os testes das funcionalidades existentes; não desabilitar testes para passar CI.
-- Exigir CI verde em Windows e Linux no commit avaliado antes de considerar um PR pronto.
-  A matriz atual usa Ubuntu e Windows com Python 3.11 e 3.13.
-- Fazer testes manuais pontuais somente quando indispensáveis para hardware ou integração
-  externa. Registrar os demais na homologação final, sem interromper o desenvolvimento.
-- Atualizar este checklist por módulo com evidência, commit/ambiente, resultados automatizados,
-  testes manuais aprovados, falhos e pendentes. Registrar também testes ignorados ou não executados.
-- CI verde comprova os checks executados; uma funcionalidade só será considerada homologada
-  após os critérios funcionais aplicáveis e a homologação integrada final.
-- Preservar aprovações manuais já registradas. Repetir somente quando uma alteração afetar
-  diretamente o componente validado, registrando a mudança e o motivo da repetição.
-- Integração à `main` e publicação de releases exigem aprovação explícita do proprietário.
-  Permanecem as restrições de não fazer merge, criar tags ou publicar automaticamente.
+- Write and run unit, integration and regression tests suited to each change.
+  Keep the tests of existing features; do not disable tests to pass CI.
+- Require green CI on Windows and Linux on the evaluated commit before considering a PR ready.
+  The current matrix uses Ubuntu and Windows with Python 3.11 and 3.13.
+- Do one-off manual tests only when essential for hardware or external integration.
+  Record the others in the final acceptance, without interrupting development.
+- Update this per-module checklist with evidence, commit/environment, automated results,
+  approved, failed and pending manual tests. Also record skipped or not-run tests.
+- Green CI proves the checks that ran; a feature is only considered accepted
+  after the applicable functional criteria and the final integrated acceptance.
+- Keep manual approvals already recorded. Repeat only when a change directly affects
+  the validated component, recording the change and the reason for repeating.
+- Merging into `main` and publishing releases require the owner's explicit approval.
+  The restrictions on not merging, creating tags or publishing automatically remain.
 
-## Evidências automatizadas de referência
+## Reference automated evidence
 
-- Commit `77905e6`: [CI aprovada nos quatro ambientes](https://github.com/Gabitoprof/Nora/actions/runs/41758193076).
-- Linux/Python 3.12.14 no código de `71cf727` (seguido de documentação em `77905e6`):
-  `ruff format --check .` e `ruff check .` aprovados; `pytest`: **266 aprovados, 1 ignorado**
-  (Kokoro real, sem modelo). `nora --verificar`: código 0, com serviços reais ausentes.
-- Estes resultados são históricos dos commits indicados, não aprovação automática de commits futuros.
-- Casos detalhados AJ-01–AJ-03 e A1–A6: [checklist da correção](CHECKLIST_HOMOLOGACAO_AJ01_AJ03.md).
+- Commit `77905e6`: [CI approved in the four environments](https://github.com/Gabitoprof/Nora/actions/runs/41758193076).
+- Linux/Python 3.12.14 on the code of `71cf727` (followed by documentation in `77905e6`):
+  `ruff format --check .` and `ruff check .` approved; `pytest`: **266 passed, 1 skipped**
+  (real Kokoro, no model). `nora --verificar`: exit code 0, with real services absent.
+- These results belong to the commits indicated, not an automatic approval of future commits.
+- Detailed cases AJ-01–AJ-03 and A1–A6: [fix checklist](CHECKLIST_HOMOLOGACAO_AJ01_AJ03.md).
 
-## Checklist por módulo
+## Per-module checklist
 
-As evidências manuais informadas pelo proprietário estão preservadas abaixo. “Sem registro”
-indica apenas ausência de evidência para aquele módulo, sem invalidar testes anteriores.
-A coluna automatizada refere-se à suíte de referência acima, não a modelos ou dispositivos reais.
+The manual evidence reported by the owner is kept below. "No record" only means there is no
+evidence for that module, without invalidating earlier tests.
+The automated column refers to the reference suite above, not to real models or devices.
 
-| Módulo | Resultado automatizado / cobertura | Manual aprovado registrado | Pendente para homologação integrada |
+| Module | Automated result / coverage | Approved manual test recorded | Pending for integrated acceptance |
 |---|---|---|---|
-| Configuração e CLI | Suíte aprovada: configuração, `.env.example`, comandos e diagnóstico | Sem registro | Conferir diagnóstico com os serviços/configuração reais, sem expor segredos |
-| Conversa e roteamento | Suíte aprovada: streaming, reservas, erros e continuidade | Sem registro | Conversa com Ollama e provedores externos configurados |
-| Memória e pendências | Suíte aprovada: fatos, curadoria, agenda, esquecer/apagar, Ctrl+C e retomada | Sem registro | Persistência entre sessões, interrupção real e busca com bge-m3 |
-| Notas do Obsidian | Suíte aprovada: índice e consulta | Sem registro | Indexar e consultar pasta de teste representativa no Windows |
-| Entrada, ativação e STT | Suíte aprovada: VAD, ativação, teclado e loops de conversa | Sem registro | Microfone/whisper.cpp, silêncio prolongado, teclado durante alerta, Ctrl+C, acentos e entradas seguidas |
-| Voz e TTS | Suíte aprovada com simulações e arquivos de áudio; Kokoro real ignorado | Sem registro | Kokoro/Piper/ElevenLabs disponíveis, pronúncia, emoções, troca de voz, reserva e reprodução |
-| Modo jogo e GPU | Suíte aprovada: confirmação de saída, sem fallback local e oferta de retomada | Sem registro | Liberação de VRAM na GPU AMD, falha de nuvem sem reativar Ollama e retomada após confirmação |
-| Autoaperfeiçoamento supervisionado | Suíte aprovada: métricas, propostas, decisões, privacidade e geração de tarefa | Sem registro | Ciclo diário integrado e decisões sem mudança automática de código |
-| Relatórios e notificações | Suíte aprovada: AJ-01–AJ-03, LF/CRLF, recuperação manual, leitura e espera | Sem registro | Horário agendado com Nora ociosa/ocupada/em jogo, reinício, abertura do Markdown e toast/clique reais |
+| Configuration and CLI | Suite approved: configuration, `.env.example`, commands and diagnostics | No record | Check diagnostics with the real services/configuration, without exposing secrets |
+| Conversation and routing | Suite approved: streaming, fallbacks, errors and continuity | No record | Conversation with Ollama and external providers configured |
+| Memory and pending items | Suite approved: facts, curation, agenda, forget/delete, Ctrl+C and resume | No record | Persistence across sessions, real interruption and search with bge-m3 |
+| Obsidian notes | Suite approved: index and query | No record | Index and query a representative test folder on Windows |
+| Input, activation and STT | Suite approved: VAD, activation, keyboard and conversation loops | No record | Microphone/whisper.cpp, long silence, keyboard during an alert, Ctrl+C, accents and consecutive inputs |
+| Voice and TTS | Suite approved with simulations and audio files; real Kokoro skipped | No record | Kokoro/Piper/ElevenLabs available, pronunciation, emotions, voice switch, fallback and playback |
+| Game mode and GPU | Suite approved: exit confirmation, no local fallback and resume offer | No record | VRAM release on the AMD GPU, cloud failure without reactivating Ollama and resume after confirmation |
+| Supervised self-improvement | Suite approved: metrics, proposals, decisions, privacy and task generation | No record | Integrated daily cycle and decisions without automatic code change |
+| Reports and notifications | Suite approved: AJ-01–AJ-03, LF/CRLF, manual recovery, reading and waiting | No record | Scheduled time with Nora idle/busy/in game, restart, opening the Markdown and real toast/click |
 
-P3 e P4 seguem fora do escopo. A HUD v0.4.0 foi autorizada posteriormente pelo proprietário,
-conforme plano técnico e PNG oficial; não amplia o escopo para MCP, rotinas ou operação distribuída.
+P3 and P4 remain out of scope. The v0.4.0 HUD was later authorized by the owner, following the
+technical plan and the official PNG; it does not extend the scope to MCP, routines or distributed operation.
 
-## Registro cumulativo de testes manuais
+## Cumulative record of manual tests
 
-Ao receber ou executar um teste manual, acrescentar uma linha sem apagar o histórico.
-Dados de teste devem ser sintéticos; não guardar perguntas pessoais, áudio, chaves ou tokens.
+When receiving or running a manual test, add a row without deleting the history.
+Test data must be synthetic; do not keep personal questions, audio, keys or tokens.
 
-| Módulo/caso | Commit ou versão testada | Ambiente e configuração relevante | Resultado e evidência | Alteração que exige repetir |
+| Module/case | Commit or version tested | Environment and relevant configuration | Result and evidence | Change that requires repeating |
 |---|---|---|---|---|
-| Instalação e dependências | HUD anterior à retomada acústica de 06/11/2026 | Windows, Python 3.13 | Instalação editável concluída e `pip check` aprovado, conforme capturas do proprietário | Repetir somente se dependências/ambiente forem alterados |
-| Entrada oficial e diagnóstico | HUD anterior à retomada acústica de 06/11/2026 | Windows, `python -m nora --verificar` | Módulo executado; diagnóstico mostrou Ollama e memória disponíveis, STT indisponível. Não é aprovação integral do diagnóstico | Retestar STT quando seu serviço estiver disponível |
-| Abertura e conexão da HUD | HUD anterior à retomada acústica de 06/11/2026 | Windows, navegador conectado ao núcleo | Captura posterior do proprietário confirma interface aberta e núcleo conectado | Mudanças acústicas exigem sua própria validação, sem repetir instalação aprovada |
+| Installation and dependencies | HUD before the acoustic resume of 06/11/2026 | Windows, Python 3.13 | Editable install completed and `pip check` approved, per the owner's screenshots | Repeat only if dependencies/environment change |
+| Official entry point and diagnostics | HUD before the acoustic resume of 06/11/2026 | Windows, `python -m nora --verificar` | Module ran; diagnostics showed Ollama and memory available, STT unavailable. Not a full approval of the diagnostics | Retest STT when its service is available |
+| Opening and connecting the HUD | HUD before the acoustic resume of 06/11/2026 | Windows, browser connected to the core | A later screenshot from the owner confirms the interface open and the core connected | Acoustic changes need their own validation, without repeating the approved installation |
 
-## Homologação final integrada — Windows/AMD
+## Final integrated acceptance — Windows/AMD
 
-- [ ] Definir o commit candidato e confirmar a CI Windows/Linux desse commit.
-- [ ] Reunir aprovações manuais anteriores e identificar os componentes diretamente afetados.
-- [ ] Executar os cenários pendentes por módulo com todos os serviços integrados.
-- [ ] Validar conversa, memória, voz, interrupções, modo jogo, relatórios e decisões supervisionadas
-  no mesmo fluxo; conferir reinício e recuperação após falhas.
-- [ ] Registrar resultados reais, limitações e falhas encontradas; corrigir e retestar as afetadas.
-- [ ] Obter aceite do proprietário para integração à `main` e autorização separada para publicação.
+- [ ] Define the candidate commit and confirm that commit's Windows/Linux CI.
+- [ ] Gather earlier manual approvals and identify the directly affected components.
+- [ ] Run the pending scenarios per module with all services integrated.
+- [ ] Validate conversation, memory, voice, interruptions, game mode, reports and supervised decisions
+  in the same flow; check restart and recovery after failures.
+- [ ] Record real results, limitations and failures found; fix and retest the affected ones.
+- [ ] Get the owner's acceptance for merging into `main` and a separate authorization to publish.
 
-## v0.4.0 — preparação da homologação no Windows (branch `integracao/v0.4.0`)
+## v0.4.0 — preparing acceptance on Windows (branch `integracao/v0.4.0`)
 
-Correções da revisão aplicadas e cobertas por testes automatizados (CI Windows e Linux):
-- **Paleta dentro do pacote** (`src/nora/paleta.json`): a HUD e o Second Brain leem o mesmo arquivo; um teste proíbe cópia.
-- **Instalação limpa:** `scripts/testar_instalacao_limpa.py` gera o wheel, instala num venv fora do checkout e confere a paleta, o Second Brain e os arquivos do pacote (job `instalacao` no CI, só Linux).
-- **Versão única:** `0.4.0.dev0` no Python e `0.4.0-dev.0` na HUD, com teste de divergência. `nora --verificar` (1ª linha) e a HUD (Ajustes) mostram versão e commit.
-- **Troca de voz:** a confirmação leva o texto à HUD (teste de regressão).
-- **Falhas da HUD:** contadas e registradas uma vez por tipo, sem texto nem áudio; a fala continua.
-- **Paleta revisada:** serenidade, sussurro e suspiro em calma; preocupação em seriedade.
+Review fixes applied and covered by automated tests (Windows and Linux CI):
+- **Palette inside the package** (`src/nora/paleta.json`): the HUD and the Second Brain read the same file; a test forbids a copy.
+- **Clean install:** `scripts/testar_instalacao_limpa.py` builds the wheel, installs it in a venv outside the checkout and checks the palette, the Second Brain and the package files (`instalacao` job in CI, Linux only).
+- **Single version:** `0.4.0.dev0` in Python and `0.4.0-dev.0` in the HUD, with a divergence test. `nora --verificar` (first line) and the HUD (settings) show version and commit.
+- **Voice switch:** the confirmation carries its text to the HUD (regression test).
+- **HUD failures:** counted and logged once per type, without text or audio; speech goes on.
+- **Revised palette:** serenity, whisper and sigh in calm; worry in seriousness.
 
-**Instalada, fora do repositório:** a config padrão vem dentro do pacote (`src/nora/nora.toml`), e a config pessoal, o `.env`, a memória e os modelos ficam em `%APPDATA%\Nora`, criada na primeira execução. O teste de instalação limpa roda `nora --verificar` assim. O build da HUD vai dentro do `.exe`; numa instalação por wheel a HUD ainda precisa de `NORA_HUD_DIST`.
+**Installed, outside the repository:** the default config comes inside the package (`src/nora/nora.toml`), and the personal config, `.env`, memory and models live in `%APPDATA%\Nora`, created on first run. The clean install test runs `nora --verificar` that way. The HUD build goes inside the `.exe`; in a wheel install the HUD still needs `NORA_HUD_DIST`.
 
-**Palavras em partículas.** Com o ElevenLabs v4 (padrão), o tempo de cada palavra vem do próprio ElevenLabs (`precisao "alinhada"`). Nas outras vozes, e se o alinhamento não vier, ele é estimado a partir do áudio que toca, e a HUD mostra "tempo estimado no áudio". O passo 7 do roteiro confere o v4 na sua conta.
+**Particle words.** With ElevenLabs v4 (default), each word's timing comes from ElevenLabs itself (`precisao "alinhada"`). On the other voices, and if the alignment does not come, it is estimated from the audio being played, and the HUD shows "tempo estimado no áudio" (time estimated from the audio). Step 7 of the walkthrough checks v4 on your account.
 
-**ElevenLabs v4: aprovado no PC real.** Os testes automáticos usam um servidor WebSocket falso (streaming numa conexão, alinhamento, `keep_alive`, barge-in, reserva no flash, turno sem áudio, diagnóstico). No Windows, em 06/11/2026, o `eleven_v4_turbo` falou pelo diálogo em tempo real: primeiro áudio em 985 ms, tocando em 1555 ms, 0 ms de silêncio entre trechos, palavras alinhadas. Decisão do Gabriel: usar só o v4, sem comparar com outros modelos.
+**ElevenLabs v4: approved on the real PC.** The automated tests use a fake WebSocket server (streaming over one connection, alignment, `keep_alive`, barge-in, flash fallback, turn without audio, diagnostics). On Windows, on 06/11/2026, `eleven_v4_turbo` spoke through real-time dialogue: first audio in 985 ms, playing in 1555 ms, 0 ms of silence between chunks, aligned words. Gabriel's decision: use only v4, without comparing with other models.
 
-### 1. Automático (sem você): `scripts/homologacao_windows.ps1`
+### 1. Automated (without you): `scripts/homologacao_windows.ps1`
 
-Na pasta do repositório, com o `.venv` ativado:
+In the repository folder, with the `.venv` activated:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\homologacao_windows.ps1
 ```
 
-Ele roda e grava em `data\homologacao\AAAA-MM-DD_HHMM.txt`:
-- versão, commit, GPU e driver;
-- `pytest`, `ruff` e a instalação limpa;
-- `npm ci`, `npm test` e `npm run build` da HUD;
+It runs and writes to `data\homologacao\AAAA-MM-DD_HHMM.txt`:
+- version, commit, GPU and driver;
+- `pytest`, `ruff` and the clean install;
+- the HUD's `npm ci`, `npm test` and `npm run build`;
 - `nora --verificar`;
-- 30 s de medição com o modelo local carregado e a HUD aberta no navegador: uso da GPU 3D, VRAM, CPU total, CPU do navegador e CPU do Python (média, mínimo e máximo).
+- 30 s of measurement with the local model loaded and the HUD open in the browser: 3D GPU usage, VRAM, total CPU, browser CPU and Python CPU (average, minimum and maximum).
 
-Leva uns 5 minutos. No fim, ele diz "Todas as etapas passaram" ou lista as que falharam. Ainda não rodou num Windows de verdade (só no PowerShell 7 para Linux): se algum passo der erro, mande o arquivo assim mesmo.
+It takes about 5 minutes. At the end it says "Todas as etapas passaram" (all steps passed) or lists the ones that failed. It has not run on a real Windows yet (only on PowerShell 7 for Linux): if a step errors, send the file anyway.
 
-### Já executado na nuvem, sem o PC do Gabriel (06/11/2026, commit `cf519fc`)
+### Already run in the cloud, without Gabriel's PC (06/11/2026, commit `cf519fc`)
 
-O PC com Windows não estava disponível. Na nuvem (Linux x86_64, 4 núcleos, sem GPU):
+The Windows PC was not available. In the cloud (Linux x86_64, 4 cores, no GPU):
 
-| Verificação | Resultado |
+| Check | Result |
 |---|---|
-| `pytest` | 457 passaram, 2 pulados |
-| `ruff format --check` e `ruff check` | sem erros |
-| HUD: `npm ci`, `lint`, `typecheck`, `npm test`, `build` | ok; 36 testes |
-| Instalação limpa (wheel fora do checkout) | ok, `nora 0.4.0.dev0` |
-| `nora --verificar` | 1ª linha: `Versão: 0.4.0.dev0 (commit cf519fc)` |
-| CI #170 (Windows e Linux, 7 jobs) | todos verdes |
-| HUD (Ajustes) | `Nora 0.4.0-dev.0 · commit cf519fc`, igual ao Python |
+| `pytest` | 457 passed, 2 skipped |
+| `ruff format --check` and `ruff check` | no errors |
+| HUD: `npm ci`, `lint`, `typecheck`, `npm test`, `build` | ok; 36 tests |
+| Clean install (wheel outside the checkout) | ok, `nora 0.4.0.dev0` |
+| `nora --verificar` | first line: `Versão: 0.4.0.dev0 (commit cf519fc)` |
+| CI #170 (Windows and Linux, 7 jobs) | all green |
+| HUD (settings) | `Nora 0.4.0-dev.0 · commit cf519fc`, same as Python |
 
-Desempenho da HUD aberta (`nora hud` real + build real, Chromium sem tela, 1600×900, 30 s por medição; script e números em [`evidencias/hud-acustica/desempenho-nuvem/`](evidencias/hud-acustica/desempenho-nuvem/)):
+Performance with the HUD open (real `nora hud` + real build, headless Chromium, 1600×900, 30 s per measurement; script and numbers in [`evidencias/hud-acustica/desempenho-nuvem/`](evidencias/hud-acustica/desempenho-nuvem/)):
 
-| Qualidade | Limite | FPS desenhado | CPU do navegador | CPU da Nora |
+| Quality | Limit | FPS drawn | Browser CPU | Nora CPU |
 |---|---|---|---|---|
-| Detalhada (WebGL) | 30 | 16,8 | 84% da máquina | 0% |
-| Detalhada (WebGL) | 60 | 16,7 | 85% da máquina | 0% |
-| Econômica (WebGL) | 30 | 23,2 | 82% da máquina | 0% |
+| Detailed (WebGL) | 30 | 16.8 | 84% of the machine | 0% |
+| Detailed (WebGL) | 60 | 16.7 | 85% of the machine | 0% |
+| Economy (WebGL) | 30 | 23.2 | 82% of the machine | 0% |
 
-**Como ler:** sem GPU, o WebGL é calculado na CPU (SwiftShader), então o FPS fica preso pela CPU (~17 em vez de 30) e o navegador ocupa quase toda a máquina. Isso é o pior caso, não uma medida da RX 9060 XT. O que vale como resultado:
-- a Nora (Python) não gasta CPU com a HUD aberta: o desenho fica todo no navegador, outro processo;
-- a qualidade Econômica rende ~40% mais quadros no mesmo hardware;
-- nenhum erro de página.
+**How to read it:** without a GPU, WebGL is computed on the CPU (SwiftShader), so FPS is CPU-bound (~17 instead of 30) and the browser takes almost the whole machine. That is the worst case, not a measurement of the RX 9060 XT. What counts as a result:
+- Nora (Python) spends no CPU with the HUD open: drawing is all in the browser, another process;
+- the Economy quality yields ~40% more frames on the same hardware;
+- no page errors.
 
-**Script do Windows conferido no PowerShell 7.4 para Linux:** a sintaxe está ok, e a versão sem medição (`-SemDesempenho`) rodou de ponta a ponta, com as 7 etapas ok, a linha de versão e commit e o arquivo em UTF-8. Uma etapa que falha aparece como `FALHOU` e no resumo final; isso foi testado com um `ruff` falso. O PSScriptAnalyzer não está disponível aqui (a PowerShell Gallery é bloqueada), então a compatibilidade com o PowerShell 5.1 do Windows foi revisada à mão.
+**Windows script checked on PowerShell 7.4 for Linux:** the syntax is ok, and the version without measurement (`-SemDesempenho`) ran end to end, with the 7 steps ok, the version and commit line and the file in UTF-8. A failing step shows as `FALHOU` (failed) and in the final summary; this was tested with a fake `ruff`. PSScriptAnalyzer is not available here (the PowerShell Gallery is blocked), so compatibility with Windows PowerShell 5.1 was reviewed by hand.
 
-**Continua pendente no PC do Gabriel:** rodar o script num Windows de verdade, incluindo os contadores de GPU (só existem no Windows); FPS, GPU e VRAM reais; e todo o roteiro abaixo, que precisa de microfone, alto-falante e ElevenLabs.
+**Still pending on Gabriel's PC:** run the script on a real Windows, including the GPU counters (they only exist on Windows); real FPS, GPU and VRAM; and the whole walkthrough below, which needs a microphone, a speaker and ElevenLabs.
 
-### 2. Roteiro com você (~15 min)
+### 2. Walkthrough with you (~15 min)
 
-Antes: `git pull`, `.venv\Scripts\activate`, Ollama aberto, ElevenLabs como voz principal, Second Brain ligado (`[segundo_cerebro] ativo = true`) e a HUD visível (`nora ouvir --hud`, abrir o endereço que aparecer).
+Before: `git pull`, `.venv\Scripts\activate`, Ollama open, ElevenLabs as the main voice, Second Brain on (`[segundo_cerebro] ativo = true`) and the HUD visible (`nora ouvir --hud`, open the address that shows up).
 
-| # | Faça | Observe | Resultado |
+| # | Do | Observe | Result |
 |---|---|---|---|
-| 0 | Anote a 1ª linha de `nora --verificar` e a versão em Ajustes da HUD | Mesma versão e mesmo commit nos dois | |
-| 1 | Diga "Nora, que dia vai ser daqui a 23 dias?" | Responde a data certa; a onda reage à sua voz (prata, "Ouvindo"), muda em "Pensando" e fala com outra forma | |
-| 2 | Fale baixo e depois normal | O painel "Sinal de áudio" acompanha, sem ficar em 0% com a onda se mexendo | |
-| 3 | Peça algo longo ("me conta uma história curta") | O áudio começa rápido (streaming); as palavras em partículas seguem a fala e param nas pausas, sem adiantar | |
-| 4 | Fale por cima da Nora no meio da resposta | Ela para (barge-in) ou, se ainda não houver barge-in no seu modo, anote o que acontece | |
-| 5 | "Troque para a voz do Piper" e depois "volta pro ElevenLabs" | A confirmação aparece na HUD (texto e palavras) e a voz troca | |
-| 6 | "Modo jogo" → "sim, sair do modo jogo" | A HUD mostra o modo jogo; `ollama ps` sem o modelo carregado durante o jogo | |
-| 7 | ElevenLabs v4: `nora --verificar` e uma resposta com `nora falar --medir` | "Modelo efetivo eleven_v4_turbo (diálogo...)", "Continuidade ElevenLabs ativa" e a linha `[voz: ...]` sem `[voz reserva]` | ✅ 06/11: 985 ms até o 1º áudio, 1555 ms tocando, 0 ms de silêncio, palavras alinhadas |
-| 8 | Diga um fato novo ("eu estudo com a Ana às quartas") e depois "mostre seu segundo cérebro" | A nota aparece no vault em até ~1 min, sem pausa na fala; o mapa abre | |
-| 9 | Durante tudo isso, com a HUD aberta | Alguma travada, eco ou pausa na fala? FPS (Edge/Chrome: F12 → Ctrl+Shift+P → "Show frame rate") | |
+| 0 | Note the first line of `nora --verificar` and the version in the HUD settings | Same version and same commit in both | |
+| 1 | Say "Nora, que dia vai ser daqui a 23 dias?" | Answers the right date; the wave reacts to your voice (silver, "Ouvindo"), changes on "Pensando" and speaks with another shape | |
+| 2 | Speak quietly and then normally | The "Sinal de áudio" panel follows, without staying at 0% while the wave moves | |
+| 3 | Ask for something long ("me conta uma história curta") | Audio starts fast (streaming); the particle words follow the speech and stop at pauses, without running ahead | |
+| 4 | Speak over Nora in the middle of the answer | She stops (barge-in) or, if there is no barge-in in your mode yet, note what happens | |
+| 5 | "Troque para a voz do Piper" and then "volta pro ElevenLabs" | The confirmation shows in the HUD (text and words) and the voice switches | |
+| 6 | "Modo jogo" → "sim, sair do modo jogo" | The HUD shows game mode; `ollama ps` with no model loaded during the game | |
+| 7 | ElevenLabs v4: `nora --verificar` and one answer with `nora falar --medir` | "Modelo efetivo eleven_v4_turbo (diálogo...)", "Continuidade ElevenLabs ativa" and the `[voz: ...]` line without `[voz reserva]` | ✅ 06/11: 985 ms to the first audio, 1555 ms playing, 0 ms of silence, aligned words |
+| 8 | Say a new fact ("eu estudo com a Ana às quartas") and then "mostre seu segundo cérebro" | The note appears in the vault within ~1 min, without a pause in speech; the map opens | |
+| 9 | Throughout, with the HUD open | Any stutter, echo or pause in speech? FPS (Edge/Chrome: F12 → Ctrl+Shift+P → "Show frame rate") | |
 
-Mande o arquivo do passo 1 e a coluna Resultado (pode ser foto). Problemas viram correções com teste antes da aprovação.
+Send the step 1 file and the Result column (a photo is fine). Problems become fixes with tests before approval.
 
-## HUD v0.4.0 — execução atual
+## HUD v0.4.0 — current run
 
-Branch `feat/v0.4.0-hud`, base `Pull_code` no commit `70d39b7`.
-O PNG fornecido na conversa é a referência oficial; comparação visual qualitativa por
-agentes de design e QA. Sem medição de diferença pixel a pixel por ausência do arquivo
-PNG local. Mock de teste não representa estado real em runtime.
+Branch `feat/v0.4.0-hud`, base `Pull_code` at commit `70d39b7`.
+The PNG provided in the conversation is the official reference; qualitative visual comparison by
+design and QA agents. No pixel-by-pixel difference measurement because the PNG file is not
+available locally. A test mock does not represent the real runtime state.
 
-| Módulo HUD | Automatizado nesta entrega | Manual aprovado registrado | Pendente Windows/AMD |
+| HUD module | Automated in this delivery | Approved manual test recorded | Pending Windows/AMD |
 |---|---|---|---|
-| Contrato Python/TypeScript | JSON compartilhado, validação versão/ordem/Unicode; testes Python e TypeScript aprovados | Sem registro | Não exige repetição manual por si só |
-| Ponte SSE local, reconexão e limites | HTTP/SSE real e reconexão aprovados; filas/cliente lento e limites testados | Sem registro | Reconexão com serviços reais em uso |
-| Host/Origin/token e privacidade | 14 verificações HTTP de QA aprovadas, além de testes persistidos; opt-in/out ponta a ponta aprovado | Sem registro | Conferir tela compartilhada e opt-in |
-| Ondas/partículas WebGL e Canvas | Capturas desktop/ultrawide/móvel revisadas; fallback automático sem WebGL aprovado | Sem registro | Aparência no monitor alvo, desempenho com LLM/STT/TTS |
-| Estados, voz e amplitude do pipeline único | RMS/callback de reprodução, CLI e regressões aprovados com dispositivos simulados | Sem registro | Microfone/alto-falante e reserva reais, sem segundo dispositivo |
-| Texto e palavras estimadas | Consentimento, escape de HTML, fim de fala e estimativa visual verificados no browser | Sem registro | Legibilidade e conforto; não alegar sincronismo fonético |
-| Propostas e decisões supervisionadas | Domínio Melhorias real: cancelar não decide, confirmar decide sem alterar código | Sem registro | Ciclo integrado com auto-melhoria ativa e relatório diário |
-| Notas usadas e autorizadas | Filtragem de pasta/consentimento testada; painel usa somente notas da resposta | Sem registro | Pasta real explicitamente configurada, sem exposição indesejada |
-| Responsividade, acessibilidade e movimento reduzido | Quatro viewports sem overflow, campos móveis 12px, zero pageerrors; movimento reduzido e página oculta sem desenhos | Sem registro | Tela cheia ultrawide e preferências de acessibilidade no Windows |
+| Python/TypeScript contract | Shared JSON, version/order/Unicode validation; Python and TypeScript tests approved | No record | Does not require manual repetition by itself |
+| Local SSE bridge, reconnection and limits | Real HTTP/SSE and reconnection approved; queues/slow client and limits tested | No record | Reconnection with real services in use |
+| Host/Origin/token and privacy | 14 HTTP QA checks approved, plus persisted tests; opt-in/out end to end approved | No record | Check a shared screen and opt-in |
+| WebGL and Canvas waves/particles | Desktop/ultrawide/mobile captures reviewed; automatic fallback without WebGL approved | No record | Look on the target monitor, performance with LLM/STT/TTS |
+| States, voice and amplitude of the single pipeline | Playback RMS/callback, CLI and regressions approved with simulated devices | No record | Real microphone/speaker and fallback, without a second device |
+| Text and estimated words | Consent, HTML escaping, end of speech and visual estimate checked in the browser | No record | Legibility and comfort; do not claim phonetic sync |
+| Proposals and supervised decisions | Real Melhorias domain: cancel does not decide, confirm decides without changing code | No record | Integrated cycle with self-improvement on and the daily report |
+| Used and authorized notes | Folder/consent filtering tested; the panel uses only the answer's notes | No record | Real folder explicitly configured, without unwanted exposure |
+| Responsiveness, accessibility and reduced motion | Four viewports without overflow, 12px mobile fields, zero pageerrors; reduced motion and hidden page without drawing | No record | Ultrawide full screen and accessibility preferences on Windows |
 
-Não liberar v0.4.0 antes da homologação final integrada. Não repetir aprovações manuais
-anteriores sem impacto direto. A abertura/conexão no Windows foi informada pelo proprietário;
-voz, dispositivos e GPU ainda não foram homologados.
+Do not release v0.4.0 before the final integrated acceptance. Do not repeat earlier manual
+approvals without direct impact. Opening/connecting on Windows was reported by the owner;
+voice, devices and GPU have not been accepted yet.
 
-### Evidências de QA da HUD
+### HUD QA evidence
 
-- Browser Chromium headless, via Playwright, com dados sintéticos de teste; servidor Python
-  e domínio de melhorias reais no teste ponta a ponta. Não usa hardware nem serviços de IA reais.
-- 13 verificações ponta a ponta aprovadas: SSE, estado/emocão/nível, XSS escapado, consentimento,
-  palavras estimadas, limpeza ao ocultar/fim de fala, confirmação/cancelamento, reinício e
-  reconexão com sequência reiniciada, sem persistência no navegador ou falso núcleo conectado.
-- Desktop 1672×941, ultrawide 2560×1080, móvel 390×844 e movimento reduzido: sem overflow
-  horizontal, sem erros de página, localStorage/sessionStorage vazios.
-- Fallback Canvas forçado sem WebGL: 33 desenhos em 1500ms (~22 FPS observados, limite 30)
-  neste ambiente headless concorrente. Modo jogo: 11/1500ms (~7,3 FPS, limite 8).
-  Página oculta: 0 desenhos/500ms; movimento reduzido: 0/1500ms. Não extrapolar para GPU AMD.
-- Arquivos de captura e harness desta sessão em `/workspace/scratch/qa-hud/` (fora do Git).
-  A comparação com o PNG foi qualitativa, pelos agentes de design/QA e pela revisão principal.
-- Correções durante QA: snapshot desconectado não finge núcleo ativo; toggle privacidade
-  usa resposta autoritativa sem reverter SSE mais recente, com duas regressões persistidas; legibilidade móvel;
-  largura/assimetria dos filamentos; proxy de desenvolvimento local; limites Unicode e MIME.
-- Empacotamento wheel conferido: `nora/hud.py` e `nora/hud_contrato.json` presentes.
-- CI da nova branch deve ser confirmada no commit enviado antes de declarar o PR pronto.
-  Aprovação antiga de `77905e6` não valida a implementação da HUD.
+- Headless Chromium browser, through Playwright, with synthetic test data; real Python server
+  and real improvements domain in the end-to-end test. No real hardware or AI services.
+- 13 end-to-end checks approved: SSE, state/emotion/level, escaped XSS, consent,
+  estimated words, clearing on hide/end of speech, confirmation/cancellation, restart and
+  reconnection with a reset sequence, no persistence in the browser or fake connected core.
+- Desktop 1672×941, ultrawide 2560×1080, mobile 390×844 and reduced motion: no horizontal
+  overflow, no page errors, localStorage/sessionStorage empty.
+- Canvas fallback forced without WebGL: 33 draws in 1500ms (~22 FPS observed, limit 30)
+  in this concurrent headless environment. Game mode: 11/1500ms (~7.3 FPS, limit 8).
+  Hidden page: 0 draws/500ms; reduced motion: 0/1500ms. Do not extrapolate to the AMD GPU.
+- Capture files and harness from that session in `/workspace/scratch/qa-hud/` (outside Git).
+  The comparison with the PNG was qualitative, by the design/QA agents and the main review.
+- Fixes during QA: a disconnected snapshot does not pretend the core is active; the privacy toggle
+  uses the authoritative response without reverting a newer SSE, with two persisted regressions; mobile
+  legibility; filament width/asymmetry; local development proxy; Unicode and MIME limits.
+- Wheel packaging checked: `nora/hud.py` and `nora/hud_contrato.json` present.
+- The new branch's CI must be confirmed on the pushed commit before declaring the PR ready.
+  The old approval of `77905e6` does not validate the HUD implementation.
 
-### Resultado automatizado local da implementação HUD
+### Local automated result of the HUD implementation
 
-- Python 3.12.14/Linux: **295 aprovados e 1 ignorado** (`pytest -ra`), incluindo 29 testes
-  novos da ponte, HTTP/SSE, domínio, áudio, CLI, Unicode e MIME. O ignorado continua sendo
-  Kokoro real sem modelo; não é aprovação de TTS físico.
-- `ruff format --check .` e `ruff check .`: aprovados. `nora --verificar`: código 0,
-  com Ollama, Whisper e Kokoro indisponíveis; credenciais opcionais não configuradas.
-- Frontend: `npm ci`, lint, typecheck, **15 testes Vitest** e build aprovados.
-  Inclui contrato compartilhado, eventos fora de ordem, Unicode, reconexão/token e duas
-  condições de corrida entre o consentimento HTTP e eventos SSE mais recentes.
-- Desenho usa Three.js/WebGL, Canvas automático se WebGL não existir ou perder contexto.
-  Capturas de QA verificam responsividade e identidade; aprovação estética final pertence
-  ao proprietário e a medição de GPU/latência integrada permanece pendente.
+- Python 3.12.14/Linux: **295 passed and 1 skipped** (`pytest -ra`), including 29 new tests
+  for the bridge, HTTP/SSE, domain, audio, CLI, Unicode and MIME. The skipped one is still
+  real Kokoro without a model; not an approval of physical TTS.
+- `ruff format --check .` and `ruff check .`: approved. `nora --verificar`: exit code 0,
+  with Ollama, Whisper and Kokoro unavailable; optional credentials not configured.
+- Frontend: `npm ci`, lint, typecheck, **15 Vitest tests** and build approved.
+  Includes the shared contract, out-of-order events, Unicode, reconnection/token and two
+  race conditions between HTTP consent and newer SSE events.
+- Drawing uses Three.js/WebGL, with automatic Canvas if WebGL does not exist or loses its context.
+  QA captures check responsiveness and identity; the final aesthetic approval belongs
+  to the owner, and integrated GPU/latency measurement remains pending.
 
-### CI e revisão final da entrega
+### CI and final review of the delivery
 
-- Commit de implementação `a81065f`: seis jobs aprovados na
-  [execução 41911978525](https://github.com/Gabitoprof/Nora/actions/runs/41911978525):
-  núcleo Windows/Ubuntu com Python 3.11/3.13 e frontend Windows/Ubuntu com Node 22.
-- QA final reaprovou 13 verificações ponta a ponta, a corrida HTTP/SSE determinística e
-  5 verificações de notas autorizadas/latência. Sem erros de página ou storage pessoal.
-- Último ajuste visual: painel móvel ampliado para não cortar “Conteúdo protegido” após
-  incluir a linha de latência; verificação de geometria no browser e captura atualizadas.
-- Proxy Vite: configuração implementada; smoke final específico não confirmado nesta rodada.
-  O caminho principal homologado automaticamente usa build servida pelo Python na mesma origem.
-- Criação de PR ainda bloqueada externamente: API GraphQL retornou `Forbidden`.
-  [Formulário com branches preenchidas](https://github.com/Gabitoprof/Nora/compare/Pull_code...feat/v0.4.0-hud?expand=1).
-- Isso não aprova merge, tag, release nem homologação física Windows/AMD.
+- Implementation commit `a81065f`: six jobs approved in
+  [run 41911978525](https://github.com/Gabitoprof/Nora/actions/runs/41911978525):
+  Windows/Ubuntu core with Python 3.11/3.13 and Windows/Ubuntu frontend with Node 22.
+- Final QA re-approved 13 end-to-end checks, the deterministic HTTP/SSE race and
+  5 checks of authorized notes/latency. No page errors or personal storage.
+- Last visual adjustment: mobile panel enlarged so "Conteúdo protegido" is not cut after
+  adding the latency line; geometry check in the browser and capture updated.
+- Vite proxy: configuration implemented; specific final smoke test not confirmed in this round.
+  The main path accepted automatically uses the build served by Python on the same origin.
+- PR creation still blocked externally: the GraphQL API returned `Forbidden`.
+  [Form with the branches filled in](https://github.com/Gabitoprof/Nora/compare/Pull_code...feat/v0.4.0-hud?expand=1).
+- This does not approve merge, tag, release or physical Windows/AMD acceptance.
 
-### Evidência manual informada pelo proprietário — instalação Windows
+### Manual evidence reported by the owner — Windows installation
 
-- Capturas do proprietário confirmam criação do ambiente Python 3.13 e instalação
-  editável dos extras `dev,voz,memoria` concluída com sucesso.
-- `pip check`: **aprovado**, com `No broken requirements found`. Não pedir repetição
-  dessa verificação sem alteração direta no ambiente/dependências.
-- `nora.exe --verificar`: **bloqueado pelo Controle de Aplicativos do Windows**;
-  não classificar como erro da Nora nem como diagnóstico funcional aprovado.
-- Orientada a entrada oficial `python -m nora --verificar`, sem alterar políticas;
-  resultado posteriormente informado: módulo executado, Ollama e memória disponíveis, STT
-  indisponível. Isso não homologa os serviços faltantes nem a reprodução de voz. A execução
-  Linux com código 0 continua sendo uma evidência separada.
-- Instalação aprovada não homologa microfone, STT/TTS, GPU ou integração completa.
+- The owner's screenshots confirm creating the Python 3.13 environment and the editable
+  install of the `dev,voz,memoria` extras completed successfully.
+- `pip check`: **approved**, with `No broken requirements found`. Do not ask to repeat
+  this check without a direct change in the environment/dependencies.
+- `nora.exe --verificar`: **blocked by Windows App Control**;
+  do not classify it as a Nora error nor as an approved functional diagnosis.
+- Pointed to the official entry point `python -m nora --verificar`, without changing policies;
+  result reported later: module ran, Ollama and memory available, STT
+  unavailable. This does not accept the missing services or voice playback. The Linux
+  run with exit code 0 remains separate evidence.
+- An approved installation does not accept microphone, STT/TTS, GPU or full integration.
 
-### Correção de abertura por link e ferramentas da HUD
+### Fix for opening from a link and HUD tooling
 
-- Evidência do proprietário: `npm ci` e build da HUD concluídos no Windows; não repetir
-  investigação de compilação como se ela tivesse falhado. Servidor iniciou, mas navegador
-  recebeu HTTP 403 `Origem local obrigatória`; abertura da interface **reprovada nessa versão**.
-- Reproduzido antes da correção: quatro cliques Chromium em páginas de outra origem
-  para `/` e `/index.html` retornaram 403 com `Sec-Fetch-Site` cross-site/same-site,
-  `Sec-Fetch-Mode: navigate`, `Sec-Fetch-Dest: document` e sem Origin.
-- Corrigido somente o documento público inicial. Quatro casos de navegador passaram
-  após a mudança, incluindo assets/SSE/consentimento na própria origem e zero pageerrors.
-  API de estado/token, POST externo, iframe e link diretamente à API continuam 403.
-- Novas regressões HTTP: 12 casos; suíte HUD: **41 aprovados**. Suíte completa Linux/Python
-  3.12: **307 aprovados e 1 ignorado** (Kokoro real). Ruff format/check aprovados e
-  `python -m nora --verificar` executado com código 0, sem serviços físicos nesta máquina.
-- QA repetiu as 13 verificações ponta a ponta e a corrida HTTP/SSE de privacidade:
-  aprovadas. Não substitui integração física Windows/AMD.
-- Auditoria npm inicial confirmou os 10 alertas do proprietário (8 moderados, 2 críticos).
-  Vitest/ESLint atualizados explicitamente; minimatch transitivo fixado no intervalo
-  vulnerável com testes das APIs consumidas. Sem `audit fix --force` ou testes desabilitados.
-- Requisito das ferramentas atualizado para Node LTS 22.13+ ou 24 (ver engines exatos no
-  package.json). Manter a matriz CI Windows/Ubuntu e confirmar o commit enviado.
-- Evidências de navegador desta sessão: `/workspace/scratch/qa-hud/navigation-before-results.json`,
-  `navigation-fixed-results.json`, `external-link-fixed.png` e `FINAL_QA.md`.
-- Reteste manual necessário somente da abertura corrigida no navegador do proprietário;
-  aprovações anteriores de instalação/pip check permanecem registradas, sem repetir módulos
-  não afetados. Voz/GPU e homologação final integrada continuam pendentes.
+- Owner's evidence: `npm ci` and the HUD build completed on Windows; do not repeat the
+  build investigation as if it had failed. The server started, but the browser
+  got HTTP 403 `Origem local obrigatória`; opening the interface **failed in that version**.
+- Reproduced before the fix: four Chromium clicks on pages of another origin
+  to `/` and `/index.html` returned 403 with `Sec-Fetch-Site` cross-site/same-site,
+  `Sec-Fetch-Mode: navigate`, `Sec-Fetch-Dest: document` and no Origin.
+- Only the initial public document was fixed. Four browser cases passed
+  after the change, including assets/SSE/consent on the same origin and zero pageerrors.
+  The state/token API, external POST, iframe and a direct link to the API remain 403.
+- New HTTP regressions: 12 cases; HUD suite: **41 passed**. Full Linux/Python
+  3.12 suite: **307 passed and 1 skipped** (real Kokoro). Ruff format/check approved and
+  `python -m nora --verificar` ran with exit code 0, without physical services on this machine.
+- QA repeated the 13 end-to-end checks and the HTTP/SSE privacy race:
+  approved. Does not replace physical Windows/AMD integration.
+- The initial npm audit confirmed the owner's 10 alerts (8 moderate, 2 critical).
+  Vitest/ESLint updated explicitly; transitive minimatch pinned in the vulnerable
+  range with tests of the consumed APIs. No `audit fix --force` or disabled tests.
+- Tooling requirement updated to Node LTS 22.13+ or 24 (see the exact engines in
+  package.json). Keep the Windows/Ubuntu CI matrix and confirm the pushed commit.
+- Browser evidence from that session: `/workspace/scratch/qa-hud/navigation-before-results.json`,
+  `navigation-fixed-results.json`, `external-link-fixed.png` and `FINAL_QA.md`.
+- Manual retest needed only for the fixed opening in the owner's browser;
+  earlier approvals of installation/pip check remain recorded, without repeating unaffected
+  modules. Voice/GPU and the final integrated acceptance remain pending.
 
-- Ferramentas após atualização: `npm ci`, lint, typecheck, **19 testes Vitest** e build
-  aprovados tanto com Node 24.22.1 quanto com Node 22.23.4. Quatro novos casos verificam
-  as APIs minimatch consumidas pelo ESLint/parser, inclusive dotfiles, extensões e negação.
-- Auditoria npm completa: **0 vulnerabilidades**; auditoria somente produção: **0**.
-  Os avisos anteriores de instalação não foram usados para explicar o HTTP 403: as duas
-  causas foram investigadas e corrigidas separadamente. Nenhuma política Windows foi alterada.
+- Tooling after the update: `npm ci`, lint, typecheck, **19 Vitest tests** and build
+  approved with both Node 24.22.1 and Node 22.23.4. Four new cases check
+  the minimatch APIs consumed by ESLint/parser, including dotfiles, extensions and negation.
+- Full npm audit: **0 vulnerabilities**; production-only audit: **0**.
+  The earlier install warnings were not used to explain the HTTP 403: the two
+  causes were investigated and fixed separately. No Windows policy was changed.
 
-## Roadmap "Imagem para as falas": fases 0 e 1 (validar e corrigir)
+## "Imagem para as falas" roadmap: phases 0 and 1 (validate and fix)
 
-Branch `integracao/v0.4.0`. Cada item tem commit próprio; o que depende do PC do Gabriel está marcado.
+Branch `integracao/v0.4.0`. Each item has its own commit; what depends on Gabriel's PC is marked.
 
-| # | Item | Estado | Evidência |
+| # | Item | Status | Evidence |
 |---|---|---|---|
-| 1 | Offsets do alinhamento v4 | Corrigido e testado com servidor falso (vários trechos, offsets conhecidos) | `tests/test_voz_v4.py` (referência por turno, trechos, silêncio inicial) |
-| 2 | Reserva no meio da fala | Implementado: antes do áudio / depois (continua do limite) / sem limite (para e permite repetir) / sem alinhamento (segue tocando) | `tests/test_voz_v4.py` (servidor que cai no meio, cancelar e retomar sem palavras repetidas) |
-| 3 | Diagnóstico (`--verificar`, `--medir`, log) | Modelo efetivo, continuidade, motivo de cada reserva, gerações por resposta, tempos (pedido, 1º PCM, reprodução, silêncio entre trechos) nos dois caminhos | `tests/test_voz_v4.py` (diagnóstico com reserva no meio, HTTP, arquivo antigo; sem texto nem chave) |
-| 4 | Retenção nas pausas | Palavra até a próxima começar, teto `TETO_PAUSA_MS` = 1,5 s; some na hora em `reproducao_encerrada`, cancelamento e Privado | `hud/tests/text-particles.test.ts` |
-| 5 | Relógio da fala | Medido e ajustado: 450/400 ms e recuos < 60 ms ignorados (tabela abaixo) | `hud/tests/relogio-medicao.test.ts` |
-| 6 | Testes de estado (`reproducao_encerrada`) | Ordem, duplicidade, reconexão, privacidade e mensagem atrasada depois do Privado | `hud/tests/state.test.ts` |
-| 7 | Privacidade no backend | Palavras só publicadas com a tela autorizada; revogar invalida a fala em curso (época) e esvazia as filas; Privado nem guarda as palavras. Leitura sem segredo de sessão: proposta abaixo | `tests/test_hud.py`, `tests/test_hud_acustica.py` |
-| 8 | QA visual | Palavras longas e acentos legíveis em 1920×1080 (faixa de 1060 px) e 1366×768 (902 px); legível em ~116 ms | `docs/evidencias/palavras-1920x1080.jpg`, `palavras-1366x768.jpg`; `hud/tests/text-particles.test.ts` |
-| 9 | Medição no PC (preparada) | Telemetria na HUD + `homologacao_windows.ps1` (base × HUD, contínuo) | **Pendente: Gabriel roda** |
-| 10 | Roteiro de falas e vídeo | 30 casos (curtas, longas, pausas, interrupção, privacidade, falhas) + gravação a 60 FPS | **Pendente: Gabriel roda** |
+| 1 | v4 alignment offsets | Fixed and tested with a fake server (several chunks, known offsets) | `tests/test_voz_v4.py` (reference per turn, chunks, lead-in silence) |
+| 2 | Fallback mid-reply | Implemented: before audio / after (continues from the boundary) / no boundary (stops and allows repeating) / no alignment (keeps playing) | `tests/test_voz_v4.py` (server dropping mid-reply, cancel and resume without repeated words) |
+| 3 | Diagnostics (`--verificar`, `--medir`, log) | Effective model, continuity, reason for each fallback, generations per reply, timings (request, first PCM, playback, silence between chunks) on both paths | `tests/test_voz_v4.py` (diagnostics with mid-reply fallback, HTTP, old file; no text or key) |
+| 4 | Holding through pauses | Word until the next one starts, ceiling `TETO_PAUSA_MS` = 1.5 s; disappears immediately on `reproducao_encerrada`, cancellation and Private | `hud/tests/text-particles.test.ts` |
+| 5 | Speech clock | Measured and tuned: 450/400 ms and backward steps < 60 ms ignored (table below) | `hud/tests/relogio-medicao.test.ts` |
+| 6 | State tests (`reproducao_encerrada`) | Order, duplicates, reconnection, privacy and a late message after Private | `hud/tests/state.test.ts` |
+| 7 | Privacy in the backend | Words only published with the screen authorized; revoking invalidates the current speech (epoch) and empties the queues; Private does not even store the words. Reads without a session secret: proposal below | `tests/test_hud.py`, `tests/test_hud_acustica.py` |
+| 8 | Visual QA | Long words and accents legible at 1920×1080 (1060 px band) and 1366×768 (902 px); legible in ~116 ms | `docs/evidencias/palavras-1920x1080.jpg`, `palavras-1366x768.jpg`; `hud/tests/text-particles.test.ts` |
+| 9 | Measurement on the PC (prepared) | Telemetry in the HUD + `homologacao_windows.ps1` (baseline × HUD, soak) | **Pending: Gabriel runs it** |
+| 10 | Speech script and video | 30 cases (short, long, pauses, interruption, privacy, failures) + 60 FPS recording | **Pending: Gabriel runs it** |
 
-Documentação oficial do ElevenLabs inacessível na nuvem (domínio bloqueado). O SDK oficial
-(`elevenlabs` 2.77.0) documenta, no WebSocket de TTS, tempos **relativos ao trecho devolvido**; o
-tipo do diálogo não descreve. O código aceita as duas referências e fixa a escolhida no turno.
-**Pendente no PC:** confirmar com o v4 real (a linha `[voz: ...]` e a HUD mostram as palavras no
-tempo certo em respostas longas, de vários trechos).
+ElevenLabs' official documentation is unreachable from the cloud (domain blocked). The official SDK
+(`elevenlabs` 2.77.0) documents, for the TTS WebSocket, times **relative to the returned chunk**; the
+dialogue type does not describe it. The code accepts both references and pins the chosen one per turn.
+**Pending on the PC:** confirm with the real v4 (the `[voz: ...]` line and the HUD show the words at
+the right time in long, multi-chunk answers).
 
-### Item 5: medição do relógio da fala
+### Item 5: measuring the speech clock
 
-Simulação determinística (`hud/tests/relogio-medicao.test.ts`): 60 s de fala, palavras de 260 ms a
-cada 300 ms, amostras do backend a cada 50 ms, atraso de rede de 5 a 45 ms, engasgos (nenhuma
-amostra) de 150 a 450 ms em 0%, 1% ou 3% das amostras, desenho a 60 FPS.
+Deterministic simulation (`hud/tests/relogio-medicao.test.ts`): 60 s of speech, 260 ms words
+every 300 ms, backend samples every 50 ms, network delay of 5 to 45 ms, stalls (no
+sample) of 150 to 450 ms in 0%, 1% or 3% of the samples, drawing at 60 FPS.
 
-| Idade máx. / extrapolação | Engasgos | Atraso som→palavra p50 / p95 / pior | Palavras perdidas | Recuos |
+| Max age / extrapolation | Stalls | Sound→word delay p50 / p95 / worst | Words lost | Backward steps |
 |---|---|---|---|---|
-| 300 / 250 (antes) | 3% | 33 / 50 / 217 ms | 1 | ~140 (antes da tolerância) |
-| **450 / 400 (agora)** | 3% | 33 / 50 / 100 ms | 0 | 0 |
+| 300 / 250 (before) | 3% | 33 / 50 / 217 ms | 1 | ~140 (before the tolerance) |
+| **450 / 400 (now)** | 3% | 33 / 50 / 100 ms | 0 | 0 |
 | 600 / 500 | 3% | 33 / 50 / 83 ms | 0 | 0 |
 
-Escolha: 450/400. Extrapolar mais (600/500) ganha pouco e adianta palavras quando a rede atrasa de
-verdade (o backend não publica amostras durante falta de áudio). O atraso medido não inclui a
-latência real da saída de áudio do Windows: **pendente no PC** (roteiro abaixo).
+Choice: 450/400. Extrapolating more (600/500) gains little and shows words early when the network
+really lags (the backend does not publish samples while audio is missing). The measured delay does
+not include the real latency of the Windows audio output: **pending on the PC** (walkthrough below).
 
-### Item 7: a ponte da HUD exige segredo de sessão?
+### Item 7: does the HUD bridge require a session secret?
 
-**Achado:** só para **alterar** (privacidade, decisões): cabeçalho `X-Nora-Token`. A **leitura**
-(`/api/eventos`, `/api/estado`, `/api/notas`, `/api/propostas`) é protegida por outras barreiras:
-`Host` precisa ser `127.0.0.1:porta` (bloqueia DNS rebinding), `Origin` de outro site é recusada e
-`Sec-Fetch-Site` cross-site/same-site é recusado. Contra **páginas da web** isso basta (o navegador
-sempre informa a origem; testado). O ponto fraco é outro **programa local** (não navegador) no
-mesmo computador: ele pode ler os eventos e até pegar o token em `/api/sessao`.
+**Finding:** only to **change** things (privacy, decisions): the `X-Nora-Token` header. **Reading**
+(`/api/eventos`, `/api/estado`, `/api/notas`, `/api/propostas`) is protected by other barriers:
+`Host` must be `127.0.0.1:port` (blocks DNS rebinding), an `Origin` from another site is refused and
+`Sec-Fetch-Site` cross-site/same-site is refused. Against **web pages** this is enough (the browser
+always reports the origin; tested). The weak point is another **local program** (not a browser) on
+the same computer: it can read the events and even get the token from `/api/sessao`.
 
-**Proposta (não aplicada: muda como a HUD é aberta):**
+**Proposal (not applied: it changes how the HUD is opened):**
 
-1. A Nora gera o token e abre a HUD com ele no **fragmento** do endereço
-   (`http://127.0.0.1:8765/#sessao=TOKEN`): o fragmento não vai ao servidor nem aos logs.
-2. A página guarda o token em `sessionStorage` e o manda em toda leitura (`X-Nora-Token`; nos
-   eventos, num primeiro pedido que troca o token por um bilhete de uso único, porque o
-   `EventSource` não manda cabeçalhos).
-3. `/api/sessao` deixa de existir. Abrir `http://127.0.0.1:8765/` sem o token mostra só a página
-   pedindo para abrir pela Nora (atalho do menu Iniciar ou o link que `nora ouvir --hud` imprime).
+1. Nora generates the token and opens the HUD with it in the address **fragment**
+   (`http://127.0.0.1:8765/#sessao=TOKEN`): the fragment does not go to the server or to logs.
+2. The page keeps the token in `sessionStorage` and sends it on every read (`X-Nora-Token`; for
+   events, in a first request that swaps the token for a single-use ticket, because
+   `EventSource` does not send headers).
+3. `/api/sessao` goes away. Opening `http://127.0.0.1:8765/` without the token shows only a page
+   asking to open it through Nora (the Start menu shortcut or the link `nora ouvir --hud` prints).
 
-Custo: favoritos antigos para a HUD param de funcionar; o atalho e o terminal passam a mostrar o
-link com o token. Decisão do Gabriel.
+Cost: old bookmarks to the HUD stop working; the shortcut and the terminal start showing the
+link with the token. Gabriel's decision.
 
-### Item 8: QA visual das palavras
+### Item 8: visual QA of the words
 
-Renderizadas com o código real da faixa (`CampoParticulasTexto`), na largura que a faixa ocupa em
-cada resolução (`min(66vw, 1060px)`), com palavras já ditas à esquerda:
+Rendered with the band's real code (`CampoParticulasTexto`), at the width the band takes at
+each resolution (`min(66vw, 1060px)`), with already spoken words on the left:
 
-| Resolução | Faixa | Altura da palavra atual | Palavra de 27 letras |
+| Resolution | Band | Height of the current word | 27-letter word |
 |---|---|---|---|
-| 1920×1080 | 1060 px | ~70 px | 54 px, legível |
-| 1366×768 | 902 px | ~60 px | 46 px, legível |
+| 1920×1080 | 1060 px | ~70 px | 54 px, legible |
+| 1366×768 | 902 px | ~60 px | 46 px, legible |
 
-Acentos (ç, ã, é, ú) e pontuação aparecem. As palavras já ditas ficam entre 13 e 16 px:
-legíveis, mas discretas de propósito. **Tempo até ficar legível** (90% dos pontos a menos de 3 px
-da letra, saindo da poeira longe): antes ~380 ms; agora ~116 ms (meta ≤ 150 ms).
-**Pendente no PC:** a mesma conferência na HUD inteira, com a fala real e na tela do Gabriel.
+Accents (ç, ã, é, ú) and punctuation show up. The already spoken words are 13 to 16 px:
+legible, but deliberately discreet. **Time until legible** (90% of the points less than 3 px
+from the letter, coming out of distant dust): ~380 ms before; ~116 ms now (target ≤ 150 ms).
+**Pending on the PC:** the same check on the whole HUD, with real speech and on Gabriel's screen.
 
-### Item 9: medição no PC do Gabriel (preparado; ele executa)
+### Item 9: measurement on Gabriel's PC (prepared; he runs it)
 
-Tudo com a Nora real: Qwen, Whisper e ElevenLabs ligados ao mesmo tempo.
+All with the real Nora: Qwen, Whisper and ElevenLabs on at the same time.
 
-1. Terminal 1 (em `B:\Nora`): `scripts\iniciar_voz_windows.ps1 -Voz nenhuma` (o ouvido).
-2. Terminal 2, com o `.venv` ativado: `nora ouvir --hud`. Na HUD: **Visível**, qualidade
-   **Detalhada**, **60 FPS**, "Palavras em partículas" marcado.
-3. Terminal 3, com o `.venv` ativado:
+1. Terminal 1 (in `B:\Nora`): `scripts\iniciar_voz_windows.ps1 -Voz nenhuma` (the ear).
+2. Terminal 2, with the `.venv` activated: `nora ouvir --hud`. In the HUD: **Visível**, quality
+   **Detalhada**, **60 FPS**, "Palavras em partículas" checked.
+3. Terminal 3, with the `.venv` activated:
    `powershell -ExecutionPolicy Bypass -File scripts\homologacao_windows.ps1 -SoMedir -Continuo`
-   - fase 1 (60 s): ele pede para **fechar a aba da HUD** (base);
-   - fase 2 (60 s): ele pede para **abrir a HUD e conversar** usando o roteiro do item 10;
-   - depois, o teste contínuo de 25 min: deixe a HUD aberta e converse de vez em quando.
-4. Mande o arquivo `data\homologacao\AAAA-MM-DD_HHMM.txt` e a planilha `..._continuo.csv`.
+   - phase 1 (60 s): it asks to **close the HUD tab** (baseline);
+   - phase 2 (60 s): it asks to **open the HUD and talk** using the item 10 script;
+   - then the 25 min soak test: leave the HUD open and talk now and then.
+4. Send the `data\homologacao\AAAA-MM-DD_HHMM.txt` file and the `..._continuo.csv` spreadsheet.
 
-| Medida | Onde sai | Meta |
+| Measure | Where it comes from | Target |
 |---|---|---|
-| Tempo de quadro p50 / p95 / pior | HUD (`diagnostico_hud.json`) | p95 ≤ 33,3 ms |
-| Atraso som → palavra p50 / p95 | HUD | p95 ≤ 100 ms |
-| CPU a mais da HUD | script (com HUD − base) | ≤ 10 pontos percentuais |
-| VRAM a mais da HUD | script | ≤ 256 MB |
-| Memória, VRAM, quadro e contextos WebGL no início × fim (25 min) | script `-Continuo` | sem subida contínua; contextos estáveis |
+| Frame time p50 / p95 / worst | HUD (`diagnostico_hud.json`) | p95 ≤ 33.3 ms |
+| Sound → word delay p50 / p95 | HUD | p95 ≤ 100 ms |
+| Extra CPU from the HUD | script (with HUD − baseline) | ≤ 10 percentage points |
+| Extra VRAM from the HUD | script | ≤ 256 MB |
+| Memory, VRAM, frame and WebGL contexts at start × end (25 min) | script `-Continuo` | no continuous growth; stable contexts |
 
-Os mesmos números aparecem nos Ajustes da HUD (linha "Quadro p50 / p95 / pior"). O atraso som →
-palavra é medido pela própria HUD (quanto do áudio da palavra já tinha tocado quando ela apareceu);
-não inclui a latência da placa de som.
+The same numbers show in the HUD settings (the "Quadro p50 / p95 / pior" line). The sound →
+word delay is measured by the HUD itself (how much of the word's audio had already played when it
+appeared); it does not include the sound card's latency.
 
-### Item 10: roteiro de falas (30 casos) e vídeo a 60 FPS
+### Item 10: speech script (30 cases) and 60 FPS video
 
-**Antes:** a HUD em **Visível**, Detalhada, 60 FPS. Grave a tela a 60 FPS: no Windows, em
-**Configurações → Jogos → Capturas**, ponha "Taxa de quadros do vídeo" em **60 fps**; depois
-**Win+Alt+R** começa e para a gravação (o navegador precisa estar em foco). Rode `nora ouvir --hud`
-com `--medir` para ter a linha `[voz: ...]` de cada resposta.
+**Before:** the HUD on **Visível**, Detalhada, 60 FPS. Record the screen at 60 FPS: on Windows, in
+**Settings → Gaming → Captures**, set "Video frame rate" to **60 fps**; then
+**Win+Alt+R** starts and stops the recording (the browser must be in focus). Run `nora ouvir --hud`
+with `--medir` to get the `[voz: ...]` line for each answer.
 
-Para cada caso, marque: ✅ ok, ✂️ cortada, 🔇 muda, ⏸️ tela vazia numa pausa curta,
-🔁 palavra repetida ou fora de ordem, ⏱️ palavra atrasada em relação à voz.
+For each case, mark: ✅ ok, ✂️ cut, 🔇 silent, ⏸️ empty screen in a short pause,
+🔁 repeated or out-of-order word, ⏱️ word late relative to the voice.
 
-| # | Tipo | O que dizer (comece com "Nora,") | O que conferir |
+| # | Type | What to say (start with "Nora,") | What to check |
 |---|---|---|---|
-| 1 | Curta | "que horas são?" | resposta inteira; a palavra aparece com a voz |
-| 2 | Curta | "bom dia" | idem |
-| 3 | Curta | "obrigado" | idem; some no fim |
-| 4 | Curta | "qual é a capital da França?" | idem |
-| 5 | Curta | "me dá um número de 1 a 10" | algarismos legíveis |
-| 6 | Longa | "me conta uma história curta sobre um farol" | fala contínua (silêncio entre trechos ~0 ms); palavras acompanham até o fim |
-| 7 | Longa | "explica como funciona um arco-íris" | idem; palavras longas legíveis |
-| 8 | Longa | "descreve o seu dia ideal em detalhes" | idem |
-| 9 | Longa | "lista cinco frutas e uma característica de cada" | idem; pausas entre itens sem tela vazia |
-| 10 | Longa | "fala sobre a história do café no Brasil" | acentos (ç, ã, é) legíveis |
-| 11 | Pausas | "conta até cinco devagar, com pausa entre os números" | a palavra fica na pausa; some só se o silêncio passar de ~1,5 s |
-| 12 | Pausas | "fala uma frase, espera, e fala outra" | idem |
-| 13 | Pausas | "recita um poema curto com pausas" | idem |
-| 14 | Pausas | "soletra a palavra coração" | letras e acentos |
-| 15 | Pausas | "diz 'hum…' e depois responde se vai chover" | reticências não deixam a tela vazia |
-| 16 | Interrupção | Pergunta longa (#6) e fale por cima no meio | a voz para; as palavras somem na hora |
-| 17 | Interrupção | Interrompa e pergunte outra coisa | a resposta nova começa limpa, sem palavras da anterior |
-| 18 | Interrupção | Interrompa logo no começo (1ª palavra) | nada da resposta antiga reaparece |
-| 19 | Interrupção | Interrompa duas vezes seguidas | idem |
-| 20 | Interrupção | Interrompa na última frase | some na hora; nada fica preso |
-| 21 | Privacidade | Durante uma resposta longa, clique em **Privado** | as palavras somem na hora e não voltam até o fim da resposta |
-| 22 | Privacidade | Com Privado, faça uma pergunta | a voz fala; nenhuma palavra na tela |
-| 23 | Privacidade | Volte para Visível no meio de uma resposta | só a **próxima** resposta mostra palavras |
-| 24 | Privacidade | Alterne Visível/Privado 3 vezes rápido | nada de palavra perdida aparecendo depois |
-| 25 | Privacidade | Recarregue a página (Ctrl+F5) no meio de uma resposta | a HUD volta sem palavras antigas |
-| 26 | Falha | Desligue a internet **antes** de perguntar | a reserva fala a resposta inteira; aparece `[voz reserva]` com o motivo |
-| 27 | Falha | Desligue a internet **no meio** de uma resposta longa | a reserva continua de onde parou, sem repetir; ou a fala para com aviso e "repete a resposta que caiu" repete tudo |
-| 28 | Falha | Feche o whisper-server e fale | aviso claro; a HUD não trava |
-| 29 | Retomada | Depois do #27 com aviso, diga "repete a resposta que caiu" | a resposta inteira volta, sem perguntar de novo ao modelo |
-| 30 | Contínuo | Converse normalmente por 5 min | nenhum caso cortado ou mudo; FPS estável nos Ajustes |
+| 1 | Short | "que horas são?" | full answer; the word appears with the voice |
+| 2 | Short | "bom dia" | same |
+| 3 | Short | "obrigado" | same; disappears at the end |
+| 4 | Short | "qual é a capital da França?" | same |
+| 5 | Short | "me dá um número de 1 a 10" | legible digits |
+| 6 | Long | "me conta uma história curta sobre um farol" | continuous speech (silence between chunks ~0 ms); words follow until the end |
+| 7 | Long | "explica como funciona um arco-íris" | same; long words legible |
+| 8 | Long | "descreve o seu dia ideal em detalhes" | same |
+| 9 | Long | "lista cinco frutas e uma característica de cada" | same; pauses between items without an empty screen |
+| 10 | Long | "fala sobre a história do café no Brasil" | accents (ç, ã, é) legible |
+| 11 | Pauses | "conta até cinco devagar, com pausa entre os números" | the word stays during the pause; disappears only if the silence exceeds ~1.5 s |
+| 12 | Pauses | "fala uma frase, espera, e fala outra" | same |
+| 13 | Pauses | "recita um poema curto com pausas" | same |
+| 14 | Pauses | "soletra a palavra coração" | letters and accents |
+| 15 | Pauses | "diz 'hum…' e depois responde se vai chover" | ellipses do not leave the screen empty |
+| 16 | Interruption | Long question (#6) and speak over it midway | the voice stops; the words disappear immediately |
+| 17 | Interruption | Interrupt and ask something else | the new answer starts clean, with no words from the previous one |
+| 18 | Interruption | Interrupt right at the start (first word) | nothing from the old answer comes back |
+| 19 | Interruption | Interrupt twice in a row | same |
+| 20 | Interruption | Interrupt on the last sentence | disappears immediately; nothing gets stuck |
+| 21 | Privacy | During a long answer, click **Privado** | the words disappear immediately and do not come back until the end of the answer |
+| 22 | Privacy | With Private on, ask a question | the voice speaks; no words on screen |
+| 23 | Privacy | Go back to Visível in the middle of an answer | only the **next** answer shows words |
+| 24 | Privacy | Toggle Visível/Privado 3 times quickly | no lost word appearing afterwards |
+| 25 | Privacy | Reload the page (Ctrl+F5) in the middle of an answer | the HUD comes back without old words |
+| 26 | Failure | Turn the internet off **before** asking | the fallback speaks the whole answer; `[voz reserva]` shows with the reason |
+| 27 | Failure | Turn the internet off **in the middle** of a long answer | the fallback continues where it stopped, without repeating; or speech stops with a warning and "repete a resposta que caiu" repeats it all |
+| 28 | Failure | Close the whisper-server and speak | clear warning; the HUD does not freeze |
+| 29 | Resume | After #27 with a warning, say "repete a resposta que caiu" | the whole answer comes back, without asking the model again |
+| 30 | Continuous | Talk normally for 5 min | no case cut or silent; stable FPS in the settings |
 
-**Metas da fase:** 0 respostas cortadas ou mudas nos 30 casos; silêncio entre trechos com p95 ≤ 150 ms
-(linha `[voz: ...]`); nenhuma tela vazia em pausas abaixo de 500 ms; limpeza imediata em 100% dos
-cancelamentos e trocas de privacidade; atraso som → palavra p95 ≤ 100 ms (Ajustes).
+**Phase targets:** 0 answers cut or silent in the 30 cases; silence between chunks with p95 ≤ 150 ms
+(`[voz: ...]` line); no empty screen in pauses under 500 ms; immediate clearing in 100% of
+cancellations and privacy switches; sound → word delay p95 ≤ 100 ms (settings).
 
-**Mande:** a tabela marcada, o vídeo (ou os trechos com problema) e os arquivos do item 9.
+**Send:** the marked table, the video (or the parts with problems) and the item 9 files.

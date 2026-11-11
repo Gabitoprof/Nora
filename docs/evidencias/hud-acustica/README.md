@@ -1,36 +1,36 @@
-# QA acústica da HUD (v0.4.0)
+# HUD acoustic QA (v0.4.0)
 
-Evidências da HUD acústica, com o tipo de simulação de cada uma e o que ela **não** prova. Nenhuma delas substitui a homologação no Windows com microfone, voz e GPU AMD de verdade ([HOMOLOGACAO.md](../../HOMOLOGACAO.md)).
+Evidence for the acoustic HUD, with the kind of simulation behind each one and what it does **not** prove. None of it replaces acceptance on Windows with a real microphone, voice and AMD GPU ([HOMOLOGACAO.md](../../HOMOLOGACAO.md)).
 
-## Estados (`estados/`), 06/11/2026
+## States (`estados/`), 06/11/2026
 
-Os quatro estados pedidos (repouso, escuta, processamento e fala), mais a fala baixa e uma pausa.
+The four requested states (rest, listening, processing and speaking), plus quiet speech and a pause.
 
-| Arquivo | Estado | Painel "Sinal de áudio" | Palavra |
+| File | State | "Sinal de áudio" panel | Word |
 |---|---|---|---|
-| `estado-repouso.jpg` | Em repouso | Em silêncio | — |
-| `estado-escuta-fala-baixa.jpg` | Ouvindo, fala baixa (RMS ~0,004) | 23% (antes da correção: "0%") | — |
-| `estado-escuta.jpg` | Ouvindo, fala normal | 57% | — |
-| `estado-processamento.jpg` | Pensando | Em silêncio (antes: o último nível da escuta) | — |
-| `estado-fala.jpg` | Falando, emoção `alegre` | 71% | "Daqui" (tempo estimado no áudio) |
-| `estado-fala-pausa.jpg` | Falando, 6,8 s | 61% | — |
+| `estado-repouso.jpg` | At rest | Em silêncio (silent) | — |
+| `estado-escuta-fala-baixa.jpg` | Listening, quiet speech (RMS ~0.004) | 23% (before the fix: "0%") | — |
+| `estado-escuta.jpg` | Listening, normal speech | 57% | — |
+| `estado-processamento.jpg` | Thinking | Em silêncio (before: the last listening level) | — |
+| `estado-fala.jpg` | Speaking, emotion `alegre` | 71% | "Daqui" (time estimated from the audio) |
+| `estado-fala-pausa.jpg` | Speaking, 6.8 s | 61% | — |
 
-Os valores medidos estão em `estados/resultado.json`, e o JavaScript não teve nenhum erro.
+The measured values are in `estados/resultado.json`, and the JavaScript had no errors.
 
-**Como foi feito.** `servidor_demo.py` sobe o servidor real da HUD (`nora.hud.ServidorHUD`) e alimenta o caminho real:
-- **Microfone:** `amostrar_pcm` recebe blocos de 20 ms de um PCM sintético de 48 kHz parecido com voz, com fundamental de 140–220 Hz, harmônicos e envelope de sílabas. As medidas (RMS, pico, envelope, 6 bandas da FFT) vêm do `Medidor` de `acustica.py`, como na escuta real.
-- **Voz:** `preparar_reproducao` com o PCM inteiro, `reproducao(True)` e um "callback" que entrega 20 ms por vez no ritmo do relógio. As palavras vêm do `temporizar` real, que distribui as palavras pelos trechos com som; a precisão é `estimada`.
+**How it was done.** `servidor_demo.py` starts the real HUD server (`nora.hud.ServidorHUD`) and feeds the real path:
+- **Microphone:** `amostrar_pcm` receives 20 ms blocks of a synthetic voice-like 48 kHz PCM, with a 140–220 Hz fundamental, harmonics and a syllable envelope. The measurements (RMS, peak, envelope, 6 FFT bands) come from the `Medidor` in `acustica.py`, as in real listening.
+- **Voice:** `preparar_reproducao` with the whole PCM, `reproducao(True)` and a "callback" that delivers 20 ms at a time at the clock's pace. The words come from the real `temporizar`, which spreads the words across the voiced stretches; the precision is `estimada`.
 
-`capturar.js` (Playwright, Chromium com WebGL por SwiftShader, 1600×900) abre o build real (`hud/dist`), manda cada estado e fotografa. Para repetir, rode `npm run build` em `hud/` e, nesta pasta, `node capturar.js`.
+`capturar.js` (Playwright, Chromium with WebGL via SwiftShader, 1600×900) opens the real build (`hud/dist`), sends each state and takes a picture. To repeat it, run `npm run build` in `hud/` and, in this folder, `node capturar.js`.
 
-**O que isso não prova:**
-- Não usa microfone, alto-falante ou ElevenLabs de verdade; o PCM é sintético.
-- O WebGL é por software. O tempo e o FPS das fotos não valem para a GPU AMD: cada foto leva de 1 a 5 s nesse ambiente, por isso a foto da "pausa" saiu em 6,8 s, não dentro da pausa de 3,0–4,2 s.
-- As palavras usam tempo estimado. Ainda não há alinhamento por caractere do ElevenLabs (`/with-timestamps`).
+**What this does not prove:**
+- It does not use a real microphone, speaker or ElevenLabs; the PCM is synthetic.
+- WebGL is software-rendered. The timing and FPS of the pictures do not apply to the AMD GPU: each picture takes 1 to 5 s in that environment, which is why the "pause" picture came out at 6.8 s, not inside the 3.0–4.2 s pause.
+- The words use estimated timing. There is no per-character ElevenLabs alignment yet (`/with-timestamps`).
 
-## Evidências anteriores (Codex, commit 73e62c8)
+## Earlier evidence (Codex, commit 73e62c8)
 
-- `desktop-*.png` e `canvas-movimento-reduzido.png`: escuta com graves e com agudos, fala com PCM real gravado do callback, fala alegre, repouso e movimento reduzido.
-- `amostras-callback-voz.json`: posições e tempos do callback de saída.
-- `resultado-desempenho.json`: Canvas forçado, limite de 30/60 FPS e 8 FPS no modo jogo, página oculta sem desenho, movimento reduzido sem animação. Medido em software, não é benchmark de GPU.
-- `falha-browser.json`: a rodada do QA do Codex que parou numa conferência de cor. Ela leu `#ecc67b` esperando o dourado `#F0C66A`, porque a cor ainda estava no meio da transição suave (~550 ms); a conferência era rígida demais, não é defeito da HUD. As conferências anteriores a ela (ponte Python → SSE → navegador, privacidade fechada por padrão, PCM sintético alterando as medidas) passaram. As cores agora são conferidas por teste automático (`tests/test_paleta.py` e `hud/tests/acustica.test.ts`).
+- `desktop-*.png` and `canvas-movimento-reduzido.png`: listening with lows and with highs, speaking with real PCM recorded from the callback, happy speech, rest and reduced motion.
+- `amostras-callback-voz.json`: positions and times of the output callback.
+- `resultado-desempenho.json`: forced Canvas, 30/60 FPS limit and 8 FPS in game mode, hidden page without drawing, reduced motion without animation. Measured in software, not a GPU benchmark.
+- `falha-browser.json`: the Codex QA round that stopped at a color check. It read `#ecc67b` expecting the gold `#F0C66A`, because the color was still in the middle of the smooth transition (~550 ms); the check was too strict, not a HUD defect. The checks before it (Python bridge → SSE → browser, privacy closed by default, synthetic PCM changing the measurements) passed. Colors are now checked by automated tests (`tests/test_paleta.py` and `hud/tests/acustica.test.ts`).
