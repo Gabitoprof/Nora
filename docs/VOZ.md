@@ -1,31 +1,31 @@
-# Voz da Nora
+# Nora's voice
 
-A Nora conversa por voz usando programas locais, cada um no seu processo, e fala com eles pela rede local:
+Nora talks by voice using local programs, each in its own process, and talks to them over the local network:
 
-| Papel | Programa | Porta | Licença |
+| Role | Program | Port | License |
 |---|---|---|---|
-| Cérebro | Ollama (`qwen3.5:9b`) | 11434 | MIT |
-| Ouvido | whisper.cpp (`whisper-server`) | 8178 | MIT |
-| Voz (padrão) | Kokoro (`nora servidor-kokoro`) | 5001 | pesos Apache-2.0; usa phonemizer/espeak-ng (GPL-3.0) |
-| Voz (opcional) | Piper (`piper.http_server`) | 5000 | GPL-3.0 |
-| Voz (opcional, nuvem) | ElevenLabs | — | serviço pago |
+| Brain | Ollama (`qwen3.5:9b`) | 11434 | MIT |
+| Ear | whisper.cpp (`whisper-server`) | 8178 | MIT |
+| Voice (default) | Kokoro (`nora servidor-kokoro`) | 5001 | Apache-2.0 weights; uses phonemizer/espeak-ng (GPL-3.0) |
+| Voice (optional) | Piper (`piper.http_server`) | 5000 | GPL-3.0 |
+| Voice (optional, cloud) | ElevenLabs | — | paid service |
 
-Separar em processos mantém o núcleo da Nora livre de licenças de terceiros, deixa cada peça trocável e prepara o modo distribuído (v0.8.0).
+Splitting into processes keeps Nora's core free of third-party licenses, leaves each piece swappable and prepares the distributed mode (v0.8.0).
 
-## Motores de voz
+## Voice engines
 
-Escolha em `[voz] motor` (no `config/local.toml`, para valer só na sua máquina):
+Choose in `[voz] motor` (in `config/local.toml`, so it applies only on your machine):
 
-| Motor | Voz | Onde roda | Custo | Para quem |
+| Engine | Voice | Where it runs | Cost | For whom |
 |---|---|---|---|---|
-| **`kokoro`** (padrão) | `pf_dora` (feminina pt-BR); também `pm_alex`, `pm_santa` | seu PC (processador) | grátis | quem baixa o projeto e quer testar |
-| `piper` | `pt_BR-faber-medium` (masculina) ou uma voz treinada por você ([TREINAR_VOZ.md](TREINAR_VOZ.md)) | seu PC | grátis | voz própria, leve; uso pessoal (bases não comerciais) |
-| `elevenlabs` | a que você escolher ou criar | nuvem | pago por uso | a voz mais natural; padrão `eleven_v4_turbo`, em tempo real ([ElevenLabs v4](#elevenlabs-v4-diálogo-em-tempo-real)) |
-| `comfyui` | a que você montar num fluxo do ComfyUI | seu PC | grátis | vozes próprias, criadas ou clonadas com autorização |
+| **`kokoro`** (default) | `pf_dora` (female pt-BR); also `pm_alex`, `pm_santa` | your PC (CPU) | free | whoever downloads the project and wants to try it |
+| `piper` | `pt_BR-faber-medium` (male) or a voice you trained ([TREINAR_VOZ.md](TREINAR_VOZ.md)) | your PC | free | your own lightweight voice; personal use (non-commercial bases) |
+| `elevenlabs` | the one you pick or create | cloud | pay per use | the most natural voice; default `eleven_v4_turbo`, in real time ([ElevenLabs v4](#elevenlabs-v4-real-time-dialogue)) |
+| `comfyui` | the one you build in a ComfyUI flow | your PC | free | your own voices, created or cloned with permission |
 
-## Instalar (uma vez)
+## Install (once)
 
-Na pasta do repositório, com o ambiente ativado (`.venv\Scripts\activate`) e **Python 3.12 ou 3.13**:
+In the repository folder, with the environment activated (`.venv\Scripts\activate`) and **Python 3.12 or 3.13**:
 
 ```powershell
 git pull
@@ -39,140 +39,140 @@ pip install -e ".[dev,voz]"
 powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1
 ```
 
-O script baixa (tudo fora do Git, em `ferramentas\` e `models\`):
+The script downloads (all outside Git, in `ferramentas\` and `models\`):
 
-- o **whisper.cpp** oficial para processador e o modelo **`ggml-small.bin`** (~470 MB);
-- o **Kokoro** (`pip install -e .[kokoro]`), o modelo e as vozes (~330 MB) em `models\kokoro\`;
-- o **Piper** e a voz `pt_BR-faber-medium`. Para pular: `-SemPiper`.
+- the official CPU **whisper.cpp** and the **`ggml-small.bin`** model (~470 MB);
+- **Kokoro** (`pip install -e .[kokoro]`), the model and the voices (~330 MB) in `models\kokoro\`;
+- **Piper** and the `pt_BR-faber-medium` voice. To skip: `-SemPiper`.
 
-## Usar
+## Use
 
-1. Inicie o ouvido e a voz (abrem janelas; deixe-as abertas):
+1. Start the ear and the voice (they open windows; leave them open):
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1
    ```
 
-   O padrão é o Kokoro. Com `-Voz piper` inicia o Piper; com `-Voz nenhuma` (para o ElevenLabs) só o ouvido. O motor escolhido no script tem que ser o mesmo de `[voz] motor`.
+   The default is Kokoro. With `-Voz piper` it starts Piper; with `-Voz nenhuma` (for ElevenLabs) only the ear. The engine chosen in the script must be the same as `[voz] motor`.
 
-2. Teste o microfone e o alto-falante (lista os dispositivos, grava 3 segundos e toca de volta):
+2. Test the microphone and the speaker (lists the devices, records 3 seconds and plays them back):
 
    ```powershell
    nora audio
    ```
 
-   Para usar outro microfone ou alto-falante, ponha o número ou o nome da lista em `config\local.toml`:
+   To use another microphone or speaker, put the number or name from the list in `config\local.toml`:
 
    ```toml
    [audio]
    microfone = "23"
    ```
 
-3. Confira se está tudo no ar:
+3. Check that everything is up:
 
    ```powershell
    nora --verificar
    ```
 
-4. Converse:
+4. Talk:
 
    ```powershell
    nora falar --medir
    ```
 
-   Aperte **Enter**, fale, aperte **Enter** de novo. Também dá para digitar a pergunta. `sair` encerra.
+   Press **Enter**, speak, press **Enter** again. You can also type the question. `sair` exits.
 
-Com `--medir`, cada resposta mostra três tempos, contados a partir do momento em que você para de gravar:
+With `--medir`, each answer shows three times, counted from the moment you stop recording:
 
-| Tempo | O que é | Meta |
+| Time | What it is | Target |
 |---|---|---|
-| transcrição | o Whisper transformar sua fala em texto | o menor possível |
-| primeira frase | a primeira frase da resposta ficar pronta | |
-| **começou a falar** | o som da Nora começar a sair | **< 2 s** (MVP), < 1 s (final) |
+| transcrição (transcription) | Whisper turning your speech into text | as low as possible |
+| primeira frase (first sentence) | the first sentence of the answer being ready | |
+| **começou a falar (started speaking)** | Nora's sound starting to come out | **< 2 s** (MVP), < 1 s (final) |
 
-## Digitar em vez de falar
+## Typing instead of speaking
 
-Para quem tem dificuldade na fala, ou em lugares onde não dá para falar, a Nora aceita **texto digitado** e responde **falando**:
+For people who have difficulty speaking, or in places where you cannot speak, Nora accepts **typed text** and answers **out loud**:
 
-| Comando | Você | Ela |
+| Command | You | She |
 |---|---|---|
-| `nora conversar --voz` | só digita (não usa microfone) | responde falando e escrevendo |
-| `nora ouvir` | fala "Nora, ..." **ou** digita a qualquer momento | responde falando |
-| `nora falar` | aperta Enter e fala, **ou** digita a pergunta | responde falando |
-| `nora conversar` | digita | responde só escrevendo |
+| `nora conversar --voz` | only type (no microphone) | answers speaking and writing |
+| `nora ouvir` | say "Nora, ..." **or** type at any time | answers speaking |
+| `nora falar` | press Enter and speak, **or** type the question | answers speaking |
+| `nora conversar` | type | answers only in writing |
 
-No `nora ouvir`, o que você digita não precisa do nome dela. Digitar `sair` encerra.
+In `nora ouvir`, what you type does not need her name. Typing `sair` exits.
 
-## Mãos livres (`nora ouvir`)
+## Hands-free (`nora ouvir`)
 
-Em vez de apertar Enter, a Nora fica ouvindo o tempo todo e responde quando a frase **começa com o nome dela**:
+Instead of pressing Enter, Nora listens all the time and answers when the sentence **starts with her name**:
 
 ```powershell
 nora ouvir --medir
 ```
 
-- **"Nora, que horas são?"** → ela responde.
-- Depois da resposta, por **8 segundos** dá para continuar **sem dizer o nome** ("E amanhã?").
-- **"Nora"** sozinho → ela diz "Oi, pode falar." e espera.
-- **"Tchau"**, **"é só isso"** → ela se despede e volta a esperar o nome.
-- **Ctrl+C** encerra.
+- **"Nora, que horas são?"** → she answers.
+- After the answer, for **8 seconds** you can continue **without saying the name** ("E amanhã?").
+- **"Nora"** alone → she says "Oi, pode falar." and waits.
+- **"Tchau"**, **"é só isso"** → she says goodbye and goes back to waiting for the name.
+- **Ctrl+C** exits.
 
-Como funciona: o **Silero VAD** (licença MIT, baixado sozinho do PyPI na primeira vez para `models\silero_vad.onnx`) percebe quando você começa e para de falar; cada fala vai para o Whisper; se o texto começa com a palavra de ativação, vira pergunta.
+How it works: **Silero VAD** (MIT license, downloaded automatically from PyPI the first time to `models\silero_vad.onnx`) notices when you start and stop speaking; each utterance goes to Whisper; if the text starts with the wake word, it becomes a question.
 
-Ajustes em `config\local.toml`:
+Settings in `config\local.toml`:
 
 ```toml
 [assistente]
-palavra_de_ativacao = "Nora"   # ou "Oi Nora", se ela acordar sem querer
+palavra_de_ativacao = "Nora"   # or "Oi Nora", if she wakes up by accident
 
 [escuta]
-limiar = 0.5        # suba (ex.: 0.6) se ruído vira fala; desça se ela não percebe você
-silencio_ms = 700   # pausa que encerra a sua fala; menor responde mais rápido, mas corta pausas
-janela_s = 8.0      # segundos para continuar sem dizer o nome
+limiar = 0.5        # raise it (e.g. 0.6) if noise becomes speech; lower it if she does not notice you
+silencio_ms = 700   # pause that ends your utterance; lower answers faster, but cuts pauses
+janela_s = 8.0      # seconds to continue without saying the name
 ```
 
-Limites desta versão:
+Limits of this version:
 
-- **Por que "Nora":** o nome antigo, "Ella" (pronunciado "Élha"), virava "Elia", "Ilha" ou "ele" na transcrição, e ela quase nunca acordava. "Nora" o Whisper reconhece bem e quase nunca começa uma frase por acaso. A ativação aceita "Nora", "Norah" e "Nóra". Se ela acordar sem querer, use `palavra_de_ativacao = "Oi Nora"`. Para mudar como a voz fala o nome, use `[assistente] pronuncia`. Uma palavra de ativação de verdade (openWakeWord treinado com o nome dela, rodando antes do Whisper) fica para depois.
-- **Toda fala passa pelo Whisper**, mesmo as que não são para ela. Com TV ou conversa no ambiente, o processador trabalha mais. `--mostrar-ignoradas` mostra o que ela ouviu e ignorou.
-- **Enquanto ela fala, ela não ouve** (o microfone fica pausado), porque ainda não há cancelamento de eco. Com **fone Bluetooth** isso também é necessário: com o microfone aberto, o fone fica no modo chamada e a saída de som normal fica muda. Ao reabrir o microfone, o fone pode levar um instante para trocar de modo. Interromper falando por cima (barge-in) fica para depois; com fone de ouvido isso fica mais fácil.
+- **Why "Nora":** the old name, "Ella" (pronounced "Élha"), turned into "Elia", "Ilha" or "ele" in transcription, and she almost never woke up. Whisper recognizes "Nora" well and it almost never starts a sentence by chance. Activation accepts "Nora", "Norah" and "Nóra". If she wakes up by accident, use `palavra_de_ativacao = "Oi Nora"`. To change how the voice says the name, use `[assistente] pronuncia`. A real wake word (openWakeWord trained with her name, running before Whisper) comes later.
+- **Every utterance goes through Whisper**, even the ones not for her. With TV or conversation in the room, the CPU works harder. `--mostrar-ignoradas` shows what she heard and ignored.
+- **While she speaks, she does not listen** (the microphone is paused), because there is no echo cancellation yet. With a **Bluetooth headset** this is also needed: with the microphone open, the headset stays in call mode and the normal sound output goes silent. When the microphone reopens, the headset may take a moment to switch modes. Interrupting by speaking over her (barge-in) comes later; with headphones this gets easier.
 
-## Música tocando junto (prioridade da voz)
+## Music playing at the same time (voice priority)
 
-Quando outro programa está tocando som (música, vídeo), a Nora fala por cima assim:
+When another program is playing sound (music, video), Nora speaks over it like this:
 
 ```toml
 [audio]
-prioridade = true     # enquanto ela fala, os outros programas ficam mais baixos e depois voltam
-volume_outros = 0.2   # quanto sobra do volume deles (0 = mudo, 1 = sem mudança)
+prioridade = true     # while she speaks, the other programs get quieter and then come back
+volume_outros = 0.2   # how much of their volume remains (0 = muted, 1 = unchanged)
 ```
 
-Com `prioridade = false`, ela fala misturada com o resto, no volume normal. Para respostas só escritas, use `nora conversar`.
+With `prioridade = false`, she speaks mixed with everything else, at normal volume. For written-only answers, use `nora conversar`.
 
-Funciona no Windows (biblioteca `pycaw`, instalada com `.[voz]`). Se a saída escolhida em `alto_falante` não abrir (o aparelho sumiu, mudou de número ou está ocupado por outro programa), a Nora usa a saída padrão do Windows e avisa com `[som] ...`.
+Works on Windows (the `pycaw` library, installed with `.[voz]`). If the output chosen in `alto_falante` does not open (the device is gone, changed number or is busy with another program), Nora uses the Windows default output and warns with `[som] ...`.
 
-## Fone Bluetooth (microfone e som no mesmo fone)
+## Bluetooth headset (microphone and sound on the same headset)
 
-Fones Bluetooth têm dois modos: **música** (som bom, sem microfone) e **chamada** (microfone ligado, som com qualidade de telefone). Quando o microfone abre, o fone vai para o modo chamada e a saída "Fones de ouvido" fica **muda**; cada troca de modo leva cerca de 1 segundo de silêncio.
+Bluetooth headsets have two modes: **music** (good sound, no microphone) and **call** (microphone on, phone-quality sound). When the microphone opens, the headset goes into call mode and the "Fones de ouvido" (headphones) output goes **silent**; each mode switch takes about 1 second of silence.
 
-Para o som não sumir, deixe o fone sempre no modo chamada:
+So the sound does not disappear, keep the headset always in call mode:
 
-1. Rode `nora audio` e procure, entre os **alto-falantes**, o "Headset" do fone (no Windows costuma aparecer como `Headset (@System32\drivers\bthhfenum.sys...(NOME DO FONE))`, na API WDM-KS). Anote o número.
-2. No `config\local.toml`:
+1. Run `nora audio` and look, among the **speakers**, for the headset's "Headset" (on Windows it usually shows up as `Headset (@System32\drivers\bthhfenum.sys...(HEADSET NAME))`, on the WDM-KS API). Note the number.
+2. In `config\local.toml`:
 
    ```toml
    [audio]
-   alto_falante = "17"   # o número do "Headset" do fone
+   alto_falante = "17"   # the number of the headset's "Headset"
 
    [escuta]
    pausar_microfone = false
    ```
 
-Os números mudam quando você conecta ou desconecta aparelhos; confira com `nora audio`. Com microfone separado (ou caixa de som), volte para `alto_falante = ""` e `pausar_microfone = true`.
+The numbers change when you connect or disconnect devices; check with `nora audio`. With a separate microphone (or a speaker), go back to `alto_falante = ""` and `pausar_microfone = true`.
 
-## Laboratório de voz (criar a sua voz, de graça)
+## Voice lab (create your own voice, for free)
 
-Cada voz do Kokoro é um "DNA" numérico, e dá para **misturar vozes** para criar uma voz nova, no seu PC e de graça:
+Each Kokoro voice is a numeric "DNA", and you can **mix voices** to create a new one, on your PC and for free:
 
 ```powershell
 nora voz listar
@@ -182,7 +182,7 @@ nora voz listar
 nora voz testar "pf_dora:0.7 + af_heart:0.3" --velocidade 0.95
 ```
 
-Ela fala uma frase de teste (ou a sua, com `--frase "..."`) e salva a amostra em `data\vozes\`. Quando gostar, ponha a receita no `config\local.toml`:
+She speaks a test sentence (or yours, with `--frase "..."`) and saves the sample in `data\vozes\`. When you like it, put the recipe in `config\local.toml`:
 
 ```toml
 [voz]
@@ -193,158 +193,158 @@ voz = "pf_dora:0.7 + af_heart:0.3"
 velocidade = 0.95
 ```
 
-Dicas: mantenha a `pf_dora` (português do Brasil) com o **maior peso**, para o sotaque e a pronúncia; misture pequenas porções de outras vozes para mudar o timbre (mais grave, mais suave, mais brilhante). Os pesos não precisam somar 1; a Nora ajusta.
+Tips: keep `pf_dora` (Brazilian Portuguese) with the **largest weight**, for the accent and pronunciation; mix small portions of other voices to change the timbre (deeper, softer, brighter). The weights do not need to add up to 1; Nora adjusts them.
 
-## Trocar a voz falando
+## Switching the voice by speaking
 
-Nos modos com voz (`nora ouvir`, `nora falar`, `nora conversar --voz`), dá para trocar a voz no meio da conversa, sem mexer na config:
+In the voice modes (`nora ouvir`, `nora falar`, `nora conversar --voz`), you can switch the voice in the middle of the conversation, without touching the config:
 
-| Diga | O que acontece |
+| Say | What happens |
 |---|---|
-| "troque para a voz do Piper" / "usa o Piper" | passa a falar com o Piper (a voz que estiver aberta no servidor, como a sua treinada) |
-| "volta pro ElevenLabs" | volta para o ElevenLabs |
-| "usa a voz do Kokoro" | troca para o Kokoro |
-| "volta para a voz normal" | volta para a voz de `[voz] motor` |
-| "qual voz você está usando?" | ela diz qual está falando |
+| "troque para a voz do Piper" / "usa o Piper" | starts speaking with Piper (whichever voice is open on the server, like your trained one) |
+| "volta pro ElevenLabs" | goes back to ElevenLabs |
+| "usa a voz do Kokoro" | switches to Kokoro |
+| "volta para a voz normal" | goes back to the `[voz] motor` voice |
+| "qual voz você está usando?" | she says which one is speaking |
 
-- A confirmação ("Pronto, agora falo com a voz do Piper.") já sai com a voz nova, então você ouve na hora como ela ficou.
-- Se a voz pedida não responder (janela do Piper fechada, falta a chave do ElevenLabs), ela diz o motivo e **continua com a voz de antes**.
-- A reserva continua valendo: se a voz escolhida falhar no meio da conversa, entra a `[voz] reserva`. Se você escolheu justamente a voz que era a reserva, a principal da config passa a ser a reserva.
-- A troca vale até fechar a Nora. Para mudar de vez, use `[voz] motor` no `config/local.toml`.
-- O servidor da voz precisa estar aberto (o `iniciar_voz_windows.ps1` abre o Kokoro ou o Piper; o ElevenLabs é na nuvem). O script abre uma voz local por vez: com o ElevenLabs de principal, abra com `-Voz piper` para poder trocar para o Piper.
-- No `nora conversar` (só texto) não há voz: ela avisa em vez de fingir que trocou.
-- Só troca com pedido claro (um verbo como usar, trocar, mudar, voltar, ou "fala com a voz do..."). Perguntas e comparações ("o Piper é melhor que o Kokoro?", "usa o Kokoro ou o Piper?") vão para o cérebro, sem mudar a voz. Com dois motores na frase, vale o que vem depois do "para": "troca do Kokoro para o Piper".
+- The confirmation ("Pronto, agora falo com a voz do Piper.") already comes out in the new voice, so you hear right away how it sounds.
+- If the requested voice does not respond (Piper window closed, missing ElevenLabs key), she says why and **keeps the previous voice**.
+- The fallback still applies: if the chosen voice fails mid-conversation, `[voz] reserva` takes over. If you chose exactly the voice that was the fallback, the config's main voice becomes the fallback.
+- The switch lasts until Nora is closed. To change it for good, use `[voz] motor` in `config/local.toml`.
+- The voice server must be open (`iniciar_voz_windows.ps1` opens Kokoro or Piper; ElevenLabs is in the cloud). The script opens one local voice at a time: with ElevenLabs as the main voice, open with `-Voz piper` to be able to switch to Piper.
+- In `nora conversar` (text only) there is no voice: she warns instead of pretending to switch.
+- She only switches on a clear request (a verb such as usar, trocar, mudar, voltar, or "fala com a voz do..."). Questions and comparisons ("o Piper é melhor que o Kokoro?", "usa o Kokoro ou o Piper?") go to the brain, without changing the voice. With two engines in the sentence, the one after "para" wins: "troca do Kokoro para o Piper".
 
-## Salvar uma fala da Nora em .wav
+## Saving a Nora utterance as .wav
 
-A Nora fala um texto com a voz configurada (ElevenLabs, Kokoro, mistura...) e salva o áudio:
+Nora speaks a text with the configured voice (ElevenLabs, Kokoro, a mix...) and saves the audio:
 
 ```powershell
 nora voz salvar "Bom dia! Hoje é dia de prova, boa sorte." --pasta "C:\Users\voce\Music\Nora" --nome bom-dia --ouvir
 ```
 
-Sem `--pasta`, salva em `data\audios\`; sem `--nome`, usa a data e o começo do texto. Com `--ouvir`, também toca. (Pedir isso conversando com ela, sem comando, chega com as ferramentas da v0.5.0.)
+Without `--pasta`, it saves to `data\audios\`; without `--nome`, it uses the date and the start of the text. With `--ouvir`, it also plays it. (Asking for this in conversation, without a command, arrives with the v0.5.0 tools.)
 
-## Usar uma voz feita no ComfyUI
+## Using a voice made in ComfyUI
 
-Qualquer voz que você monte no ComfyUI (clonagem a partir de uma amostra sua, ou outro nó de voz) pode ser a voz da Nora. Ela manda cada frase para o seu fluxo, pela API local do ComfyUI, e toca o áudio gerado.
+Any voice you build in ComfyUI (cloned from a sample of yours, or another voice node) can be Nora's voice. She sends each sentence to your flow, through ComfyUI's local API, and plays the generated audio.
 
-1. **Prepare o fluxo no ComfyUI:** no nó onde vai a frase, escreva **`{{texto}}`** no lugar do texto (ou, sem mexer no fluxo, diga o nó e o campo em `[voz.comfyui] campo = "12.text"`: o número é o ID do nó no JSON exportado; se errar, a Nora lista os nós e campos de texto do fluxo). O fluxo precisa terminar num nó que salve o áudio (ex.: **Save Audio**). Teste uma vez no próprio ComfyUI.
-2. **Exporte no formato da API:** menu **Workflow → Export (API)** (se não aparecer, ligue **Enable dev mode options** nas configurações do ComfyUI). O formato normal (com `widgets_values`) não serve: a Nora avisa se for ele. Salve o arquivo como `B:\Nora\config\voz_comfyui.json` (ele fica fora do Git).
-3. **No `config\local.toml`:**
+1. **Prepare the flow in ComfyUI:** in the node where the sentence goes, write **`{{texto}}`** in place of the text (or, without touching the flow, give the node and field in `[voz.comfyui] campo = "12.text"`: the number is the node ID in the exported JSON; if wrong, Nora lists the flow's text nodes and fields). The flow must end in a node that saves the audio (e.g. **Save Audio**). Test it once in ComfyUI itself.
+2. **Export in the API format:** menu **Workflow → Export (API)** (if it does not show up, turn on **Enable dev mode options** in the ComfyUI settings). The normal format (with `widgets_values`) does not work: Nora warns if it is that one. Save the file as `B:\Nora\config\voz_comfyui.json` (it stays out of Git).
+3. **In `config\local.toml`:**
 
    ```toml
    [voz]
    motor = "comfyui"
-   reserva = "kokoro"   # se o ComfyUI estiver fechado ou demorar, ela fala com o Kokoro
+   reserva = "kokoro"   # if ComfyUI is closed or slow, she speaks with Kokoro
 
    [voz.comfyui]
-   url = "http://127.0.0.1:8188"   # o endereço que o ComfyUI mostra ao abrir
+   url = "http://127.0.0.1:8188"   # the address ComfyUI shows when it opens
    espera_s = 120.0
    ```
 
-4. **Deixe o ComfyUI aberto**, rode `nora --verificar` (deve mostrar `ComfyUI ok`) e teste: `nora voz salvar "Oi! Esta é a minha voz nova." --ouvir`.
+4. **Leave ComfyUI open**, run `nora --verificar` (it should show `ComfyUI ok`) and test: `nora voz salvar "Oi! Esta é a minha voz nova." --ouvir`.
 
-O áudio pode sair em WAV, FLAC ou MP3: a Nora converte (precisa do `soundfile`, que vem com `.[voz]`). Dependendo do modelo e da GPU, o ComfyUI leva alguns segundos por frase: a conversa fica mais lenta que com o ElevenLabs ou o Kokoro. Use só vozes suas ou de quem autorizou, e confira a licença do modelo de voz usado no fluxo.
+The audio can come out as WAV, FLAC or MP3: Nora converts it (it needs `soundfile`, which comes with `.[voz]`). Depending on the model and the GPU, ComfyUI takes a few seconds per sentence: the conversation is slower than with ElevenLabs or Kokoro. Use only your own voices or voices of people who authorized it, and check the license of the voice model used in the flow.
 
-> Para ter a voz do ComfyUI **rápida e leve** no dia a dia, gere um conjunto de frases com ela e treine um Piper: veja [TREINAR_VOZ.md](TREINAR_VOZ.md).
+> To have the ComfyUI voice **fast and light** day to day, generate a set of sentences with it and train a Piper: see [TREINAR_VOZ.md](TREINAR_VOZ.md).
 
-## Perguntas que soam como afirmação
+## Questions that sound like statements
 
-Alguns modelos de voz não sobem a entonação no "?". Dá para testar jeitos de escrever a pergunta que ajudam o modelo a perceber:
+Some voice models do not raise the intonation on "?". You can test ways of writing the question that help the model notice:
 
 ```powershell
 nora voz comparar "Amanhã você vai à academia?" --ouvir
 ```
 
-Ela gera a mesma frase normal, `duplo` ("??"), `invertido` ("¿...?") e `exclamado` ("?!"), salva em `data\vozes\pergunta_*.wav` e toca cada uma. Escolha a melhor e ponha no `config\local.toml`:
+She produces the same sentence plain, `duplo` ("??"), `invertido` ("¿...?") and `exclamado` ("?!"), saves them to `data\vozes\pergunta_*.wav` and plays each one. Pick the best and put it in `config\local.toml`:
 
 ```toml
 [voz]
 realce_pergunta = "invertido"
 ```
 
-Vale também para o `nora voz gerar-dataset`, então o conjunto de treino sai com as perguntas no jeito escolhido.
+It also applies to `nora voz gerar-dataset`, so the training set comes out with the questions in the chosen style.
 
-## Começo da fala cortado ou rápido demais
+## Start of speech cut off or too fast
 
-Se a primeira palavra sai engolida ("Oi" rápido demais), teste nesta ordem, no `config/local.toml`:
+If the first word comes out swallowed ("Oi" too fast), try in this order, in `config/local.toml`:
 
-1. **Silêncio antes da fala.** Fones Bluetooth e algumas placas de som "acordam" depois que o som começou e cortam o início:
+1. **Silence before speech.** Bluetooth headsets and some sound cards "wake up" after the sound has started and cut the beginning:
 
    ```toml
    [audio]
    silencio_inicial_ms = 200
    ```
 
-   Para saber se é isso: `nora voz salvar "Oi! Tudo bem?"` e abra o arquivo em `data\audios\` num player qualquer. Se ali o "Oi" estiver normal, o corte é na saída de som, e o silêncio resolve.
-2. **Velocidade do Piper** (vale para toda a fala):
+   To know whether that is it: `nora voz salvar "Oi! Tudo bem?"` and open the file in `data\audios\` in any player. If the "Oi" is normal there, the cut is in the sound output, and the silence fixes it.
+2. **Piper speed** (applies to all speech):
 
    ```toml
    [voz.piper]
-   velocidade = 0.9   # 1.0 normal; menor = mais devagar
+   velocidade = 0.9   # 1.0 normal; lower = slower
    ```
 
-## Voz que muda de tom ou pausa entre frases
+## Voice changing tone or pausing between sentences
 
-Cada pedido à voz é feito em separado, enquanto o modelo ainda escreve. Uma primeira frase curta ("Hahaha, esse atchim!") virava um áudio curto: ele acabava antes de a frase seguinte ficar pronta (a pausa), e a voz começava a seguinte sem saber como a anterior soou (a mudança de tom). Isso pesa mais no ElevenLabs v3, que é o mais expressivo e o mais lento.
+Each voice request is made separately, while the model is still writing. A short first sentence ("Hahaha, esse atchim!") became a short audio: it ended before the next sentence was ready (the pause), and the voice started the next one without knowing how the previous one sounded (the tone change). This weighs more on ElevenLabs v3, the most expressive and the slowest.
 
-Desde a v0.3.1:
+Since v0.3.1:
 
-- **Frase curta vai junto com a próxima.** Um pedido com menos de `juntar_curta` caracteres espera até 1,5 s pela frase seguinte e vai num pedido só. Se a resposta acabar, ele vai na hora. Uma pergunta nunca espera: o "?" no fim garante a entonação.
-- **ElevenLabs com semente fixa.** O mesmo `semente` em todos os pedidos deixa a voz mais parecida de uma frase para a outra.
-- **ElevenLabs em streaming.** A Nora pede o áudio pelo endereço de streaming e começa a tocar quando chega a primeira parte (~150 ms de áudio), sem esperar a frase inteira. Os pedidos continuam um por vez. Se a internet cair no meio da frase, ela toca o que chegou e avisa `[erro na voz] A voz parou no meio da frase`.
-- **ElevenLabs com a frase anterior.** O pedido leva a frase anterior (`previous_text`), para a entonação continuar de onde parou. Vale por até 1 minuto depois da última fala. Se o modelo recusar o campo, a Nora fala sem ele e não manda mais até fechar.
+- **A short sentence goes together with the next one.** A request with fewer than `juntar_curta` characters waits up to 1.5 s for the next sentence and goes in a single request. If the answer ends, it goes immediately. A question never waits: the "?" at the end guarantees the intonation.
+- **ElevenLabs with a fixed seed.** The same `semente` in every request keeps the voice more consistent from one sentence to the next.
+- **Streaming ElevenLabs.** Nora requests the audio from the streaming endpoint and starts playing when the first part arrives (~150 ms of audio), without waiting for the whole sentence. Requests still go one at a time. If the internet drops mid-sentence, she plays what arrived and warns `[erro na voz] A voz parou no meio da frase`.
+- **ElevenLabs with the previous sentence.** The request carries the previous sentence (`previous_text`), so the intonation continues where it stopped. It applies for up to 1 minute after the last utterance. If the model rejects the field, Nora speaks without it and stops sending it until she closes.
 
 ```toml
 [voz]
-juntar_curta = 60        # 0 = cada frase vai sozinha, como antes
+juntar_curta = 60        # 0 = each sentence goes alone, as before
 
 [voz.elevenlabs]
-semente = 42             # -1 = a API sorteia a cada pedido
-continuidade = true      # false = não manda a frase anterior
+semente = 42             # -1 = the API picks a random one per request
+continuidade = true      # false = do not send the previous sentence
 ```
 
-Se a primeira fala ainda demorar para começar, baixe `juntar_curta` (ex.: 30). Se o tom ainda mudar, troque a `semente`: cada número dá uma leitura um pouco diferente da mesma voz.
+If the first utterance still takes a while to start, lower `juntar_curta` (e.g. 30). If the tone still changes, change the `semente`: each number gives a slightly different reading of the same voice.
 
-## Voz do Piper robótica ou monótona
+## Robotic or monotone Piper voice
 
-O Piper tem dois controles de naturalidade, no `config/local.toml`:
+Piper has two naturalness controls, in `config/local.toml`:
 
 ```toml
 [voz.piper]
-variacao = 0.75        # variação do som (padrão do modelo: ~0.667). Mais alto = mais expressivo
-variacao_ritmo = 1.0   # variação do ritmo (padrão: ~0.8). Mais alto = menos monótono
+variacao = 0.75        # sound variation (model default: ~0.667). Higher = more expressive
+variacao_ritmo = 1.0   # rhythm variation (default: ~0.8). Higher = less monotone
 ```
 
-Mude um de cada vez, em passos pequenos, e compare com `nora voz salvar "frase" --ouvir`. Se começar a chiar, embolar ou falar de um jeito estranho, desça. `0` volta ao padrão do modelo.
+Change one at a time, in small steps, and compare with `nora voz salvar "frase" --ouvir`. If it starts hissing, slurring or sounding odd, go down. `0` returns to the model default.
 
-Se a voz for metálica ou chiada (não só monótona), o ajuste não resolve: é treino de menos. Treine mais épocas ou com mais frases (veja [TREINAR_VOZ.md](TREINAR_VOZ.md)).
+If the voice is metallic or hissy (not only monotone), the setting does not fix it: it is undertrained. Train more epochs or with more sentences (see [TREINAR_VOZ.md](TREINAR_VOZ.md)).
 
-## Emoção na voz
+## Emotion in the voice
 
-A Nora escolhe sozinha a emoção de cada frase, olhando o que você disse e como disse, o que ela lembra de você, a agenda e a hora do dia. Você não marca nada.
+Nora picks the emotion of each sentence on her own, looking at what you said and how, what she remembers about you, the agenda and the time of day. You do not mark anything.
 
-| Motor | O que acontece |
+| Engine | What happens |
 |---|---|
-| ElevenLabs **v3** (`modelo = "eleven_v3"`) | Vira audio tag: ela ri, suspira, sussurra, fala animada ou triste. Mais expressivo, mas começa a falar um pouco mais devagar |
-| ElevenLabs Flash, Turbo ou Multilingual | Esses modelos não entendem as tags: a emoção vira ajuste de tom por frase (mais ou menos estável, mais ou menos ênfase, um pouco mais rápida ou mais lenta) |
-| Piper, Kokoro, ComfyUI | A marca é tirada; a voz fala normal (inclusive quando entra como reserva) |
+| ElevenLabs **v3** (`modelo = "eleven_v3"`) | It becomes an audio tag: she laughs, sighs, whispers, speaks excited or sad. More expressive, but starts speaking a little slower |
+| ElevenLabs Flash, Turbo or Multilingual | These models do not understand the tags: emotion becomes a per-sentence tone adjustment (more or less stable, more or less emphasis, a little faster or slower) |
+| Piper, Kokoro, ComfyUI | The mark is removed; the voice speaks normally (also when it comes in as the fallback) |
 
-Ajustes no `config/local.toml`:
+Settings in `config/local.toml`:
 
 ```toml
 [emocao]
 ativa = true
-intensidade = 0.5          # 0 = sem emoção, 1 = bem expressiva
-reacoes_por_resposta = 1   # no máximo quantas risadas ou suspiros por resposta
+intensidade = 0.5          # 0 = no emotion, 1 = very expressive
+reacoes_por_resposta = 1   # at most how many laughs or sighs per answer
 ```
 
-Ela também aprende com as suas reações: se você ri de uma brincadeira, reclama de exagero ou se abre depois de um tom carinhoso, a curadoria guarda isso como preferência (`nora memoria preferencias`). Para mudar na hora, diga: "não precisa rir tanto", "pode ser mais animada".
+She also learns from your reactions: if you laugh at a joke, complain about exaggeration or open up after a tender tone, curation stores it as a preference (`nora memoria preferencias`). To change it on the spot, say: "não precisa rir tanto", "pode ser mais animada".
 
-## Corrigir a pronúncia de uma palavra
+## Fixing the pronunciation of a word
 
-Se a voz fala mal alguma palavra, reescreva como ela deve soar, só na fala (a tela continua mostrando o texto original). Vale para qualquer motor de voz:
+If the voice says a word badly, rewrite it as it should sound, only in speech (the screen keeps showing the original text). It works for any voice engine:
 
 ```toml
 [voz.pronuncias]
@@ -352,19 +352,19 @@ Se a voz fala mal alguma palavra, reescreva como ela deve soar, só na fala (a t
 "PUCMG" = "puque eme gê"
 ```
 
-Teste com `nora voz salvar "Até amanhã!" --ouvir` e ajuste até soar bem.
+Test with `nora voz salvar "Até amanhã!" --ouvir` and adjust until it sounds right.
 
-## Usar o ElevenLabs
+## Using ElevenLabs
 
-1. Crie uma conta em elevenlabs.io e uma chave de API (perfil → API Keys). Defina um limite de gasto.
-2. Escolha uma voz na biblioteca ou crie uma no **Voice Design**. Na página da voz, copie o **voice ID**.
-3. No `.env` (fora do Git):
+1. Create an account at elevenlabs.io and an API key (profile → API Keys). Set a spending limit.
+2. Pick a voice from the library or create one in **Voice Design**. On the voice page, copy the **voice ID**.
+3. In `.env` (outside Git):
 
    ```
    ELEVENLABS_API_KEY=sua_chave
    ```
 
-4. No `config\local.toml` (fora do Git):
+4. In `config\local.toml` (outside Git):
 
    ```toml
    [voz]
@@ -374,58 +374,58 @@ Teste com `nora voz salvar "Até amanhã!" --ouvir` e ajuste até soar bem.
    voz_id = "cole_o_voice_id_aqui"
    ```
 
-5. Inicie o ouvido e o Kokoro, que serve de **voz reserva** quando o ElevenLabs falha (ex.: sem internet): `iniciar_voz_windows.ps1 -Voz kokoro`. Sem reserva, use `-Voz nenhuma` e `reserva = ""` em `[voz]`.
-6. Rode `nora --verificar` (deve mostrar `ElevenLabs configurado` e `Kokoro (reserva) ok`) e `nora falar --medir`.
+5. Start the ear and Kokoro, which serves as the **fallback voice** when ElevenLabs fails (e.g. no internet): `iniciar_voz_windows.ps1 -Voz kokoro`. Without a fallback, use `-Voz nenhuma` and `reserva = ""` in `[voz]`.
+6. Run `nora --verificar` (it should show `ElevenLabs configurado` and `Kokoro (reserva) ok`) and `nora falar --medir`.
 
-O modelo padrão é o `eleven_v4_turbo`, pelo diálogo em tempo real (próxima seção). Se o diálogo falhar, a Nora fala com o `eleven_flash_v2_5` (o `modelo_reserva`), o mais rápido do ElevenLabs, pelo caminho de sempre: um pedido por frase, com o idioma fixado em português. As duas formas consomem créditos. Para o tom não mudar entre as frases no flash, veja [Voz que muda de tom ou pausa entre frases](#voz-que-muda-de-tom-ou-pausa-entre-frases).
+The default model is `eleven_v4_turbo`, through real-time dialogue (next section). If the dialogue fails, Nora speaks with `eleven_flash_v2_5` (the `modelo_reserva`), the fastest ElevenLabs model, through the usual path: one request per sentence, with the language fixed to Portuguese. Both ways consume credits. To keep the tone from changing between sentences on flash, see [Voice changing tone or pausing between sentences](#voice-changing-tone-or-pausing-between-sentences).
 
-> Se o seu `config\local.toml` tiver um `modelo` antigo (ex.: `eleven_v3`), é ele que vale. Para usar o v4, troque para `modelo = "eleven_v4_turbo"` ou apague a linha.
+> If your `config\local.toml` has an old `modelo` (e.g. `eleven_v3`), that is the one used. To use v4, change it to `modelo = "eleven_v4_turbo"` or delete the line.
 
-## ElevenLabs v4 (diálogo em tempo real)
+## ElevenLabs v4 (real-time dialogue)
 
-O v4 não funciona no text-to-speech comum (o ElevenLabs responde `400 unsupported_model`): só no **Text to Dialogue**, por WebSocket (`wss://api.elevenlabs.io/v1/text-to-dialogue/stream-input`). A Nora usa assim:
+v4 does not work on the regular text-to-speech (ElevenLabs answers `400 unsupported_model`): only on **Text to Dialogue**, over WebSocket (`wss://api.elevenlabs.io/v1/text-to-dialogue/stream-input`). Nora uses it like this:
 
-- **Uma conexão por conversa.** Ela abre enquanto o modelo pensa e fica aberta entre as respostas (`keep_alive` a cada 10 s, porque o servidor fecha depois de 20 s sem mensagem). Fecha sozinha depois de `manter_conexao_s` sem falar.
-- **O texto vai conforme o modelo escreve**, frase por frase, na mesma conexão: a primeira de cada resposta com `new_turn`, e um `flush` no fim. Não há um pedido por frase.
-- **O áudio toca conforme chega**, numa reprodução só, sem pausa entre as frases.
-- **Palavras alinhadas na HUD.** O ElevenLabs manda o tempo de cada letra (`sync_alignment`); a HUD recebe as palavras com `precisao "alinhada"`. Se o alinhamento não vier, ela estima pelo som, como nas outras vozes.
-- **Interromper** (Ctrl+C) corta o áudio e fecha a conexão; a próxima resposta abre uma nova, sem sobra da anterior.
-- **Reserva.** Se a conexão não abrir ou o ElevenLabs recusar (ex.: modelo não liberado na sua conta), a Nora fala a resposta inteira com o `modelo_reserva` pelo HTTP, avisa `[voz reserva] ...` com o motivo e tenta o diálogo de novo depois de 5 minutos.
-- Do `voice_settings`, o diálogo só usa a **estabilidade**. A voz é a do `voz_id`, uma só.
+- **One connection per conversation.** It opens while the model thinks and stays open between answers (`keep_alive` every 10 s, because the server closes after 20 s without a message). It closes on its own after `manter_conexao_s` without speaking.
+- **The text goes as the model writes**, sentence by sentence, on the same connection: the first of each answer with `new_turn`, and a `flush` at the end. There is no request per sentence.
+- **The audio plays as it arrives**, in a single playback, with no pause between sentences.
+- **Aligned words in the HUD.** ElevenLabs sends the time of each letter (`sync_alignment`); the HUD receives the words with `precisao "alinhada"`. If the alignment does not come, it estimates from the sound, as with the other voices.
+- **Interrupting** (Ctrl+C) cuts the audio and closes the connection; the next answer opens a new one, with no leftover from the previous one.
+- **Fallback.** If the connection does not open or ElevenLabs refuses (e.g. the model is not enabled on your account), Nora speaks the whole answer with the `modelo_reserva` over HTTP, warns `[voz reserva] ...` with the reason and tries the dialogue again after 5 minutes.
+- From `voice_settings`, the dialogue only uses **stability**. The voice is the `voz_id` one, a single voice.
 
 ```toml
 [voz.elevenlabs]
-modelo = "eleven_v4_turbo"          # ou "eleven_v4" (mais lento, mais expressivo)
+modelo = "eleven_v4_turbo"          # or "eleven_v4" (slower, more expressive)
 modelo_reserva = "eleven_flash_v2_5"
-estabilidade = 0.5                  # 0 = mais variada, 1 = mais estável
-continuidade = true                 # false = fecha a conexão depois de cada resposta
-manter_conexao_s = 120              # tempo sem falar até fechar a conexão
+estabilidade = 0.5                  # 0 = more varied, 1 = more stable
+continuidade = true                 # false = close the connection after each answer
+manter_conexao_s = 120              # time without speaking until the connection closes
 ```
 
-Precisa do pacote `websockets` (vem com `pip install -e ".[voz]"` e no `nora.exe`).
+It needs the `websockets` package (comes with `pip install -e ".[voz]"` and in `nora.exe`).
 
-**Diagnóstico.** `nora --verificar` mostra o **modelo efetivo** (o que vai falar de fato: sem o `websockets`, é a reserva), a **Continuidade ElevenLabs** (`ativa`, `desativada`, `não suportada` ou `erro`) e os tempos da última fala. O `nora falar --medir` mostra o mesmo a cada resposta:
+**Diagnostics.** `nora --verificar` shows the **modelo efetivo** (effective model: what will actually speak; without `websockets`, it is the fallback), the **Continuidade ElevenLabs** (`ativa`, `desativada`, `não suportada` or `erro`) and the timings of the last utterance. `nora falar --medir` shows the same for each answer:
 
-- **primeiro áudio:** do envio do primeiro texto até o primeiro PCM chegar;
-- **tocando:** do envio até o som começar a sair;
-- **silêncio entre trechos:** buracos por falta de áudio da rede (soma e o maior).
+- **primeiro áudio (first audio):** from sending the first text until the first PCM arrives;
+- **tocando (playing):** from sending until the sound starts coming out;
+- **silêncio entre trechos (silence between chunks):** gaps from missing network audio (sum and the largest).
 
-Os números também vão para o log e para `data\diagnostico_voz.json`, sem o texto da conversa e sem a chave.
+The numbers also go to the log and to `data\diagnostico_voz.json`, without the conversation text and without the key.
 
-**Medido no PC do Gabriel (06/11/2026, `eleven_v4_turbo`):** primeiro áudio em 985 ms, tocando em 1555 ms, 0 ms de silêncio entre trechos e palavras alinhadas. A Nora usa só o v4; não há comparação planejada com outros modelos. O `eleven_flash_v2_5` fica apenas como reserva automática quando o diálogo falha.
+**Measured on Gabriel's PC (06/11/2026, `eleven_v4_turbo`):** first audio in 985 ms, playing in 1555 ms, 0 ms of silence between chunks and aligned words. Nora uses only v4; no comparison with other models is planned. `eleven_flash_v2_5` is only an automatic fallback when the dialogue fails.
 
-## Ouvido entendendo errado
+## Ear mishearing
 
-Quando você fala rápido, baixo ou longe do microfone, o `small` erra mais. Há três ajustes, do mais leve ao mais pesado:
+When you speak fast, quietly or far from the microphone, `small` makes more mistakes. There are three adjustments, from lightest to heaviest:
 
-1. **Vocabulário.** Nomes e termos que ele costuma errar vão como dica para o Whisper, no `nora falar` e no `nora ouvir`, junto com o nome da assistente:
+1. **Vocabulary.** Names and terms it usually gets wrong go as a hint to Whisper, in `nora falar` and `nora ouvir`, together with the assistant's name:
 
    ```toml
    [ouvido]
    vocabulario = ["Obsidian", "Ollama", "Kokoro"]
    ```
 
-2. **Modelo maior.** O `large-v3-turbo` erra bem menos que o `small` em fala pouco clara. A versão `q5_0` (~550 MB) cabe bem na memória. Baixe uma vez e inicie com ele:
+2. **Bigger model.** `large-v3-turbo` makes far fewer mistakes than `small` on unclear speech. The `q5_0` version (~550 MB) fits well in memory. Download it once and start with it:
 
    ```bash
    powershell -ExecutionPolicy Bypass -File scripts\instalar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0 -SemPiper
@@ -435,25 +435,25 @@ Quando você fala rápido, baixo ou longe do microfone, o `small` erra mais. Há
    powershell -ExecutionPolicy Bypass -File scripts\iniciar_voz_windows.ps1 -ModeloWhisper large-v3-turbo-q5_0
    ```
 
-   No processador, ele é mais lento que o `small` (o `small` levou 0,72 s no 9800X3D). Meça com `nora falar --medir`: se a transcrição passar de ~1,5 s, a auto-melhoria vai apontar. O ganho de velocidade de verdade vem com o whisper.cpp compilado com Vulkan (veja abaixo).
+   On the CPU it is slower than `small` (`small` took 0.72 s on the 9800X3D). Measure with `nora falar --medir`: if transcription goes over ~1.5 s, self-improvement will point it out. The real speed gain comes with whisper.cpp built with Vulkan (see below).
 
-3. **Busca em feixe.** Com `-Feixe 5` no `iniciar_voz_windows.ps1`, o Whisper testa 5 caminhos em vez de 1: erra menos, demora mais. Teste depois do modelo maior, se ainda errar.
+3. **Beam search.** With `-Feixe 5` in `iniciar_voz_windows.ps1`, Whisper tries 5 paths instead of 1: fewer mistakes, slower. Try it after the bigger model, if it still makes mistakes.
 
-Antes de tudo, confira o microfone: o volume de entrada do Windows perto de 80% e o fone perto da boca já resolvem boa parte dos erros.
+First of all, check the microphone: Windows input volume around 80% and the headset close to the mouth already fix a good share of the mistakes.
 
-## Escolhas e pendências
+## Choices and pending items
 
-- **Whisper no processador, por enquanto.** O projeto oficial não publica versão pronta para Windows com Vulkan; ela precisa ser compilada (Vulkan SDK, CMake e Visual Studio Build Tools) ou viria de terceiros. No primeiro teste, o `small` no 9800X3D transcreveu em 0,72 s. Se ficar lento, os próximos passos são o modelo `base` (`-ModeloWhisper base` nos dois scripts) ou compilar com Vulkan. Para errar menos, o caminho é o contrário: o `large-v3-turbo-q5_0` (veja [Ouvido entendendo errado](#ouvido-entendendo-errado)), que fica rápido de verdade só com Vulkan.
-- **Voz `pt_BR-faber-medium` (Piper) só para uso pessoal.** Foi ajustada a partir de uma voz em inglês treinada com uma base **só para uso não comercial**. É baixada à parte e nunca distribuída.
-- **Dois modos:** `nora falar` (Enter para falar, bom para ambiente barulhento) e `nora ouvir` (mãos livres).
-- **Sem interrupção ainda.** Falar por cima da Nora (barge-in) precisa de cancelamento de eco e vem depois; por enquanto, Ctrl+C interrompe.
+- **Whisper on the CPU, for now.** The official project does not publish a ready-made Windows build with Vulkan; it must be compiled (Vulkan SDK, CMake and Visual Studio Build Tools) or would come from third parties. In the first test, `small` on the 9800X3D transcribed in 0.72 s. If it gets slow, the next steps are the `base` model (`-ModeloWhisper base` in both scripts) or compiling with Vulkan. To make fewer mistakes, the path is the opposite: `large-v3-turbo-q5_0` (see [Ear mishearing](#ear-mishearing)), which only gets really fast with Vulkan.
+- **`pt_BR-faber-medium` (Piper) voice for personal use only.** It was fine-tuned from an English voice trained on a **non-commercial-only** base. It is downloaded separately and never distributed.
+- **Two modes:** `nora falar` (Enter to speak, good for noisy rooms) and `nora ouvir` (hands-free).
+- **No interruption yet.** Speaking over Nora (barge-in) needs echo cancellation and comes later; for now, Ctrl+C interrupts.
 
-## Se algo der errado
+## If something goes wrong
 
-- **O pip instala em `...\pythoncore-3.xx\Scripts` e avisa "not on PATH":** o ambiente não estava ativado. Rode `.venv\Scripts\activate` (o terminal passa a mostrar `(.venv)`) e repita o `pip install`.
-- **O `pip install` falha com "conflicting dependencies" e "no matching distributions" para `onnxruntime`:** o Python é novo demais (aconteceu com o 3.15). Veja as versões com `py -0`, instale o 3.13 (`py install 3.13`) e recrie o ambiente: `deactivate`, `Remove-Item -Recurse -Force .venv`, `py -3.13 -m venv .venv`, `.venv\Scripts\activate`, `pip install -e ".[dev,voz]"`.
-- **"Acesso negado" ao instalar:** algum `nora` está aberto (feche os terminais ou rode `Stop-Process -Name nora -Force`).
-- **"Não consegui abrir o microfone" (ex.: `MME error 11`):** a Nora já tenta o mesmo microfone pelas outras APIs do Windows. Se nada abrir, confira em Configurações → Privacidade e segurança → Microfone se "Permitir que aplicativos da área de trabalho acessem o microfone" está ligado, e rode `nora audio`.
-- **A Nora responde a `[MÚSICA DE FUNDO]` ou não ouve nada:** a gravação ficou baixa; fale mais perto do microfone, depois de aparecer "(gravando...)".
-- **Kokoro, Piper ou whisper-server "não respondeu"** no `nora --verificar`: veja a janela correspondente aberta pelo script de iniciar; a mensagem de erro aparece lá. Me mande um print.
-- **O Piper recusa o pedido (405 ou 404):** a versão mudou o endereço. Rode `Select-String -Path .venv\Lib\site-packages\piper\http_server.py -Pattern "route"` e me mande o resultado.
+- **pip installs into `...\pythoncore-3.xx\Scripts` and warns "not on PATH":** the environment was not activated. Run `.venv\Scripts\activate` (the terminal starts showing `(.venv)`) and repeat the `pip install`.
+- **`pip install` fails with "conflicting dependencies" and "no matching distributions" for `onnxruntime`:** the Python is too new (it happened with 3.15). See the versions with `py -0`, install 3.13 (`py install 3.13`) and recreate the environment: `deactivate`, `Remove-Item -Recurse -Force .venv`, `py -3.13 -m venv .venv`, `.venv\Scripts\activate`, `pip install -e ".[dev,voz]"`.
+- **"Access denied" when installing:** some `nora` is open (close the terminals or run `Stop-Process -Name nora -Force`).
+- **"Não consegui abrir o microfone" (e.g. `MME error 11`):** Nora already tries the same microphone through the other Windows APIs. If nothing opens, check in Settings → Privacy & security → Microphone that "Let desktop apps access your microphone" is on, and run `nora audio`.
+- **Nora answers `[MÚSICA DE FUNDO]` or hears nothing:** the recording was too quiet; speak closer to the microphone, after "(gravando...)" appears.
+- **Kokoro, Piper or whisper-server "não respondeu" (did not respond)** in `nora --verificar`: look at the matching window opened by the start script; the error message shows up there. Send me a screenshot.
+- **Piper refuses the request (405 or 404):** the version changed the address. Run `Select-String -Path .venv\Lib\site-packages\piper\http_server.py -Pattern "route"` and send me the result.

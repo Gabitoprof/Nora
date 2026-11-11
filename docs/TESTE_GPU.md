@@ -1,65 +1,65 @@
-# Teste de GPU (preparação da v0.1.0)
+# GPU test (preparing v0.1.0)
 
-Antes de construir a conversa por voz, precisamos saber se a **RX 9060 XT** acelera os modelos no Windows. Este teste roda **no seu PC**.
+Before building the voice conversation, we need to know whether the **RX 9060 XT** accelerates the models on Windows. This test runs **on your PC**.
 
-## 1. Ollama (o cérebro local)
+## 1. Ollama (the local brain)
 
-1. Instale o Ollama: https://ollama.com/download (versão mais recente).
-2. Abra o PowerShell na pasta do repositório e rode:
+1. Install Ollama: https://ollama.com/download (latest version).
+2. Open PowerShell in the repository folder and run:
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts\teste_gpu_windows.ps1
    ```
 
-   Na primeira vez ele baixa o modelo `qwen3.5:9b` (~7,6 GB). Para testar outro modelo: `-Modelo gemma4:12b`. Se o modelo já estiver baixado: `-PularDownload`.
+   The first time it downloads the `qwen3.5:9b` model (~7.6 GB). To test another model: `-Modelo gemma4:12b`. If the model is already downloaded: `-PularDownload`.
 
-3. Me mande o relatório salvo em `data\teste-gpu-<data>.txt` (ou um print do final).
+3. Send me the report saved in `data\teste-gpu-<date>.txt` (or a screenshot of the end).
 
-**Como ler o resultado:**
+**How to read the result:**
 
-| Linha | Bom sinal |
+| Line | Good sign |
 |---|---|
-| `PROCESSOR` (em `ollama ps`) | `100% GPU` |
-| `eval rate` | acima de ~30 tokens/s |
-| `load duration` | alguns segundos na primeira vez; quase zero depois |
+| `PROCESSOR` (in `ollama ps`) | `100% GPU` |
+| `eval rate` | above ~30 tokens/s |
+| `load duration` | a few seconds the first time; almost zero afterwards |
 
-### Se rodar na CPU
+### If it runs on the CPU
 
-A RX 9060 XT é uma placa nova (RDNA 4), e o suporte depende da versão do Ollama e do driver. Nesta ordem:
+The RX 9060 XT is a new card (RDNA 4), and support depends on the Ollama and driver versions. In this order:
 
-1. Atualize o driver AMD Adrenalin e o Ollama, reinicie o PC e rode o teste de novo.
-2. Ative o modo Vulkan do Ollama: feche o Ollama (ícone perto do relógio → Quit), rode no PowerShell `setx OLLAMA_VULKAN 1`, abra o Ollama de novo e repita o teste.
-3. Se ainda assim não usar a GPU, me mande o relatório: as alternativas são o LM Studio (backend Vulkan) ou o plano B com Linux.
+1. Update the AMD Adrenalin driver and Ollama, restart the PC and run the test again.
+2. Turn on Ollama's Vulkan mode: close Ollama (icon near the clock → Quit), run `setx OLLAMA_VULKAN 1` in PowerShell, open Ollama again and repeat the test.
+3. If it still does not use the GPU, send me the report: the alternatives are LM Studio (Vulkan backend) or plan B with Linux.
 
-## Resultados
+## Results
 
 ### 29/10/2026: RX 9060 XT, Windows, Ollama 0.40.13, `qwen3.5:9b`
 
-| Medida | Resultado |
+| Measure | Result |
 |---|---|
-| Processador | **100% GPU** (5,6 GB na VRAM, contexto 4096) |
-| Velocidade de geração | **46,8 tokens/s** |
-| Leitura do prompt | 345,6 tokens/s |
-| Carga do modelo (primeira vez) | 17,6 s |
-| Tempo total, **com** modo pensando | 23,8 s, incluindo a carga |
+| Processor | **100% GPU** (5.6 GB in VRAM, context 4096) |
+| Generation speed | **46.8 tokens/s** |
+| Prompt reading | 345.6 tokens/s |
+| Model load (first time) | 17.6 s |
+| Total time, **with** thinking mode | 23.8 s, including the load |
 
-**Conclusões:**
+**Conclusions:**
 
-- A GPU AMD funciona no Windows com o Ollama, sem configuração extra. ✅
-- A velocidade passa com folga da meta de ~30 tokens/s.
-- O **modo pensando** do Qwen 3.5 escreve um raciocínio longo antes de responder, mesmo em perguntas simples. Na voz, fica **desligado** (`pensar = false` no config); para tarefas difíceis, o roteador manda a pergunta para a nuvem (veja [CEREBRO.md](CEREBRO.md)).
-- A carga de ~18 s só acontece quando o modelo não está na memória: o `keep_alive` mantém ele carregado entre as falas.
+- The AMD GPU works on Windows with Ollama, without extra configuration. ✅
+- The speed clears the ~30 tokens/s target comfortably.
+- Qwen 3.5's **thinking mode** writes a long reasoning before answering, even on simple questions. For voice it stays **off** (`pensar = false` in the config); for hard tasks, the router sends the question to the cloud (see [CEREBRO.md](CEREBRO.md)).
+- The ~18 s load only happens when the model is not in memory: `keep_alive` keeps it loaded between utterances.
 
-### 30/10/2026: mesmo PC, script medindo pela API
+### 30/10/2026: same PC, script measuring through the API
 
-| Teste | Tempo total | Velocidade | Tokens gerados |
+| Test | Total time | Speed | Tokens generated |
 |---|---|---|---|
-| Aquecimento (carrega o modelo) | 18,07 s (17,83 s de carga) | 52,9 tokens/s | 8 |
-| **Sem modo pensando** (modelo já carregado) | **0,21 s** | 52,3 tokens/s | 8 |
-| Com modo pensando | 5,24 s | 47,0 tokens/s | 244 (877 caracteres de raciocínio) |
+| Warm-up (loads the model) | 18.07 s (17.83 s load) | 52.9 tokens/s | 8 |
+| **Without thinking mode** (model already loaded) | **0.21 s** | 52.3 tokens/s | 8 |
+| With thinking mode | 5.24 s | 47.0 tokens/s | 244 (877 characters of reasoning) |
 
-**Conclusão:** com o modelo carregado e o modo pensando desligado, o cérebro local responde uma frase curta em **0,21 s**. Isso deixa quase todo o orçamento de < 1 s para ouvir (STT) e falar (TTS). O modo pensando custa **25 vezes mais tempo** na mesma pergunta. **Cérebro local aprovado para a v0.1.0.** ✅
+**Conclusion:** with the model loaded and thinking mode off, the local brain answers a short sentence in **0.21 s**. That leaves almost all of the < 1 s budget for listening (STT) and speaking (TTS). Thinking mode costs **25 times more time** on the same question. **Local brain approved for v0.1.0.** ✅
 
-## 2. whisper.cpp (a transcrição)
+## 2. whisper.cpp (transcription)
 
-Fica para o início da v0.1.0, junto com o código de voz: vamos compilar ou baixar o whisper.cpp com Vulkan e medir quanto tempo ele leva para transcrever alguns segundos de fala. As instruções entram aqui nessa etapa.
+Left for the start of v0.1.0, together with the voice code: we will compile or download whisper.cpp with Vulkan and measure how long it takes to transcribe a few seconds of speech. The instructions come here at that stage.
