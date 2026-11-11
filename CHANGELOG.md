@@ -1,249 +1,252 @@
 # Changelog
 
-Todas as mudanças relevantes do projeto ficam aqui.
-O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/) (`vMAIOR.MENOR.CORREÇÃO`).
+All notable changes to the project are recorded here.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
-## [Não lançado]
+> Nora speaks Brazilian Portuguese: config keys, commands and spoken phrases below are quoted in Portuguese on purpose.
 
-### Alterado
+## [Unreleased]
 
-- **Licença:** a partir de 06/11/2026, o código passa a ser de **todos os direitos reservados** (público só para consulta). As versões até a `v0.3.0` continuam em MIT.
+### Changed
 
-### Corrigido (roadmap "Imagem para as falas", fases 0 e 1)
+- **License:** from 06/11/2026 the code is **all rights reserved** (public for reference only). Versions up to `v0.3.0` remain under MIT.
+- **Documentation and code comments in English.** Nora's speech, messages, CLI help, voice commands, HUD text, config keys and the names in the code stay in Portuguese (rule in `CLAUDE.md`).
 
-- **Voz que cai no meio da resposta (v4):** antes do 1º áudio, a reserva fala tudo; depois de começar, a reserva (flash) continua do último limite de palavra que o alinhamento cobriu, sem repetir o que já foi ouvido e só depois que o áudio recebido termina de tocar; sem alinhamento, a fala para com aviso claro e "repete a resposta que caiu" fala a resposta inteira de novo, sem perguntar ao cérebro. Áudio sem alinhamento continua tocando (as palavras viram estimativa).
-- **Diagnóstico da voz:** além do modelo efetivo, da continuidade e dos tempos, registra o número de gerações (pedidos de síntese) por resposta e o motivo de cada troca para a reserva; o caminho HTTP também mede pedido → primeiro áudio, início da reprodução e silêncio entre trechos. Sem texto da conversa nem chaves.
-- **Palavras nas pausas (HUD):** a palavra fica até a próxima começar, inclusive nas pausas, com teto de 1,5 s para silêncios longos (antes sumia depois de 320 ms). No fim da reprodução, no cancelamento e ao passar para "Privado", some na hora.
-- **Relógio da fala (HUD):** medido em simulação (amostras a 20 Hz, atraso de rede de 5 a 45 ms, engasgos de 150 a 450 ms). A configuração anterior (300/250 ms) perdia palavras e atrasava até 217 ms com engasgos; agora aceita amostras de até 450 ms e extrapola até 400 ms (pior caso 100 ms, nenhuma palavra perdida) e ignora recuos menores que 60 ms (a palavra não pisca quando chega uma amostra nova).
-- **Estado da HUD com `reproducao_encerrada`:** o fim apaga a fala daquela reprodução e o sinal da voz; fim antigo, repetido ou fora de ordem é ignorado; uma fala atrasada de reprodução já encerrada não volta; na reconexão os ids voltam a valer (o servidor pode ter reiniciado).
-- **Privacidade no backend da HUD:** em "Privado" (ou depois de revogar a permissão no meio de uma fala), as palavras alinhadas nem ficam guardadas no backend. Testes provam que outra página (outra origem, outro site, DNS rebinding) não lê eventos, estado, notas nem propostas.
-- **Palavras legíveis mais depressa:** a chegada das palavras saindo da poeira foi medida (antes legível em ~380 ms) e ajustada para ~116 ms (meta ≤ 150 ms). QA visual de palavras longas e acentos em 1920×1080 e 1366×768 em `docs/evidencias/`.
-- **Medição da HUD no Windows:** a HUD mede o próprio tempo de quadro (p50, p95, pior), o atraso som → palavra e os contextos WebGL (Ajustes e `data/diagnostico_hud.json`, só números, com token). `scripts/homologacao_windows.ps1` mede a CPU e a VRAM a mais com a HUD (base com a aba fechada × HUD aberta) e tem um teste contínuo (`-Continuo`, 25 min) que compara início e fim.
-- **Alinhamento das palavras do ElevenLabs v4:** a referência dos tempos (relativa ao trecho de áudio ou ao turno) é decidida uma vez por turno e não muda no meio da fala; cada palavra fica na posição real do PCM. O silêncio inicial configurável (`[audio] silencio_inicial_ms`) agora desloca as palavras junto com o som.
+### Fixed ("Imagem para as falas" roadmap, phases 0 and 1)
 
-### Corrigido (revisão da v0.4.0, branch `integracao/v0.4.0`)
+- **Voice dropping in the middle of a reply (v4):** before the first audio, the fallback speaks everything; once it has started, the fallback (flash) continues from the last word boundary the alignment covered, without repeating what was already heard and only after the received audio finishes playing; with no alignment, speech stops with a clear message and "repete a resposta que caiu" speaks the whole reply again without asking the brain. Audio without alignment keeps playing (the words become an estimate).
+- **Voice diagnostics:** besides the effective model, the continuity and the timings, it records the number of generations (synthesis requests) per reply and the reason for each switch to the fallback; the HTTP path also measures request → first audio, playback start and silence between chunks. No conversation text or keys.
+- **Words during pauses (HUD):** the word stays until the next one starts, including during pauses, with a 1.5 s ceiling for long silences (before, it vanished after 320 ms). At the end of playback, on cancellation and when switching to "Privado" it disappears immediately.
+- **Speech clock (HUD):** measured in simulation (20 Hz samples, 5 to 45 ms network delay, 150 to 450 ms stalls). The previous setting (300/250 ms) lost words and lagged up to 217 ms with stalls; it now accepts samples up to 450 ms old and extrapolates up to 400 ms (worst case 100 ms, no lost word) and ignores backward steps under 60 ms (the word does not flicker when a new sample arrives).
+- **HUD state with `reproducao_encerrada`:** the end clears that playback's speech and the voice signal; an old, repeated or out-of-order end is ignored; late speech from an already ended playback does not come back; on reconnect the ids count again (the server may have restarted).
+- **Privacy in the HUD backend:** in "Privado" (or after revoking permission in the middle of a reply), the aligned words are not even stored in the backend. Tests prove another page (another origin, another site, DNS rebinding) cannot read events, state, notes or proposals.
+- **Words legible sooner:** the arrival of words coming out of the dust was measured (legible in ~380 ms before) and tuned to ~116 ms (target ≤ 150 ms). Visual QA of long words and accents at 1920×1080 and 1366×768 in `docs/evidencias/`.
+- **Measuring the HUD on Windows:** the HUD measures its own frame time (p50, p95, worst), the sound → word delay and the WebGL contexts (settings panel and `data/diagnostico_hud.json`, numbers only, with token). `scripts/homologacao_windows.ps1` measures the extra CPU and VRAM with the HUD (baseline with the tab closed × HUD open) and has a soak test (`-Continuo`, 25 min) comparing start and end.
+- **ElevenLabs v4 word alignment:** the time reference (relative to the audio chunk or to the turn) is decided once per turn and does not change mid-reply; each word sits at its real position in the PCM. The configurable lead-in silence (`[audio] silencio_inicial_ms`) now shifts the words together with the sound.
 
-- **Paleta dentro do pacote:** `src/nora/paleta.json`, lido pela HUD e pelo Second Brain. Antes ficava em `hud/` e uma instalação por wheel quebrava ao importar o Second Brain.
-- **Versão única do produto:** `0.4.0.dev0` (Python) e `0.4.0-dev.0` (HUD), com teste que falha se divergirem. `nora --verificar` e a HUD (Ajustes) mostram versão e commit. `hud/package.json` com `"license": "UNLICENSED"`.
-- **Falhas da HUD no caminho do áudio** deixam de ser engolidas em silêncio: são contadas por lugar e tipo, com uma linha de log por tipo, sem texto da conversa nem áudio. A fala nunca para por isso.
-- **Cores:** serenidade, sussurro e suspiro passam para calma (turquesa); preocupação, para seriedade (azul).
-- **Documentação de licença:** o mapa mental troca "Open source" por "Licença e distribuição"; `LICENCAS.md` só registra que o Kokoro (espeak-ng, GPL-3.0) roda em processo separado e que distribuir junto com ele exige cumprir a GPL.
+### Fixed (v0.4.0 review, branch `integracao/v0.4.0`)
 
-### Adicionado (distribuição no Windows)
+- **Palette inside the package:** `src/nora/paleta.json`, read by the HUD and the Second Brain. It used to live in `hud/` and a wheel install broke when importing the Second Brain.
+- **Single product version:** `0.4.0.dev0` (Python) and `0.4.0-dev.0` (HUD), with a test that fails if they diverge. `nora --verificar` and the HUD (settings) show version and commit. `hud/package.json` with `"license": "UNLICENSED"`.
+- **HUD failures in the audio path** are no longer swallowed silently: they are counted by place and type, with one log line per type, without conversation text or audio. Speech never stops because of them.
+- **Colors:** serenity, whisper and sigh move to calm (turquoise); worry to seriousness (blue).
+- **License documentation:** the mind map replaces "Open source" with "License and distribution"; `LICENCAS.md` only records that Kokoro (espeak-ng, GPL-3.0) runs as a separate process and that distributing it together requires complying with the GPL.
 
-- **Nora instalada, fora do repositório** (`caminhos.py`): a config padrão vai dentro do pacote (`src/nora/nora.toml`); a config pessoal, o `.env`, a memória e os modelos ficam em `%APPDATA%\Nora`, criada na primeira execução (`NORA_HOME` troca a pasta). No repositório, nada muda.
-- **`nora.exe` sem assinatura e instalador** (`scripts/empacotar_windows.ps1`, PyInstaller em pasta e Inno Setup). O instalador não pede administrador e não apaga `%APPDATA%\Nora` ao desinstalar. O workflow **Empacotar** gera os dois no Windows a cada push na `main`, na `integracao/...` e nas tags, testa o `.exe` (versão, pasta do usuário, HUD) e publica os arquivos por 14 dias. Os avisos de licença dos componentes vão na pasta `licencas` do programa.
-- **Pacote de dependências da Nora** (`instalar_dependencias.ps1`): Visual C++, Ollama e modelos, whisper.cpp e modelo do Whisper, pelo `winget` e pelos sites oficiais, com resumo `ok`/`FALHOU`. Atalho **Nora** no menu Iniciar (liga o Ollama e o ouvido, abre a HUD e escuta). Guia em `docs/INSTALACAO.md`.
-- Instalada, a voz padrão é o ElevenLabs: as vozes locais (Kokoro, Piper) usam programas GPL e não vão no `.exe`.
+### Added (distribution on Windows)
 
-### Adicionado (voz)
+- **Nora installed, outside the repository** (`caminhos.py`): the default config ships inside the package (`src/nora/nora.toml`); the personal config, `.env`, memory and models live in `%APPDATA%\Nora`, created on first run (`NORA_HOME` changes the folder). Nothing changes in the repository.
+- **Unsigned `nora.exe` and installer** (`scripts/empacotar_windows.ps1`, folder-mode PyInstaller and Inno Setup). The installer does not ask for admin and does not delete `%APPDATA%\Nora` on uninstall. The **Empacotar** workflow builds both on Windows on every push to `main`, `integracao/...` and tags, tests the `.exe` (version, user folder, HUD) and publishes the files for 14 days. The components' license notices go into the program's `licencas` folder.
+- **Nora dependency pack** (`instalar_dependencias.ps1`): Visual C++, Ollama and models, whisper.cpp and the Whisper model, through `winget` and the official sites, with an `ok`/`FALHOU` summary. A **Nora** shortcut in the Start menu (starts Ollama and the ear, opens the HUD and listens). Guide in `docs/INSTALACAO.md`.
+- When installed, the default voice is ElevenLabs: the local voices (Kokoro, Piper) use GPL programs and do not go into the `.exe`.
 
-- **ElevenLabs v4 como voz principal** (`modelo = "eleven_v4_turbo"`; `"eleven_v4"` opcional), pelo diálogo em tempo real (WebSocket do Text to Dialogue), porque o v4 não aceita o text-to-speech comum. Medido no Windows com o `eleven_v4_turbo`: primeiro áudio em ~1 s, sem silêncio entre trechos. Uma conexão por conversa, com `keep_alive`; o texto vai conforme o modelo escreve e o áudio toca conforme chega, sem um pedido por frase. Interromper fecha a conexão sem misturar áudio.
-- **Palavras alinhadas na HUD:** o tempo real de cada palavra vem do ElevenLabs (`precisao "alinhada"`); a estimativa fica só de reserva.
-- **Reserva no flash:** se o diálogo falhar, a resposta sai com o `eleven_flash_v2_5` pelo HTTP, com o motivo no aviso.
-- **Diagnóstico da voz** no `nora --verificar`, no `--medir` e no log: modelo efetivo, continuidade (ativa, desativada, não suportada, erro), tempo até o primeiro áudio e até tocar, e silêncio entre trechos. Sem texto da conversa nem chave.
-- Dependência nova: `websockets` (BSD-3-Clause), no extra `voz`.
+### Added (voice)
 
-### Adicionado (revisão da v0.4.0)
+- **ElevenLabs v4 as the main voice** (`modelo = "eleven_v4_turbo"`; `"eleven_v4"` optional), through real-time dialogue (Text to Dialogue WebSocket), because v4 does not accept the regular text-to-speech. Measured on Windows with `eleven_v4_turbo`: first audio in ~1 s, no silence between chunks. One connection per conversation, with `keep_alive`; the text goes as the model writes and the audio plays as it arrives, without one request per sentence. Interrupting closes the connection without mixing audio.
+- **Aligned words in the HUD:** the real time of each word comes from ElevenLabs (`precisao "alinhada"`); the estimate is only a fallback.
+- **Flash as fallback:** if the dialogue fails, the reply goes out with `eleven_flash_v2_5` over HTTP, with the reason in the warning.
+- **Voice diagnostics** in `nora --verificar`, in `--medir` and in the log: effective model, continuity (ativa, desativada, não suportada, erro), time to first audio and to playback, and silence between chunks. No conversation text or key.
+- New dependency: `websockets` (BSD-3-Clause), in the `voz` extra.
 
-- **Teste de instalação limpa** (`scripts/testar_instalacao_limpa.py`, job `instalacao` no CI): gera o wheel, instala fora do checkout e confere a paleta, o Second Brain e os arquivos do pacote.
-- **Teste de regressão** da troca de voz: a confirmação leva o texto à HUD.
-- **`scripts/homologacao_windows.ps1`:** testes, build, `nora --verificar` e medição de CPU, GPU e VRAM com a HUD aberta, gravados num arquivo. Roteiro de ~15 min em `docs/HOMOLOGACAO.md`.
+### Added (v0.4.0 review)
 
-### Adicionado (Second Brain, branch `feat/v0.3.1-second-brain`)
+- **Clean install test** (`scripts/testar_instalacao_limpa.py`, `instalacao` job in CI): builds the wheel, installs it outside the checkout and checks the palette, the Second Brain and the package files.
+- **Regression test** for voice switching: the confirmation carries its text to the HUD.
+- **`scripts/homologacao_windows.ps1`:** tests, build, `nora --verificar` and CPU, GPU and VRAM measurement with the HUD open, written to a file. ~15 min walkthrough in `docs/HOMOLOGACAO.md`.
 
-- **Second Brain no Obsidian** (`[segundo_cerebro]`, desligado por padrão; guia em `docs/SEGUNDO_CEREBRO.md`):
-  - as memórias consolidadas viram notas em `Nora Brain/`, com propriedades YAML, tags e `[[links]]` para a área, os nomes que aparecem em 2 memórias ou mais, os meses da agenda e as preferências;
-  - a sincronização é incremental, idempotente e retomável depois de uma queda (escrita atômica);
-  - correções, esquecer e apagar de vez saem do vault;
-  - as notas que você criou ou editou nunca são sobrescritas nem apagadas: viram conflito;
-  - as áreas privadas (saúde e finanças, por padrão) não saem do banco;
-  - a pasta fica de fora do leitor de notas, para não haver ciclo.
-- **Fora do caminho da fala:**
-  - a conversa só levanta um sinal; uma linha própria espera a Nora parar de responder e de falar (`conversa.falando`), lê a memória em modo só leitura e para no meio se ela voltar a falar;
-  - nenhuma chamada nova a modelo;
-  - medição em `scripts/medir_segundo_cerebro.py`.
-- **Mapa da memória:** "Nora, mostre seu segundo cérebro" ou `nora cerebro mapa --abrir`. É uma página sem internet, com cor por área, halo pelo tom da conversa (as cores da HUD), tamanho por ligações, pulso de recência, ligações que surgem ao abrir, busca, filtros, foco, a ficha com o porquê de cada ligação e o link para o Obsidian. O texto das memórias abre escondido.
-- **Tom da conversa no fato** (`fatos.emocao`): o tom predominante das etiquetas da resposta, guardado em segundo plano pela curadoria. É o tom da Nora, não um sentimento da pessoa.
-- **Cores dos tons** lidas de `hud/paleta.json` (`nora.paleta`), o mesmo arquivo da HUD: calma turquesa, tristeza lavanda, curiosidade terracota, como na tabela da HUD v0.4.0.
-- **Contrato versionado** `segundo_cerebro_contrato.json` (v1) para uma HUD de memória futura, com os mesmos nomes de emoção da HUD.
-- **Comandos novos:** `nora cerebro sincronizar | status | mapa`.
+### Added (Second Brain, branch `feat/v0.3.1-second-brain`)
 
-### Corrigido
+- **Second Brain in Obsidian** (`[segundo_cerebro]`, off by default; guide in `docs/SEGUNDO_CEREBRO.md`):
+  - consolidated memories become notes in `Nora Brain/`, with YAML properties, tags and `[[links]]` to the area, the names that appear in 2 or more memories, the agenda months and the preferences;
+  - sync is incremental, idempotent and resumable after a crash (atomic writes);
+  - corrections, forget and delete-for-good leave the vault;
+  - notes you created or edited are never overwritten or deleted: they become conflicts;
+  - private areas (health and finances, by default) do not leave the database;
+  - the folder is excluded from the notes reader, so there is no cycle.
+- **Off the speech path:**
+  - the conversation only raises a signal; a dedicated thread waits for Nora to stop answering and speaking (`conversa.falando`), reads the memory read-only and stops midway if she starts speaking again;
+  - no new model call;
+  - measurement in `scripts/medir_segundo_cerebro.py`.
+- **Memory map:** "Nora, mostre seu segundo cérebro" or `nora cerebro mapa --abrir`. An offline page, with color by area, halo by conversation tone (the HUD colors), size by links, recency pulse, links that appear on opening, search, filters, focus, the card with the reason for each link and the link to Obsidian. The memory text opens hidden.
+- **Conversation tone on the fact** (`fatos.emocao`): the predominant tone of the reply's tags, stored in the background by curation. It is Nora's tone, not a feeling of the person.
+- **Tone colors** read from `hud/paleta.json` (`nora.paleta`), the same file as the HUD: calm turquoise, sadness lavender, curiosity terracotta, as in the HUD v0.4.0 table.
+- **Versioned contract** `segundo_cerebro_contrato.json` (v1) for a future memory HUD, with the same emotion names as the HUD.
+- **New commands:** `nora cerebro sincronizar | status | mapa`.
 
-- HUD: o painel "Sinal de áudio" usa o mesmo sinal da onda central, em escala de decibéis. Antes mostrava "0%" com fala baixa (RMS 0,004) enquanto a onda já se mexia, e mantinha o último nível da escuta durante "Pensando". Com teste de regressão.
-- HUD: navegação inicial por link externo/same-site deixa de retornar HTTP 403; APIs,
-  iframe, Host/Origin e confirmação por token permanecem protegidos, com regressões HTTP/browser.
-- Ferramentas da HUD: dependências de teste/lint atualizadas para corrigir alertas de auditoria,
-  com override limitado às versões vulneráveis de minimatch e testes de compatibilidade.
-- **Voz que mudava de tom e pausava depois de uma primeira frase curta** (ex.: "Hahaha, esse atchim!" no ElevenLabs v3):
-  - um pedido à voz com menos de `[voz] juntar_curta` caracteres (padrão 60) espera até 1,5 s pela próxima frase e vai junto com ela. Perguntas não esperam, e o fim da resposta libera na hora;
-  - o ElevenLabs recebe uma semente fixa (`[voz.elevenlabs] semente`, padrão 42) e a frase anterior (`previous_text`, `continuidade = true`), para a entonação continuar. Se o modelo recusar o campo, ela segue sem ele.
-- **Datas erradas em "daqui a N dias":** o modelo local errava o dia e o dia da semana. Agora as contas ("daqui a 23 dias", "e daqui a 24?", que usa a unidade da última pergunta que tinha uma, "há 2 semanas", "3 meses atrás", o dia da semana de "25/12") são feitas pelo código e vão prontas para o modelo.
-- **Preferências inventadas a partir de erro de transcrição:** uma fala curta e sem sentido ("Aqui assim.") virava preferência copiada dos exemplos da instrução ("Seja mais direta."). Agora a preferência só vale se a fala tiver relação com ela, for uma risada ou tiver 6 palavras ou mais, e a curadoria é avisada de que fala sem sentido é erro de transcrição.
-- **Ouvido errando nomes no `nora falar`:** a dica com o nome da assistente, que só ia no `nora ouvir`, agora vai também no `nora falar`.
+### Fixed
 
-### Adicionado
+- HUD: the "Sinal de áudio" (audio signal) panel uses the same signal as the central wave, on a decibel scale. It used to show "0%" with quiet speech (RMS 0.004) while the wave was already moving, and kept the last listening level during "Pensando" (thinking). With a regression test.
+- HUD: initial navigation from an external/same-site link no longer returns HTTP 403; APIs,
+  iframe, Host/Origin and token confirmation remain protected, with HTTP/browser regressions.
+- HUD tooling: test/lint dependencies updated to fix audit alerts,
+  with an override limited to the vulnerable minimatch versions and compatibility tests.
+- **Voice changing tone and pausing after a short first sentence** (e.g. "Hahaha, esse atchim!" on ElevenLabs v3):
+  - a voice request shorter than `[voz] juntar_curta` characters (default 60) waits up to 1.5 s for the next sentence and goes together with it. Questions do not wait, and the end of the reply releases it immediately;
+  - ElevenLabs receives a fixed seed (`[voz.elevenlabs] semente`, default 42) and the previous sentence (`previous_text`, `continuidade = true`), so the intonation continues. If the model rejects the field, it goes on without it.
+- **Wrong dates in "daqui a N dias" (in N days):** the local model got the day and weekday wrong. Now the calculations ("daqui a 23 dias", "e daqui a 24?", which uses the unit of the last question that had one, "há 2 semanas", "3 meses atrás", the weekday of "25/12") are done by the code and handed ready to the model.
+- **Preferences invented from a transcription error:** a short, meaningless utterance ("Aqui assim.") became a preference copied from the instruction examples ("Seja mais direta."). Now a preference only counts if the utterance relates to it, is a laugh or has 6 words or more, and curation is told that meaningless speech is a transcription error.
+- **Ear getting names wrong in `nora falar`:** the hint with the assistant's name, which only went in `nora ouvir`, now also goes in `nora falar`.
 
-- **HUD v0.4.0 em desenvolvimento:** cliente web TypeScript com ondas e partículas conforme
-  referência visual aprovada e ponte local opcional de eventos do núcleo. Não cria outro
-  microfone ou TTS; conteúdo privado oculto por padrão. Guia: `docs/HUD.md`.
-  Homologação integrada Windows/AMD pendente; sem lançamento v0.4.0.
-- HUD acústica em retomada: medidas derivadas do PCM, animações de ondas e partículas,
-  palavras somente com temporização válida e integração com reprodução em streaming.
-  Implementação validada por regressões e checklist em `docs/HOMOLOGACAO.md`.
-- Paleta de emoções com uma fonte só (`hud/paleta.json`), lida também pelo Python (`nora.paleta`), para o Second Brain usar as mesmas cores.
-- **Voz do ElevenLabs em streaming:** a fala começa a tocar com a primeira parte do áudio, sem esperar a frase inteira chegar. As vozes locais não mudam.
-- `[ouvido] vocabulario`: nomes e termos que o Whisper deve escrever certo, mandados como dica nos dois modos.
-- Os scripts de voz aceitam o modelo `large-v3-turbo-q5_0` (mais preciso em fala pouco clara) e `-Feixe N` (busca em feixe no `whisper-server`). Guia em `docs/VOZ.md`, "Ouvido entendendo errado".
+### Added
+
+- **HUD v0.4.0 in development:** a TypeScript web client with waves and particles following
+  the approved visual reference and an optional local bridge for events from the core. It does not
+  create another microphone or TTS; private content hidden by default. Guide: `docs/HUD.md`.
+  Integrated Windows/AMD acceptance pending; no v0.4.0 release.
+- Acoustic HUD resumed: measurements derived from the PCM, wave and particle animations,
+  words only with valid timing and integration with streaming playback.
+  Implementation validated by regressions and the checklist in `docs/HOMOLOGACAO.md`.
+- Emotion palette with a single source (`hud/paleta.json`), also read by Python (`nora.paleta`), so the Second Brain uses the same colors.
+- **Streaming ElevenLabs voice:** speech starts playing with the first part of the audio, without waiting for the whole sentence to arrive. Local voices do not change.
+- `[ouvido] vocabulario`: names and terms Whisper should spell right, sent as a hint in both modes.
+- The voice scripts accept the `large-v3-turbo-q5_0` model (more accurate on unclear speech) and `-Feixe N` (beam search in `whisper-server`). Guide in `docs/VOZ.md`, "Ouvido entendendo errado" (ear mishearing).
 
 ## [0.3.0] - 2026-11-05
 
-**Roteador de modelos.** A conversa do dia a dia continua no PC, e as perguntas difíceis vão para a nuvem e voltam com a mesma voz, a mesma persona e a mesma memória. Critério da etapa atingido nos testes automatizados: a pergunta difícil sobe para a API (ChatGPT, com o Claude de reserva) e a resposta volta falada pela voz da Nora. Junto vieram a emoção na voz, a troca de cérebro e de voz por comando, as notas do Obsidian, o esquecer e apagar de vez, as respostas pela metade recuperáveis e uma auto-melhoria supervisionada. Homologação no Windows com GPU AMD registrada em `docs/RELEASE_v0.3.0.md`.
+**Model router.** Everyday conversation stays on the PC, and hard questions go to the cloud and come back with the same voice, persona and memory. Stage criterion met in the automated tests: the hard question goes up to the API (ChatGPT, with Claude as fallback) and the answer comes back spoken in Nora's voice. Along with it came emotion in the voice, switching brain and voice by command, Obsidian notes, forget and delete for good, recoverable half-finished answers and supervised self-improvement. Acceptance on Windows with an AMD GPU recorded in `docs/RELEASE_v0.3.0.md`.
 
-### Adicionado
+### Added
 
-- **Roteador de modelos** (`[roteador]`, guia em `docs/CEREBRO.md`):
-  - o cérebro local (Ollama) conversa; as perguntas difíceis vão para a nuvem, na ordem **ChatGPT → Claude → local** (`[roteador] complexas`), com uma frase de espera na mesma voz;
-  - a nuvem é acionada pela triagem (código, contas, análises, planos, textos, perguntas longas), pelo `{pensar}` do modelo local e pela segunda chance quando você reclama;
-  - pedido direto: "pensa com calma", "pergunta pro ChatGPT ...", "use o Claude para ...". O pedido é respondido por quem foi chamado e o modo não muda;
-  - comandos falados: "use o cérebro local", "use o ChatGPT", "use o Claude", "modo automático", "modo jogo" (libera a placa de vídeo e responde pela nuvem) e "sair do modo jogo" (pede confirmação);
-  - reservas nos dois sentidos, com avisos `[cérebro]`. Uma resposta que caiu no meio não é emendada com a de outro cérebro;
-  - `--medir` e o histórico mostram quem respondeu;
-  - config `[modelos.openai]`, `[modelos.nuvem]` e `[roteador]`; extra `.[nuvem]` (SDKs `openai` e `anthropic`); o `--verificar` confere chaves, pacotes e conexão.
-- **Emoção na voz** (`[emocao]`): a Nora escolhe o tom de cada frase pelo contexto. No ElevenLabs v3 vira audio tag (ela ri, suspira, sussurra); no Flash, ajuste de tom; nas vozes locais, a marca é tirada. A curadoria aprende com as suas reações.
-- **Trocar a voz falando:** "troque para a voz do Piper", "volta pro ElevenLabs", "qual voz você está usando?". Perguntas e comparações sobre vozes não trocam nada.
-- **Notas do Obsidian** (`[notas] pasta`, guia em `docs/OBSIDIAN.md`): leitura incremental do vault, só leitura, com os trechos parecidos usados na resposta e citados pelo nome da nota. Comandos `nora notas ler | buscar | status`.
-- **Esquecer e apagar de vez** (guia em `docs/MEMORIA.md`):
-  - "esquece que eu disse X" deixa de usar o assunto, inclusive os trechos de conversas antigas e o `importar`;
-  - "apaga de vez X" (pela conversa, com "sim") ou `nora memoria apagar "X" --confirmar` tira da memória e do histórico, mostrando antes o que vai sair.
-- **Respostas pela metade viram pendências:** resposta que caiu, ficou sem resposta, foi cancelada (Ctrl+C) ou foi cortada pelo programa fechar fica guardada, nunca como fato. "Termina a resposta que ficou pela metade" responde de novo, inteira e identificada; `nora pendencias` lista e cancela.
-- **Auto-melhoria supervisionada** (`[auto_melhoria]`, guia em `docs/AUTO_MELHORIA.md`):
-  - um observador anota, sem o texto das conversas, tentativas, falhas por categoria, tempos e reclamações;
-  - uma vez por dia, regras locais (sem internet e sem modelo) agrupam o que se repetiu em propostas com evidência, causa, solução, impacto, risco e testes;
-  - o relatório aparece sozinho, sem interromper uma resposta nem o modo jogo;
-  - você aprova, recusa ou adia (`nora melhorias`, ou pela voz com "sim"). Aprovar só gera a especificação; nada muda no código nem é publicado sem você.
-- Testes que mantêm o `.env.example` e o `docs/LICENCAS.md` em dia.
+- **Model router** (`[roteador]`, guide in `docs/CEREBRO.md`):
+  - the local brain (Ollama) talks; hard questions go to the cloud in the order **ChatGPT → Claude → local** (`[roteador] complexas`), with a holding phrase in the same voice;
+  - the cloud is triggered by triage (code, math, analyses, plans, texts, long questions), by the local model's `{pensar}` and by a second chance when you complain;
+  - direct request: "pensa com calma", "pergunta pro ChatGPT ...", "use o Claude para ...". The request is answered by whoever was called and the mode does not change;
+  - spoken commands: "use o cérebro local", "use o ChatGPT", "use o Claude", "modo automático", "modo jogo" (frees the graphics card and answers through the cloud) and "sair do modo jogo" (asks for confirmation);
+  - fallbacks in both directions, with `[cérebro]` warnings. A reply that dropped midway is not stitched with another brain's;
+  - `--medir` and the history show who answered;
+  - config `[modelos.openai]`, `[modelos.nuvem]` and `[roteador]`; extra `.[nuvem]` (`openai` and `anthropic` SDKs); `--verificar` checks keys, packages and connection.
+- **Emotion in the voice** (`[emocao]`): Nora picks the tone of each sentence from the context. On ElevenLabs v3 it becomes an audio tag (she laughs, sighs, whispers); on Flash, a tone adjustment; on local voices, the mark is removed. Curation learns from your reactions.
+- **Switching the voice by speaking:** "troque para a voz do Piper", "volta pro ElevenLabs", "qual voz você está usando?". Questions and comparisons about voices do not switch anything.
+- **Obsidian notes** (`[notas] pasta`, guide in `docs/OBSIDIAN.md`): incremental, read-only reading of the vault, with the similar passages used in the answer and cited by note name. Commands `nora notas ler | buscar | status`.
+- **Forget and delete for good** (guide in `docs/MEMORIA.md`):
+  - "esquece que eu disse X" stops using the subject, including passages from old conversations and `importar`;
+  - "apaga de vez X" (in conversation, with "sim") or `nora memoria apagar "X" --confirmar` removes it from memory and history, first showing what will be removed.
+- **Half-finished answers become pending items:** an answer that dropped, got no reply, was cancelled (Ctrl+C) or was cut by the program closing is kept, never as a fact. "Termina a resposta que ficou pela metade" answers again, complete and labeled; `nora pendencias` lists and cancels.
+- **Supervised self-improvement** (`[auto_melhoria]`, guide in `docs/AUTO_MELHORIA.md`):
+  - an observer records, without the conversation text, attempts, failures by category, timings and complaints;
+  - once a day, local rules (no internet and no model) group what repeated into proposals with evidence, cause, solution, impact, risk and tests;
+  - the report shows up on its own, without interrupting an answer or game mode;
+  - you approve, reject or postpone (`nora melhorias`, or by voice with "sim"). Approving only produces the specification; nothing changes in the code or is published without you.
+- Tests that keep `.env.example` and `docs/LICENCAS.md` up to date.
 
-### Corrigido
+### Fixed
 
-- **Enter no `nora falar` com a auto-melhoria ligada:**
-  - um erro ao apresentar o relatório podia deixar para trás a thread que lê o teclado, e ela engolia o Enter seguinte (o de parar de gravar);
-  - o modo `abrir` podia tirar o foco do terminal (o editor do `.md` ficava com o teclado no Windows; no Linux, o `xdg-open` herdava o terminal).
+- **Enter in `nora falar` with self-improvement on:**
+  - an error while presenting the report could leave behind the thread that reads the keyboard, and it swallowed the next Enter (the one to stop recording);
+  - the `abrir` mode could take focus away from the terminal (the `.md` editor kept the keyboard on Windows; on Linux, `xdg-open` inherited the terminal).
   
-  Agora o relatório abre minimizado e sem foco, nem o programa aberto nem a notificação usam o teclado da sessão, e o prompt reaparece depois de um relatório.
-- **Áudio que não carrega:** quando o pacote de áudio está instalado mas não carrega (o caso comum é o `.venv` recriado com outra versão do Python), a Nora mostra a causa real, em vez de "Falta a parte de áudio".
-- **Busca por trecho na agenda e no `listar --contendo`** ([#3](https://github.com/Gabitoprof/Nora/issues/3)): "Álgebra" agora acha "álgebra", e `_` e `%` não funcionam mais como curingas.
-- **Modo jogo:** se nenhuma nuvem responder, a Nora não volta a usar o cérebro local (que ocuparia a placa de vídeo); a pergunta vira pendência e, ao sair do modo jogo, ela oferece retomar.
-- **Comando com pedido:** "use o Claude para explicar fotossíntese" responde a pergunta, em vez de só trocar o modo; "como sair do modo jogo?" é respondida, não executada.
-- **Resposta que cai no meio:** nada de duas respostas emendadas. A resposta fica marcada no histórico (`"situacao"`) e não vai para a memória.
-- **Ctrl+C** no meio de uma resposta guarda a pendência na hora; **retomar** uma resposta conta como "ocupada" para o relatório diário.
-- **Relatório diário:** não traz o texto das perguntas (relatórios antigos são limpos); só conta como mostrado depois de aparecer; arquivo ausente ou ilegível continua pendente e não derruba a conversa.
-- **Apagar pela conversa:** a memória não regrava mais o fato apagado nem anota o próprio pedido de apagar.
-- No `nora ouvir`, o texto digitado é lido mesmo com o microfone captando sem parar.
+  Now the report opens minimized and without focus, neither the opened program nor the notification uses the session's keyboard, and the prompt reappears after a report.
+- **Audio that does not load:** when the audio package is installed but does not load (the common case is a `.venv` recreated with another Python version), Nora shows the real cause instead of "Falta a parte de áudio".
+- **Substring search in the agenda and in `listar --contendo`** ([Gabitoprof/Nora#3](https://github.com/Gabitoprof/Nora/issues/3)): "Álgebra" now finds "álgebra", and `_` and `%` no longer act as wildcards.
+- **Game mode:** if no cloud answers, Nora does not go back to the local brain (which would occupy the graphics card); the question becomes a pending item and, when leaving game mode, she offers to resume it.
+- **Command with a request:** "use o Claude para explicar fotossíntese" answers the question instead of only switching the mode; "como sair do modo jogo?" is answered, not executed.
+- **Answer that drops midway:** no two answers stitched together. The answer is marked in the history (`"situacao"`) and does not go to memory.
+- **Ctrl+C** in the middle of an answer stores the pending item immediately; **resuming** an answer counts as "busy" for the daily report.
+- **Daily report:** does not include the text of the questions (old reports are cleaned); only counts as shown after it appears; a missing or unreadable file stays pending and does not bring the conversation down.
+- **Deleting in conversation:** memory no longer re-records the deleted fact or notes the delete request itself.
+- In `nora ouvir`, typed text is read even with the microphone capturing nonstop.
 
 ## [0.2.0] - 2026-11-02
 
-**Memória.** A Nora lembra de você entre uma conversa e outra: anota fatos em áreas (saúde, estudos, trabalho...), guarda cada troca inteira, acha compromissos pelo dia ("o que tenho amanhã?") e aprende como você quer que ela fale (pronúncias e preferências). Critério da etapa atingido: no teste, fatos ditos numa conversa (a prova, o aniversário) foram lembrados em conversas novas, inclusive pela data ("foi ontem, 31 de outubro"). Junto vieram a digitação no lugar da fala, a prioridade da voz sobre outros programas e o caminho para criar uma voz própria (dataset, verificador e treino do Piper no Kaggle ou no Colab).
+**Memory.** Nora remembers you from one conversation to the next: notes facts by area (health, studies, work...), keeps every full exchange, finds appointments by day ("o que tenho amanhã?") and learns how you want her to speak (pronunciations and preferences). Stage criterion met: in the test, facts said in one conversation (the exam, the birthday) were remembered in new conversations, including by date ("foi ontem, 31 de outubro"). Along with it came typing instead of speaking, voice priority over other programs and the path to creating your own voice (dataset, checker and Piper training on Kaggle or Colab).
 
-### Adicionado
+### Added
 
-- **Memória entre conversas** (v0.2.0): depois de cada resposta, em segundo plano, o modelo local anota fatos duradouros sobre a pessoa; antes de responder, a Nora busca os fatos parecidos com a pergunta e os lê junto. Fica em `data/memoria.db` (SQLite), com busca por significado (embeddings `bge-m3` pelo Ollama, índice `sqlite-vec` opcional). Fatos quase iguais são juntados. Guia em `docs/MEMORIA.md`.
-- **Aprender pela conversa:** quando você corrige a pronúncia ("o certo é ôje") ou pede outro jeito de falar ("não repita minha pergunta"), a curadoria guarda: as pronúncias valem na hora para qualquer voz (e para o `gerar-dataset`), e as preferências vão junto em toda resposta. `nora memoria pronuncias | preferencias` para ver, ensinar à mão e esquecer.
-- **Agenda da memória:** fatos com data (prova, consulta, aniversário) vão também para uma agenda; a curadoria converte "amanhã", "sexta", "dia 21" e "21/11" em datas, e aniversários repetem todo ano. Antes de responder, a Nora lê o que está marcado para os próximos 7 dias (`[memoria] agenda_dias`) e para o período de que a pergunta fala ("o que tenho amanhã?", "e na sexta?", "em dezembro"), o que a busca por significado sozinha não achava. `nora memoria agenda | marcar | desmarcar`. Fatos antigos com data entram na agenda sozinhos.
-- **Memória total:** além dos fatos anotados, cada pergunta e resposta fica guardada inteira, com seu vetor; antes de responder, a Nora também lê os trechos de conversas antigas mais parecidos com a pergunta (`[memoria] trocas_por_pergunta`, padrão 3). O `importar` guarda também as trocas antigas.
-- **Áreas da memória:** cada fato ganha uma área (saúde, trabalho, estudos...). A curadoria recebe as áreas que já existem, reaproveita a que couber e cria uma nova quando o assunto é novo; "Saude" e "saúde" contam como a mesma. `nora memoria areas` e `listar --area saúde`; `lembrar --area`. Bancos antigos ganham a coluna sozinhos.
-- `nora memoria listar | buscar | lembrar | esquecer | importar`. O `listar` mostra 20 por página (`--pagina`, `--contendo`, `--todos`). O `importar` tira fatos das conversas antigas de `data/historico/` e continua de onde parou.
-- Config `[memoria]` (`ativa`, `modelo_embeddings`, `curadoria`, `fatos_por_pergunta`, `similaridade_minima`) e extra de instalação `.[memoria]`.
-- **Digitar em vez de falar** (acessibilidade): `nora conversar --voz` (só teclado, resposta falada) e `nora ouvir` aceitando texto digitado a qualquer momento, sem precisar do nome dela.
-- `[voz] realce_pergunta` (`duplo` "??", `invertido` "¿...?", `exclamado` "?!") reescreve as perguntas para vozes que não sobem a entonação no "?"; `nora voz comparar "Tudo bem?"` gera a frase em cada jeito para escolher de ouvido.
-- Uma pergunta sempre fecha o pedido à voz (o "?" fica no fim, onde a entonação sobe), mesmo quando frases são juntadas.
-- `[voz.piper] velocidade` (0.5 a 2.0), `variacao` e `variacao_ritmo` (naturalidade: menos robótica e menos monótona) e `[audio] silencio_inicial_ms`: um pouco de silêncio antes de cada fala, para fones e placas de som que cortam o começo (o "Oi" saía engolido).
-- `[voz.pronuncias]`: palavras reescritas só na fala (ex.: `"amanhã" = "amanhãn"`), para qualquer motor de voz.
-- Lista de frases de treino com 204 frases, incluindo 46 perguntas, quase 50 com sons nasais (ã, ão, õe) e 50 saudações e respostas curtas ("Oi!", "Tá bom.", "Tchau, até amanhã!"), que a voz treinada sem elas falava picotado.
-- O conjunto de treino é convertido para 22.050 Hz com corte de frequências (FFT, numpy), sem abafar nem gerar chiado; antes era uma interpolação simples.
-- `docs/LICENCAS.md`: o que é MIT (o código) e a licença de cada dependência, programa, modelo, voz e serviço que a Nora usa, conferida na fonte; um teste falha se uma dependência do `pyproject.toml` não estiver listada.
-- `nora voz conferir-dataset --nome X [--descartar]`: o Whisper ouve cada frase do conjunto de treino e compara com o texto; o áudio é medido (ritmo, silêncios, pausas, volume, distorção). Cada frase vira "boa", "conferir" ou "ruim", com uma planilha `conferencia.csv`; `--descartar` tira as ruins do conjunto e o `gerar-dataset` não as refaz; `--tirar 0079 0088` tira frases escolhidas de ouvido.
-- **Notebook de treino do Piper no Kaggle** (`scripts/treinar_piper_kaggle.ipynb`): 30 h de GPU grátis por semana e treino em segundo plano (até 12 h, com o PC desligado); para antes do limite, exporta a voz e uma frase de teste, e continua de um treino anterior.
-- **Notebook de treino do Piper no Colab** (`scripts/treinar_piper_colab.ipynb`): confere o conjunto, faz o ajuste fino a partir de uma voz pt-BR do Piper (piper1-gpl, baixado no Colab), salva o progresso no Google Drive (a cada 5 minutos, com aviso na tela) para continuar se o Colab desconectar, para quando não há GPU, exporta o `.onnx` e toca uma frase de teste. Passo a passo em `docs/TREINAR_VOZ.md`.
-- `nora voz gerar-dataset`: fala muitas frases com a voz principal (ex.: o fluxo do ComfyUI) e salva no formato de treino do Piper (`wavs/` mono 22.050 Hz + `metadata.csv`), continuando de onde parou; aceita lista de frases ou texto corrido (`--texto`). Lista inicial em `recursos/frases_pt.txt` e guia em `docs/TREINAR_VOZ.md` (ComfyUI → conjunto → treino no Colab → Piper na Nora).
-- Frases que já estão esperando vão juntas num pedido só à voz (até 400 caracteres): com vozes lentas, como o ComfyUI, há menos pedidos e menos pausas entre as frases.
-- **Voz pelo ComfyUI** (`[voz] motor = "comfyui"`): a Nora manda cada frase para um fluxo seu do ComfyUI (exportado em "Export (API)", com `{{texto}}` no nó de texto), espera pela API local e toca o áudio gerado (WAV, FLAC ou MP3, convertidos com `soundfile`). `config/voz_comfyui.json` fica fora do Git. Em vez de `{{texto}}`, dá para indicar o nó e o campo da frase em `[voz.comfyui] campo` (ex.: `"12.text"`); se errar, a Nora lista os nós e campos de texto do fluxo.
-- `nora voz salvar "texto" [--pasta] [--nome] [--ouvir]`: a Nora fala o texto com a voz configurada e salva em .wav (padrão: `data/audios/`).
-- **Laboratório de voz:** `nora voz listar` e `nora voz testar "pf_dora:0.7 + af_heart:0.3"` misturam vozes do Kokoro para criar uma voz nova, de graça e no PC; a receita vai em `[voz.kokoro] voz`.
-- **Prioridade da voz** (`[audio] prioridade`, padrão `true`; `volume_outros`, padrão 0.2): no Windows, enquanto a Nora fala, os outros programas ficam mais baixos e depois voltam (pycaw).
-- A curadoria também anota animais de estimação e acontecimentos marcantes, com a data (antes só fatos duradouros: o susto com o cachorro ficava de fora).
-- A Nora mostra o que anotou na memória (`[memória] anotei: ...`) e sabe que tem memória: sem lembrança sobre o assunto, diz que não se lembra, em vez de dizer que não tem memória.
-- `nora --verificar` confere o modelo de embeddings; `--medir` mostra quantos fatos foram usados em cada resposta.
+- **Memory across conversations** (v0.2.0): after each answer, in the background, the local model notes lasting facts about the person; before answering, Nora searches the facts similar to the question and reads them along. Stored in `data/memoria.db` (SQLite), with meaning-based search (`bge-m3` embeddings through Ollama, optional `sqlite-vec` index). Near-identical facts are merged. Guide in `docs/MEMORIA.md`.
+- **Learning from conversation:** when you correct a pronunciation ("o certo é ôje") or ask for another way of speaking ("não repita minha pergunta"), curation stores it: pronunciations apply immediately for any voice (and for `gerar-dataset`), and preferences go along with every answer. `nora memoria pronuncias | preferencias` to see, teach by hand and forget.
+- **Memory agenda:** facts with a date (exam, appointment, birthday) also go into an agenda; curation converts "amanhã", "sexta", "dia 21" and "21/11" into dates, and birthdays repeat every year. Before answering, Nora reads what is scheduled for the next 7 days (`[memoria] agenda_dias`) and for the period the question is about ("o que tenho amanhã?", "e na sexta?", "em dezembro"), which meaning-based search alone did not find. `nora memoria agenda | marcar | desmarcar`. Old facts with a date enter the agenda on their own.
+- **Total memory:** besides the noted facts, every question and answer is kept in full, with its vector; before answering, Nora also reads the passages of old conversations most similar to the question (`[memoria] trocas_por_pergunta`, default 3). `importar` also stores old exchanges.
+- **Memory areas:** each fact gets an area (health, work, studies...). Curation receives the existing areas, reuses the one that fits and creates a new one when the subject is new; "Saude" and "saúde" count as the same. `nora memoria areas` and `listar --area saúde`; `lembrar --area`. Old databases get the column on their own.
+- `nora memoria listar | buscar | lembrar | esquecer | importar`. `listar` shows 20 per page (`--pagina`, `--contendo`, `--todos`). `importar` extracts facts from the old conversations in `data/historico/` and resumes where it stopped.
+- Config `[memoria]` (`ativa`, `modelo_embeddings`, `curadoria`, `fatos_por_pergunta`, `similaridade_minima`) and the `.[memoria]` install extra.
+- **Typing instead of speaking** (accessibility): `nora conversar --voz` (keyboard only, spoken answer) and `nora ouvir` accepting typed text at any time, without needing her name.
+- `[voz] realce_pergunta` (`duplo` "??", `invertido` "¿...?", `exclamado` "?!") rewrites questions for voices that do not raise the intonation on "?"; `nora voz comparar "Tudo bem?"` produces the sentence in each style to choose by ear.
+- A question always closes the voice request (the "?" stays at the end, where the intonation rises), even when sentences are joined.
+- `[voz.piper] velocidade` (0.5 to 2.0), `variacao` and `variacao_ritmo` (naturalness: less robotic and less monotone) and `[audio] silencio_inicial_ms`: a little silence before each utterance, for headsets and sound cards that cut the beginning (the "Oi" came out swallowed).
+- `[voz.pronuncias]`: words rewritten only in speech (e.g. `"amanhã" = "amanhãn"`), for any voice engine.
+- A training sentence list with 204 sentences, including 46 questions, almost 50 with nasal sounds (ã, ão, õe) and 50 greetings and short replies ("Oi!", "Tá bom.", "Tchau, até amanhã!"), which the voice trained without them spoke choppily.
+- The training set is converted to 22,050 Hz with frequency cutoff (FFT, numpy), without muffling or hissing; it used to be a simple interpolation.
+- `docs/LICENCAS.md`: what is MIT (the code) and the license of each dependency, program, model, voice and service Nora uses, checked at the source; a test fails if a `pyproject.toml` dependency is not listed.
+- `nora voz conferir-dataset --nome X [--descartar]`: Whisper listens to each sentence of the training set and compares it with the text; the audio is measured (pace, silences, pauses, volume, distortion). Each sentence becomes "boa" (good), "conferir" (check) or "ruim" (bad), with a `conferencia.csv` spreadsheet; `--descartar` removes the bad ones from the set and `gerar-dataset` does not redo them; `--tirar 0079 0088` removes sentences picked by ear.
+- **Piper training notebook on Kaggle** (`scripts/treinar_piper_kaggle.ipynb`): 30 h of free GPU per week and background training (up to 12 h, with the PC off); stops before the limit, exports the voice and a test sentence, and resumes a previous training.
+- **Piper training notebook on Colab** (`scripts/treinar_piper_colab.ipynb`): checks the set, fine-tunes from a Piper pt-BR voice (piper1-gpl, downloaded in Colab), saves progress to Google Drive (every 5 minutes, with an on-screen notice) to continue if Colab disconnects, stops when there is no GPU, exports the `.onnx` and plays a test sentence. Step by step in `docs/TREINAR_VOZ.md`.
+- `nora voz gerar-dataset`: speaks many sentences with the main voice (e.g. the ComfyUI flow) and saves them in Piper's training format (`wavs/` mono 22,050 Hz + `metadata.csv`), resuming where it stopped; accepts a sentence list or running text (`--texto`). Initial list in `recursos/frases_pt.txt` and guide in `docs/TREINAR_VOZ.md` (ComfyUI → set → Colab training → Piper in Nora).
+- Sentences already waiting go together in a single voice request (up to 400 characters): with slow voices like ComfyUI, there are fewer requests and fewer pauses between sentences.
+- **Voice through ComfyUI** (`[voz] motor = "comfyui"`): Nora sends each sentence to your own ComfyUI flow (exported with "Export (API)", with `{{texto}}` in the text node), waits on the local API and plays the generated audio (WAV, FLAC or MP3, converted with `soundfile`). `config/voz_comfyui.json` stays out of Git. Instead of `{{texto}}`, you can point to the node and field of the sentence in `[voz.comfyui] campo` (e.g. `"12.text"`); if wrong, Nora lists the flow's text nodes and fields.
+- `nora voz salvar "texto" [--pasta] [--nome] [--ouvir]`: Nora speaks the text with the configured voice and saves it as .wav (default: `data/audios/`).
+- **Voice lab:** `nora voz listar` and `nora voz testar "pf_dora:0.7 + af_heart:0.3"` mix Kokoro voices to create a new voice, free and on the PC; the recipe goes in `[voz.kokoro] voz`.
+- **Voice priority** (`[audio] prioridade`, default `true`; `volume_outros`, default 0.2): on Windows, while Nora speaks, the other programs get quieter and then come back (pycaw).
+- Curation also notes pets and remarkable events, with the date (before, only lasting facts: the scare with the dog was left out).
+- Nora shows what she noted in memory (`[memória] anotei: ...`) and knows she has memory: with no memory of the subject, she says she does not remember, instead of saying she has no memory.
+- `nora --verificar` checks the embeddings model; `--medir` shows how many facts were used in each answer.
 
-### Corrigido
+### Fixed
 
-- Se a saída de som escolhida em `[audio] alto_falante` não abrir (sumiu, mudou de número, ou está ocupada por outro programa), a Nora toca na saída padrão e avisa, em vez de ficar muda.
-- CHANGELOG da 0.1.0: a ativação aceita "Nora", "Norah" e "Nóra" (não "Ela").
+- If the sound output chosen in `[audio] alto_falante` does not open (gone, changed number, or busy with another program), Nora plays on the default output and warns, instead of going silent.
+- 0.1.0 CHANGELOG: activation accepts "Nora", "Norah" and "Nóra" (not "Ela").
 
 ## [0.1.0] - 2026-10-30
 
-**Conversa por voz.** A Nora acorda com o nome, ouve, pensa no modelo local (Qwen 3.5 9B na RX 9060 XT) e responde falando, frase por frase. Critério da etapa atingido: no teste com fone Bluetooth e voz do ElevenLabs, a voz começou entre 1,4 e 2,4 s depois do fim da fala (transcrição ~0,7 s no processador; primeira frase ~0,9 a 1,5 s), sem contar a pausa de 0,7 s que encerra a fala.
+**Voice conversation.** Nora wakes up on her name, listens, thinks on the local model (Qwen 3.5 9B on the RX 9060 XT) and answers out loud, sentence by sentence. Stage criterion met: in the test with a Bluetooth headset and the ElevenLabs voice, the voice started between 1.4 and 2.4 s after the end of speech (transcription ~0.7 s on the CPU; first sentence ~0.9 to 1.5 s), not counting the 0.7 s pause that ends the utterance.
 
-### Alterado
+### Changed
 
-- **O projeto e a assistente passam a se chamar Nora** (antes "Ella"): pacote `nora`, comando `nora`, config padrão `config/nora.toml`, variável `NORA_CONFIG`. O nome "Ella" ("Élha") era transcrito como "Elia", "Ilha" ou "ele" e a palavra de ativação quase nunca funcionava.
+- **The project and the assistant are now called Nora** (formerly "Ella"): package `nora`, command `nora`, default config `config/nora.toml`, variable `NORA_CONFIG`. The name "Ella" ("Élha") was transcribed as "Elia", "Ilha" or "ele" and the wake word almost never worked.
 
-### Corrigido
+### Fixed
 
-- O som é tocado em modo callback (entregando o áudio aos pedaços), que funciona em todas as APIs de áudio do Windows. O modo anterior não existe no WDM-KS, a única API que mostra a saída do modo chamada de fones Bluetooth ("Blocking API not supported yet").
-- Erros de conexão mostram o motivo real (ex.: tempo esgotado, sem internet); para serviços na internet, a dica é conferir a conexão em vez de "Ele está aberto?".
-- `nora ouvir` pausa o microfone enquanto a Nora fala (`[escuta] pausar_microfone`, padrão `true`; com fone Bluetooth, use `false` e a saída "Headset" do fone). Com fone Bluetooth, o microfone aberto deixa o fone no modo chamada e a voz dela não saía no fone.
+- Sound is played in callback mode (handing audio over in pieces), which works on all Windows audio APIs. The previous mode does not exist on WDM-KS, the only API that shows the call-mode output of Bluetooth headsets ("Blocking API not supported yet").
+- Connection errors show the real reason (e.g. timeout, no internet); for internet services, the hint is to check the connection instead of "Ele está aberto?".
+- `nora ouvir` pauses the microphone while Nora speaks (`[escuta] pausar_microfone`, default `true`; with a Bluetooth headset, use `false` and the headset's "Headset" output). With a Bluetooth headset, the open microphone puts the headset in call mode and her voice did not come out of the headset.
 
-### Adicionado
+### Added
 
-- Voz reserva (`[voz] reserva`, padrão `kokoro`): se a voz principal falhar (ex.: ElevenLabs sem internet), a Nora fala com a reserva e avisa.
-- `nora conversar`: conversa digitada com o modelo local, com a resposta aparecendo enquanto é gerada (parte 1 da v0.1.0). `--medir` mostra o tempo até a primeira palavra e a velocidade.
-- Persona: prompt de sistema montado da config (humor, formalidade, respostas curtas, data e hora, nome do usuário), com regras para fala em voz alta (sem markdown nem emojis).
-- `nora conversar` carrega o modelo na memória ao abrir, para a primeira pergunta não pagar os ~18 s de carga.
-- `nora falar`: conversa por voz com Enter para falar (parte 2 da v0.1.0). Ouvido pelo whisper-server (whisper.cpp), voz pelo servidor HTTP do Piper, cada um como programa separado. A resposta é falada frase por frase enquanto o modelo ainda escreve. `--medir` mostra o tempo de transcrição, da primeira frase e até começar a falar.
-- Scripts `instalar_voz_windows.ps1` e `iniciar_voz_windows.ps1`, e guia em `docs/VOZ.md`.
-- Config `[ouvido]` e `url` em `[voz]`; voz padrão `pt_BR-faber-medium` (uso pessoal, baixada à parte).
-- `nora --verificar` também checa o whisper-server e o Piper.
-- Voz configurável em `[voz] motor`: **`kokoro`** (novo padrão, voz feminina pt-BR `pf_dora`, local), `piper` ou **`elevenlabs`** (nuvem, chave em `ELEVENLABS_API_KEY`, voz em `[voz.elevenlabs] voz_id`).
-- `nora servidor-kokoro`: servidor de voz local com o Kokoro-82M, no mesmo formato do Piper (`POST /synthesize`). Extra de instalação `.[kokoro]`.
-- Scripts de voz instalam o Kokoro e iniciam a voz escolhida (`-Voz kokoro|piper|nenhuma`).
-- `nora ouvir`: conversa mãos livres (parte 3 da v0.1.0). O Silero VAD (MIT, baixado do PyPI na primeira vez) detecta começo e fim da fala; a fala vira pergunta quando começa com a palavra de ativação ("Nora", aceitando "Norah" e "Nóra"); depois de responder, dá para continuar por `janela_s` segundos sem dizer o nome; "tchau" encerra. Config `[escuta]` (`limiar`, `silencio_ms`, `janela_s`).
-- Pronúncia do nome: `[assistente] pronuncia` muda só como a voz fala o nome (a tela continua mostrando o nome).
-- O ouvido envia ao Whisper uma dica com o nome da assistente ("Conversa com a assistente Nora."), para ele escrever "Nora" do jeito certo.
-- `nora ouvir --gravar-falas` salva cada fala ouvida em `data/falas/`, para diagnóstico. O detector guarda 0,5 s antes do começo da fala, para não cortar a primeira sílaba.
-- Persona mais objetiva: sem repetir a pergunta, sem elogios de abertura, sem inventar fatos sobre a pessoa e sem terminar toda resposta com pergunta.
-- Config `[modelos.local] temperatura` (padrão 0.6), enviada ao Ollama.
-- `nora audio`: lista microfones e alto-falantes, grava alguns segundos e toca de volta. Config `[audio]` para escolher os dispositivos.
+- Fallback voice (`[voz] reserva`, default `kokoro`): if the main voice fails (e.g. ElevenLabs without internet), Nora speaks with the fallback and warns.
+- `nora conversar`: typed conversation with the local model, with the answer appearing as it is generated (part 1 of v0.1.0). `--medir` shows the time to the first word and the speed.
+- Persona: system prompt built from the config (humor, formality, short answers, date and time, user name), with rules for speaking aloud (no markdown or emojis).
+- `nora conversar` loads the model into memory on start, so the first question does not pay the ~18 s load.
+- `nora falar`: voice conversation with Enter to speak (part 2 of v0.1.0). Ear through whisper-server (whisper.cpp), voice through Piper's HTTP server, each as a separate program. The answer is spoken sentence by sentence while the model is still writing. `--medir` shows the transcription time, the first sentence and until speech starts.
+- Scripts `instalar_voz_windows.ps1` and `iniciar_voz_windows.ps1`, and guide in `docs/VOZ.md`.
+- Config `[ouvido]` and `url` in `[voz]`; default voice `pt_BR-faber-medium` (personal use, downloaded separately).
+- `nora --verificar` also checks whisper-server and Piper.
+- Voice configurable in `[voz] motor`: **`kokoro`** (new default, female pt-BR voice `pf_dora`, local), `piper` or **`elevenlabs`** (cloud, key in `ELEVENLABS_API_KEY`, voice in `[voz.elevenlabs] voz_id`).
+- `nora servidor-kokoro`: local voice server with Kokoro-82M, in the same format as Piper (`POST /synthesize`). Install extra `.[kokoro]`.
+- Voice scripts install Kokoro and start the chosen voice (`-Voz kokoro|piper|nenhuma`).
+- `nora ouvir`: hands-free conversation (part 3 of v0.1.0). Silero VAD (MIT, downloaded from PyPI the first time) detects the start and end of speech; the utterance becomes a question when it starts with the wake word ("Nora", accepting "Norah" and "Nóra"); after answering, you can continue for `janela_s` seconds without saying the name; "tchau" ends it. Config `[escuta]` (`limiar`, `silencio_ms`, `janela_s`).
+- Name pronunciation: `[assistente] pronuncia` only changes how the voice says the name (the screen keeps showing the name).
+- The ear sends Whisper a hint with the assistant's name ("Conversa com a assistente Nora."), so it writes "Nora" the right way.
+- `nora ouvir --gravar-falas` saves each heard utterance in `data/falas/`, for diagnosis. The detector keeps 0.5 s before the start of speech, so the first syllable is not cut.
+- More objective persona: no repeating the question, no opening compliments, no inventing facts about the person and no ending every answer with a question.
+- Config `[modelos.local] temperatura` (default 0.6), sent to Ollama.
+- `nora audio`: lists microphones and speakers, records a few seconds and plays them back. Config `[audio]` to choose the devices.
 
-### Corrigido
+### Fixed
 
-- O microfone agora grava na taxa que ele aceita (ex.: 48 kHz) e converte para 16 kHz, em vez de exigir 16 kHz (causava `MME error 11` no Windows). Erros do microfone viram mensagem clara em vez de derrubar o programa.
-- Se o microfone não abrir, a Nora tenta o mesmo microfone pelas outras APIs de áudio do Windows (WASAPI, DirectSound, WDM-KS) e em estéreo, convertendo para mono.
-- O microfone também tenta outras taxas (48, 44,1, 16, 32, 22,05 e 8 kHz): fones Bluetooth anunciam 44,1 kHz, mas o microfone deles só abre a 16 ou 8 kHz. Se nada abrir, o erro lista cada tentativa. No WASAPI, pede ao Windows para converter o formato (`auto_convert`); e acha também a versão WDM-KS de fones Bluetooth, que tem outro nome. O teste de cada opção inclui começar a gravar: um microfone que abre mas não grava (ex.: "dispositivo não conectado") passa para a próxima opção em vez de derrubar o programa.
-- Descrições de som do Whisper (ex.: `[MÚSICA DE FUNDO]`, `(risos)`) não viram mais pergunta para a Nora.
-- A voz pede a fala ao Piper em `POST /synthesize`, o endereço do servidor HTTP do piper-tts atual (antes `POST /` dava erro 405).
-- Histórico bruto: cada pergunta e resposta é gravada em `data/historico/AAAA-MM-DD.jsonl`, fora do Git.
+- The microphone now records at the rate it accepts (e.g. 48 kHz) and converts to 16 kHz, instead of requiring 16 kHz (it caused `MME error 11` on Windows). Microphone errors become a clear message instead of bringing the program down.
+- If the microphone does not open, Nora tries the same microphone through the other Windows audio APIs (WASAPI, DirectSound, WDM-KS) and in stereo, converting to mono.
+- The microphone also tries other rates (48, 44.1, 16, 32, 22.05 and 8 kHz): Bluetooth headsets announce 44.1 kHz, but their microphone only opens at 16 or 8 kHz. If nothing opens, the error lists each attempt. On WASAPI, it asks Windows to convert the format (`auto_convert`); and it also finds the WDM-KS version of Bluetooth headsets, which has another name. Testing each option includes starting to record: a microphone that opens but does not record (e.g. "dispositivo não conectado") moves to the next option instead of bringing the program down.
+- Whisper sound descriptions (e.g. `[MÚSICA DE FUNDO]`, `(risos)`) no longer become questions for Nora.
+- The voice requests speech from Piper at `POST /synthesize`, the address of the current piper-tts HTTP server (`POST /` used to give error 405).
+- Raw history: each question and answer is recorded in `data/historico/AAAA-MM-DD.jsonl`, outside Git.
 
 ## [0.0.1] - 2026-10-30
 
-### Adicionado
+### Added
 
-- Opção `pensar` em `[modelos.local]` para ligar ou desligar o modo "pensando" do modelo local (desligado por padrão).
-- Resultados do primeiro teste de GPU em `docs/TESTE_GPU.md`.
+- `pensar` option in `[modelos.local]` to turn the local model's "thinking" mode on or off (off by default).
+- Results of the first GPU test in `docs/TESTE_GPU.md`.
 
-### Alterado
+### Changed
 
-- `scripts/teste_gpu_windows.ps1` mede pela API do Ollama: tempo total, carga e velocidade, com e sem modo pensando, sem os caracteres de animação do terminal no relatório.
+- `scripts/teste_gpu_windows.ps1` measures through the Ollama API: total time, load and speed, with and without thinking mode, without the terminal animation characters in the report.
 
 ## [0.0.0] - 2026-10-30
 
-### Adicionado
+### Added
 
-- Estrutura do repositório: núcleo Python em `src/nora/`, pastas `hud/`, `mcp_servers/`, `scripts/`, `docs/`.
-- Config em TOML (`config/nora.toml`) com nome, persona (humor e formalidade), voz e modelos; sobreposição pessoal por `config/local.toml` e segredos por `.env`, ambos fora do Git.
-- Comando `nora` (saudação) e `nora --verificar` (mostra a config e checa Ollama e chave da API).
-- Script `scripts/teste_gpu_windows.ps1` para testar o Ollama na GPU AMD, preparando a v0.1.0.
-- Testes (pytest), lint (ruff) e CI no GitHub Actions para Windows e Linux.
-- Documentação: objetivo, mapa mental (Mermaid e Obsidian Canvas), estudo de referência, guia do Obsidian, `CLAUDE.md`.
-- Licença MIT.
+- Repository structure: Python core in `src/nora/`, folders `hud/`, `mcp_servers/`, `scripts/`, `docs/`.
+- TOML config (`config/nora.toml`) with name, persona (humor and formality), voice and models; personal override through `config/local.toml` and secrets through `.env`, both outside Git.
+- `nora` command (greeting) and `nora --verificar` (shows the config and checks Ollama and the API key).
+- Script `scripts/teste_gpu_windows.ps1` to test Ollama on the AMD GPU, preparing v0.1.0.
+- Tests (pytest), lint (ruff) and CI on GitHub Actions for Windows and Linux.
+- Documentation: goal, mind map (Mermaid and Obsidian Canvas), reference study, Obsidian guide, `CLAUDE.md`.
+- MIT license.
