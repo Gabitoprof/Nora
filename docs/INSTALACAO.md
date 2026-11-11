@@ -1,68 +1,68 @@
-# Instalar a Nora no Windows
+# Installing Nora on Windows
 
-Este guia é para quem vai **usar** a Nora. Para desenvolver, use o repositório (veja o README).
+This guide is for whoever is going to **use** Nora. To develop, use the repository (see the README).
 
-São duas partes:
-1. o **instalador da Nora** (`Nora-<versão>-instalador.exe`), com o programa e a HUD;
-2. o **pacote de dependências da Nora**: os programas que ela usa e que não vêm dentro dela, porque são grandes, têm licença própria e se atualizam sozinhos. O instalador oferece instalar esse pacote no fim.
+There are two parts:
+1. the **Nora installer** (`Nora-<version>-instalador.exe`), with the program and the HUD;
+2. the **Nora dependency pack**: the programs she uses that do not come inside her, because they are large, have their own licenses and update themselves. The installer offers to install this pack at the end.
 
-## Antes de começar
+## Before you start
 
-- Windows 10 ou 11, 64 bits.
-- Internet, para o pacote de dependências: uns **8 GB** de download (o modelo de conversa é a maior parte).
-- Para a voz da Nora: uma conta no [ElevenLabs](https://elevenlabs.io) com uma chave de API. As vozes locais (Kokoro e Piper) usam programas GPL e **não** vêm no instalador.
-- Placa de vídeo: a Nora foi feita para a AMD RX 9060 XT 16 GB, mas o Ollama usa a placa que tiver, ou o processador, mais devagar.
+- Windows 10 or 11, 64-bit.
+- Internet, for the dependency pack: about **8 GB** of download (the conversation model is most of it).
+- For Nora's voice: an [ElevenLabs](https://elevenlabs.io) account with an API key. The local voices (Kokoro and Piper) use GPL programs and do **not** come in the installer.
+- Graphics card: Nora was made for the AMD RX 9060 XT 16 GB, but Ollama uses whatever card you have, or the CPU, more slowly.
 
-## 1. Instalar a Nora
+## 1. Install Nora
 
-1. Rode `Nora-<versão>-instalador.exe`. Não precisa de administrador: ela vai para a sua pasta de usuário.
-2. **O Windows vai avisar** "O Windows protegeu o computador", porque o instalador ainda não tem assinatura digital. Clique em **Mais informações** e depois em **Executar assim mesmo**. Se o antivírus perguntar, permita: programas novos sem assinatura costumam ser examinados na primeira vez.
-3. Deixe marcada a opção **"Instalar agora o pacote de dependências"** e clique em Instalar.
+1. Run `Nora-<version>-instalador.exe`. It does not need admin: it goes into your user folder.
+2. **Windows will warn** "Windows protected your PC", because the installer has no digital signature yet. Click **More info** and then **Run anyway**. If the antivirus asks, allow it: new unsigned programs are usually scanned the first time.
+3. Leave **"Instalar agora o pacote de dependências"** (install the dependency pack now) checked and click Install.
 
-## 2. O pacote de dependências (automático)
+## 2. The dependency pack (automatic)
 
-Ele abre uma janela do PowerShell e instala, em ordem:
+It opens a PowerShell window and installs, in order:
 
-| Etapa | O que instala | Tamanho |
+| Step | What it installs | Size |
 |---|---|---|
-| 1 | Visual C++ Redistributable (x64), se faltar | ~25 MB |
-| 2 | **Ollama** (cérebro local), pelo `winget` | ~1 GB |
-| 3 | Modelos do Ollama: `qwen3.5:9b` (conversa) e `bge-m3` (memória) | ~7 GB |
-| 4 | **whisper.cpp** (ouvido), do site oficial | ~10 MB |
-| 5 | Modelo do Whisper (`small`) | ~470 MB |
+| 1 | Visual C++ Redistributable (x64), if missing | ~25 MB |
+| 2 | **Ollama** (local brain), through `winget` | ~1 GB |
+| 3 | Ollama models: `qwen3.5:9b` (conversation) and `bge-m3` (memory) | ~7 GB |
+| 4 | **whisper.cpp** (ear), from the official site | ~10 MB |
+| 5 | Whisper model (`small`) | ~470 MB |
 
-No fim aparece um **resumo**, com `ok` ou `FALHOU` em cada etapa. O registro completo fica em `%APPDATA%\Nora\instalacao\`.
+At the end a **summary** shows, with `ok` or `FALHOU` (failed) for each step. The full log is in `%APPDATA%\Nora\instalacao\`.
 
-- **Pode rodar de novo** quantas vezes precisar (menu Iniciar > Nora > **Instalar dependências da Nora**): o que já estiver pronto é pulado.
-- **"O winget não está neste Windows":** instale o **Instalador de Aplicativo** (App Installer) pela Microsoft Store e rode de novo.
-- **Ouvido mais preciso** (fala rápida ou pouco clara): rode o pacote com outro modelo, num PowerShell aberto na pasta da Nora (`%LOCALAPPDATA%\Programs\Nora`):
+- **You can run it again** as many times as needed (Start menu > Nora > **Instalar dependências da Nora**): what is already done is skipped.
+- **"O winget não está neste Windows"** (winget is not on this Windows): install **App Installer** from the Microsoft Store and run it again.
+- **More accurate ear** (fast or unclear speech): run the pack with another model, in a PowerShell opened in Nora's folder (`%LOCALAPPDATA%\Programs\Nora`):
 
   ```powershell
   powershell -ExecutionPolicy Bypass -File instalar_dependencias.ps1 -ModeloWhisper large-v3-turbo-q5_0
   ```
 
-## 3. Configurar (uma vez)
+## 3. Configure (once)
 
-Abra **menu Iniciar > Nora > Pasta da Nora (config e memória)**. É a pasta `%APPDATA%\Nora`, onde fica tudo o que é seu:
+Open **Start menu > Nora > Pasta da Nora (config e memória)**. It is the `%APPDATA%\Nora` folder, where everything of yours lives:
 
-| Arquivo ou pasta | O que é |
+| File or folder | What it is |
 |---|---|
-| `.env` | Suas chaves. Ponha `ELEVENLABS_API_KEY=` e, se quiser a nuvem para as perguntas difíceis, `OPENAI_API_KEY=` e/ou `ANTHROPIC_API_KEY=` |
-| `config\local.toml` | Sua config: seu nome e o `voz_id` da voz do ElevenLabs (Voices > ... > Copy voice ID) |
-| `data\` | Memória, histórico e relatórios. Nunca sai do seu PC |
-| `models\`, `ferramentas\` | Modelos e programas baixados pelo pacote de dependências |
+| `.env` | Your keys. Put `ELEVENLABS_API_KEY=` and, if you want the cloud for hard questions, `OPENAI_API_KEY=` and/or `ANTHROPIC_API_KEY=` |
+| `config\local.toml` | Your config: your name and the `voz_id` of the ElevenLabs voice (Voices > ... > Copy voice ID) |
+| `data\` | Memory, history and reports. Never leaves your PC |
+| `models\`, `ferramentas\` | Models and programs downloaded by the dependency pack |
 
-Abra os dois arquivos no Bloco de Notas: eles já vêm com comentários explicando cada linha.
+Open both files in Notepad: they already come with comments explaining each line.
 
-## 4. Usar
+## 4. Use
 
-- **Menu Iniciar > Nora:** liga o Ollama e o ouvido se ainda não estiverem rodando, abre a HUD no navegador e começa a escuta contínua. Diga "Nora, ..." e fale.
-- **Menu Iniciar > Nora > Nora - verificar instalação:** mostra a versão, o commit e se cada parte (Ollama, ouvido, voz, chaves) está ok. Use isso primeiro se algo não funcionar.
+- **Start menu > Nora:** starts Ollama and the ear if they are not running yet, opens the HUD in the browser and starts continuous listening. Say "Nora, ..." and speak.
+- **Start menu > Nora > Nora - verificar instalação:** shows the version, the commit and whether each part (Ollama, ear, voice, keys) is ok. Use this first if something does not work.
 
-## Desinstalar
+## Uninstall
 
-Configurações > Aplicativos > **Nora** > Desinstalar. A pasta `%APPDATA%\Nora` (config, chaves e memória) **fica**, para você não perder nada. Para apagar tudo, apague essa pasta também. O Ollama e os modelos dele se desinstalam pelo próprio Ollama.
+Settings > Apps > **Nora** > Uninstall. The `%APPDATA%\Nora` folder (config, keys and memory) **stays**, so you do not lose anything. To delete everything, delete that folder too. Ollama and its models are uninstalled through Ollama itself.
 
-## Gerar o instalador (para quem desenvolve)
+## Building the installer (for developers)
 
-A cada push na `main`, na `integracao/...` ou numa tag `v*`, o GitHub gera o instalador e o `.zip`: **Actions > Empacotar > a execução > Artifacts > nora-windows** (ficam 14 dias). Para gerar no seu PC: `scripts\empacotar_windows.ps1`, com as instruções no começo do arquivo.
+On every push to `main`, to `integracao/...` or to a `v*` tag, GitHub builds the installer and the `.zip`: **Actions > Empacotar > the run > Artifacts > nora-windows** (kept 14 days). To build it on your PC: `scripts\empacotar_windows.ps1`, with the instructions at the top of the file.

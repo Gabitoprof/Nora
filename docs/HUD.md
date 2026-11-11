@@ -1,30 +1,30 @@
-# HUD da Nora v0.4.0 — em desenvolvimento
+# Nora HUD v0.4.0 — in development
 
-A HUD representa a mesma Nora que conversa pelo terminal: nenhum segundo microfone,
-modelo, histórico ou sintetizador de voz. O núcleo Python é a fonte dos estados e níveis.
-O navegador só apresenta os dados recebidos e encaminha decisões supervisionadas.
+The HUD represents the same Nora that talks in the terminal: no second microphone,
+model, history or speech synthesizer. The Python core is the source of states and levels.
+The browser only presents the data it receives and forwards supervised decisions.
 
-## Referência visual oficial
+## Official visual reference
 
-A referência é o PNG fornecido pelo proprietário nesta tarefa: fundo preto, coroa central
-orgânica de ondas prateadas com centro aberto, contornos fluidos sobrepostos, rios diagonais
-de partículas, iluminação pontual contida, arcos de calibração e molduras finas. O desenho
-é procedural e animável; não usa um orbe genérico ou outra identidade visual.
+The reference is the PNG provided by the owner in this task: black background, an organic
+central crown of silver waves with an open center, fluid overlapping outlines, diagonal rivers
+of particles, restrained spot lighting, calibration arcs and thin frames. The drawing is
+procedural and animatable; it does not use a generic orb or another visual identity.
 
-O PNG está disponível na conversa, sem arquivo local de referência persistido no checkout.
-A comparação visual é qualitativa; não há alegação de igualdade pixel a pixel. Capturas de
-QA usam dados sintéticos somente no harness de teste, nunca como estado real da aplicação.
+The PNG is available in the conversation, with no persisted local reference file in the checkout.
+The visual comparison is qualitative; there is no claim of pixel-by-pixel equality. QA captures
+use synthetic data only in the test harness, never as the application's real state.
 
-A base é monocromática. Emoções alteram suavemente movimento e acentos: prata neutra
-`#C9C9C9`, ouro `#F0C66A`, rosa `#E3A4BD`, turquesa `#66D4CB`, terracota `#DF876A`, azul
-`#80A8F6` e lavanda `#AA9ACF`. Movimento reduzido, densidade e taxa de quadros limitam custo.
-A medição com Ollama/STT/TTS e GPU AMD reais pertence à homologação integrada.
+The base is monochrome. Emotions gently change motion and accents: neutral silver
+`#C9C9C9`, gold `#F0C66A`, pink `#E3A4BD`, turquoise `#66D4CB`, terracotta `#DF876A`, blue
+`#80A8F6` and lavender `#AA9ACF`. Reduced motion, density and frame rate limit the cost.
+Measuring with real Ollama/STT/TTS and AMD GPU belongs to the integrated acceptance.
 
-## Preparar no Windows
+## Prepare on Windows
 
-Usar o checkout existente; não é preciso worktree ou outro clone. Requisitos: Python
-3.11–3.13, Node.js LTS 22.13+ ou 24, conforme `hud/package.json`, e os serviços de voz já configurados.
-Na raiz do repositório, em PowerShell:
+Use the existing checkout; no worktree or second clone is needed. Requirements: Python
+3.11–3.13, Node.js LTS 22.13+ or 24, as in `hud/package.json`, and the voice services already configured.
+At the repository root, in PowerShell:
 
 ```powershell
 py -3.13 -m venv .venv
@@ -40,106 +40,106 @@ cd ..
 nora --verificar
 ```
 
-O extra `nuvem` continua opcional para ChatGPT/Claude, assim como suas credenciais. Não
-colocar segredos no frontend, no Git ou no comando. Instalação de Ollama, Whisper e TTS
-continua descrita em [VOZ](VOZ.md), sem reconfigurar o PC automaticamente.
+The `nuvem` extra remains optional for ChatGPT/Claude, as do its credentials. Do not
+put secrets in the front end, in Git or in the command. Installing Ollama, Whisper and TTS
+is still described in [VOZ](VOZ.md), without reconfiguring the PC automatically.
 
-## PowerShell não executa o script da nuvem Linux
+## PowerShell does not run the cloud (Linux) script
 
-`/workspace/Nora`, `.venv/bin/python`, `#!/usr/bin/env bash` e `set -euo pipefail`
-pertencem ao ambiente Linux do Codex. Não copiar o `install_script` da nuvem para o
-PowerShell. No Windows usar o caminho real do checkout e `Scripts\python.exe`.
+`/workspace/Nora`, `.venv/bin/python`, `#!/usr/bin/env bash` and `set -euo pipefail`
+belong to Codex's Linux environment. Do not copy the cloud `install_script` into
+PowerShell. On Windows, use the real checkout path and `Scripts\python.exe`.
 
-Se `python3` estiver apontando para Python 3.15, não reutilizar esse ambiente para voz.
-Listar versões com `py -0p`; usar Python 3.13 (ou 3.11/3.12 suportado) explicitamente.
-O exemplo abaixo é para o checkout `B:\Nora`, com um novo ambiente fora dele, preservando
-qualquer `.venv` anterior e todos os dados/configurações:
+If `python3` points to Python 3.15, do not reuse that environment for voice.
+List versions with `py -0p`; use Python 3.13 (or a supported 3.11/3.12) explicitly.
+The example below is for the `B:\Nora` checkout, with a new environment outside it, keeping
+any previous `.venv` and all data/settings:
 
 ```powershell
 Set-Location 'B:\Nora' -ErrorAction Stop
 py -0p
-# Executar as linhas seguintes quando Python 3.13 estiver listado:
+# Run the following lines when Python 3.13 is listed:
 py -3.13 -m venv 'B:\Nora-venv313'
 & 'B:\Nora-venv313\Scripts\python.exe' -m pip install -e ".[dev,voz,memoria]"
 & 'B:\Nora-venv313\Scripts\python.exe' -m pip check
 & 'B:\Nora-venv313\Scripts\python.exe' -m nora --verificar
 ```
 
-Não é preciso ativar o ambiente ou alterar a política de execução do PowerShell. Se 3.13
-não estiver instalado, instalar essa versão primeiro, por exemplo com
-`winget install --exact --id Python.Python.3.13`, e confirmar com `py -0p` em novo terminal.
-Avisos de um `.pth` antigo para `B:\ELLA\src` indicam uma instalação editável anterior;
-o ambiente separado não herda os pacotes da instalação global por padrão.
+There is no need to activate the environment or change the PowerShell execution policy. If 3.13
+is not installed, install that version first, for example with
+`winget install --exact --id Python.Python.3.13`, and confirm with `py -0p` in a new terminal.
+Warnings from an old `.pth` pointing to `B:\ELLA\src` indicate an earlier editable install;
+the separate environment does not inherit the global install's packages by default.
 
-## Executar
+## Run
 
-Com os serviços existentes de voz e modelo disponíveis:
+With the existing voice and model services available:
 
 ```powershell
 nora ouvir --hud --hud-porta 8765
 ```
 
-Abrir no navegador local `http://127.0.0.1:8765` e usar tela cheia. O microfone continua
-sendo o de `nora ouvir`; a HUD não solicita permissão de microfone ao navegador. Os comandos
-falados de modelo/voz/modo jogo continuam sendo interpretados e confirmados pelo núcleo.
+Open `http://127.0.0.1:8765` in the local browser and use full screen. The microphone is still
+the one from `nora ouvir`; the HUD does not ask the browser for microphone permission. Spoken
+model/voice/game mode commands are still interpreted and confirmed by the core.
 
-Para inspecionar só o visual/servidor, sem iniciar escuta:
+To inspect only the visuals/server, without starting to listen:
 
 ```powershell
 nora hud --porta 8765
 ```
 
-Esse modo deve permanecer identificado como desconectado da conversa, sem inventar
-modelo ativo, amplitude de voz ou transcrição. Para desenvolver o frontend:
+That mode must stay identified as disconnected from the conversation, without making up an
+active model, voice amplitude or transcription. To develop the front end:
 
 ```powershell
 cd hud
 npm run dev
 ```
 
-Vite encaminha `/api` ao servidor Python local na porta 8765. Para o uso integrado,
-preferir a build servida pelo próprio Python, que mantém interface e API na mesma origem.
+Vite forwards `/api` to the local Python server on port 8765. For integrated use,
+prefer the build served by Python itself, which keeps the interface and the API on the same origin.
 
-## Contrato e privacidade
+## Contract and privacy
 
-- Contrato autoritativo: `src/nora/hud_contrato.json`; frontend TypeScript consome o mesmo
-  contrato. Versão, sequência e payload são validados; mensagens inválidas não comandam a Nora.
-  Envelope limitado a 64 KiB UTF-8, texto a 6000 caracteres, até 8 assinantes SSE.
-- SSE `GET /api/eventos`: eventos `{versao, sequencia, tipo, dados, instante}`. Conexão/
-  reconexão começa com snapshot autoritativo; não depende de replay de mensagens pessoais.
-- `GET /api/estado`: snapshot do estado atual. `nivel_audio` é medida do pipeline, não
-  gravação; não transmite WAV ou PCM. Quando não há dados, o nível é neutro.
-- `GET /api/sessao`: token local de sessão para requisições de mudança. Não é credencial
-  de provedor; não vai para URL, storage persistente ou logs.
-- `POST /api/privacidade` com `{visivel: true|false}`: opt-in explícito para conteúdo pessoal.
-  O padrão é oculto; desligar limpa o conteúdo exibido. Não guardar conversas no navegador.
-- `GET /api/propostas` e `POST /api/decisao` com `{id, acao, confirmar:true}`: usa
-  `Melhorias.decidir`, com confirmação na interface e validação no servidor. Aprovar gera
-  tarefa; não modifica código, não publica e não implementa P3/P4.
-- `GET /api/notas`: somente notas realmente utilizadas pelo núcleo, de pasta autorizada.
-  Não varre o disco, não abre caminhos arbitrários e não expõe conteúdo sem consentimento.
-- `GET /api/relatorio`: disponibilidade/metadados do relatório, sem perguntas pessoais.
-- Mutações exigem `X-Nora-Token`; Host/Origin e destino são locais. Sem CORS público,
-  sem bind em `0.0.0.0`, sem acesso remoto implícito. Não publicar a porta na rede.
+- Authoritative contract: `src/nora/hud_contrato.json`; the TypeScript front end consumes the same
+  contract. Version, sequence and payload are validated; invalid messages do not command Nora.
+  Envelope limited to 64 KiB UTF-8, text to 6000 characters, up to 8 SSE subscribers.
+- SSE `GET /api/eventos`: events `{versao, sequencia, tipo, dados, instante}`. A connection/
+  reconnection starts with an authoritative snapshot; it does not depend on replaying personal messages.
+- `GET /api/estado`: snapshot of the current state. `nivel_audio` is a pipeline measurement, not
+  a recording; it does not transmit WAV or PCM. With no data, the level is neutral.
+- `GET /api/sessao`: local session token for change requests. It is not a provider
+  credential; it does not go into the URL, persistent storage or logs.
+- `POST /api/privacidade` with `{visivel: true|false}`: explicit opt-in for personal content.
+  Hidden is the default; turning it off clears the displayed content. Do not store conversations in the browser.
+- `GET /api/propostas` and `POST /api/decisao` with `{id, acao, confirmar:true}`: uses
+  `Melhorias.decidir`, with confirmation in the interface and validation on the server. Approving creates
+  a task; it does not modify code, publish or implement P3/P4.
+- `GET /api/notas`: only notes actually used by the core, from an authorized folder.
+  It does not scan the disk, open arbitrary paths or expose content without consent.
+- `GET /api/relatorio`: report availability/metadata, without personal questions.
+- Mutations require `X-Nora-Token`; Host/Origin and destination are local. No public CORS,
+  no bind on `0.0.0.0`, no implicit remote access. Do not expose the port on the network.
 
-A ponte é opcional, com filas e tamanhos limitados, amostragem de níveis e descarte para
-clientes lentos. Um cliente que desconecta não deve interromper a conversa. O snapshot
-permite recuperar o estado após perda de eventos. Falhas da HUD não devem parar a voz.
+The bridge is optional, with limited queues and sizes, level sampling and dropping for
+slow clients. A client that disconnects must not interrupt the conversation. The snapshot
+allows recovering the state after lost events. HUD failures must not stop the voice.
 
-## Fala, emoção e conteúdo
+## Speech, emotion and content
 
-Estados diferenciam repouso, escuta, transcrição, pensamento, fala, jogo e erro. Eventos de
-fala devem acompanhar o início/fim de reprodução, não apenas a síntese. Os dados acústicos vêm do
-mesmo PCM captado/reproduzido pela Nora. Emoções vêm das etiquetas já usadas pelo motor de voz.
+States distinguish rest, listening, transcription, thinking, speaking, game and error. Speech
+events must follow the start/end of playback, not only the synthesis. The acoustic data comes from
+the same PCM captured/played by Nora. Emotions come from the tags already used by the voice engine.
 
-Texto progressivo, notas e palavras em partículas exigem consentimento. O efeito de palavras
-é desativável. A sequência usa o relógio da reprodução e os intervalos da frase; mudanças
-de estado não avançam palavras. Sem alinhamento temporal fornecido pelo TTS, os intervalos
-são uma **estimativa fundamentada na duração do áudio**, identificada internamente como
-`estimada`; não é sincronismo fonético. O frontend não revela pensamento privado, perguntas
-pessoais ou chaves.
+Progressive text, notes and particle words require consent. The word effect can be
+turned off. The sequence uses the playback clock and the sentence's intervals; state changes
+do not advance words. Without timing alignment provided by the TTS, the intervals
+are an **estimate grounded in the audio duration**, internally labeled
+`estimada`; it is not phonetic sync. The front end does not reveal private thinking, personal
+questions or keys.
 
-## Qualidade e homologação
+## Quality and acceptance
 
 ```powershell
 ruff format --check .
@@ -153,81 +153,81 @@ npm test
 npm run build
 ```
 
-A CI inclui o núcleo em Windows/Ubuntu com Python 3.11/3.13 e o frontend em Windows/Ubuntu
-com Node 22. Localmente passaram 295 testes Python (1 ignorado por falta de Kokoro real),
-15 testes TypeScript, Ruff, lint, typecheck e build. Os resultados desta entrega são registrados no [checklist cumulativo](HOMOLOGACAO.md).
-Não chamar a v0.4.0 de lançada ou homologada apenas porque a CI passou.
+CI includes the core on Windows/Ubuntu with Python 3.11/3.13 and the front end on Windows/Ubuntu
+with Node 22. Locally, 295 Python tests passed (1 skipped for lack of a real Kokoro),
+15 TypeScript tests, Ruff, lint, typecheck and build. The results of this delivery are recorded in the [cumulative checklist](HOMOLOGACAO.md).
+Do not call v0.4.0 released or accepted just because CI passed.
 
-Pendente no computador real: silêncio prolongado e digitação durante escuta, alertas e
-relatórios com auto-melhoria ativa, transições em modo jogo sem reativar Ollama, saída de
-voz real e reserva, latência, fullscreen/ultrawide, uso de CPU/GPU com os modelos carregados.
-A versão permanece em desenvolvimento, sem merge automático, tags ou release.
+Pending on the real computer: prolonged silence and typing while listening, alerts and
+reports with self-improvement on, game mode transitions without reactivating Ollama, real voice
+output and fallback, latency, fullscreen/ultrawide, CPU/GPU usage with the models loaded.
+The version stays in development, with no automatic merge, tags or release.
 
-## Executável de entrada bloqueado pelo Windows
+## Entry executable blocked by Windows
 
-Se a instalação concluir e `pip check` disser `No broken requirements found`, mas o
-Controle de Aplicativos bloquear `nora.exe`, isso não indica falha nas dependências.
-A entrada oficial `python -m nora` usa o mesmo `nora.cli.main` do launcher instalado.
-O diagnóstico da aplicação continua sendo `--verificar`. Não desativar políticas de
-segurança; se a política também impedir a execução pelo Python, solicitar a análise e
-liberação da aplicação ao responsável pela política do computador.
+If the install finishes and `pip check` says `No broken requirements found`, but
+App Control blocks `nora.exe`, that does not indicate a dependency failure.
+The official entry point `python -m nora` uses the same `nora.cli.main` as the installed launcher.
+The application's diagnostics are still `--verificar`. Do not disable security
+policies; if the policy also prevents running through Python, ask whoever manages the
+computer's policy to review and allow the application.
 
-## HUD retorna `Origem local obrigatória` ao abrir por link
+## The HUD returns `Origem local obrigatória` when opened from a link
 
-A abertura inicial pelo navegador envia `Sec-Fetch-Site: cross-site` ou `same-site` quando
-vem de um link de outra página. Uma versão anterior da ponte rejeitava também essa navegação
-legítima, embora o build estivesse correto. A correção autoriza somente `GET /` e
-`GET /index.html` com modo `navigate` e destino `document`, mantendo Host/Origin validados.
-APIs, requisições externas de dados, iframe e mutações continuam protegidos; não remover
-as verificações de origem ou token para abrir a interface.
+The browser's initial opening sends `Sec-Fetch-Site: cross-site` or `same-site` when it
+comes from a link on another page. An earlier version of the bridge also rejected that legitimate
+navigation, although the build was correct. The fix authorizes only `GET /` and
+`GET /index.html` with `navigate` mode and `document` destination, keeping Host/Origin validated.
+APIs, external data requests, iframes and mutations remain protected; do not remove
+the origin or token checks to open the interface.
 
-Parar o servidor antigo com Ctrl+C, atualizar a branch `feat/v0.4.0-hud`, reinstalar o
-lockfile com `npm.cmd ci`, compilar e reiniciar o Python. O processo antigo mantém em memória
-as regras anteriores até ser reiniciado. O build exibido como concluído no terminal já é
-uma evidência de compilação aprovada; o erro HTTP de origem é registrado separadamente.
+Stop the old server with Ctrl+C, update the `feat/v0.4.0-hud` branch, reinstall the
+lockfile with `npm.cmd ci`, build and restart Python. The old process keeps the previous
+rules in memory until it is restarted. A build shown as completed in the terminal is already
+evidence of an approved build; the HTTP origin error is recorded separately.
 
-Os alertas de auditoria das ferramentas de desenvolvimento também foram corrigidos por
-atualizações explícitas e testadas. Não é necessário executar `npm audit fix --force`.
-O aviso local de scripts de instalação requer análise somente se uma instalação ou build
-falhar; a captura fornecida confirma build concluído, sem necessidade de liberar scripts
-adicionais para corrigir o HTTP 403.
+The audit alerts of the development tools were also fixed through explicit,
+tested updates. There is no need to run `npm audit fix --force`.
+The local install-scripts warning only needs review if an install or build
+fails; the screenshot provided confirms a completed build, with no need to allow extra
+scripts to fix the HTTP 403.
 
 
-## Retomada acústica e emocional — 06/11/2026
+## Acoustic and emotional resume — 06/11/2026
 
-A coroa central preserva o centro aberto e os contornos orgânicos da referência. RMS,
-picos, envelope, distribuição espectral em seis bandas, centroide e fluxo derivados do
-PCM controlam a dinâmica; a geometria continua sendo interpretação artística, não um
-osciloscópio. Escuta e reprodução usam comportamentos distintos. A faixa inferior é
-complementar e reage somente à voz da Nora. Em repouso permanece a respiração discreta.
+The central crown keeps the reference's open center and organic outlines. RMS,
+peaks, envelope, the spectral distribution in six bands, centroid and flux derived from the
+PCM drive the dynamics; the geometry is still an artistic interpretation, not an
+oscilloscope. Listening and playback use distinct behaviors. The bottom band is
+complementary and reacts only to Nora's voice. At rest the discreet breathing remains.
 
-A análise reutiliza o pipeline único de áudio. O navegador recebe somente medidas e
-metadados temporais, nunca áudio bruto, credenciais ou uma nova captura. Filas limitadas,
-descarte de dados atrasados e frequência de atualização limitada protegem o pipeline de
-voz; desconectar a HUD não deve interrompê-lo. Movimento reduzido, página oculta, modo
-jogo e qualidade Canvas continuam disponíveis.
+The analysis reuses the single audio pipeline. The browser receives only measurements and
+timing metadata, never raw audio, credentials or a new capture. Limited queues,
+dropping late data and a limited update rate protect the voice
+pipeline; disconnecting the HUD must not interrupt it. Reduced motion, hidden page, game
+mode and the Canvas quality remain available.
 
-**Falhas da HUD não param a fala, mas não somem:** no caminho acústico (o callback de saída, o observador da reprodução, o analisador, os eventos), cada falha é contada por lugar e tipo (`nora.falhas_hud`). A primeira de cada tipo vira uma linha de log (`nora.hud`); as seguintes só contam. A mensagem do erro e o áudio nunca são registrados.
+**HUD failures do not stop speech, but they do not disappear:** in the acoustic path (the output callback, the playback observer, the analyzer, the events), each failure is counted by place and type (`nora.falhas_hud`). The first of each type becomes a log line (`nora.hud`); the following ones are only counted. The error message and the audio are never logged.
 
-O painel lateral "Sinal de áudio" mostra o mesmo sinal que move a onda central (a medida da fonte em uso: microfone enquanto escuta, voz enquanto fala), em escala de decibéis (−60 dBFS = 0%, 0 dBFS = 100%). Com sinal, nunca mostra "0%"; pensando ou em repouso, mostra "Em silêncio".
+The "Sinal de áudio" side panel shows the same signal that moves the central wave (the measurement of the source in use: microphone while listening, voice while speaking), on a decibel scale (−60 dBFS = 0%, 0 dBFS = 100%). With a signal, it never shows "0%"; while thinking or at rest, it shows "Em silêncio".
 
-A paleta fica num arquivo só, `src/nora/paleta.json` (dentro do pacote Python, vai junto na instalação), lido pela HUD (`state.ts`) e pelo Python (`nora.paleta.cor("curiosa")`), para o Second Brain usar as mesmas cores sem copiá-las. A paleta segue a tabela aprovada:
+The palette lives in a single file, `src/nora/paleta.json` (inside the Python package, so it ships with the install), read by the HUD (`state.ts`) and by Python (`nora.paleta.cor("curiosa")`), so the Second Brain uses the same colors without copying them. The palette follows the approved table:
 
-| Grupo | Cor | Nomes que caem nele |
+| Group | Color | Names that fall into it |
 |---|---|---|
-| Neutra | prata `#C9C9C9` | neutra, neutro (e qualquer nome desconhecido) |
-| Alegria e entusiasmo | dourado `#F0C66A` | alegre, empolgada, risada, alegria, entusiasmo |
-| Carinho | rosa suave `#E3A4BD` | carinhosa, carinho, acolhimento |
-| Calma | turquesa `#66D4CB` | calma, serenidade, sussurro, suspiro |
-| Seriedade | azul `#80A8F6` | séria, seriedade, confiante, confiança, preocupada, preocupação |
-| Tristeza | lavanda `#AA9ACF` | triste, tristeza |
-| Curiosidade | terracota `#DF876A` | curiosa, curiosidade |
+| Neutral | silver `#C9C9C9` | neutra, neutro (and any unknown name) |
+| Joy and enthusiasm | gold `#F0C66A` | alegre, empolgada, risada, alegria, entusiasmo |
+| Tenderness | soft pink `#E3A4BD` | carinhosa, carinho, acolhimento |
+| Calm | turquoise `#66D4CB` | calma, serenidade, sussurro, suspiro |
+| Seriousness | blue `#80A8F6` | séria, seriedade, confiante, confiança, preocupada, preocupação |
+| Sadness | lavender `#AA9ACF` | triste, tristeza |
+| Curiosity | terracotta `#DF876A` | curiosa, curiosidade |
 
-Escolhas: **serenidade** é calma. **Sussurro** e **suspiro** são jeitos de falar, não emoções, e a HUD não recebe a emoção de fundo da frase; por isso ficam na calma, que combina com voz baixa, em vez da tristeza. **Preocupação** é um tom sério, então fica na seriedade, e não na curiosidade. Os nomes de emoção são os do núcleo existente; não há outro classificador. As marcações amarela, roxa e rosa da referência não fazem parte da interface.
+Choices: **serenidade** (serenity) is calm. **Sussurro** (whisper) and **suspiro** (sigh) are ways of speaking, not emotions, and the HUD does not receive the sentence's underlying emotion; so they stay in calm, which fits a low voice, instead of sadness. **Preocupação** (worry) is a serious tone, so it goes to seriousness, not curiosity. The emotion names are the existing core's; there is no other classifier. The reference's yellow, purple and pink markings are not part of the interface.
 
-As evidências atuais, seus tipos de simulação e limitações estão em
-[QA acústica](evidencias/hud-acustica/README.md). Resultados históricos acima continuam
-restritos aos commits indicados. O checklist cumulativo preserva a instalação, o
-`pip check`, o diagnóstico e a abertura/conexão no Windows informados pelo proprietário.
-Essas evidências não homologam a nova reatividade acústica, a voz física ou o consumo na
-GPU AMD; esses cenários permanecem na homologação integrada.
+The current evidence, its kinds of simulation and its limitations are in
+[acoustic QA](evidencias/hud-acustica/README.md). The historical results above remain
+restricted to the commits indicated. The cumulative checklist keeps the installation,
+`pip check`, diagnostics and the Windows opening/connection reported by the owner.
+That evidence does not accept the new acoustic reactivity, the physical voice or the
+AMD GPU consumption; those scenarios remain in the integrated acceptance.
